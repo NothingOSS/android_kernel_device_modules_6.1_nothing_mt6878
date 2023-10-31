@@ -77,24 +77,6 @@
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_VCORE>;
 	};
 
-	bring-up-pd-cam-suba@8 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x8>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_SUBA>;
-	};
-
-	bring-up-pd-cam-subb@9 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x9>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_SUBB>;
-	};
-
-	bring-up-pd-cam-vcore@a {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0xa>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_VCORE>;
-	};
-
 	bring-up-pd-disp@d {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0xd>;
