@@ -1951,7 +1951,7 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 			ucontrol->value.integer.value[0] = index;
 #endif
 		if (priv->vow_enable)
-			ucontrol->value.integer.value[0] = 12;
+			ucontrol->value.integer.value[0] = 12; // VOW: 18dB
 		break;
 	}
 
@@ -6171,7 +6171,7 @@ static int mt_sram_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_AUD_TOP_SRAM_CON,
 				   AUDIO_CO_MEM_PDN_MASK_SFT |
 				   AUDIO_CO_MEM_PDN_SEL_MASK_SFT,
-				   value << AUDIO_CO_MEM_PDN_SFT);
+				   value);
 		usleep_range(250, 270);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
@@ -6181,7 +6181,7 @@ static int mt_sram_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_AUD_TOP_SRAM_CON,
 				   AUDIO_CO_MEM_PDN_MASK_SFT |
 				   AUDIO_CO_MEM_PDN_SEL_MASK_SFT,
-				   value << AUDIO_CO_MEM_PDN_SFT);
+				   value);
 		break;
 	default:
 		break;
@@ -6875,7 +6875,6 @@ static int mt_aud208_event(struct snd_soc_dapm_widget *w,
 	default:
 		break;
 	}
-
 	return 0;
 }
 
@@ -7202,6 +7201,22 @@ static int mt_mtkaif_tx3_event(struct snd_soc_dapm_widget *w,
 		break;
 	}
 
+	return 0;
+}
+
+static int mt_adc_init_event(struct snd_soc_dapm_widget *w,
+			    struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		mt6681_adc_init(priv);
+		break;
+	default:
+		break;
+	}
 	return 0;
 }
 
@@ -7542,7 +7557,7 @@ static int mt_adc_l_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT |
 				RG_AUDADCHIGHDRSW_SEL_MASK_SFT |
 				RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON24,
 					   RG_AUDADCLWIDECM_MASK_SFT,
@@ -7569,7 +7584,7 @@ static int mt_adc_l_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADCLFLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADCLFLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADCLFLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON28,
 					   RG_AUDRCTUNEL_MASK_SFT,
@@ -7678,7 +7693,7 @@ static int mt_adc_l_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADCLFLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADCLFLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADCLFLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON28,
 					   RG_AUDRCTUNELSEL_MASK_SFT,
@@ -7720,7 +7735,7 @@ static int mt_adc_l_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT
 					| RG_AUDADCHIGHDRSW_SEL_MASK_SFT
 					| RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON24,
 					   RG_AUDADCLWIDECM_MASK_SFT,
@@ -7768,7 +7783,7 @@ static int mt_adc_l_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADCLFLASHVREFRES_LPM_MASK_SFT
 					| RG_AUDADCLFLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADCLFLASHVREFRES_LPM_SFT);
+				value);
 			if (priv->mic_hifi_mode) {
 				/*
 				 * RC tune write value.
@@ -7927,6 +7942,29 @@ static int mt_adc_l_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON1,
 				   RG_AUDADCLPWRUP_MASK_SFT,
 				   0x0 << RG_AUDADCLPWRUP_SFT);
+		if (priv->mic_hifi_mode) {
+			/* Pside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON17,
+					   RG_AUDLDAC_EXTCAPP_SEL_MASK_SFT,
+					   0x0 << RG_AUDLDAC_EXTCAPP_SEL_SFT);
+			/* Nside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON14,
+					   RG_AUDLDAC_EXTCAP_SEL_MASK_SFT,
+					   0x0 << RG_AUDLDAC_EXTCAP_SEL_SFT);
+			/* DAC current calibration off. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON64,
+				RG_AUDADCLNMDACCAL_EN_MASK_SFT,
+				0x0 << RG_AUDADCLNMDACCAL_EN_SFT);
+			/* DAC calibration code. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON61,
+				RG_AUDADCLNMDAC_CAL_MASK_SFT,
+				0x0 << RG_AUDADCLNMDAC_CAL_SFT);
+
+		}
 		if ((priv->mic_hifi_mode == 0) && (priv->hw_ver == 3))
 			regmap_update_bits(
 				priv->regmap, MT6681_AUDENC_2_PMU_CON42,
@@ -7970,7 +8008,7 @@ static int mt_adc_r_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT |
 				RG_AUDADCHIGHDRSW_SEL_MASK_SFT |
 				RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON41,
 					   RG_AUDADCRWIDECM_MASK_SFT,
@@ -7997,7 +8035,7 @@ static int mt_adc_r_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADCRFLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADCRFLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADCRFLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON29,
 					   RG_AUDRCTUNER_MASK_SFT,
@@ -8105,7 +8143,7 @@ static int mt_adc_r_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADCRFLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADCRFLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADCRFLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON29,
 					   RG_AUDRCTUNERSEL_MASK_SFT,
@@ -8148,7 +8186,7 @@ static int mt_adc_r_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT
 					| RG_AUDADCHIGHDRSW_SEL_MASK_SFT
 					| RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON41,
@@ -8198,7 +8236,7 @@ static int mt_adc_r_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADCRFLASHVREFRES_LPM_MASK_SFT
 					| RG_AUDADCRFLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADCRFLASHVREFRES_LPM_SFT);
+				value);
 			if (priv->mic_hifi_mode) {
 				regmap_update_bits(priv->regmap,
 						   MT6681_AUDENC_PMU_CON29,
@@ -8255,30 +8293,6 @@ static int mt_adc_r_event(struct snd_soc_dapm_widget *w,
 					priv->regmap, MT6681_AUDENC_2_PMU_CON61,
 					RG_AUDADCRNMDAC_CAL_MASK_SFT,
 					0x3 << RG_AUDADCRNMDAC_CAL_SFT);
-				/* Pside external cap on. */
-				regmap_update_bits(
-					priv->regmap,
-					MT6681_AUDENC_2_2_PMU_CON18,
-					RG_AUDRDAC_EXTCAPP_SEL_MASK_SFT,
-					0x1 << RG_AUDRDAC_EXTCAPP_SEL_SFT);
-				/* Nside external cap on. */
-				regmap_update_bits(
-					priv->regmap,
-					MT6681_AUDENC_2_2_PMU_CON14,
-					RG_AUDRDAC_EXTCAP_SEL_MASK_SFT,
-					0x1 << RG_AUDRDAC_EXTCAP_SEL_SFT);
-				/* External cap presetion enable. */
-				regmap_update_bits(
-					priv->regmap,
-					MT6681_AUDENC_2_2_PMU_CON18,
-					RG_ADCRDACEXTCAPPRESET_EN_MASK_SFT,
-					0x1 << RG_ADCRDACEXTCAPPRESET_EN_SFT);
-				/* External cap presetion disable. */
-				regmap_update_bits(
-					priv->regmap,
-					MT6681_AUDENC_2_2_PMU_CON18,
-					RG_ADCRDACEXTCAPPRESET_EN_MASK_SFT,
-					0x0 << RG_ADCRDACEXTCAPPRESET_EN_SFT);
 			} else {
 				/* ADC mode selection */
 				regmap_update_bits(
@@ -8368,6 +8382,29 @@ static int mt_adc_r_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON3,
 				   RG_AUDADCRPWRUP_MASK_SFT,
 				   0x0 << RG_AUDADCRPWRUP_SFT);
+		if (priv->mic_hifi_mode) {
+			/* Pside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON18,
+					   RG_AUDRDAC_EXTCAPP_SEL_MASK_SFT,
+					   0x0 << RG_AUDRDAC_EXTCAPP_SEL_SFT);
+			/* Nside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON14,
+					   RG_AUDRDAC_EXTCAP_SEL_MASK_SFT,
+					   0x0 << RG_AUDRDAC_EXTCAP_SEL_SFT);
+			/* DAC current calibration off. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON64,
+				RG_AUDADCRNMDACCAL_EN_MASK_SFT,
+				0x0 << RG_AUDADCRNMDACCAL_EN_SFT);
+			/* DAC calibration code. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON61,
+				RG_AUDADCRNMDAC_CAL_MASK_SFT,
+				0x0 << RG_AUDADCRNMDAC_CAL_SFT);
+
+		}
 		if ((priv->mic_hifi_mode == 0) && (priv->hw_ver == 3))
 			regmap_update_bits(
 				priv->regmap, MT6681_AUDENC_2_PMU_CON42,
@@ -8410,7 +8447,7 @@ static int mt_adc_3_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT |
 				RG_AUDADCHIGHDRSW_SEL_MASK_SFT |
 				RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON41,
 					   RG_AUDADC3WIDECM_MASK_SFT,
@@ -8437,7 +8474,7 @@ static int mt_adc_3_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADC3FLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADC3FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC3FLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON30,
 					   RG_AUDRCTUNE3_MASK_SFT,
@@ -8541,7 +8578,7 @@ static int mt_adc_3_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADC3FLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADC3FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC3FLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON30,
 					   RG_AUDRCTUNE3SEL_MASK_SFT,
@@ -8580,7 +8617,7 @@ static int mt_adc_3_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT
 					| RG_AUDADCHIGHDRSW_SEL_MASK_SFT
 					| RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON41,
 					   RG_AUDADC3WIDECM_MASK_SFT,
@@ -8638,7 +8675,7 @@ static int mt_adc_3_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADC3FLASHVREFRES_LPM_MASK_SFT
 					| RG_AUDADC3FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC3FLASHVREFRES_LPM_SFT);
+				value);
 			if (priv->mic_hifi_mode) {
 				/*
 				 * RC tune write value.
@@ -8788,6 +8825,28 @@ static int mt_adc_3_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON5,
 				   RG_AUDADC3PWRUP_MASK_SFT,
 				   0x0 << RG_AUDADC3PWRUP_SFT);
+		if (priv->mic_hifi_mode) {
+			/* Pside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON19,
+					   RG_AUD3DAC_EXTCAPP_SEL_MASK_SFT,
+					   0x0 << RG_AUD3DAC_EXTCAPP_SEL_SFT);
+			/* Nside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON14,
+					   RG_AUD3DAC_EXTCAP_SEL_MASK_SFT,
+					   0x0 << RG_AUD3DAC_EXTCAP_SEL_SFT);
+			/* DAC current calibration off. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON65,
+				RG_AUDADC3NMDACCAL_EN_MASK_SFT,
+				0x0 << RG_AUDADC3NMDACCAL_EN_SFT);
+			/* DAC calibration code. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON62,
+				RG_AUDADC3NMDAC_CAL_MASK_SFT,
+				0x0 << RG_AUDADC3NMDAC_CAL_SFT);
+		}
 		if ((priv->mic_hifi_mode == 0) && (priv->hw_ver == 3))
 			regmap_update_bits(
 				priv->regmap, MT6681_AUDENC_2_PMU_CON42,
@@ -8830,7 +8889,7 @@ static int mt_adc_4_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT |
 				RG_AUDADCHIGHDRSW_SEL_MASK_SFT |
 				RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON41,
 					   RG_AUDADC4WIDECM_MASK_SFT,
@@ -8857,7 +8916,7 @@ static int mt_adc_4_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADC4FLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADC4FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC4FLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON31,
 					   RG_AUDRCTUNE4_MASK_SFT,
@@ -8961,7 +9020,7 @@ static int mt_adc_4_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADC4FLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADC4FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC4FLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON31,
 					   RG_AUDRCTUNE4SEL_MASK_SFT,
@@ -9000,7 +9059,7 @@ static int mt_adc_4_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT
 					| RG_AUDADCHIGHDRSW_SEL_MASK_SFT
 					| RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_PMU_CON41,
 					   RG_AUDADC4WIDECM_MASK_SFT,
@@ -9060,7 +9119,7 @@ static int mt_adc_4_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_PMU_CON50,
 				RG_AUDADC4FLASHVREFRES_LPM_MASK_SFT
 					| RG_AUDADC4FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC4FLASHVREFRES_LPM_SFT);
+				value);
 			if (priv->mic_hifi_mode) {
 				/*
 				 * RC tune write value.
@@ -9209,6 +9268,29 @@ static int mt_adc_4_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON7,
 				   RG_AUDADC4PWRUP_MASK_SFT,
 				   0x0 << RG_AUDADC4PWRUP_SFT);
+		if (priv->mic_hifi_mode) {
+			/* Pside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON20,
+					   RG_AUD4DAC_EXTCAPP_SEL_MASK_SFT,
+					   0x0 << RG_AUD4DAC_EXTCAPP_SEL_SFT);
+			/* Nside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON14,
+					   RG_AUD4DAC_EXTCAP_SEL_MASK_SFT,
+					   0x0 << RG_AUD4DAC_EXTCAP_SEL_SFT);
+			/* DAC current calibration off. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON65,
+				RG_AUDADC4NMDACCAL_EN_MASK_SFT,
+				0x0 << RG_AUDADC4NMDACCAL_EN_SFT);
+			/* DAC calibration code. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON62,
+				RG_AUDADC4NMDAC_CAL_MASK_SFT,
+				0x0 << RG_AUDADC4NMDAC_CAL_SFT);
+
+		}
 		if ((priv->mic_hifi_mode == 0) && (priv->hw_ver == 3))
 			regmap_update_bits(
 				priv->regmap, MT6681_AUDENC_2_PMU_CON42,
@@ -9251,7 +9333,7 @@ static int mt_adc_5_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT |
 				RG_AUDADCHIGHDRSW_SEL_MASK_SFT |
 				RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_2_PMU_CON19,
 					   RG_AUDADC5WIDECM_MASK_SFT,
@@ -9278,7 +9360,7 @@ static int mt_adc_5_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_2_PMU_CON26,
 				RG_AUDADC5FLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADC5FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC5FLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_2_PMU_CON14,
 					   RG_AUDRCTUNE5_MASK_SFT,
@@ -9383,7 +9465,7 @@ static int mt_adc_5_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_2_PMU_CON26,
 				RG_AUDADC5FLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADC5FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC5FLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_2_PMU_CON14,
 					   RG_AUDRCTUNE5SEL_MASK_SFT,
@@ -9423,7 +9505,7 @@ static int mt_adc_5_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT
 					| RG_AUDADCHIGHDRSW_SEL_MASK_SFT
 					| RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_2_PMU_CON19,
 					   RG_AUDADC5WIDECM_MASK_SFT,
@@ -9483,7 +9565,7 @@ static int mt_adc_5_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_2_PMU_CON26,
 				RG_AUDADC5FLASHVREFRES_LPM_MASK_SFT
 					| RG_AUDADC5FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC5FLASHVREFRES_LPM_SFT);
+				value);
 			if (priv->mic_hifi_mode) {
 				/*
 				 * RC tune write value.
@@ -9634,6 +9716,28 @@ static int mt_adc_5_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON3,
 				   RG_AUDADC5PWRUP_MASK_SFT,
 				   0x0 << RG_AUDADC5PWRUP_SFT);
+		if (priv->mic_hifi_mode) {
+			/* Pside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON21,
+					   RG_AUD5DAC_EXTCAPP_SEL_MASK_SFT,
+					   0x0 << RG_AUD5DAC_EXTCAPP_SEL_SFT);
+			/* Nside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON14,
+					   RG_AUD5DAC_EXTCAP_SEL_MASK_SFT,
+					   0x0 << RG_AUD5DAC_EXTCAP_SEL_SFT);
+			/* DAC current calibration off. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON65,
+				RG_AUDADC5NMDACCAL_EN_MASK_SFT,
+				0x0 << RG_AUDADC5NMDACCAL_EN_SFT);
+			/* DAC calibration code. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON63,
+				RG_AUDADC5NMDAC_CAL_MASK_SFT,
+				0x0 << RG_AUDADC5NMDAC_CAL_SFT);
+		}
 		if ((priv->mic_hifi_mode == 0) && (priv->hw_ver == 3))
 			regmap_update_bits(
 				priv->regmap, MT6681_AUDENC_2_PMU_CON43,
@@ -9676,7 +9780,7 @@ static int mt_adc_6_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT |
 				RG_AUDADCHIGHDRSW_SEL_MASK_SFT |
 				RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_2_PMU_CON19,
 					   RG_AUDADC6WIDECM_MASK_SFT,
@@ -9703,7 +9807,7 @@ static int mt_adc_6_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_2_PMU_CON26,
 				RG_AUDADC6FLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADC6FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC6FLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_2_PMU_CON15,
 					   RG_AUDRCTUNE6_MASK_SFT,
@@ -9808,11 +9912,11 @@ static int mt_adc_6_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_2_PMU_CON26,
 				RG_AUDADC6FLASHVREFRES_LPM_MASK_SFT |
 				RG_AUDADC6FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC6FLASHVREFRES_LPM_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_2_PMU_CON15,
 					   RG_AUDRCTUNE6SEL_MASK_SFT,
-					   0x0 << RG_AUDRCTUNE6SEL_SFT);
+					   0x1 << RG_AUDRCTUNE6SEL_SFT);
 			/* Write 5-bit audio 6 RC tune data */
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_2_PMU_CON15,
@@ -9848,7 +9952,7 @@ static int mt_adc_6_event(struct snd_soc_dapm_widget *w,
 				RG_AUDADCHIGHDR_EN_MASK_SFT
 					| RG_AUDADCHIGHDRSW_SEL_MASK_SFT
 					| RG_AUDADCHIGHDRSW_EN_MASK_SFT,
-				value << RG_AUDADCHIGHDR_EN_SFT);
+				value);
 			regmap_update_bits(priv->regmap,
 					   MT6681_AUDENC_2_PMU_CON19,
 					   RG_AUDADC6WIDECM_MASK_SFT,
@@ -9908,7 +10012,7 @@ static int mt_adc_6_event(struct snd_soc_dapm_widget *w,
 				priv->regmap, MT6681_AUDENC_2_PMU_CON26,
 				RG_AUDADC6FLASHVREFRES_LPM_MASK_SFT
 					| RG_AUDADC6FLASHVREFRES_LPM2_MASK_SFT,
-				value << RG_AUDADC6FLASHVREFRES_LPM_SFT);
+				value);
 			if (priv->mic_hifi_mode) {
 				/*
 				 * RC tune write value.
@@ -10058,6 +10162,28 @@ static int mt_adc_6_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON5,
 				   RG_AUDADC6PWRUP_MASK_SFT,
 				   0x0 << RG_AUDADC6PWRUP_SFT);
+		if (priv->mic_hifi_mode) {
+			/* Pside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON22,
+					   RG_AUD6DAC_EXTCAPP_SEL_MASK_SFT,
+					   0x0 << RG_AUD6DAC_EXTCAPP_SEL_SFT);
+			/* Nside external cap off. */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AUDENC_2_2_PMU_CON14,
+					   RG_AUD6DAC_EXTCAP_SEL_MASK_SFT,
+					   0x0 << RG_AUD6DAC_EXTCAP_SEL_SFT);
+			/* DAC current calibration off. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON65,
+				RG_AUDADC6NMDACCAL_EN_MASK_SFT,
+				0x0 << RG_AUDADC6NMDACCAL_EN_SFT);
+			/* DAC calibration code. */
+			regmap_update_bits(
+				priv->regmap, MT6681_AUDENC_2_PMU_CON63,
+				RG_AUDADC6NMDAC_CAL_MASK_SFT,
+				0x0 << RG_AUDADC6NMDAC_CAL_SFT);
+		}
 		if ((priv->mic_hifi_mode == 0) && (priv->hw_ver == 3))
 			regmap_update_bits(
 				priv->regmap, MT6681_AUDENC_2_PMU_CON43,
@@ -12602,7 +12728,6 @@ static int mt_ul_gpio_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		mt6681_set_capture_gpio(priv);
-		mt6681_adc_init(priv);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		mt6681_reset_capture_gpio(priv);
@@ -12631,8 +12756,6 @@ static int mt_ul56_gpio_event(struct snd_soc_dapm_widget *w,
 	}
 	return 0;
 }
-
-
 static int mt_dl_src_event(struct snd_soc_dapm_widget *w,
 			   struct snd_kcontrol *kcontrol, int event)
 {
@@ -12755,6 +12878,11 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY_S("SRAM Audio", SUPPLY_SEQ_TOP_SRAM, SND_SOC_NOPM,
 			      0, 0, mt_sram_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD),
+	/* ADC init */
+	SND_SOC_DAPM_SUPPLY_S("ADC_INIT", SUPPLY_SEQ_ADC_INIT, SND_SOC_NOPM,
+			      0, 0, mt_adc_init_event,
+			      SND_SOC_DAPM_PRE_PMU),
+
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 	SND_SOC_DAPM_SUPPLY_S("VOW SRAM Audio", SUPPLY_SEQ_TOP_SRAM, SND_SOC_NOPM,
 			      0, 0, mt_vow_sram_event,
@@ -13282,6 +13410,7 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"AIFTX_Supply", NULL, "SCP_REQ"},
 	{"AIFTX_Supply", NULL, "KEY"},
 	{"AIFTX_Supply", NULL, "UL_GPIO"},
+	{"AIFTX_Supply", NULL, "ADC_INIT"},
 	{"AIFTX_Supply", NULL, "CLK_BUF"},
 	{"AIFTX_Supply", NULL, "AUDGLB"},
 	{"AIFTX_Supply", NULL, "CLKSQ UL Audio"},
@@ -13624,6 +13753,7 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"Receiver", NULL, "RCV Mux"},
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 	{"VOW TX", NULL, "KEY"},
+	{"VOW TX", NULL, "ADC_INIT"},
 	{"VOW TX", NULL, "VOW_UL_SRC_MUX"},
 	{"VOW TX", NULL, "VOW_CIC_MUX"},
 	{"VOW TX", NULL, "PLL18 EN"},
@@ -21795,9 +21925,40 @@ static void mt6681_clh_lut_init(struct mt6681_priv *priv)
 
 static void mt6681_adc_init(struct mt6681_priv *priv)
 {
-	dev_dbg(priv->dev, "%s() %d\n", __func__, priv->mic_hifi_mode);
+	dev_info(priv->dev, "%s() %d\n", __func__, priv->mic_hifi_mode);
 
-	if (priv->mic_hifi_mode) {
+	if (priv->vow_setup) {
+		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON21,
+				   RG_AUD5ADC1STSTAGEIDDTEST_MASK_SFT,
+				   0x0 << RG_AUD5ADC1STSTAGEIDDTEST_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON22,
+				   RG_AUD6ADC1STSTAGEIDDTEST_MASK_SFT,
+				   0x0 << RG_AUD6ADC1STSTAGEIDDTEST_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON21,
+				   RG_AUDPREAMP5OUTSTAGE0P25BIAS_MASK_SFT,
+				   0x1 << RG_AUDPREAMP5OUTSTAGE0P25BIAS_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON22,
+				   RG_AUDPREAMP6OUTSTAGE0P25BIAS_MASK_SFT,
+				   0x1 << RG_AUDPREAMP6OUTSTAGE0P25BIAS_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON21,
+				   RG_ADC5FLASHOFFSETCAL_MASK_SFT,
+				   0x1 << RG_ADC5FLASHOFFSETCAL_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON27,
+				   RG_ADC5FLASHOFFSETCAL_TRIM_MASK_SFT,
+				   0x1 << RG_ADC5FLASHOFFSETCAL_TRIM_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
+				   RG_AUD5ADCFLASHFFCAPVREF_SEL_MASK_SFT,
+				   0x1 << RG_AUD5ADCFLASHFFCAPVREF_SEL_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON22,
+				   RG_ADC6FLASHOFFSETCAL_MASK_SFT,
+				   0x1 << RG_ADC6FLASHOFFSETCAL_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON28,
+				   RG_ADC6FLASHOFFSETCAL_TRIM_MASK_SFT,
+				   0x1 << RG_ADC6FLASHOFFSETCAL_TRIM_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
+				   RG_AUD6ADCFLASHFFCAPVREF_SEL_MASK_SFT,
+				   0x1 << RG_AUD6ADCFLASHFFCAPVREF_SEL_SFT);
+	} else if (priv->mic_hifi_mode) {
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON9,
 				   RG_AUDADC1STSTAGEIDDTEST_MASK_SFT,
 				   0x0 << RG_AUDADC1STSTAGEIDDTEST_SFT);
@@ -21810,12 +21971,14 @@ static void mt6681_adc_init(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON43,
 				   RG_AUD4ADC1STSTAGEIDDTEST_MASK_SFT,
 				   0x0 << RG_AUD4ADC1STSTAGEIDDTEST_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON21,
-				   RG_AUD5ADC1STSTAGEIDDTEST_MASK_SFT,
-				   0x0 << RG_AUD5ADC1STSTAGEIDDTEST_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON22,
-				   RG_AUD6ADC1STSTAGEIDDTEST_MASK_SFT,
-				   0x0 << RG_AUD6ADC1STSTAGEIDDTEST_SFT);
+		if(priv->vow_enable == 0) {
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON21,
+					   RG_AUD5ADC1STSTAGEIDDTEST_MASK_SFT,
+					   0x0 << RG_AUD5ADC1STSTAGEIDDTEST_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON22,
+					   RG_AUD6ADC1STSTAGEIDDTEST_MASK_SFT,
+					   0x0 << RG_AUD6ADC1STSTAGEIDDTEST_SFT);
+		}
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON17,
 				   RG_AUDPREAMPLOUTSTAGE0P25BIAS_MASK_SFT,
 				   0x0 << RG_AUDPREAMPLOUTSTAGE0P25BIAS_SFT);
@@ -21828,12 +21991,14 @@ static void mt6681_adc_init(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON20,
 				   RG_AUDPREAMP4OUTSTAGE0P25BIAS_MASK_SFT,
 				   0x0 << RG_AUDPREAMP4OUTSTAGE0P25BIAS_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON21,
-				   RG_AUDPREAMP5OUTSTAGE0P25BIAS_MASK_SFT,
-				   0x0 << RG_AUDPREAMP5OUTSTAGE0P25BIAS_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON22,
-				   RG_AUDPREAMP6OUTSTAGE0P25BIAS_MASK_SFT,
-				   0x0 << RG_AUDPREAMP6OUTSTAGE0P25BIAS_SFT);
+		if(priv->vow_enable == 0) {
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON21,
+					   RG_AUDPREAMP5OUTSTAGE0P25BIAS_MASK_SFT,
+					   0x0 << RG_AUDPREAMP5OUTSTAGE0P25BIAS_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON22,
+					   RG_AUDPREAMP6OUTSTAGE0P25BIAS_MASK_SFT,
+					   0x0 << RG_AUDPREAMP6OUTSTAGE0P25BIAS_SFT);
+		}
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON17,
 				   RG_ADCLFLASHOFFSETCAL_MASK_SFT,
 				   0x0 << RG_ADCLFLASHOFFSETCAL_SFT);
@@ -21870,24 +22035,26 @@ static void mt6681_adc_init(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON42,
 				   RG_AUD4ADCFLASHFFCAPVREF_SEL_MASK_SFT,
 				   0x1 << RG_AUD4ADCFLASHFFCAPVREF_SEL_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON21,
-				   RG_ADC5FLASHOFFSETCAL_MASK_SFT,
-				   0x0 << RG_ADC5FLASHOFFSETCAL_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON27,
-				   RG_ADC5FLASHOFFSETCAL_TRIM_MASK_SFT,
-				   0x0 << RG_ADC5FLASHOFFSETCAL_TRIM_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
-				   RG_AUD5ADCFLASHFFCAPVREF_SEL_MASK_SFT,
-				   0x1 << RG_AUD5ADCFLASHFFCAPVREF_SEL_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON22,
-				   RG_ADC6FLASHOFFSETCAL_MASK_SFT,
-				   0x0 << RG_ADC6FLASHOFFSETCAL_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON28,
-				   RG_ADC6FLASHOFFSETCAL_TRIM_MASK_SFT,
-				   0x0 << RG_ADC6FLASHOFFSETCAL_TRIM_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
-				   RG_AUD6ADCFLASHFFCAPVREF_SEL_MASK_SFT,
-				   0x1 << RG_AUD6ADCFLASHFFCAPVREF_SEL_SFT);
+		if(priv->vow_enable == 0) {
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON21,
+					   RG_ADC5FLASHOFFSETCAL_MASK_SFT,
+					   0x0 << RG_ADC5FLASHOFFSETCAL_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON27,
+					   RG_ADC5FLASHOFFSETCAL_TRIM_MASK_SFT,
+					   0x0 << RG_ADC5FLASHOFFSETCAL_TRIM_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
+					   RG_AUD5ADCFLASHFFCAPVREF_SEL_MASK_SFT,
+					   0x1 << RG_AUD5ADCFLASHFFCAPVREF_SEL_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON22,
+					   RG_ADC6FLASHOFFSETCAL_MASK_SFT,
+					   0x0 << RG_ADC6FLASHOFFSETCAL_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON28,
+					   RG_ADC6FLASHOFFSETCAL_TRIM_MASK_SFT,
+					   0x0 << RG_ADC6FLASHOFFSETCAL_TRIM_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
+					   RG_AUD6ADCFLASHFFCAPVREF_SEL_MASK_SFT,
+					   0x1 << RG_AUD6ADCFLASHFFCAPVREF_SEL_SFT);
+		}
 	} else {
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON9,
 				   RG_AUDADC1STSTAGEIDDTEST_MASK_SFT,
@@ -21901,12 +22068,14 @@ static void mt6681_adc_init(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON43,
 				   RG_AUD4ADC1STSTAGEIDDTEST_MASK_SFT,
 				   0x0 << RG_AUD4ADC1STSTAGEIDDTEST_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON21,
-				   RG_AUD5ADC1STSTAGEIDDTEST_MASK_SFT,
-				   0x0 << RG_AUD5ADC1STSTAGEIDDTEST_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON22,
-				   RG_AUD6ADC1STSTAGEIDDTEST_MASK_SFT,
-				   0x0 << RG_AUD6ADC1STSTAGEIDDTEST_SFT);
+		if(priv->vow_enable == 0) {
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON21,
+					   RG_AUD5ADC1STSTAGEIDDTEST_MASK_SFT,
+					   0x0 << RG_AUD5ADC1STSTAGEIDDTEST_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON22,
+					   RG_AUD6ADC1STSTAGEIDDTEST_MASK_SFT,
+					   0x0 << RG_AUD6ADC1STSTAGEIDDTEST_SFT);
+		}
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON17,
 				   RG_AUDPREAMPLOUTSTAGE0P25BIAS_MASK_SFT,
 				   0x0 << RG_AUDPREAMPLOUTSTAGE0P25BIAS_SFT);
@@ -21919,12 +22088,14 @@ static void mt6681_adc_init(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON20,
 				   RG_AUDPREAMP4OUTSTAGE0P25BIAS_MASK_SFT,
 				   0x0 << RG_AUDPREAMP4OUTSTAGE0P25BIAS_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON21,
-				   RG_AUDPREAMP5OUTSTAGE0P25BIAS_MASK_SFT,
-				   0x0 << RG_AUDPREAMP5OUTSTAGE0P25BIAS_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON22,
-				   RG_AUDPREAMP6OUTSTAGE0P25BIAS_MASK_SFT,
-				   0x0 << RG_AUDPREAMP6OUTSTAGE0P25BIAS_SFT);
+		if(priv->vow_enable == 0) {
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON21,
+					   RG_AUDPREAMP5OUTSTAGE0P25BIAS_MASK_SFT,
+					   0x0 << RG_AUDPREAMP5OUTSTAGE0P25BIAS_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON22,
+					   RG_AUDPREAMP6OUTSTAGE0P25BIAS_MASK_SFT,
+					   0x0 << RG_AUDPREAMP6OUTSTAGE0P25BIAS_SFT);
+		}
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON17,
 				   RG_ADCLFLASHOFFSETCAL_MASK_SFT,
 				   0x1 << RG_ADCLFLASHOFFSETCAL_SFT);
@@ -21961,24 +22132,26 @@ static void mt6681_adc_init(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON42,
 				   RG_AUD4ADCFLASHFFCAPVREF_SEL_MASK_SFT,
 				   0x1 << RG_AUD4ADCFLASHFFCAPVREF_SEL_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON21,
-				   RG_ADC5FLASHOFFSETCAL_MASK_SFT,
-				   0x1 << RG_ADC5FLASHOFFSETCAL_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON27,
-				   RG_ADC5FLASHOFFSETCAL_TRIM_MASK_SFT,
-				   0x1 << RG_ADC5FLASHOFFSETCAL_TRIM_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
-				   RG_AUD5ADCFLASHFFCAPVREF_SEL_MASK_SFT,
-				   0x1 << RG_AUD5ADCFLASHFFCAPVREF_SEL_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON22,
-				   RG_ADC6FLASHOFFSETCAL_MASK_SFT,
-				   0x1 << RG_ADC6FLASHOFFSETCAL_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON28,
-				   RG_ADC6FLASHOFFSETCAL_TRIM_MASK_SFT,
-				   0x1 << RG_ADC6FLASHOFFSETCAL_TRIM_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
-				   RG_AUD6ADCFLASHFFCAPVREF_SEL_MASK_SFT,
-				   0x1 << RG_AUD6ADCFLASHFFCAPVREF_SEL_SFT);
+		if(priv->vow_enable == 0) {
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON21,
+					   RG_ADC5FLASHOFFSETCAL_MASK_SFT,
+					   0x1 << RG_ADC5FLASHOFFSETCAL_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON27,
+					   RG_ADC5FLASHOFFSETCAL_TRIM_MASK_SFT,
+					   0x1 << RG_ADC5FLASHOFFSETCAL_TRIM_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
+					   RG_AUD5ADCFLASHFFCAPVREF_SEL_MASK_SFT,
+					   0x1 << RG_AUD5ADCFLASHFFCAPVREF_SEL_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON22,
+					   RG_ADC6FLASHOFFSETCAL_MASK_SFT,
+					   0x1 << RG_ADC6FLASHOFFSETCAL_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON28,
+					   RG_ADC6FLASHOFFSETCAL_TRIM_MASK_SFT,
+					   0x1 << RG_ADC6FLASHOFFSETCAL_TRIM_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON43,
+					   RG_AUD6ADCFLASHFFCAPVREF_SEL_MASK_SFT,
+					   0x1 << RG_AUD6ADCFLASHFFCAPVREF_SEL_SFT);
+		}
 	}
 }
 
@@ -31022,33 +31195,7 @@ static ssize_t mt6681_codec_read(struct mt6681_priv *priv, char *buffer,
 	regmap_read(priv->regmap, MT6681_AFE_VOW_UL_PATH_SEL, &value);
 	n += scnprintf(buffer + n, size - n,
 		       "MT6681_AFE_VOW_UL_PATH_SEL = 0x%x\n", value);
-	regmap_read(priv->regmap, MT6681_AUDIO_DIG_18TH_DSN_ID, &value);
-	n += scnprintf(buffer + n, size - n,
-		       "MT6681_AUDIO_DIG_18TH_DSN_ID = 0x%x\n", value);
-	regmap_read(priv->regmap, MT6681_AUDIO_DIG_18TH_DSN_ID_H, &value);
-	n += scnprintf(buffer + n, size - n,
-		       "MT6681_AUDIO_DIG_18TH_DSN_ID_H = 0x%x\n", value);
-	regmap_read(priv->regmap, MT6681_AUDIO_DIG_18TH_DSN_REV0, &value);
-	n += scnprintf(buffer + n, size - n,
-		       "MT6681_AUDIO_DIG_18TH_DSN_REV0 = 0x%x\n", value);
-	regmap_read(priv->regmap, MT6681_AUDIO_DIG_18TH_DSN_REV0_H, &value);
-	n += scnprintf(buffer + n, size - n,
-		       "MT6681_AUDIO_DIG_18TH_DSN_REV0_H = 0x%x\n", value);
-	regmap_read(priv->regmap, MT6681_AUDIO_DIG_18TH_DSN_DBI, &value);
-	n += scnprintf(buffer + n, size - n,
-		       "MT6681_AUDIO_DIG_18TH_DSN_DBI = 0x%x\n", value);
-	regmap_read(priv->regmap, MT6681_AUDIO_DIG_18TH_DSN_DBI_H, &value);
-	n += scnprintf(buffer + n, size - n,
-		       "MT6681_AUDIO_DIG_18TH_DSN_DBI_H = 0x%x\n", value);
-	regmap_read(priv->regmap, MT6681_AUDIO_DIG_18TH_DSN_DXI, &value);
-	n += scnprintf(buffer + n, size - n,
-		       "MT6681_AUDIO_DIG_18TH_DSN_DXI = 0x%x\n", value);
-	regmap_read(priv->regmap, MT6681_AUDIO_VOW_SRAM_L, &value);
-	n += scnprintf(buffer + n, size - n, "MT6681_AUDIO_VOW_SRAM_L = 0x%x\n",
-		       value);
-	regmap_read(priv->regmap, MT6681_AUDIO_VOW_SRAM_H, &value);
-	n += scnprintf(buffer + n, size - n, "MT6681_AUDIO_VOW_SRAM_H = 0x%x\n",
-		       value);
+/* DO NOT READ 18TH range reg, these VOW reg should be read from SCP */
 	regmap_read(priv->regmap, MT6681_AUDIO_DIG_19TH_DSN_ID, &value);
 	n += scnprintf(buffer + n, size - n,
 		       "MT6681_AUDIO_DIG_19TH_DSN_ID = 0x%x\n", value);
