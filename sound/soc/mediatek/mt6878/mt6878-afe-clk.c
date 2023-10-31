@@ -407,6 +407,15 @@ int mt6878_afe_enable_clock(struct mtk_base_afe *afe)
 	}
 	ret = mt6878_set_audio_int_bus_parent(afe, CLK_CLK26M);
 
+	ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
+	if (ret) {
+		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
+			 __func__, aud_clks[CLK_TOP_MUX_AUDIO_H], ret);
+		goto CLK_MUX_AUDIO_H_PARENT_ERR;
+	}
+
+	ret = mt6878_set_audio_h_parent(afe, CLK_CLK26M);
+
 #if !defined(SKIP_SMCC_SB)
 	/* use arm_smccc_smc to notify SPM */
 	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
@@ -420,6 +429,8 @@ CLK_AFE_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_HOPPING]);
 	clk_disable_unprepare(afe_priv->clk[CLK_F26M]);
 
+CLK_MUX_AUDIO_H_PARENT_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
 CLK_MUX_AUDIO_INTBUS_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_MUX_AUDIOINTBUS]);
 
