@@ -3843,7 +3843,7 @@ static const struct mtk_pll_data apmixed_plls[] = {
 	PLL_HWV_SETCLR(CLK_APMIXED_UNIVPLL2, "univpll2", setclr_data/*base*/,
 		"mm-hw-ccf-regmap"/*comp*/, MM_HW_CCF_HW_CCF_27_DONE,
 		MM_HW_CCF_HW_CCF_27_SET, MM_HW_CCF_HW_CCF_27_CLR, /* hwv */
-		12, 5, HAVE_RST_BAR | CLK_EN_MM_INFRA_PWR | FREQ_CHK,
+		12, 5, HAVE_RST_BAR | CLK_EN_MM_INFRA_PWR,
 		UNIVPLL2_CON1, 24/*pd*/,
 		0, 0, 0/*tuner*/,
 		UNIVPLL2_CON1, 0, 22/*pcw*/),

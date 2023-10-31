@@ -637,6 +637,7 @@ static int clk_chk_dev_pm_resume(struct device *dev)
 	return 0;
 }
 
+
 const struct dev_pm_ops clk_chk_dev_pm_ops = {
 	.suspend_noirq = clk_chk_dev_pm_suspend,
 	.resume_noirq = clk_chk_dev_pm_resume,
@@ -712,14 +713,6 @@ static void clkchk_trigger_trace_dump(unsigned int enable)
 	clkchk_ops->trigger_trace_dump(enable);
 }
 
-static int clkchk_freq_chk_handle(struct regmap *regmap, unsigned int id, unsigned int val)
-{
-	if (clkchk_ops == NULL || clkchk_ops->freq_chk_handle == NULL)
-		return -EINVAL;
-
-	return clkchk_ops->freq_chk_handle(regmap, id, val);
-}
-
 static int clkchk_evt_handling(struct notifier_block *nb,
 			unsigned long flags, void *data)
 {
@@ -767,9 +760,6 @@ static int clkchk_evt_handling(struct notifier_block *nb,
 		break;
 	case CLK_EVT_CHECK_APMIXED_STAT:
 		clkchk_check_apmixed_sta(clkd->shift);
-		break;
-	case CLK_EVT_FREQ_CHK:
-		clkchk_freq_chk_handle(clkd->hwv_regmap, clkd->id, clkd->shift);
 		break;
 	default:
 		pr_notice("cannot get flags identify\n");

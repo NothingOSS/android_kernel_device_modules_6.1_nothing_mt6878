@@ -26,7 +26,6 @@
 #include <trace/hooks/traps.h>
 #endif
 
-#include "clk-mtk.h"
 #include "clkchk.h"
 #include "clkchk-mt6989.h"
 #include "clk-fmeter.h"
@@ -43,7 +42,6 @@
 #define HWV_DOMAIN_KEY			0x055C
 #define HWV_IRQ_STATUS			0x0500
 #define HWV_CG_SET(xpu, id)		((0x0200 * (xpu)) + (id * 0x8))
-#define HWV_CG_CLR(xpu, id)		((0x0200 * (xpu)) + (id * 0x8) + 0x4)
 #define HWV_CG_STA(id)			(0x1800 + (id * 0x4))
 #define HWV_CG_EN(id)			(0x1900 + (id * 0x4))
 #define HWV_CG_XPU_DONE(xpu)		(0x1B00 + (xpu * 0x8))
@@ -3296,75 +3294,6 @@ static void check_apmixed_sta(bool bug_on)
 	BUG_ON(1);
 }
 
-static int freq_chk_handle(struct regmap *regmap, unsigned int id, unsigned int en_val)
-{
-	unsigned int freq = 0;
-	unsigned int val = 0;
-	int i;
-
-	freq = mt_get_fmeter_freq(FM_UNIVPLL2_192M_CK, ABIST_CK2);
-	if ((freq > 2596000) || (freq < 2396000)) {
-		regmap_write(regmap, HWV_CG_CLR(APMCU, id), en_val);
-
-		i = 0;
-		do {
-			regmap_read(regmap, HWV_CG_SET(APMCU, id), &val);
-			if ((val & en_val) != en_val)
-				break;
-			if (i < MTK_WAIT_HWV_PREPARE_CNT)
-				udelay(MTK_WAIT_HWV_PREPARE_US);
-			else
-				goto err;
-			i++;
-		} while(1);
-
-		i = 0;
-		do {
-			regmap_read(regmap, HWV_CG_DONE(id), &val);
-			if ((val & en_val) == en_val)
-				break;
-			if (i < MTK_WAIT_HWV_DONE_CNT)
-				udelay(MTK_WAIT_HWV_DONE_US);
-			else
-				goto err;
-			i++;
-		} while(1);
-
-		regmap_write(regmap, HWV_CG_SET(APMCU, id), en_val);
-
-		i = 0;
-		do {
-			regmap_read(regmap, HWV_CG_SET(APMCU, id), &val);
-			if ((val & en_val) == en_val)
-				break;
-			if (i < MTK_WAIT_HWV_PREPARE_CNT)
-				udelay(MTK_WAIT_HWV_PREPARE_US);
-			else
-				goto err;
-			i++;
-		} while(1);
-
-		i = 0;
-		do {
-			regmap_read(regmap, HWV_CG_DONE(id), &val);
-			if ((val & en_val) == en_val)
-				break;
-			if (i < MTK_WAIT_HWV_DONE_CNT)
-				udelay(MTK_WAIT_HWV_DONE_US);
-			else
-				goto err;
-			i++;
-		} while(1);
-
-		udelay(20);
-	}
-
-	return 0;
-err:
-	pr_notice("pll re-toggle timeout(%d)\n", val);
-	return -ETIMEDOUT;
-}
-
 /*
  * init functions
  */
@@ -3394,7 +3323,6 @@ static struct clkchk_ops clkchk_mt6989_ops = {
 	.is_suspend_retry_stop = is_suspend_retry_stop,
 	.check_apmixed_sta = check_apmixed_sta,
 	.dev_pm_resume = dev_pm_resume,
-	.freq_chk_handle = freq_chk_handle,
 };
 
 static int clk_chk_mt6989_probe(struct platform_device *pdev)

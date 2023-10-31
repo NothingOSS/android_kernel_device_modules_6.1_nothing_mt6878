@@ -49,7 +49,6 @@ enum clk_evt_type {
 	CLK_EVT_SET_PARENT_ERR = 9,
 	CLK_EVT_MMINFRA_HWV_TIMEOUT = 10,
 	CLK_EVT_CHECK_APMIXED_STAT = 11,
-	CLK_EVT_FREQ_CHK = 12,
 	CLK_EVT_NUM,
 };
 
@@ -231,7 +230,6 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 #define CLK_EN_MM_INFRA_PWR		BIT(22)
 #define CLK_ENABLE_MERGE_CONTROL	BIT(23)
 #define CLK_NO_RES			BIT(24)
-#define FREQ_CHK			BIT(25)
 
 struct mtk_pll_div_table {
 	u32 div;
