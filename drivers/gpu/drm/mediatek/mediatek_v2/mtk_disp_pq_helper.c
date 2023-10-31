@@ -477,6 +477,7 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 	char *kdata = NULL;
 	unsigned long long time;
 	int ret = -1;
+	int pm_ret = 0;
 
 	if (!params || !params->size || !params->data) {
 		DDPPR_ERR("%s, null pointer!\n", __func__);
@@ -514,7 +515,7 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 	if (copy_from_user(kdata, (void __user *)params->data, params->size) != 0)
 		goto err;
 	if (is_pq_cmd_need_pm(cmd))
-		mtk_vidle_pq_power_get(__func__);
+		pm_ret = mtk_vidle_pq_power_get(__func__);
 	if (pq_type == MTK_DISP_VIRTUAL_TYPE) {
 		ret = mtk_drm_virtual_type_impl(crtc, dev, cmd, kdata, file_priv);
 	} else {
@@ -528,7 +529,7 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 			}
 		}
 	}
-	if (is_pq_cmd_need_pm(cmd))
+	if (is_pq_cmd_need_pm(cmd) && !pm_ret)
 		mtk_vidle_pq_power_put(__func__);
 
 	if (cmd > PQ_GET_CMD_START) {
@@ -589,6 +590,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	unsigned int i, j;
 	int index = drm_crtc_index(crtc);
 	bool is_atomic_commit = cmdq_handle;
+	int pm_ret = 0;
 
 	DDPDBG("%s:%d ++, crtc index:%d\n", __func__, __LINE__, index);
 	mtk_drm_trace_begin("mtk_pq_helper_frame_config");
@@ -634,7 +636,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	mtk_vblank_config_rec_start(mtk_crtc, pq_cmdq_handle, PQ_HELPER_CONFIG);
 
 	/* call comp frame config */
-	mtk_vidle_pq_power_get(__func__);
+	pm_ret = mtk_vidle_pq_power_get(__func__);
 	for (index = 0; index < cmds_len; index++) {
 		unsigned int pq_type = requests[index].cmd >> 16;
 		unsigned int cmd = requests[index].cmd & 0xffff;
@@ -679,7 +681,8 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 			}
 		}
 	}
-	mtk_vidle_pq_power_put(__func__);
+	if (!pm_ret)
+		mtk_vidle_pq_power_put(__func__);
 
 	/* atomic commit will flush in crtc */
 	if (!is_atomic_commit) {

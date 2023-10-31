@@ -23,7 +23,7 @@ extern unsigned int g_trace_log;
 #define DRM_TRACE_ID 0xFFFF0000
 #endif
 extern void mtk_drm_print_trace(char *fmt, ...);
-extern void mtk_vidle_power_keep(void);
+extern int mtk_vidle_power_keep(void);
 extern void mtk_vidle_power_release(void);
 
 #define mtk_drm_trace_tag_begin(fmt, args...) do { \

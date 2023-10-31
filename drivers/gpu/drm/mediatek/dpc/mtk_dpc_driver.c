@@ -96,6 +96,7 @@ struct mtk_dpc {
 	struct cmdq_client *cmdq_client;
 	atomic_t dpc_en_cnt;
 	bool skip_force_power;
+	spinlock_t skip_force_power_lock;
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct dentry *fs;
 #endif
@@ -1282,10 +1283,15 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 
 int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
+		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		DPCFUNC("user %u skip force power", user);
-		return 0;
+		return -1;
 	}
+	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 
 	if (dpc_pm_ctrl(true))
 		return -1;
@@ -1299,13 +1305,17 @@ EXPORT_SYMBOL(dpc_vidle_power_keep);
 
 void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
+		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		DPCFUNC("user %u skip force power", user);
 		return;
 	}
+	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 
 	mtk_disp_vlp_vote(VOTE_CLR, user);
-
 	dpc_pm_ctrl(false);
 }
 EXPORT_SYMBOL(dpc_vidle_power_release);
@@ -1347,13 +1357,30 @@ static void dpc_analysis(void)
 
 static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
+	unsigned long flags;
+
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
+		spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 		g_priv->skip_force_power = true;
+		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
+		if (g_priv->pd_dev) {
+			u32 force_release = 0;
+
+			while (atomic_read(&g_priv->pd_dev->power.usage_count) > 0) {
+				force_release++;
+				pm_runtime_put_sync(g_priv->pd_dev);
+			}
+
+			if (unlikely(force_release))
+				DPCFUNC("dpc_dev dpc_pm unbalanced(%u)", force_release);
+		}
 		dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
+		spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 		g_priv->skip_force_power = false;
+		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
 		return NOTIFY_OK;
 	}
@@ -1620,6 +1647,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	dpc_mmp_init();
 
 	mutex_init(&g_priv->dvfs_bw.lock);
+	spin_lock_init(&g_priv->skip_force_power_lock);
 
 	mtk_vidle_register(&funcs);
 	mml_dpc_register(&funcs);

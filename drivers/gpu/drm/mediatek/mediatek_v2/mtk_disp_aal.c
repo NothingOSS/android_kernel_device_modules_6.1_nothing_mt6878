@@ -4319,6 +4319,7 @@ static void disp_aal_wait_sof_irq(struct mtk_ddp_comp *comp)
 {
 	unsigned long flags;
 	int ret = 0;
+	int pm_ret = 0;
 	int aal_lock = 0;
 	int retry = 5;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
@@ -4337,7 +4338,7 @@ static void disp_aal_wait_sof_irq(struct mtk_ddp_comp *comp)
 
 	AALIRQ_LOG("[SRAM] g_aal_dre_config(%d) in SOF\n",
 			atomic_read(&aal_data->dre_config));
-	mtk_vidle_pq_power_get(__func__);
+	pm_ret = mtk_vidle_pq_power_get(__func__);
 	mutex_lock(&aal_data->primary_data->sram_lock);
 	spin_lock_irqsave(&aal_data->primary_data->clock_lock, flags);
 	if (atomic_read(&aal_data->is_clock_on) != 1)
@@ -4383,7 +4384,8 @@ static void disp_aal_wait_sof_irq(struct mtk_ddp_comp *comp)
 			mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
 			atomic_set(&aal_data->first_frame, 0);
 			atomic_set(&aal1_data->first_frame, 0);
-			mtk_vidle_pq_power_put(__func__);
+			if (!pm_ret)
+				mtk_vidle_pq_power_put(__func__);
 			CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 3);
 			return;
 		}
@@ -4394,7 +4396,8 @@ static void disp_aal_wait_sof_irq(struct mtk_ddp_comp *comp)
 			mtk_crtc_user_cmd(aal_data->crtc, comp, FLIP_SRAM, NULL);
 			mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
 			atomic_set(&aal_data->first_frame, 0);
-			mtk_vidle_pq_power_put(__func__);
+			if (!pm_ret)
+				mtk_vidle_pq_power_put(__func__);
 			CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 4);
 			return;
 		}
@@ -4409,7 +4412,8 @@ static void disp_aal_wait_sof_irq(struct mtk_ddp_comp *comp)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
 		atomic_set(&aal_data->primary_data->dre30_write, 0);
 	}
-	mtk_vidle_pq_power_put(__func__);
+	if (!pm_ret)
+		mtk_vidle_pq_power_put(__func__);
 	CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 5);
 }
 

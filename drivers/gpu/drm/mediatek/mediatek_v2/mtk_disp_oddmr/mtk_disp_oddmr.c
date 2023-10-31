@@ -5932,6 +5932,7 @@ int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
 	int ret;
+	int pm_ret;
 	struct mtk_drm_oddmr_ctl *param = data;
 
 	ODDMRAPI_LOG("+\n");
@@ -5939,7 +5940,7 @@ int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
 		ODDMRFLOW_LOG("param is null\n");
 		return -EFAULT;
 	}
-	mtk_vidle_pq_power_get(__func__);
+	pm_ret = mtk_vidle_pq_power_get(__func__);
 	ODDMRAPI_LOG("%s: cmd is %u\n", __func__, param->cmd);
 	switch (param->cmd) {
 	case MTK_DRM_ODDMR_OD_INIT:
@@ -5974,7 +5975,8 @@ int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
 		ret = -EINVAL;
 		break;
 	}
-	mtk_vidle_pq_power_put(__func__);
+	if (!pm_ret)
+		mtk_vidle_pq_power_put(__func__);
 	ODDMRFLOW_LOG("cmd %d ret %d\n", param->cmd, ret);
 	return ret;
 }

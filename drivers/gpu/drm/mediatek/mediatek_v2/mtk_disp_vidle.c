@@ -119,14 +119,16 @@ static void mtk_vidle_dt_enable(unsigned int en)
 		(en && mtk_vidle_enable_check(DISP_VIDLE_QOS_DT_EN)));
 }
 
-void mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
+int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 {
 	if (disp_dpc_driver.dpc_vidle_power_keep == NULL)
-		return;
+		return 0;
 
 	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
 		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
-		disp_dpc_driver.dpc_vidle_power_keep(user);
+		return disp_dpc_driver.dpc_vidle_power_keep(user);
+
+	return 0;
 }
 
 void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
@@ -139,17 +141,24 @@ void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
 		disp_dpc_driver.dpc_vidle_power_release(user);
 }
 
-void mtk_vidle_pq_power_get(const char *caller)
+int mtk_vidle_pq_power_get(const char *caller)
 {
 	s32 ref;
+	int pm_ret = 0;
 
 	mutex_lock(&g_vidle_pq_ref_lock);
 	ref = atomic_inc_return(&g_vidle_pq_ref);
-	if (ref == 1)
-		mtk_vidle_user_power_keep(DISP_VIDLE_USER_PQ);
+	if (ref == 1) {
+		pm_ret = mtk_vidle_user_power_keep(DISP_VIDLE_USER_PQ);
+		if (pm_ret < 0)
+			ref = atomic_dec_return(&g_vidle_pq_ref);
+	}
 	mutex_unlock(&g_vidle_pq_ref_lock);
-	if (ref <= 0)
+	if (ref < 0) {
 		DDPPR_ERR("%s  get invalid cnt %d\n", caller, ref);
+		return ref;
+	}
+	return pm_ret;
 }
 
 void mtk_vidle_pq_power_put(const char *caller)

@@ -1060,6 +1060,7 @@ static int mtk_chist_read_kthread(void *data)
 
 	while (!kthread_should_stop()) {
 		int ret = 0;
+		int pm_ret = 0;
 
 		if (atomic_read(&(chist_data->primary_data->irq_event)) == 0) {
 			DDPDBG("%s: wait_event_interruptible ++ ", __func__);
@@ -1073,9 +1074,10 @@ static int mtk_chist_read_kthread(void *data)
 			DDPDBG("%s: get_irq = 0", __func__);
 		}
 		atomic_set(&(chist_data->primary_data->irq_event), 0);
-		mtk_vidle_pq_power_get(__func__);
+		pm_ret = mtk_vidle_pq_power_get(__func__);
 		mtk_get_chist((struct mtk_ddp_comp *)data);
-		mtk_vidle_pq_power_put(__func__);
+		if (!pm_ret)
+			mtk_vidle_pq_power_put(__func__);
 	}
 	return 0;
 }
