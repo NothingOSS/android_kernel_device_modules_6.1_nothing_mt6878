@@ -8526,6 +8526,8 @@
 			compatible = "mediatek,mt6878-apu-iommu0";
 			reg = <0 0x19010000 0 0x1000>;
 			table_id = <1>;
+			mediatek,apu-power = <&apusys_rv>;
+			power-domains = <&scpsys MT6878_POWER_DOMAIN_APU>;
 			mediatek,iommu-banks = <&apu_iommu0_bank1 &apu_iommu0_bank2
 						&apu_iommu0_bank3 &apu_iommu0_bank4>;
 			interrupts = <GIC_SPI 597 IRQ_TYPE_LEVEL_HIGH 0>;
