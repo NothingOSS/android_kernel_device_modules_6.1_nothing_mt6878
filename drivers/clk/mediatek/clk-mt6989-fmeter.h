@@ -191,7 +191,8 @@ enum fm_sys_id {
 	FM_ARMPLL_B = 8,
 	FM_CCIPLL = 9,
 	FM_PTPPLL = 10,
-	FM_SYS_NUM = 11,
+	FM_SPM = 11,
+	FM_SYS_NUM = 12,
 };
 
 #endif /* _CLK_MT6989_FMETER_H */

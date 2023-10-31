@@ -15,6 +15,7 @@
 #include <linux/module.h>
 #include <mt-plat/aee.h>
 #include "clk-mtk.h"
+#include "clk-fmeter.h"
 
 #define REG_CON0		0
 #define REG_CON1		4
@@ -985,6 +986,9 @@ static int mtk_hwv_pll_setclr_prepare(struct clk_hw *hw)
 	if (ret)
 		return ret;
 
+	if (pll->data->flags & FREQ_CHK)
+		mt_set_fmeter_lock(true, PLL_EN_LOCK);
+
 	regmap_write(pll->hwv_regmap, pll->data->hwv_set_ofs, pll->en_msk);
 
 	while (!mtk_hwv_pll_setclr_is_prepared(pll, pll->en_msk, PLL_EN_TYPE)) {
@@ -1032,6 +1036,14 @@ static int mtk_hwv_pll_setclr_prepare(struct clk_hw *hw)
 		}
 	}
 
+	if (pll->data->flags & FREQ_CHK) {
+		mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
+				pll->data->hwv_set_ofs,
+				(pll->data->hwv_set_ofs / MTK_HWV_ID_OFS),
+				pll->en_msk, CLK_EVT_FREQ_CHK);
+		mt_set_fmeter_lock(false, PLL_EN_LOCK);
+	}
+
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
 		mtk_clk_mminfra_hwv_power_ctrl_optional(false, PLL_MMINFRA_VOTE_BIT);
 
@@ -1050,6 +1062,9 @@ hwv_done_fail:
 hwv_prepare_fail:
 	regmap_read(pll->hwv_regmap, pll->data->hwv_set_ofs, &val);
 	pr_err("%s pll vote timeout(%x)\n", clk_hw_get_name(hw), val);
+
+	if (pll->data->flags & FREQ_CHK)
+		mt_set_fmeter_lock(false, PLL_EN_LOCK);
 
 	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
 			0, (pll->data->hwv_set_ofs / MTK_HWV_ID_OFS),

@@ -105,9 +105,13 @@ static DEFINE_SPINLOCK(subsys_meter_lock);
 #define MFGPLL_SC1_FQMTR_CON0				(0x0040)
 #define MFGPLL_SC1_FQMTR_CON1				(0x0044)
 
+/* SPM SEMAPHORE Control */
+#define SPM_SEMA_M1					(0x06A0)
+#define FMETER_SEMA_VAL					(1 << 4)
 
 static void __iomem *fm_base[FM_SYS_NUM];
 static unsigned int fm_ckdiv_en;
+static bool is_lock;
 
 struct fmeter_data {
 	enum fm_sys_id type;
@@ -151,6 +155,7 @@ const char *comp_list[] = {
 	[FM_ARMPLL_B] = "mediatek,mt6989-armpll_b_pll_ctrl",
 	[FM_CCIPLL] = "mediatek,mt6989-ccipll_pll_ctrl",
 	[FM_PTPPLL] = "mediatek,mt6989-ptppll_pll_ctrl",
+	[FM_SPM] = "mediatek,mt6989-scpsys-hwv",
 };
 
 /*
@@ -345,6 +350,54 @@ const struct fmeter_clk *mt6989_get_fmeter_clks(void)
 	return fclks;
 }
 
+static int mt6989_fmeter_set_lock(bool needlock, unsigned int type)
+{
+	unsigned long flags;
+	unsigned int sema_m1;
+	int wait_cnt;
+	int ret = 0;
+
+	if (type == PLL_EN_LOCK)
+		fmeter_lock(flags);
+	if (needlock && !is_lock) {
+		wait_cnt = 0;
+		do {
+			clk_writel(fm_base[FM_SPM] + SPM_SEMA_M1, FMETER_SEMA_VAL);
+			sema_m1 = clk_readl(fm_base[FM_SPM] + SPM_SEMA_M1);
+			if ((sema_m1 & FMETER_SEMA_VAL) == FMETER_SEMA_VAL)
+				break;
+			if (wait_cnt > 1000) {
+				ret = -ETIMEDOUT;
+				break;
+			}
+			udelay(10);
+			wait_cnt++;
+		} while(1);
+
+		is_lock = true;
+	} else if (!needlock && is_lock) {
+		wait_cnt = 0;
+		do {
+			clk_writel(fm_base[FM_SPM] + SPM_SEMA_M1, FMETER_SEMA_VAL);
+			sema_m1 = clk_readl(fm_base[FM_SPM] + SPM_SEMA_M1);
+			if ((sema_m1 & FMETER_SEMA_VAL) != FMETER_SEMA_VAL)
+				break;
+			if (wait_cnt > 1000) {
+				ret = -ETIMEDOUT;
+				break;
+			}
+			udelay(10);
+			wait_cnt++;
+		} while(1);
+
+		is_lock = false;
+	}
+	if (type == PLL_EN_LOCK)
+		fmeter_unlock(flags);
+
+	return ret;
+}
+
 static unsigned int check_pdn(void __iomem *base,
 		unsigned int type, unsigned int ID)
 {
@@ -478,10 +531,13 @@ static int __mt_get_freq(unsigned int ID, int type)
 
 	fmeter_lock(flags);
 
+	mt6989_fmeter_set_lock(true, FMETER_LOCK);
+
 	set_clk_div_en(type, ID, true);
 
 	if (type == CKGEN && check_pdn(fm_base[FM_TOPCKGEN], CKGEN, ID)) {
 		pr_notice("ID-%d: MUX PDN, return 0.\n", ID);
+		mt6989_fmeter_set_lock(false, FMETER_LOCK);
 		fmeter_unlock(flags);
 		return 0;
 	}
@@ -507,6 +563,7 @@ static int __mt_get_freq(unsigned int ID, int type)
 		clk_writel(dbg_addr,
 			(clk_dbg_cfg & 0xFF80FFFC) | (ID << 16));
 	} else {
+		mt6989_fmeter_set_lock(false, FMETER_LOCK);
 		fmeter_unlock(flags);
 		return 0;
 	}
@@ -544,6 +601,7 @@ static int __mt_get_freq(unsigned int ID, int type)
 	/*clk_writel(CLK26CALI_1, clk26cali_1);*/
 
 	clk_writel(cali0_addr, FM_RST_BITS);
+	mt6989_fmeter_set_lock(false, FMETER_LOCK);
 	fmeter_unlock(flags);
 
 	if (i > FM_TIMEOUT)
@@ -576,11 +634,13 @@ static int __mt_get_freq_ck2(unsigned int ID, int type)
 	int output = 0, i = 0;
 
 	fmeter_lock(flags);
+	mt6989_fmeter_set_lock(true, FMETER_LOCK);
 
 	set_clk_div_en(type, ID, true);
 
 	if (type == CKGEN_CK2 && check_pdn(fm_base[FM_TOPCKGEN], CKGEN_CK2, ID)) {
 		pr_notice("ID-%d: MUX PDN, return 0.\n", ID);
+		mt6989_fmeter_set_lock(false, FMETER_LOCK);
 		fmeter_unlock(flags);
 		return 0;
 	}
@@ -606,6 +666,7 @@ static int __mt_get_freq_ck2(unsigned int ID, int type)
 		clk_writel(dbg_addr,
 			(clk_dbg_cfg & 0xFFC0FFFC) | (ID << 16));
 	} else {
+		mt6989_fmeter_set_lock(false, FMETER_LOCK);
 		fmeter_unlock(flags);
 		return 0;
 	}
@@ -653,6 +714,7 @@ static int __mt_get_freq_ck2(unsigned int ID, int type)
 	/*clk_writel(CKSYS2_CLK26CALI_1, clk26cali_1);*/
 
 	clk_writel(cali0_addr, FM_RST_BITS);
+	mt6989_fmeter_set_lock(false, FMETER_LOCK);
 	fmeter_unlock(flags);
 
 	if (i > FM_TIMEOUT)
@@ -860,12 +922,14 @@ static struct fmeter_ops fm_ops = {
 	.get_fmeter_clks = mt6989_get_fmeter_clks,
 	.get_fmeter_freq = mt6989_get_fmeter_freq,
 	.get_fmeter_id = mt6989_get_fmeter_id,
+	.set_fmeter_lock = mt6989_fmeter_set_lock,
 };
 
 static int clk_fmeter_mt6989_probe(struct platform_device *pdev)
 {
 	int i;
 
+	is_lock = false;
 	for (i = 0; i < FM_SYS_NUM; i++) {
 		fm_base[i] = get_base_from_comp(comp_list[i]);
 		if (IS_ERR(fm_base[i]))

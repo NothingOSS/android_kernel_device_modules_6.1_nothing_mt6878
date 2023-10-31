@@ -93,6 +93,15 @@ int mt_subsys_freq_register(struct fm_subsys *fm, unsigned int size)
 }
 EXPORT_SYMBOL(mt_subsys_freq_register);
 
+int mt_set_fmeter_lock(bool needlock, unsigned int type)
+{
+	if (fm_ops == NULL || fm_ops->set_fmeter_lock == NULL)
+		return -EINVAL;
+
+	return  fm_ops->set_fmeter_lock(needlock, type);
+}
+EXPORT_SYMBOL(mt_set_fmeter_lock);
+
 void fmeter_set_ops(const struct fmeter_ops *ops)
 {
 	fm_ops = ops;

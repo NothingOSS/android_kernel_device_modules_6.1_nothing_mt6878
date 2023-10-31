@@ -98,6 +98,7 @@ struct clkchk_ops {
 	const char * const *(*get_bypass_pll_name)(void);
 	void (*check_apmixed_sta)(bool bug_on);
 	void (*dev_pm_resume)(void);
+	int (*freq_chk_handle)(struct regmap *regmap, unsigned int id, unsigned int en_val);
 };
 
 int pwr_hw_is_on(enum PWR_STA_TYPE type, s32 val);

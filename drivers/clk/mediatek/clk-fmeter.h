@@ -29,6 +29,12 @@ enum FMETER_ID {
 	FID_NUM,
 };
 
+/* fmeter lock type */
+enum FMETER_LOCK_TYPE {
+	PLL_EN_LOCK = 0,
+	FMETER_LOCK = 1,
+};
+
 struct fmeter_clk {
 	enum FMETER_TYPE type;
 	u32 id;
@@ -63,6 +69,7 @@ struct fmeter_ops {
 	unsigned int (*get_fmeter_freq)(unsigned int ids, enum  FMETER_TYPE type);
 	int (*get_fmeter_id)(enum FMETER_ID fid);
 	int (*subsys_freq_register)(struct fm_subsys *fm, unsigned int size);
+	int (*set_fmeter_lock)(bool needlock, unsigned int type);
 };
 
 const struct fmeter_clk *mt_get_fmeter_clks(void);
@@ -74,5 +81,6 @@ unsigned int mt_get_subsys_freq(unsigned int id);
 int mt_get_fmeter_id(enum FMETER_ID fid);
 unsigned int mt_get_fmeter_freq(unsigned int id, enum  FMETER_TYPE type);
 int mt_subsys_freq_register(struct fm_subsys *fm, unsigned int size);
+int mt_set_fmeter_lock(bool needlock, unsigned int type);
 void fmeter_set_ops(const struct fmeter_ops *ops);
 #endif
