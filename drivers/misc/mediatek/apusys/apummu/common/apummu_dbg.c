@@ -131,10 +131,11 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 	uint32_t argv[MAX_ARG_kernel];
 	int ret, i;
 	uint32_t mode, type, device_va, sid, size = 0;
-	uint64_t session, addr, eva;
+	uint64_t session, addr = 0, eva = 0;
 	void *tbl_kva = NULL;
 	struct apummu_session_tbl *g_ammu_session_table_ptr_DBG = NULL;
 	struct apummu_mem ammu_mem;
+	memset(&ammu_mem, 0, sizeof(struct apummu_mem));
 
 	tmp = kzalloc(count + 1, GFP_KERNEL);
 	if (!tmp)
