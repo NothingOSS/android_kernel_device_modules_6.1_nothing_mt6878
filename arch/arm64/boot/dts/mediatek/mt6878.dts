@@ -1352,6 +1352,7 @@
 				bus-status-offset = <0x10>;
 				bus-status-num = <3>;
 				bus-freq-mhz = <624>;
+				isr-dump = <0>;
 			};
 		};
 	};
