@@ -39,6 +39,7 @@
 #define CCU_VER_ISP71	71
 #define CCU_VER_ISP7S	72
 #define CCU_VER_ISP7SP	73
+#define CCU_VER_ISP7SPL	74
 
 #define MTK_CCU_CLK_PWR_NUM 20
 #define MTK_CCU_CLK_NAME_LEN 32

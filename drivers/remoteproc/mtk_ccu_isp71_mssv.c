@@ -92,6 +92,19 @@ struct mtk_ccu_clk_name ccu_clk_name_isp7sp[] = {
 	{true, "CAM_VCORE_CG"},
 	{false, ""}};
 
+struct mtk_ccu_clk_name ccu_clk_name_isp7spl[] = {
+	{true, "TOP_CAM"},
+	{true, "TOP_CCU_AHB"},
+	{true, "TOP_CCUSYS"},
+	{true, "TOP_CCUTM"},
+	{true, "CCU2MM0_GALS"},
+	{true, "CCU_LARB"},
+	{true, "CCU_AHB"},
+	{true, "CCUSYS_CCU0"},
+	{true, "CAM_CG"},
+	{true, "CAM_VCORE_CG"},
+	{false, ""}};
+
 char ccu_err_str[ERR_CCU_MAX][16] = {
 	"ERR_NULL",
 	"ERR_INFRA",
@@ -364,6 +377,7 @@ err_out:
 int mtk_ccu_sw_hw_reset(struct mtk_ccu *ccu)
 {
 	uint32_t duration = 0;
+	/* ISP_7SPL with RV33 use HALT_MASK_RV55. */
 	uint32_t halt_mask = (ccu->ccu_version >= CCU_VER_ISP7SP) ?
 				HALT_MASK_RV55 : HALT_MASK_RV33;
 	uint32_t ccu_status, ccu1_status = halt_mask;
@@ -885,7 +899,7 @@ static int ccu_load_binary(struct rproc *rproc, uint32_t ccu_no,
 	ddr = (void *)ccu->buffer_handle[ccu_no].meminfo.va;
 
 	/* 1. Halt CCU HW before load binary */
-	writel(((ccu->ccu_version == CCU_VER_ISP7SP)) ?
+	writel(((ccu->ccu_version >= CCU_VER_ISP7SP)) ?
 		MTK_CCU_HW_RESET_BIT_ISP7SP : MTK_CCU_HW_RESET_BIT,
 		ccu_base + MTK_CCU_REG_RESET);
 	udelay(10);
@@ -1164,7 +1178,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	}
 
 	/*remap spm_base*/
-	if (ccu->ccu_version == CCU_VER_ISP7SP) {
+	if (ccu->ccu_version >= CCU_VER_ISP7SP) {
 		phy_addr = SPM_BASE;
 		phy_size = SPM_SIZE;
 		ccu->spm_base = devm_ioremap(dev, phy_addr, phy_size);
@@ -1173,7 +1187,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	}
 
 	/* Get other power node if needed. */
-	if (ccu->ccu_version == CCU_VER_ISP7SP) {
+	if (ccu->ccu_version >= CCU_VER_ISP7SP) {
 		ret = of_property_read_u32(node, "mediatek,cammainpwr",
 			&phandle_cammainpwr);
 		node_cammainpwr = of_find_node_by_phandle(phandle_cammainpwr);
@@ -1212,6 +1226,8 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	pm_runtime_enable(ccu->dev);
 
 	ccu->clock_num = 0;
+	if (ccu->ccu_version == CCU_VER_ISP7SPL)
+		ccu->clock_name = ccu_clk_name_isp7spl;
 	if (ccu->ccu_version == CCU_VER_ISP7SP)
 		ccu->clock_name = ccu_clk_name_isp7sp;
 	else if (ccu->ccu_version == CCU_VER_ISP7S)
@@ -1344,7 +1360,7 @@ static int mtk_ccu_remove(struct platform_device *pdev)
 #endif
 	rproc_del(ccu->rproc);
 	rproc_free(ccu->rproc);
-	if (ccu->ccu_version == CCU_VER_ISP7SP)
+	if (ccu->ccu_version >= CCU_VER_ISP7SP)
 		pm_runtime_disable(ccu->dev_cammainpwr);
 	pm_runtime_disable(ccu->dev);
 #if IS_ENABLED(CONFIG_MTK_CCU_DEBUG) && (0)
@@ -1374,10 +1390,10 @@ static int mtk_ccu_read_platform_info_from_dt(struct device_node
 
 	ret = of_property_read_u32(node, "ccu_sramOffset", reg);
 	ccu->ccu_sram_offset = (ret < 0) ?
-		((ccu->ccu_version == CCU_VER_ISP7SP) ?
+		((ccu->ccu_version >= CCU_VER_ISP7SP) ?
 		MTK_CCU_CORE_DMEM_BASE_ISP7SP : MTK_CCU_CORE_DMEM_BASE) : reg[0];
 
-	if (ccu->ccu_version == CCU_VER_ISP7SP) {
+	if (ccu->ccu_version >= CCU_VER_ISP7SP) {
 		ret = of_property_read_u32(node, "ccu-sramcon-offset", reg);
 		ccu->ccu_sram_con_offset = (ret < 0) ? CCU_SLEEP_SRAM_CON : reg[0];
 	}
@@ -1449,7 +1465,7 @@ static int mtk_ccu_get_power(struct mtk_ccu *ccu, struct device *dev)
 		return ret;
 	}
 
-	if (ccu->ccu_version == CCU_VER_ISP7SP) {
+	if (ccu->ccu_version >= CCU_VER_ISP7SP) {
 		rc = pm_runtime_get_sync(ccu->dev_cammainpwr);
 		LOG_DBG("CCU power-on cammainpwr %d\n", rc);
 		ccu->cammainpwr_powered = (rc >= 0);
@@ -1466,7 +1482,7 @@ static void mtk_ccu_put_power(struct mtk_ccu *ccu, struct device *dev)
 	uint8_t *sram_con;
 	int ret;
 
-	if (ccu->ccu_version == CCU_VER_ISP7SP) {
+	if (ccu->ccu_version >= CCU_VER_ISP7SP) {
 		sram_con = ((uint8_t *)ccu->spm_base)+ccu->ccu_sram_con_offset;
 		writel(readl(sram_con) | CCU_SLEEP_SRAM_PDN, sram_con);
 
