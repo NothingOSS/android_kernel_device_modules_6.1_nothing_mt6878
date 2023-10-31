@@ -594,7 +594,7 @@ static inline int alloc_bat_page(
 	return 0;
 }
 
-static int dpmaif_alloc_bat_frg(int update_bat_cnt, atomic_t *paused)
+static int dpmaif_alloc_bat_frg(int update_bat_cnt, atomic_t *paused, unsigned int max_retry_cnt)
 {
 	struct dpmaif_bat_request *bat_req = dpmaif_ctl->bat_frg;
 	struct dpmaif_bat_page *bat_page, *next_page;
@@ -602,6 +602,7 @@ static int dpmaif_alloc_bat_frg(int update_bat_cnt, atomic_t *paused)
 	unsigned int buf_space, buf_used, alloc_frg_threshold = g_alloc_frg_threshold;
 	int count = 0, ret = 0, request_cnt;
 	unsigned short bat_wr_idx, next_wr_idx;
+	u32 retry_cnt;
 
 	if (g_dpmf_ver >= 3)
 		atomic_set(&bat_req->bat_rd_idx, ccci_drv3_dl_get_frg_bat_ridx());
@@ -646,9 +647,21 @@ static int dpmaif_alloc_bat_frg(int update_bat_cnt, atomic_t *paused)
 		cur_bat = (struct dpmaif_bat_base *)bat_req->bat_base
 					+ bat_wr_idx;
 
+		retry_cnt = 0;
+alloc_retry:
 		ret = alloc_bat_page(bat_req->pkt_buf_sz, bat_page, cur_bat);
-		if (ret)
+		if (unlikely(ret)) {
+			if (max_retry_cnt) {
+				retry_cnt++;
+				if (retry_cnt <= max_retry_cnt)
+					goto alloc_retry;
+				else
+					CCCI_ERROR_LOG(0, TAG,
+						"[%s] error: alloc_bat_page() fail. retry_cnt=%u\n",
+						__func__, retry_cnt);
+			}
 			goto alloc_end;
+		}
 
 		bat_wr_idx = next_wr_idx;
 		count++;
@@ -798,7 +811,7 @@ static int dpmaif_rx_bat_alloc_thread(void *arg)
 		}
 
 		ret_req = dpmaif_alloc_bat_req(1, &dpmaif_ctl->bat_paused_alloc, 0);
-		ret_frg = dpmaif_alloc_bat_frg(1, &dpmaif_ctl->bat_paused_alloc);
+		ret_frg = dpmaif_alloc_bat_frg(1, &dpmaif_ctl->bat_paused_alloc, 0);
 
 		if (g_debug_flags & DEBUG_BAT_TH_WAKE) {
 			hdr.type  = TYPE_BAT_TH_WAKE_ID;
@@ -1072,7 +1085,7 @@ int ccci_dpmaif_bat_start(void)
 		goto start_err;
 	}
 
-	frg_cnt = dpmaif_alloc_bat_frg(0, NULL);
+	frg_cnt = dpmaif_alloc_bat_frg(0, NULL, 20);
 	if (frg_cnt <= 0) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] dpmaif_alloc_bat_frg fail: %d\n",
