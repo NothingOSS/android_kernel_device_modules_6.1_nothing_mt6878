@@ -9999,6 +9999,12 @@
 		udc = <&ssusb>;
 	};
 
+	usb_boost: usb-boost-manager {
+		compatible = "mediatek,usb-boost", "mediatek,mt6878-usb-boost";
+		usb-audio;
+		small-core = <1250000>;
+	};
+
 	low-battery-throttling {
 		compatible = "mediatek,low_battery_throttling";
 
