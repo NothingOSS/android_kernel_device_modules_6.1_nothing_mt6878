@@ -1055,6 +1055,11 @@ static void mtk_dsi_runtime_phy_reset_gce(struct mtk_dsi *dsi, struct cmdq_pkt *
 	if (dsi == NULL)
 		return;
 
+	if (handle == NULL) {
+		mtk_dsi_runtime_phy_reset(dsi);
+		return;
+	}
+
 	/* assume MIPITX SW CTRL already configure to LP11 after exit ULPS */
 	/* config & enable MIPITX sw ctrl */
 	mtk_mipi_tx_sw_control_en_gce(dsi->phy, handle, 1);
