@@ -12,7 +12,6 @@
 		clocks =
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_DISP_PWM_SEL>,
-			<&topckgen_clk CLK_TOP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_SR_PKA_SEL>,
 			<&topckgen_clk CLK_TOP_SR_DMA_SEL>,
 			<&topckgen_clk CLK_TOP_SR_KDF_SEL>,
@@ -27,12 +26,6 @@
 			<&apmixedsys_clk CLK_APMIXED_MMPLL>,
 			<&apmixedsys_clk CLK_APMIXED_APLL1>,
 			<&apmixedsys_clk CLK_APMIXED_APLL2>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_H>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_B>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB1>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB2>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB3>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB4>,
 			<&pericfg_ao_clk CLK_PERAOP_AO_F32K_CK_OCC>,
 			<&vlp_cksys_clk CLK_VLP_TIA_ULPOSC_SEL>;
 	};
