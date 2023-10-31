@@ -216,7 +216,8 @@ static DRIVER_ATTR_RW(emimpu_ctrl);
 
 static ssize_t hp_mod_show(struct device_driver *driver, char *buf)
 {
-	unsigned int hp_mod = 0, ret = 0;
+	int ret = 0;
+	unsigned int hp_mod = 0;
 	unsigned int len = strlen("1") + 2;
 
 	hp_mod = emimpu_read_protection(MTK_EMIMPU_CHECK_HP_MOD, 0, 0);
