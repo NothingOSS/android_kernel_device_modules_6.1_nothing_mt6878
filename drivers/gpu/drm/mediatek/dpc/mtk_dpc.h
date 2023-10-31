@@ -6,12 +6,6 @@
 #ifndef __MTK_DPC_H__
 #define __MTK_DPC_H__
 
-#ifndef DRM_CMDQ_DISABLE
-#include <linux/soc/mediatek/mtk-cmdq-ext.h>
-#else
-#include "mtk-cmdq-ext.h"
-#endif
-
 /*
  * EOF                                                      TE
  *  | OFF0 |                                     | SAFEZONE | OFF1 |
@@ -23,15 +17,11 @@
  *         0       4,11          12      5       1                 3         7,13
  */
 
-#define DT_TE_30  32500
-#define DT_TE_45  21600
-#define DT_TE_60  16000
-#define DT_TE_90  10700
+#define DT_TE_60 16000
 #define DT_TE_120 8000
-#define DT_TE_150 6300
 #define DT_TE_360 2650
 #define DT_TE_SAFEZONE 650
-#define DT_OFF0 240
+#define DT_OFF0 38000
 #define DT_OFF1 200
 #define DT_PRE_DISP1_OFF 100
 #define DT_POST_DISP1_OFF 100
@@ -43,13 +33,11 @@
 #define DT_OVL_OFFSET     (DT_TE_SAFEZONE)
 #define DT_DISP1TE_OFFSET (300)
 
-#define DT_11 (DT_OFF0)
 #define DT_12 (DT_TE_360 - DT_MMINFRA_OFFSET)
 #define DT_5  (DT_TE_360 - DT_DISP1_OFFSET)
 #define DT_1  (DT_TE_360 - DT_OVL_OFFSET)
 #define DT_6  (DT_TE_360 - DT_DISP1TE_OFFSET)
 #define DT_3  (DT_OFF1)
-#define DT_4  (DT_OFF0)
 #define DT_7  (DT_OFF1 + DT_PRE_DISP1_OFF)
 #define DT_13 (DT_OFF1 + DT_PRE_MMINFRA_OFF)
 
@@ -101,12 +89,6 @@ enum mtk_dpc_mml_vidle {
 	DPC_MML_VIDLE_RESERVED = 54,
 };
 
-enum mtk_panel_type {
-	PANEL_TYPE_CMD,
-	PANEL_TYPE_VDO,
-	PANEL_TYPE_COUNT,
-};
-
 void dpc_enable(bool en);
 void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en);
 void dpc_infra_force_enable(const enum mtk_dpc_subsys subsys, const bool en);
@@ -120,11 +102,6 @@ void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force);
 void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
 int dpc_vidle_power_keep(const enum mtk_vidle_voter_user);
 void dpc_vidle_power_release(const enum mtk_vidle_voter_user);
-void dpc_vidle_power_keep_by_gce(struct cmdq_pkt *pkt,
-		const enum mtk_vidle_voter_user user);
-void dpc_vidle_power_release_by_gce(struct cmdq_pkt *pkt,
-		const enum mtk_vidle_voter_user user);
-void dpc_init_panel_type(enum mtk_panel_type);
 
 struct dpc_funcs {
 	void (*dpc_enable)(bool en);
@@ -133,22 +110,17 @@ struct dpc_funcs {
 	void (*dpc_dc_force_enable)(const bool en);
 	void (*dpc_group_enable)(const u16 group, bool en);
 	void (*dpc_config)(const enum mtk_dpc_subsys subsys, bool en);
-	int (*dpc_dt_set)(u32 us);
+	void (*dpc_dt_set)(u16 dt, u32 us);
 	void (*dpc_mtcmos_vote)(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
 	int (*dpc_vidle_power_keep)(const enum mtk_vidle_voter_user);
 	void (*dpc_vidle_power_release)(const enum mtk_vidle_voter_user);
-	void (*dpc_vidle_power_keep_by_gce)(struct cmdq_pkt *pkt,
-				const enum mtk_vidle_voter_user user);
-	void (*dpc_vidle_power_release_by_gce)(struct cmdq_pkt *pkt,
-				const enum mtk_vidle_voter_user user);
 	void (*dpc_hrt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 	void (*dpc_srt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 	void (*dpc_dvfs_set)(const enum mtk_dpc_subsys subsys, const u8 level, bool force);
 	void (*dpc_dvfs_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
 	void (*dpc_dvfs_both_set)(const enum mtk_dpc_subsys subsys, const u8 level, bool force,
 		const u32 bw_in_mb);
-	void (*dpc_analysis)(bool detail);
-	void (*dpc_init_panel_type)(enum mtk_panel_type);
+	void (*dpc_analysis)(void);
 };
 
 #endif

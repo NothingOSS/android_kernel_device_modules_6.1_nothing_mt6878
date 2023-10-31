@@ -352,12 +352,6 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "csc_bl");
 		g_CRTC_MMP_Events[i].vblank_rec_thread = mmprofile_register_event(
 			crtc_mmp_root, "vblank_rec_thread");
-		g_CRTC_MMP_Events[i].enter_vidle = mmprofile_register_event(
-			crtc_mmp_root, "enter_Vidle");
-		g_CRTC_MMP_Events[i].leave_vidle = mmprofile_register_event(
-			crtc_mmp_root, "leave_Vidle");
-		g_CRTC_MMP_Events[i].vidle_stop = mmprofile_register_event(
-			crtc_mmp_root, "Vidle_stop");
 	}
 }
 void drm_mmp_init(void)

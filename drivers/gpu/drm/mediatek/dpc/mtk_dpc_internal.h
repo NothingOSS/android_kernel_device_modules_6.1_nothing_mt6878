@@ -6,9 +6,6 @@
 #ifndef __MTK_DPC_INTERNAL_H__
 #define __MTK_DPC_INTERNAL_H__
 
-#define MMSYS_MT6989  0x6989
-#define MMSYS_MT6878  0x6878
-
 #define DPCFUNC(fmt, args...) \
 	pr_info("[dpc] %s:%d " fmt "\n", __func__, __LINE__, ##args)
 
@@ -16,7 +13,7 @@
 	pr_info("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)
 
 #define DPCDUMP(fmt, args...) \
-	pr_info("[dpc] %s: " fmt "\n", __func__, ##args)
+	pr_info("[dpc] " fmt "\n", ##args)
 
 
 extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
@@ -30,13 +27,6 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define SPM_OVL1_PWR_CON 0xEA4
 #define SPM_MML1_PWR_CON 0xE94
 #define SPM_PWR_STATUS_MSB 0xf78 /* vcore[3] mml[4][5] dis[6][7] ovl[8][9] mminfra[10] */
-#define SPM_PWR_FLD_DISP_VCORE_MASK   BIT(3)
-#define SPM_PWR_FLD_MML1_MASK         BIT(5)
-#define SPM_PWR_FLD_DISP1_MASK        BIT(7)
-#define SPM_PWR_FLD_MMINFRA_MASK      BIT(10)
-
-#define VCORE_DVFSRC_HRT_BW_MASK      0x3FF
-#define VCORE_DVFSRC_SRT_BW_MASK      0xFFC
 
 #define DISP_REG_DPC_EN                                  0x000UL
 #define DISP_REG_DPC_RESET                               0x004UL
@@ -156,8 +146,6 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DISP_REG_DPC_DEBUG_SEL                           0x870UL
 #define DISP_REG_DPC_DEBUG_STA                           0x874UL
 
-#define DISP_DPC_SUBSYS_THREAD_EN                        BIT(0)
-
 #define DISP_DPC_INT_DISP1_ON                            BIT(31)
 #define DISP_DPC_INT_DISP1_OFF                           BIT(30)
 #define DISP_DPC_INT_DISP0_ON                            BIT(29)
@@ -191,38 +179,9 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DISP_DPC_INT_DT1                                 BIT(1)
 #define DISP_DPC_INT_DT0                                 BIT(0)
 
-#define MML_DPC_INT_DT32                                 BIT(0)
-#define MML_DPC_INT_DT33                                 BIT(1)
-#define MML_DPC_INT_DT35                                 BIT(3)
-#define MML_DPC_INT_DT54                                 BIT(9)
-#define MML_DPC_INT_DT55                                 BIT(10)
-#define MML_DPC_INT_DT56                                 BIT(11)
-#define MML_DPC_INT_MML1_OFF                             BIT(12)
-#define MML_DPC_INT_MML1_ON                              BIT(13)
-#define MML_DPC_INT_MML1_SOF                             BIT(16)
-#define MML_DPC_INT_MML1_RDONE                           BIT(17)
-
 #define DISP_DPC_VDO_MODE                                BIT(16)
 #define DISP_DPC_DT_EN                                   BIT(1)
 #define DISP_DPC_EN                                      BIT(0)
-
-#define DPC_DDRSRC_DISP_MASK                             BIT(0)
-#define DPC_EMIREQ_DISP_MASK                             BIT(1)
-#define DPC_HRTBW_DISP_MASK                              BIT(2)
-#define DPC_VDISP_DVFS_DISP_MASK                         BIT(3)
-#define DPC_SRTBW_DISP_MASK                              BIT(4)
-#define DPC_MAINPLL_OFF_DISP_MASK                        BIT(5)
-#define DPC_MMINFRA_OFF_DISP_MASK                        BIT(6)
-#define DPC_INFRA_OFF_DISP_MASK                          BIT(7)
-
-#define DPC_DDRSRC_MML_MASK                              BIT(0)
-#define DPC_EMIREQ_MML_MASK                              BIT(1)
-#define DPC_HRTBW_MML_MASK                               BIT(2)
-#define DPC_VDISP_DVFS_MML_MASK                          BIT(3)
-#define DPC_SRTBW_MML_MASK                               BIT(4)
-#define DPC_MAINPLL_OFF_MML_MASK                         BIT(5)
-#define DPC_MMINFRA_OFF_MML_MASK                         BIT(6)
-#define DPC_INFRA_OFF_MML_MASK                           BIT(7)
 
 #define VOTE_SET 1
 #define VOTE_CLR 0
@@ -230,66 +189,11 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DPC_DISP_DT_CNT 32
 #define DPC_MML_DT_CNT 25
 
-// dpc state mask
-#define DPC_VIDLE_DISP_WINDOW      BIT(0)
-#define DPC_VIDLE_MMINFRA_MASK     BIT(1)
-#define DPC_VIDLE_APSRC_MASK       BIT(2)
-#define DPC_VIDLE_EMI_MASK         BIT(3)
-#define DPC_VIDLE_OVL0_MASK        BIT(4)
-#define DPC_VIDLE_DISP1_MASK       BIT(5)
-#define DPC_VIDLE_MML1_MASK        BIT(6)
-#define DPC_VIDLE_MML_DC_WINDOW    BIT(7)
-#define DPC_VIDLE_BW_MASK          BIT(8)
-#define DPC_VIDLE_WINDOW_MASK      BIT(9)
-
-enum mtk_dpc_vidle_mode {
-	DPC_VIDLE_INACTIVE_MODE,
-	DPC_VIDLE_HW_AUTO_MODE,
-	DPC_VIDLE_SW_MANUAL_MODE,
-	DPC_VIDLE_MODE_COUNT
-};
-
 enum mtk_dpc_sp_type {
 	DPC_SP_TE,
 	DPC_SP_SOF,
 	DPC_SP_FRAME_DONE,
 	DPC_SP_RROT_DONE,
-};
-
-enum mtk_dpc_vidle_cap_id {
-	DPC_VIDLE_MTCMOS_OFF = 0,
-	DPC_VIDLE_APSRC_OFF,
-	DPC_VIDLE_LOWER_VCORE_DVFS,
-	DPC_VIDLE_LOWER_VDISP_DVFS,
-	DPC_VIDLE_ZERO_HRT_BW,
-	DPC_VIDLE_ZERO_SRT_BW, //5
-	DPC_VIDLE_DSI_PLL_OFF,
-	DPC_VIDLE_MAIN_PLL_OFF,
-	DPC_VIDLE_MMINFRA_PLL_OFF,
-	DPC_VIDLE_INFRA_REQ_OFF,
-	DPC_VIDLE_SMI_REQ, //10
-	DPC_VIDLE_CAP_COUNT
-};
-
-enum dpc_idle_cmd {
-	DPC_VIDLE_RATIO_START,
-	DPC_VIDLE_RATIO_STOP,
-	DPC_VIDLE_RATIO_UPDATE,
-	DPC_VIDLE_RATIO_DUMP,
-	DPC_VIDLE_CMD_COUNT,
-};
-
-enum dpc_idle_id {
-	DPC_IDLE_ID_MTCMOS_OFF_OVL0,
-	DPC_IDLE_ID_MTCMOS_OFF_MML1,
-	DPC_IDLE_ID_MTCMOS_OFF_DISP1,
-	DPC_IDLE_ID_MMINFRA_OFF,
-	DPC_IDLE_ID_APSRC_OFF,
-	DPC_IDLE_ID_DVFS_OFF,
-	DPC_IDLE_ID_WINDOW_DISP,
-	DPC_IDLE_ID_WINDOW_MML,
-	DPC_IDLE_ID_WINDOW,
-	DPC_IDLE_ID_MAX,
 };
 
 struct mtk_dpc_dt_usage {

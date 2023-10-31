@@ -2713,7 +2713,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				DDPMSG("DDR: %u Mbps\n", mtk_dramc_get_data_rate());
 #endif
 				mtk_dprec_snapshot();
-				mtk_vidle_dpc_analysis(false);
+				mtk_vidle_dpc_analysis();
 				mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
 				dsi_underrun_trigger = 0;
 				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
@@ -9535,10 +9535,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	case DSI_VFP_IDLE_MODE:
 	{
-		struct mtk_drm_crtc *crtc = comp->mtk_crtc;
-		struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
-
 		panel_ext = mtk_dsi_get_panel_ext(comp);
+
 		if (dsi->mipi_hopping_sta && panel_ext && panel_ext->params
 			&& panel_ext->params->dyn.vfp_lp_dyn)
 			vfp_low_power = panel_ext->params->dyn.vfp_lp_dyn;
@@ -9552,27 +9550,6 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (dsi->slave_dsi)
 				mtk_dsi_porch_setting(&dsi->slave_dsi->ddp_comp, handle, DSI_VFP,
 					vfp_low_power);
-		}
-
-		/*update vidle timing*/
-		if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
-			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE)) {
-			unsigned int fps = drm_mode_vrefresh(&crtc->base.state->adjusted_mode);
-			int vtotal = crtc->base.state->adjusted_mode.vtotal;
-			int vsync_start = crtc->base.state->adjusted_mode.vsync_start;
-			int vdisplay = crtc->base.state->adjusted_mode.vdisplay;
-			int vtotal_lowpower = vtotal - vsync_start + vdisplay + vfp_low_power;
-			unsigned int duration = 0;
-
-			if (fps == 0 || vtotal <= 0 || vtotal_lowpower <= 0) {
-				DDPMSG("%s, cmd:%d, invalid fps:%u, vtotal:%d->%d\n",
-					__func__, cmd, fps, vtotal, vtotal_lowpower);
-				break;
-			}
-			duration = 1000000000UL / fps / vtotal * vtotal_lowpower / 1000;
-			if (mtk_vidle_update_dt_by_period(&crtc->base, duration) < 0)
-				DDPMSG("%s, cmd:%d idle+ vidle err, dur:%uus, fps:%u, vtotal:%d->%d\n",
-					__func__, cmd, duration, fps, vtotal, vtotal_lowpower);
 		}
 	}
 		break;
@@ -9624,23 +9601,6 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (dsi->slave_dsi)
 			mtk_dsi_porch_setting(&dsi->slave_dsi->ddp_comp, handle, DSI_VFP,
 					vfront_porch);
-
-		/*update vidle timing*/
-		if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
-			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE)) {
-			unsigned int fps = drm_mode_vrefresh(&crtc->base.state->adjusted_mode);
-			unsigned int duration = 0;
-
-			if (fps == 0) {
-				DDPMSG("%s, cmd:%d, invalid fps:%u\n",
-					__func__, cmd, fps);
-				break;
-			}
-			duration = 1000000 / fps;
-			if (mtk_vidle_update_dt_by_period(&(crtc->base), duration) < 0)
-				DDPMSG("%s, cmd:%d idle- vidle err, fps:%u, dur:%uus\n",
-					__func__, cmd, fps, duration);
-		}
 	}
 		break;
 	case DSI_GET_TIMING:
