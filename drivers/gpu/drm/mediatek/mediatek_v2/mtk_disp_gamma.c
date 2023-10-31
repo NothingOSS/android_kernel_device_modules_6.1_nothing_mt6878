@@ -1583,6 +1583,11 @@ struct mtk_disp_gamma_data mt6989_driver_data = {
 	.gamma_gain_range = 16384,
 };
 
+struct mtk_disp_gamma_data mt6878_driver_data = {
+	.support_gamma_gain = true,
+	.gamma_gain_range = 16384,
+};
+
 static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6779-disp-gamma",
 	  .data = &legacy_driver_data,},
@@ -1612,6 +1617,8 @@ static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	  .data = &mt6897_driver_data,},
 	{ .compatible = "mediatek,mt6989-disp-gamma",
 	  .data = &mt6989_driver_data,},
+	{ .compatible = "mediatek,mt6878-disp-gamma",
+	  .data = &mt6878_driver_data,},
 	{},
 };
 

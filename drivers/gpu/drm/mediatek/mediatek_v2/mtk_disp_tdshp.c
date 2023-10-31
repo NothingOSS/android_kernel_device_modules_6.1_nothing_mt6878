@@ -1081,6 +1081,11 @@ static const struct mtk_disp_tdshp_data mt6989_tdshp_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_tdshp_data mt6878_tdshp_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+};
+
 static const struct of_device_id mtk_disp_tdshp_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6983-disp-tdshp",
 	  .data = &mt6983_tdshp_driver_data},
@@ -1096,6 +1101,8 @@ static const struct of_device_id mtk_disp_tdshp_driver_dt_match[] = {
 	  .data = &mt6897_tdshp_driver_data},
 	{ .compatible = "mediatek,mt6989-disp-tdshp",
 	  .data = &mt6989_tdshp_driver_data},
+	{ .compatible = "mediatek,mt6878-disp-tdshp",
+	  .data = &mt6878_tdshp_driver_data},
 	{},
 };
 
