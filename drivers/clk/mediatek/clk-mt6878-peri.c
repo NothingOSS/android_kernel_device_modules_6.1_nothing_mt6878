@@ -22,8 +22,8 @@
 
 static const struct mtk_gate_regs im_c_s_cg_regs = {
 	.set_ofs = 0xE08,
-	.clr_ofs = 0xE08,
-	.sta_ofs = 0xE08,
+	.clr_ofs = 0xE04,
+	.sta_ofs = 0xE00,
 };
 
 #define GATE_IM_C_S(_id, _name, _parent, _shift) {	\
@@ -32,7 +32,7 @@ static const struct mtk_gate_regs im_c_s_cg_regs = {
 		.parent_name = _parent,			\
 		.regs = &im_c_s_cg_regs,			\
 		.shift = _shift,			\
-		.ops = &mtk_clk_gate_ops_no_setclr,	\
+		.ops = &mtk_clk_gate_ops_setclr,	\
 	}
 
 static const struct mtk_gate im_c_s_clks[] = {
@@ -49,8 +49,8 @@ static const struct mtk_clk_desc im_c_s_mcd = {
 
 static const struct mtk_gate_regs imp_es_s_cg_regs = {
 	.set_ofs = 0xE08,
-	.clr_ofs = 0xE08,
-	.sta_ofs = 0xE08,
+	.clr_ofs = 0xE04,
+	.sta_ofs = 0xE00,
 };
 
 #define GATE_IMP_ES_S(_id, _name, _parent, _shift) {	\
@@ -59,7 +59,7 @@ static const struct mtk_gate_regs imp_es_s_cg_regs = {
 		.parent_name = _parent,			\
 		.regs = &imp_es_s_cg_regs,			\
 		.shift = _shift,			\
-		.ops = &mtk_clk_gate_ops_no_setclr,	\
+		.ops = &mtk_clk_gate_ops_setclr,	\
 	}
 
 static const struct mtk_gate imp_es_s_clks[] = {
@@ -80,8 +80,8 @@ static const struct mtk_clk_desc imp_es_s_mcd = {
 
 static const struct mtk_gate_regs imp_e_s_cg_regs = {
 	.set_ofs = 0xE08,
-	.clr_ofs = 0xE08,
-	.sta_ofs = 0xE08,
+	.clr_ofs = 0xE04,
+	.sta_ofs = 0xE00,
 };
 
 #define GATE_IMP_E_S(_id, _name, _parent, _shift) {	\
@@ -90,7 +90,7 @@ static const struct mtk_gate_regs imp_e_s_cg_regs = {
 		.parent_name = _parent,			\
 		.regs = &imp_e_s_cg_regs,			\
 		.shift = _shift,			\
-		.ops = &mtk_clk_gate_ops_no_setclr,	\
+		.ops = &mtk_clk_gate_ops_setclr,	\
 	}
 
 static const struct mtk_gate imp_e_s_clks[] = {
@@ -115,8 +115,8 @@ static const struct mtk_clk_desc imp_e_s_mcd = {
 
 static const struct mtk_gate_regs imp_w_s_cg_regs = {
 	.set_ofs = 0xE08,
-	.clr_ofs = 0xE08,
-	.sta_ofs = 0xE08,
+	.clr_ofs = 0xE04,
+	.sta_ofs = 0xE00,
 };
 
 #define GATE_IMP_W_S(_id, _name, _parent, _shift) {	\
@@ -125,7 +125,7 @@ static const struct mtk_gate_regs imp_w_s_cg_regs = {
 		.parent_name = _parent,			\
 		.regs = &imp_w_s_cg_regs,			\
 		.shift = _shift,			\
-		.ops = &mtk_clk_gate_ops_no_setclr,	\
+		.ops = &mtk_clk_gate_ops_setclr,	\
 	}
 
 static const struct mtk_gate imp_w_s_clks[] = {
