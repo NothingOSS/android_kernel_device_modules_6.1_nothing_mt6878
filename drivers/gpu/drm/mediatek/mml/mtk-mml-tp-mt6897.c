@@ -1219,8 +1219,13 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		 * so merge all constant:
 		 *	tput = pixel / 2 * 1.1 * 1000 / act_time
 		 *	     = pixel * 550 / act_time
+		 * remove pixel / 2 for signle pipe DL support
 		 */
-		tput = pixel * 550 / info->act_time;
+		if (mml_tablet_ext(mml))
+			tput = pixel * 1300ULL / info->act_time;
+		else
+			tput = pixel * 550 / info->act_time;
+
 		if (tput > tp->opp_speeds[tp->opp_cnt - 1]) {
 			*reason = mml_query_opp_out;
 			goto decouple;
