@@ -212,6 +212,9 @@
 #define UNIT_FGCAR				174080
 /* CHARGE_LSB 0.085 * 2^11 */
 
+/* latch magic timeout, avoid return same error code as i2c timeout */
+#define MT6375_LATCH_TIMEOUT			5526789
+
 enum mt6375_gauge_cic_idx {
 	MT6375_GAUGE_CIC1 = 0,
 	MT6375_GAUGE_CIC2,
@@ -565,7 +568,7 @@ static int pre_gauge_update(struct mtk_gauge *gauge)
 		pr_notice("[%s] HK1[0x5D]=0x%x, ret:%d\n", __func__, rdata, ret);
 		ret = regmap_read(gauge->regmap, 0x35E, &rdata);
 		pr_notice("[%s] HK1[0x5E]=0x%x, ret:%d\n", __func__, rdata, ret);
-		ret = -ETIMEDOUT;
+		ret = MT6375_LATCH_TIMEOUT;
 	}
 
 	return ret;
@@ -1068,8 +1071,10 @@ static int instant_current(struct mtk_gauge *gauge, int *val,
 	car_tune_value = gauge->gm->fg_cust_data.car_tune_value;
 
 	ret = pre_gauge_update(gauge);
-	if (ret == -ETIMEDOUT)
+	if (ret == MT6375_LATCH_TIMEOUT)
 		latch_timeout = true;
+	else if (ret == -ETIMEDOUT)
+		aee_kernel_warning("I2C", "\nCRDISPATCH_KEY:I2C\ni2c timeout when pre_gauge_update");
 
 	switch (cic_idx) {
 	case MT6375_GAUGE_CIC1:
