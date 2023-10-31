@@ -101,6 +101,7 @@ struct mtk_base_dsp {
 	 * aud_playback task get data from source and write to AFE HW
 	 */
 	int dsp_ver;
+	int irq_id[ADSP_CORE_TOTAL];
 };
 
 struct mtk_adsp_task_latency {

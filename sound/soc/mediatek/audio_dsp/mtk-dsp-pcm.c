@@ -150,12 +150,21 @@ static int dsp_pcm_taskattr_init(struct platform_device *pdev)
 static int dsp_pcm_dev_probe(struct platform_device *pdev)
 {
 	struct mtk_base_dsp *dsp;
-	int ret = 0;
+	int ret = 0, core_id = 0, irq_id = 0;
 	struct device *dev;
 
 	dsp = devm_kzalloc(&pdev->dev, sizeof(struct mtk_base_dsp), GFP_KERNEL);
 	if (!dsp)
 		return -ENOMEM;
+
+	for (core_id = 0; core_id < ADSP_CORE_TOTAL; core_id++) {
+		irq_id = platform_get_irq(pdev, core_id);
+		if (irq_id > 0) {
+			dsp->irq_id[core_id] = irq_id;
+			pr_info("%s got irq%d for core%d", __func__, irq_id, core_id);
+		} else
+			pr_info("%s no irq for core%d", __func__, core_id);
+	}
 
 	/*  register dsp dai driver*/
 	dai_dsp_register(pdev, dsp);

@@ -23,6 +23,9 @@
 #include "mtk-base-afe.h"
 #include "scp.h"
 
+#include <linux/arm-smccc.h> /* for Kernel Native SMC API */
+#include <linux/soc/mediatek/mtk_sip_svc.h> /* for SMC ID table */
+
 #include <mt-plat/mtk_irq_mon.h>
 #include <linux/tracepoint.h>
 
@@ -1464,12 +1467,14 @@ void audio_irq_handler(int irq, void *data, int core_id)
 	unsigned long task_value;
 	int dsp_scene, task_id, loop_count;
 	unsigned long *pdtoa;
+	int core_num = get_adsp_type() == ADSP_TYPE_HIFI3 ?
+		       get_adsp_core_total() : 2; //RV checked in adsp_irq_handler
 
 	if (!dsp) {
 		pr_info("%s dsp[%p]\n", __func__, dsp);
 		goto IRQ_ERROR;
 	}
-	if (core_id >= get_adsp_core_total() || core_id < 0) {
+	if (core_id >= core_num || core_id < 0) {
 		pr_info("%s core_id[%d]\n", __func__, core_id);
 		goto IRQ_ERROR;
 	}
@@ -1529,6 +1534,67 @@ void audio_irq_handler(int irq, void *data, int core_id)
 IRQ_ERROR:
 	pr_info("IRQ_ERROR irq[%d] data[%p] core_id[%d] dsp[%p]\n",
 		irq, data, core_id, dsp);
+}
+
+static inline uint64_t clear_scp_to_ap_irq(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
+		      MTK_AUDIO_SMC_OP_SCP_TO_AP_IRQ_CLEAR,
+		      0, 0, 0, 0, 0, 0, &res);
+	return res.a0;
+}
+
+static irqreturn_t adsp_irq_handler(int irq_id, void *data)
+{
+	struct mtk_base_dsp *dsp = (struct mtk_base_dsp *)data;
+	int core_id = -1;
+
+	if (!dsp) {
+		pr_info("%s dsp[%p]\n", __func__, dsp);
+		return IRQ_HANDLED;
+	}
+
+	for (int i = 0; i < ADSP_CORE_TOTAL; i++) {
+		if (irq_id == dsp->irq_id[i]) {
+			core_id = i;
+			break;
+		}
+	}
+
+	if (core_id >= 0) {
+		audio_irq_handler(irq_id, data, core_id);
+		clear_scp_to_ap_irq();
+	}
+
+	return IRQ_HANDLED;
+}
+
+static void register_adsp_irq(struct mtk_base_dsp *dsp)
+{
+	int ret = 0, i = 0;
+
+	if (!dsp) {
+		pr_info("%s dsp[%p]\n", __func__, dsp);
+		return;
+	}
+
+	for (i = 0; i < ADSP_CORE_TOTAL; i++) {
+		if (dsp->irq_id[i] > 0) {
+			ret = devm_request_irq(dsp->dev, dsp->irq_id[i], adsp_irq_handler,
+			       IRQF_TRIGGER_NONE,
+			       "ADSP_ISR_Handle", (void *)dsp);
+			if (ret) {
+				dev_info(dsp->dev, "ADSP%d Request_irq Fail\n", i);
+				continue;
+			}
+			ret = enable_irq_wake(dsp->irq_id[i]);
+			if (ret < 0)
+				dev_info(dsp->dev, "enable_irq_wake %d err: %d\n",
+					 dsp->irq_id[i], ret);
+		}
+	}
 }
 
 static int mbox_msg_temp;
@@ -1708,18 +1774,13 @@ static int mtk_dsp_probe(struct snd_soc_component *component)
 			return ret;
 	}
 
-	if (get_adsp_type() == ADSP_TYPE_RV55) {
-		mtk_ipi_register(&scp_ipidev, IPI_IN_AUDIO_FW,
-				 (void *)adsp_mbox_recv_handler, dsp,
-				 &mbox_msg_temp);
-	}
-
 	for (id = 0; id < get_adsp_core_total(); id++) {
 		if (adsp_irq_registration(id, ADSP_IRQ_AUDIO_ID, audio_irq_handler, dsp) < 0)
 			pr_info("ADSP_IRQ_AUDIO not supported\n");
 	}
 
 	if (get_adsp_type() == ADSP_TYPE_RV55) {
+		register_adsp_irq(dsp);
 		mtk_ipi_register(&scp_ipidev, IPI_IN_AUDIO_FW,
 				 (void *)adsp_mbox_recv_handler, dsp,
 				 &mbox_msg_temp);
