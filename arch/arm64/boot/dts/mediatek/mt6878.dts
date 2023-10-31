@@ -7663,7 +7663,7 @@
 				  <0 0x1903c000 0 0x8000>,
 				  <0 0x19050000 0 0x10000>,
 				  <0 0x190f2000 0 0x1000>,
-				  <0 0x1d000000 0 0x40000>,
+				  <0 0x1d000000 0 0x20000>,
 				  <0 0x0d2a0000 0 0x10000>;
 
 			reg-names = "apu_mbox",
@@ -7779,7 +7779,7 @@
 			dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
 			iommus = <&apu_iommu0 M4U_L42_APU_CODE>;
 
-			enable-interrupt = <0x0>;
+			enable-interrupt = <0x1>;
 			access-rcx-in-atf = <0x0>;
 			interrupt-lbc-sz = <0x80000>;
 		};
