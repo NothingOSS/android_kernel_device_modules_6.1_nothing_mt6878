@@ -49,6 +49,7 @@ static void *mmdvfs_memory_va;
 static bool mmdvfs_free_run;
 static bool mmdvfs_init_done;
 static bool mmdvfs_restore_step;
+static bool mmdvfs_release_step_done;
 
 static int vcp_power;
 static int vcp_pwr_usage[VCP_PWR_USR_NUM];
@@ -969,8 +970,7 @@ static int mtk_mmdvfs_v3_set_force_step_ipi(const u16 pwr_idx, const s16 opp)
 		mtk_mmdvfs_enable_vmm(false);
 	*last = opp;
 
-	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
+	MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
 	return ret;
 }
 
@@ -982,6 +982,9 @@ int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp)
 		MMDVFS_ERR("wrong pwr_idx:%hu opp:%hd", pwr_idx, opp);
 		return -EINVAL;
 	}
+
+	if (mmdvfs_release_step_done)
+		return 0;
 
 	if (mmdvfs_mux_version)
 		return mmdvfs_force_step_by_vcp(pwr_idx, opp);
@@ -995,8 +998,7 @@ int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp)
 	ret = mtk_mmdvfs_v3_set_force_step_ipi(pwr_idx, opp);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
 
-	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
+	MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_v3_set_force_step);
@@ -1225,8 +1227,7 @@ static int mtk_mmdvfs_v3_set_vote_step_ipi(const u16 pwr_idx, const s16 opp)
 		mtk_mmdvfs_enable_vmm(false);
 	*last = opp;
 
-	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("pwr_idx:%hu opp:%hd i:%d freq:%u ret:%d", pwr_idx, opp, i, freq, ret);
+	MMDVFS_DBG("pwr_idx:%hu opp:%hd i:%d freq:%u ret:%d", pwr_idx, opp, i, freq, ret);
 	return ret;
 }
 
@@ -1238,6 +1239,9 @@ int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp)
 		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
 		return -EINVAL;
 	}
+
+	if (mmdvfs_release_step_done)
+		return 0;
 
 	if (mmdvfs_mux_version)
 		return mmdvfs_vote_step_by_vcp(pwr_idx, opp);
@@ -1256,8 +1260,7 @@ int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp)
 	ret = mtk_mmdvfs_v3_set_vote_step_ipi(pwr_idx, opp);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
 
-	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
+	MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_v3_set_vote_step);
@@ -1496,12 +1499,14 @@ static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		mmdvfs_v3_release_step(true);
+		mmdvfs_release_step_done = true;
 		mmdvfs_reset_ccu();
 		cb_timestamp[0] = sched_clock();
 		mmdvfs_reset_clk(true);
 		break;
 	case PM_POST_SUSPEND:
 		mmdvfs_rst_clk_done = false;
+		mmdvfs_release_step_done = false;
 		break;
 	}
 	return NOTIFY_DONE;
@@ -1529,6 +1534,7 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 	case VCP_EVENT_READY:
 		cb_timestamp[2] = sched_clock();
 		mmdvfs_rst_clk_done = false;
+		mmdvfs_release_step_done = false;
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
 		if (dpc_fp)
 			dpc_fp(true, mmdvfs_vcp_stop);
@@ -1554,6 +1560,7 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		break;
 	case VCP_EVENT_SUSPEND:
 		mmdvfs_v3_release_step(false);
+		mmdvfs_release_step_done = false;
 		if (dpc_fp)
 			dpc_fp(false, false);
 		if (mmdvfs_swrgo) {
