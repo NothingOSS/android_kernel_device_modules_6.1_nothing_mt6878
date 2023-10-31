@@ -219,6 +219,7 @@ u32 mtk_pcie_dump_link_info(int port);
 /* pcie read completion timeout */
 #define PCIE_CONF_DEV2_CTL_STS		0x10a8
 #define PCIE_DCR2_CPL_TO		GENMASK(3, 0)
+#define PCIE_CPL_TIMEOUT_64US		0x1
 #define PCIE_CPL_TIMEOUT_4MS		0x2
 
 #define PCIE_CONF_EXP_LNKCTL2_REG	0x10b0
@@ -1663,7 +1664,7 @@ int mtk_pcie_disable_data_trans(int port)
 		return -EPERM;
 
 	val = readl_relaxed(pcie_port->base + PCIE_RST_CTRL_REG);
-	val |= PCIE_MAC_RSTB;
+	val |= (PCIE_MAC_RSTB | PCIE_PHY_RSTB);
 	writel_relaxed(val, pcie_port->base + PCIE_RST_CTRL_REG);
 
 	val = readl_relaxed(pcie_port->base + PCIE_CFGCTRL);
@@ -1673,6 +1674,23 @@ int mtk_pcie_disable_data_trans(int port)
 	val = readl_relaxed(pcie_port->base + PCIE_RST_CTRL_REG);
 	val &= ~PCIE_MAC_RSTB;
 	writel_relaxed(val, pcie_port->base + PCIE_RST_CTRL_REG);
+
+	/*
+	 * Set completion timeout to 64us to avoid corner case
+	 * PCIe received a read command from AP but set MAC_RESET=1 before
+	 * reply response signal to bus. After set MAC_RESET=0 again,
+	 * completion timeout setting will be reset to default value(50ms).
+	 * Then internal timer will keep counting until it achieve 50ms limit,
+	 * and will cause bus tracker timeout.
+	 * (note: bus tracker timeout = 5ms).
+	 */
+	val = PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) |
+	      PCIE_CFG_HEADER(0, 0);
+	writel_relaxed(val, pcie_port->base + PCIE_CFGNUM_REG);
+	val = readl_relaxed(pcie_port->base + PCIE_CONF_DEV2_CTL_STS);
+	val &= ~PCIE_DCR2_CPL_TO;
+	val |= PCIE_CPL_TIMEOUT_64US;
+	writel_relaxed(val, pcie_port->base + PCIE_CONF_DEV2_CTL_STS);
 
 	pr_info("reset control signal(0x148)=%#x, IP config control(0x84)=%#x\n",
 		readl_relaxed(pcie_port->base + PCIE_RST_CTRL_REG),
