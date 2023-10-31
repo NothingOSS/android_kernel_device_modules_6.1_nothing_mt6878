@@ -17,6 +17,8 @@
 #include "dvfsrc-exp.h"
 #include <linux/regulator/consumer.h>
 
+extern int mtk_dvfsrc_set_vcore_avs(int enable);
+
 static struct pm_qos_request pm_qos_req;
 static LIST_HEAD(usb_policy_list);
 struct usb_policy {
@@ -148,6 +150,8 @@ static int vcore_hold(struct act_arg_obj *arg)
 
 	if ((of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6989-usb-boost")) && reg && (val > 0)) {
+		mtk_dvfsrc_set_vcore_avs(false);
+
 		ret = regulator_set_voltage(reg, val, INT_MAX);
 		if (!ret)
 			USB_BOOST_NOTICE("%s: set usb vcore (%d)\n", __func__, val);
@@ -174,6 +178,8 @@ static int vcore_release(struct act_arg_obj *arg)
 		of_device_is_compatible(np, "mediatek,mt6989-usb-boost")) && reg && (val > 0)) {
 		regulator_set_voltage(reg, 0, INT_MAX);
 		USB_BOOST_NOTICE("%s: release usb vcore\n", __func__);
+
+		mtk_dvfsrc_set_vcore_avs(true);
 	}
 
 	return 0;
