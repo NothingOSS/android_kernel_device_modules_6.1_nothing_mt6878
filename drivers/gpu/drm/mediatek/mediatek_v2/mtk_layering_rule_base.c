@@ -3737,7 +3737,7 @@ static bool same_ratio_limitation(struct drm_crtc *crtc,
 }
 
 #define UNIT 32768
-static int check_cross_pipe_rpo(
+static int check_cross_pipe_rpo(struct mtk_rsz_param param[2],
 	struct mtk_drm_crtc *mtk_crtc,
 	unsigned int src_x, unsigned int src_w,
 	unsigned int dst_x, unsigned int dst_w,
@@ -3757,7 +3757,6 @@ static int check_cross_pipe_rpo(
 	u32 tile_out_len[2] = {0};
 	u32 out_x[2] = {0};
 	int width = disp_w;
-	struct mtk_rsz_param param[2];
 	struct total_tile_overhead to_info;
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
@@ -3893,6 +3892,8 @@ static void RPO_rule(struct mtk_drm_private *priv, struct drm_crtc *crtc,
 	}
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
+		struct mtk_rsz_param param[2] = {0};
+
 		c = &disp_info->input_config[disp_idx][i];
 
 		/*if (i == 0 && c->src_fmt == MTK_DRM_FORMAT_DIM)
@@ -3936,13 +3937,20 @@ static void RPO_rule(struct mtk_drm_private *priv, struct drm_crtc *crtc,
 			continue;
 
 		if (mtk_crtc->is_dual_pipe &&
-			check_cross_pipe_rpo(mtk_crtc, src_roi.x, src_roi.width,
+			check_cross_pipe_rpo(param, mtk_crtc, src_roi.x, src_roi.width,
 						dst_roi.x, dst_roi.width, disp_w))
 			continue;
 
-		if (src_roi.width > l_rule_info->rpo_tile_length ||
-		    src_roi.height > l_rule_info->rpo_in_max_height)
-			continue;
+		if (mtk_crtc->is_dual_pipe) {
+			if (param[0].in_len > l_rule_info->rpo_tile_length ||
+				param[1].in_len > l_rule_info->rpo_tile_length ||
+				src_roi.height > l_rule_info->rpo_in_max_height)
+				continue;
+		} else {
+			if (src_roi.width > l_rule_info->rpo_tile_length ||
+				src_roi.height > l_rule_info->rpo_in_max_height)
+				continue;
+		}
 
 		if (mtk_has_layer_cap(c, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
 					 MTK_MML_DISP_DIRECT_LINK_LAYER))

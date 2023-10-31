@@ -6168,8 +6168,8 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 	int ret = 0;
 	struct mtk_drm_private *private = dev->dev_private;
 	struct mtk_drm_disp_caps_info *caps_info = data;
-	struct mtk_panel_params *params =
-		mtk_drm_get_lcm_ext_params(private->crtc[0]);
+	struct mtk_panel_params *params = (private->crtc[0] ?
+		mtk_drm_get_lcm_ext_params(private->crtc[0]) : NULL);
 	struct mtk_ddp_comp *ddp_comp;
 
 	memset(caps_info, 0, sizeof(*caps_info));
@@ -6184,6 +6184,8 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 		caps_info->disp_feature_flag |= DRM_DISP_FEATURE_RPO;
 		caps_info->rsz_in_max[0] = private->rsz_in_max[0];
 		caps_info->rsz_in_max[1] = private->rsz_in_max[1];
+		if (params && mtk_crtc_is_dual_pipe(private->crtc[0]))
+			caps_info->rsz_in_max[0] *= 2;
 	}
 	caps_info->disp_feature_flag |= DRM_DISP_FEATURE_FBDC;
 
