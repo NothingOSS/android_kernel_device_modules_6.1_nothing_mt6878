@@ -75,7 +75,7 @@ static uint64_t total_suspend_us;
 static uint64_t total_duration_us;
 
 static char xpu_ip_str[NR_XPU_IP][MAX_IP_NAME_LENGTH] = {
-	"DISP0", "DISP1", "VENC0", "VENC1", "VDEC0", "VDEC1", "SCP", "ADSP", "MCU"
+	"DISP", "VENC", "VDEC", "SCP"
 };
 /* ddr bw ip (total r/total w/cpu/gpu/mm/md) */
 static char ddr_bc_ip_str[NR_DDR_BC_IP][MAX_IP_NAME_LENGTH] = {

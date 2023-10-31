@@ -12,17 +12,15 @@
 #define MAX_EMI_NUM				(2)
 
 enum ddr_freq {
-	DDR_579,
 	DDR_800,
 	DDR_1600,
 	DDR_2133,
-	DDR_3200,
+	DDR_3094,
 	DDR_4266,
 	DDR_5500,
 	DDR_6400,
-	DDR_8533,
 
-	NR_DDR_FREQ = 8,
+	NR_DDR_FREQ = 7,
 };
 
 /* dram voltage/freq index */
