@@ -9324,6 +9324,12 @@
 		compatible = "mediatek,mt-soc-offload-common";
 	};
 
+	speech_usip_mem: speech-usip-mem {
+		compatible = "mediatek,speech-usip-mem";
+		adsp-phone-call-enh-enable = <0x5>;
+		adsp-ble-phone-call-enable = <0x0>;
+	};
+
 	md_auxadc:md-auxadc {
 		compatible = "mediatek,md_auxadc";
 		/* io-channels = <&auxadc 6>;*/
