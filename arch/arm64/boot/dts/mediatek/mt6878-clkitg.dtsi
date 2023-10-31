@@ -40,25 +40,6 @@
 			<&vlp_cksys_clk CLK_VLP_TIA_ULPOSC_SEL>;
 	};
 
-
-	bring-up-pd-isp-main@2 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_MAIN>;
-	};
-
-	bring-up-pd-isp-dip1@3 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x3>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_DIP1>;
-	};
-
-	bring-up-pd-isp-vcore@4 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x4>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_VCORE>;
-	};
-
 	bring-up-pd-disp@d {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0xd>;
