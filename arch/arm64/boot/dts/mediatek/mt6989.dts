@@ -18909,6 +18909,22 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		};
 	};
 };
+
+&pio {
+    codec_en_off: codec-en-off {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO8__FUNC_GPIO8>;
+			input-enable;
+			bias-pull-down;
+		};
+	};
+	codec_en_on: codec-en-on {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO8__FUNC_GPIO8>;
+			output-high;
+		};
+	};
+};
 /* AUDIO GPIO standardization end */
 
 &pio {
@@ -18940,6 +18956,10 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			nvmem = <&mt6681_efuse>;
 			nvmem-names = "pmic-hp-efuse";
 			reg-vaud18-supply = <&mt6681_vaud18>;
+			pinctrl-names = "codec-en-off",
+			"codec-en-on";
+			pinctrl-0 = <&codec_en_off>;
+			pinctrl-1 = <&codec_en_on>;
 		};
 		regulators {
 			compatible = "mediatek,mt6681-regulator";
