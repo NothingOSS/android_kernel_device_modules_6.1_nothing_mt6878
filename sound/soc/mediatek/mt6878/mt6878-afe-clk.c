@@ -154,7 +154,14 @@ static int apll1_mux_setting(struct mtk_base_afe *afe, bool enable)
 				aud_clks[CLK_TOP_APLL1_D4], ret);
 			goto EXIT;
 		}
-		mt6878_set_audio_h_parent(afe, CLK_TOP_APLL1_D2);
+
+		ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
+		if (ret) {
+			dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
+				 __func__, aud_clks[CLK_TOP_MUX_AUDIO_H], ret);
+			goto EXIT;
+		}
+		mt6878_set_audio_h_parent(afe, CLK_TOP_APLL1_CK);
 	} else {
 		ret = clk_set_parent(afe_priv->clk[CLK_TOP_MUX_AUD_ENG1],
 				     afe_priv->clk[CLK_CLK26M]);
@@ -175,7 +182,9 @@ static int apll1_mux_setting(struct mtk_base_afe *afe, bool enable)
 			goto EXIT;
 		}
 		clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUD_1]);
+
 		mt6878_set_audio_h_parent(afe, CLK_CLK26M);
+		clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
 	}
 
 EXIT:
@@ -218,7 +227,15 @@ static int apll2_mux_setting(struct mtk_base_afe *afe, bool enable)
 				aud_clks[CLK_TOP_APLL2_D4], ret);
 			goto EXIT;
 		}
-		mt6878_set_audio_h_parent(afe, CLK_TOP_APLL2_D2);
+
+		ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
+		if (ret) {
+			dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
+				 __func__, aud_clks[CLK_TOP_MUX_AUDIO_H], ret);
+			goto EXIT;
+		}
+
+		mt6878_set_audio_h_parent(afe, CLK_TOP_APLL2_CK);
 	} else {
 		ret = clk_set_parent(afe_priv->clk[CLK_TOP_MUX_AUD_ENG2],
 				     afe_priv->clk[CLK_CLK26M]);
@@ -241,10 +258,67 @@ static int apll2_mux_setting(struct mtk_base_afe *afe, bool enable)
 		clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUD_2]);
 
 		mt6878_set_audio_h_parent(afe, CLK_CLK26M);
+		clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
 	}
 
 EXIT:
 	return 0;
+}
+
+int mt6878_afe_disable_apll(struct mtk_base_afe *afe)
+{
+	struct mt6878_afe_private *afe_priv = afe->platform_priv;
+	int ret = 0;
+
+	dev_dbg(afe->dev, "%s() successfully start\n", __func__);
+
+	ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
+	if (ret) {
+		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
+			 __func__, aud_clks[CLK_TOP_MUX_AUDIO_H], ret);
+		goto EXIT;
+	}
+
+	ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_MUX_AUD_1]);
+	if (ret) {
+		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
+			__func__, aud_clks[CLK_TOP_MUX_AUD_1], ret);
+		goto EXIT;
+	}
+
+	ret = clk_set_parent(afe_priv->clk[CLK_TOP_MUX_AUD_1],
+			     afe_priv->clk[CLK_CLK26M]);
+	if (ret) {
+		dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
+			__func__, aud_clks[CLK_TOP_MUX_AUD_1],
+			aud_clks[CLK_CLK26M], ret);
+		goto EXIT;
+	}
+	ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_MUX_AUD_2]);
+	if (ret) {
+		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
+			__func__, aud_clks[CLK_TOP_MUX_AUD_2], ret);
+		goto EXIT;
+	}
+
+	ret = clk_set_parent(afe_priv->clk[CLK_TOP_MUX_AUD_2],
+			     afe_priv->clk[CLK_CLK26M]);
+	if (ret) {
+		dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
+			__func__, aud_clks[CLK_TOP_MUX_AUD_2],
+			aud_clks[CLK_CLK26M], ret);
+		goto EXIT;
+	}
+
+	clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUD_1]);
+	clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUD_2]);
+	mt6878_set_audio_h_parent(afe, CLK_CLK26M);
+	clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
+
+	return 0;
+EXIT:
+	return ret;
+
 }
 
 int mt6878_afe_enable_ao_clock(struct mtk_base_afe *afe)
@@ -333,14 +407,6 @@ int mt6878_afe_enable_clock(struct mtk_base_afe *afe)
 	}
 	ret = mt6878_set_audio_int_bus_parent(afe, CLK_CLK26M);
 
-	ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
-	if (ret) {
-		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-			 __func__, aud_clks[CLK_TOP_MUX_AUDIO_H], ret);
-		goto CLK_MUX_AUDIO_H_PARENT_ERR;
-	}
-
-	ret = mt6878_set_audio_h_parent(afe, CLK_CLK26M);
 #if !defined(SKIP_SMCC_SB)
 	/* use arm_smccc_smc to notify SPM */
 	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
@@ -354,8 +420,6 @@ CLK_AFE_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_HOPPING]);
 	clk_disable_unprepare(afe_priv->clk[CLK_F26M]);
 
-CLK_MUX_AUDIO_H_PARENT_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
 CLK_MUX_AUDIO_INTBUS_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_MUX_AUDIOINTBUS]);
 
@@ -368,8 +432,6 @@ void mt6878_afe_disable_clock(struct mtk_base_afe *afe)
 
 	mt6878_set_audio_int_bus_parent(afe, CLK_CLK26M);
 	clk_disable_unprepare(afe_priv->clk[CLK_MUX_AUDIOINTBUS]);
-	mt6878_set_audio_h_parent(afe, CLK_CLK26M);
-	clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
 
 	/* IPM2.0: Use HOPPING & 26M */
 	clk_disable_unprepare(afe_priv->clk[CLK_HOPPING]);
@@ -809,6 +871,7 @@ int mt6878_init_clock(struct mtk_base_afe *afe)
 		return PTR_ERR(afe_priv->infracfg);
 	}
 	mt6878_afe_apll_init(afe);
+	mt6878_afe_disable_apll(afe);
 	mt6878_afe_enable_ao_clock(afe);
 	return 0;
 }

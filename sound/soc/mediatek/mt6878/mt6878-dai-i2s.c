@@ -2743,13 +2743,13 @@ static const struct mtk_afe_i2s_priv mt6878_i2s_priv[DAI_I2S_NUM] = {
 	},
 	[DAI_I2SIN2] = {
 		.id = MT6878_DAI_I2S_IN2,
-		.mclk_id = MT6878_I2SIN0_MCK,
+		.mclk_id = MT6878_I2SIN1_MCK,
 		.share_property_name = "i2sin2-share",
 		.share_i2s_id = -1,
 	},
 	[DAI_I2SIN4] = {
 		.id = MT6878_DAI_I2S_IN4,
-		.mclk_id = MT6878_I2SIN0_MCK,
+		.mclk_id = MT6878_I2SIN1_MCK,
 		.share_property_name = "i2sin4-share",
 		.share_i2s_id = -1,
 	},
@@ -2761,13 +2761,13 @@ static const struct mtk_afe_i2s_priv mt6878_i2s_priv[DAI_I2S_NUM] = {
 	},
 	[DAI_I2SOUT2] = {
 		.id = MT6878_DAI_I2S_OUT2,
-		.mclk_id = MT6878_I2SIN0_MCK,
+		.mclk_id = MT6878_I2SIN1_MCK,
 		.share_property_name = "i2sout2-share",
 		.share_i2s_id = MT6878_DAI_I2S_IN2,
 	},
 	[DAI_I2SOUT4] = {
 		.id = MT6878_DAI_I2S_OUT4,
-		.mclk_id = MT6878_I2SIN0_MCK,
+		.mclk_id = MT6878_I2SIN1_MCK,
 		.share_property_name = "i2sout4-share",
 		.share_i2s_id = MT6878_DAI_I2S_IN4,
 	},
