@@ -81,15 +81,16 @@ enum gpufreq_posdiv {
 };
 
 enum gpufreq_dvfs_state {
-	DVFS_FREE          = 0,      /* 0000 0000 */
-	DVFS_DISABLE       = BIT(0), /* 0000 0001 */
-	DVFS_POWEROFF      = BIT(1), /* 0000 0010 */
-	DVFS_FIX_OPP       = BIT(2), /* 0000 0100 */
-	DVFS_FIX_FREQ_VOLT = BIT(3), /* 0000 1000 */
-	DVFS_AGING_KEEP    = BIT(4), /* 0001 0000 */
-	DVFS_SLEEP         = BIT(5), /* 0010 0000 */
-	DVFS_MSSV_TEST     = BIT(6), /* 0100 0000 */
-	DVFS_VMETER_CALI   = BIT(7), /* 1000 0000 */
+	DVFS_FREE          = 0,      /* 0000 0000 0000 */
+	DVFS_DISABLE       = BIT(0), /* 0000 0000 0001 */
+	DVFS_POWEROFF      = BIT(1), /* 0000 0000 0010 */
+	DVFS_FIX_OPP       = BIT(2), /* 0000 0000 0100 */
+	DVFS_FIX_FREQ_VOLT = BIT(3), /* 0000 0000 1000 */
+	DVFS_AGING_KEEP    = BIT(4), /* 0000 0001 0000 */
+	DVFS_SLEEP         = BIT(5), /* 0000 0010 0000 */
+	DVFS_MSSV_TEST     = BIT(6), /* 0000 0100 0000 */
+	DVFS_VMETER_CALI   = BIT(7), /* 0000 1000 0000 */
+	DVFS_PRE_SLEEP     = BIT(8), /* 0001 0000 0000 */
 };
 
 enum gpufreq_target {
