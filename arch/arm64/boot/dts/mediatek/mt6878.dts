@@ -2499,6 +2499,19 @@
 				};
 			};
 		};
+		consys {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&consys>;
+
+			trips {
+				consys_crit: consys-crit {
+					temperature = <119000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
 
 	};
 
