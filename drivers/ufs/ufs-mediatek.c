@@ -834,6 +834,45 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 
 }
 
+static void ufs_mtk_mcq_disable_irq(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 irq, i;
+
+	if (!is_mcq_enabled(hba))
+		return;
+
+	if (host->mcq_nr_intr == 0)
+		return;
+
+	for (i = 0; i < host->mcq_nr_intr; i++) {
+		irq = host->mcq_intr_info[i].irq;
+		disable_irq(irq);
+	}
+	host->is_mcq_intr_enabled = false;
+}
+
+static void ufs_mtk_mcq_enable_irq(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 irq, i;
+
+	if (!is_mcq_enabled(hba))
+		return;
+
+	if (host->mcq_nr_intr == 0)
+		return;
+
+	if (host->is_mcq_intr_enabled == true)
+		return;
+
+	for (i = 0; i < host->mcq_nr_intr; i++) {
+		irq = host->mcq_intr_info[i].irq;
+		enable_irq(irq);
+	}
+	host->is_mcq_intr_enabled = true;
+}
+
 /**
  * ufs_mtk_setup_clocks - enables/disable clocks
  * @hba: host controller instance
@@ -883,6 +922,7 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 			ufs_mtk_setup_ref_clk(hba, on);
 			phy_power_off(host->mphy);
 		}
+		ufs_mtk_mcq_disable_irq(hba);
 	} else if (on && status == POST_CHANGE) {
 		phy_power_on(host->mphy);
 		ufs_mtk_setup_ref_clk(hba, on);
@@ -890,6 +930,7 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 		if (!ufshcd_is_clkscaling_supported(hba) ||
 		    !hba->clk_scaling.is_enabled)
 			ufs_mtk_pm_qos(hba, on);
+		ufs_mtk_mcq_enable_irq(hba);
 	}
 
 	return ret;
