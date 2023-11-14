@@ -10258,6 +10258,8 @@
 
 	usb_boost: usb-boost-manager {
 		compatible = "mediatek,usb-boost", "mediatek,mt6878-usb-boost";
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		vcore = <725000>;
 		usb-audio;
 		small-core = <1250000>;
 	};
