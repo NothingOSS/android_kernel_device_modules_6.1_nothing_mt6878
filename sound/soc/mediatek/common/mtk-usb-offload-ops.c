@@ -243,12 +243,21 @@ struct mtk_audio_usb_mem
 	}
 
 	target_alloc = &(g_auo_sram.alloc_sram[avail_idx]);
-	//request allocate size
-	target_alloc->size = size;
 
-	mtk_audio_usb_offload_event_handler(avail_idx == 0 ?
-					    EVENT_AFE_SRAM_ALLOCATE_FROM_END : EVENT_AFE_SRAM_ALLOCATE,
-					    (void *)target_alloc);
+	if (avail_idx == 0 && g_auo_sram.rsv_basic_sram.sram_inited) {
+		// use reserved basic sram
+		target_alloc->phys_addr = g_auo_sram.rsv_basic_sram.phys_addr;
+		target_alloc->virt_addr = g_auo_sram.rsv_basic_sram.virt_addr;
+		target_alloc->size = g_auo_sram.rsv_basic_sram.size;
+		target_alloc->sram_inited = g_auo_sram.rsv_basic_sram.sram_inited;
+	} else {
+		//request allocate size
+		target_alloc->size = size;
+
+		mtk_audio_usb_offload_event_handler(avail_idx == 0 ?
+							EVENT_AFE_SRAM_ALLOCATE_FROM_END : EVENT_AFE_SRAM_ALLOCATE,
+							(void *)target_alloc);
+	}
 
 	if (!target_alloc->sram_inited) {
 		AUDIO_USB_OFFLOAD_ERR("Failed.\n");
@@ -395,6 +404,9 @@ EXPORT_SYMBOL_GPL(mtk_audio_usb_offload_register_ops);
 
 int mtk_audio_usb_offload_afe_hook(struct mtk_base_afe *afe)
 {
+	if (mtk_audio_usb_offload_get_basic_sram() != NULL)
+		AUDIO_USB_OFFLOAD_INFO("found reserved sram\n");
+
 	if (afe && g_auo_sram.afe == NULL) {
 		g_auo_sram.afe = afe;
 		AUDIO_USB_OFFLOAD_INFO("hook afe base = %p.\n", afe);
