@@ -9690,7 +9690,7 @@
 		"clk_pll_7",
 		"clk_pll_8";
 
-		scp-core-online-mask = <0x3>;
+		scp-core-online-mask = <0x1>;
 		vlp-support;
 		vlpck-support;
 
