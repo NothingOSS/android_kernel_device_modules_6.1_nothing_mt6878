@@ -174,7 +174,7 @@ static u32 dvfsrc_get_current_level(struct mtk_dvfsrc_met *dvfsrc)
 
 static u32 dvfsrc_ddr_qos(struct mtk_dvfsrc_met *dvfsrc)
 {
-	return dvfsrc_met_read(dvfsrc, DVFSRC_QOS_DDR_REQUEST);
+	return dvfsrc_met_read(dvfsrc, DVFSRC_QOS_DDR_REQUEST) & 0xF;
 }
 
 static int dvfsrc_emi_mon_gear(struct mtk_dvfsrc_met *dvfs)
