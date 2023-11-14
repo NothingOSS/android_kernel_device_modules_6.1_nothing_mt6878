@@ -3318,6 +3318,92 @@
 		clock-names = "apb";
 	};
 
+	smi_pd_disp: smi-pd-disp {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common
+					&mminfra_smi_3x1_sub_comm>;
+		mediatek,suspend-check-port = <0x3 0x2>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_DISP>;
+		init-power-on;
+		suspend-check;
+	};
+
+	smi_pd_venc: smi-pd-venc {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common>;
+		mediatek,suspend-check-port = <0x10>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_VEN0>;
+		suspend-check;
+	};
+
+	smi_pd_vdec: smi-pd-vdec {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common>;
+		mediatek,suspend-check-port = <0x20>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_VDE0>;
+		suspend-check;
+	};
+
+	smi_pd_img_vcore: smi-pd-img-vcore {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&mminfra_smi_2x1_sub_comm>;
+		mediatek,suspend-check-port = <0x3>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_VCORE>;
+		suspend-check;
+	};
+
+	smi_pd_img_dip: smi-pd-img-dip {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_img1_2x1_sub_comm0
+					&smi_img1_2x1_sub_comm2 &smi_img1_2x1_sub_comm1>;
+		mediatek,suspend-check-port = <0x3 0x1 0x3>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_DIP1>;
+		suspend-check;
+	};
+
+	smi_pd_cam_vcore: smi-pd-cam-vcore {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common>;
+		mediatek,suspend-check-port = <0xc0>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_VCORE>;
+		suspend-check;
+	};
+
+	smi_pd_cam_main: smi-pd-cam-main {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common
+					&smi_cam_vcore_2x1_sub_comm0>;
+		mediatek,suspend-check-port = <0x40 0x2>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_MAIN>;
+		suspend-check;
+	};
+
+	smi_pd_cam_ccu: smi-pd-cam-ccu {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_cam_vcore_2x1_sub_comm0>;
+		mediatek,suspend-check-port = <0x1>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_CCU>;
+		suspend-check;
+	};
+
+	smi_pd_cam_suba: smi-pd-cam-suba {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_cam_4x1_sub_comm0
+					&smi_cam_4x1_sub_comm1>;
+		mediatek,suspend-check-port = <0x1 0x4>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_SUBA>;
+		suspend-check;
+	};
+
+	smi_pd_cam_subb: smi-pd-cam-subb {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_cam_4x1_sub_comm0
+					&smi_cam_4x1_sub_comm1>;
+		mediatek,suspend-check-port = <0x2 0x2>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_SUBB>;
+		suspend-check;
+	};
+
 	smi-dbg {
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb4 &smi_larb7
