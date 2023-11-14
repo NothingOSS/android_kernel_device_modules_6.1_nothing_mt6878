@@ -235,10 +235,10 @@ static void aputop_dump_rpc_data(void)
 
 static void aputop_dump_pcu_data(struct device *dev)
 {
-	aputop_dump_reg(apu_pcu, 0x0, 0x20);
-	aputop_dump_reg(apu_pcu, 0x80, 0x20);
 
 #if APUPW_DUMP_FROM_APMCU
+	aputop_dump_reg(apu_pcu, 0x0, 0x20);
+	aputop_dump_reg(apu_pcu, 0x80, 0x20);
 #else
 	apusys_pwr_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_DUMP,
