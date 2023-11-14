@@ -100,6 +100,9 @@ struct err_info_bag {
 #define ERR_CQHCI_DAT_CRC   (0x1 << 18)
 #define ERR_CQHCI_DAT_TMO   (0x1 << 19)
 
+#define EARLY_RW 10
+#define RA_FOR_PERF 128
+
 enum mmcdbg_cmd_type {
 	MMCDBG_CMD_LIST_DUMP	= 0,
 	MMCDBG_PWR_MODE_DUMP	= 1,
