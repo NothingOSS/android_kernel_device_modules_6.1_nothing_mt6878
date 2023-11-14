@@ -287,16 +287,10 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 		if (need_lock)
 			DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
 		atomic_set(&aal_data->primary_data->force_enable_irq, 1);
-		if (g_aal_bypass_mode == AAL_BYPASS_HW) {
-			if (atomic_read(&aal_data->is_clock_on) != 1)
-				AALFLOW_LOG("aal clock is off\n");
-			else if (aal_data->primary_data->isDualPQ &&
-				atomic_read(&comp_to_aal(aal_data->companion)->is_clock_on) != 1)
-				AALFLOW_LOG("aal1 clock is off\n");
-			else
-				disp_aal_set_interrupt(comp, 1, 0, NULL);
-		} else
+		if (!atomic_read(&aal_data->primary_data->force_relay)) {
+			atomic_set(&aal_data->primary_data->irq_en, 1);
 			atomic_set(&aal_data->primary_data->should_stop, 0);
+		}
 
 		/*
 		 * Backlight or Kernel API latency should be smallest
@@ -827,8 +821,6 @@ static void mtk_aal_config(struct mtk_ddp_comp *comp,
 	}
 
 	mtk_aal_init(comp, cfg, handle);
-	disp_aal_set_interrupt(comp, 1, 0, handle);
-	atomic_set(&aal_data->primary_data->should_stop, 0);
 
 	AALWC_LOG("AAL_CFG=0x%x  compid:%d\n",
 		readl(comp->regs + DISP_AAL_CFG), comp->id);
