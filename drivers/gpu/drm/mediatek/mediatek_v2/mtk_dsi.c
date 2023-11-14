@@ -260,6 +260,7 @@
 #define FLD_CLK_HS_POST REG_FLD_MSB_LSB(15, 8)
 #define FLD_CLK_HS_EXIT REG_FLD_MSB_LSB(23, 16)
 #define DSI_CPHY_CON0 0x120
+#define CPHY_EN BIT(0)
 
 #define DSI_SELF_PAT_CON0	0x178
 #define DSI_SELF_PAT_CON1	0x17c
@@ -3116,6 +3117,9 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 	mtk_mipi_tx_oe_config(dsi->phy, 0);
 	mtk_mipi_tx_dpn_config(dsi->phy, 0);
 	mtk_mipi_tx_sw_control_en(dsi->phy, 1);
+
+	if (dsi->ext && dsi->ext->params->is_cphy)
+		mtk_dsi_mask(dsi, DSI_CPHY_CON0, CPHY_EN, CPHY_EN);
 
 	mtk_dsi_mask(dsi, DSI_TXRX_CTRL, LANE_NUM, _lanes_to_val(dsi->lanes) << 2);
 	mtk_dsi_phy_reset(dsi);
