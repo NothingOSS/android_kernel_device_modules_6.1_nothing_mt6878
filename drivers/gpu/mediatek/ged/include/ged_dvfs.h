@@ -205,6 +205,7 @@ void ged_dvfs_set_sysram_last_commit_top_idx(int commit_idx);
 void ged_dvfs_set_sysram_last_commit_dual_idx(int top_idx, int stack_idx);
 void ged_dvfs_set_sysram_last_commit_stack_idx(int commit_idx);
 int ged_write_sysram_pwr_hint(int pwr_hint);
+int ged_dvfs_update_step_size(int low_step, int med_step, int high_step);
 
 extern void (*ged_kpi_set_gpu_dvfs_hint_fp)(int t_gpu_target,
 	int boost_accum_gpu);

@@ -206,6 +206,9 @@ static int g_async_virtual_table_support;
 unsigned int get_min_oppidx;
 static int g_fallback_tuning = 50;
 static int g_lb_last_opp;
+static int g_step_size_by_platform[3];
+static int g_ultra_step_size_by_platform[3];
+static int g_step_size_freq_th[3] = {300000, 600000, 900000};
 
 void ged_dvfs_last_and_target_cb(int t_gpu_target, int boost_accum_gpu)
 {
@@ -288,28 +291,19 @@ static void ged_dvfs_early_force_fallback(struct GpuUtilization_Ex *Util_Ex)
 
 }
 
-static unsigned int ged_dvfs_ultra_high_step_size_query(void)
-{
-	if (g_max_core_num == SHADER_CORE &&
-		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
-		early_force_fallback_enable)
-		return ULTRA_HIGH_STEP_SIZE ;
-	else
-		return (dvfs_step_mode & 0xff);
-}
-
-static unsigned int ged_dvfs_ultra_low_step_size_query(void)
-{
-	if (g_max_core_num == SHADER_CORE &&
-		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
-		early_force_fallback_enable)
-		return ULTRA_LOW_STEP_SIZE ;
-	else
-		return (dvfs_step_mode & 0xff00) >> 8;
-}
-
 static unsigned int ged_dvfs_high_step_size_query(void)
 {
+	int gpu_freq = ged_get_cur_freq();
+
+	if (g_step_size_by_platform[0]) {
+		if (gpu_freq < g_step_size_freq_th[1])
+			return g_step_size_by_platform[0];
+		else if (gpu_freq < g_step_size_freq_th[2])
+			return g_step_size_by_platform[1];
+		else
+			return g_step_size_by_platform[2];
+	}
+
 	if (g_max_core_num == SHADER_CORE &&
 		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
 		early_force_fallback_enable)
@@ -320,12 +314,57 @@ static unsigned int ged_dvfs_high_step_size_query(void)
 
 static unsigned int ged_dvfs_low_step_size_query(void)
 {
+	int gpu_freq = ged_get_cur_freq();
+
+	if (g_step_size_by_platform[0]) {
+		if (gpu_freq < g_step_size_freq_th[1])
+			return g_step_size_by_platform[0];
+		else if (gpu_freq < g_step_size_freq_th[2])
+			return g_step_size_by_platform[1];
+		else
+			return g_step_size_by_platform[2];
+	}
+
 	if (g_max_core_num == SHADER_CORE &&
 		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
 		early_force_fallback_enable)
 		return ULTRA_LOW_STEP_SIZE ;
 	else
 		return 1;
+}
+
+static unsigned int ged_dvfs_ultra_high_step_size_query(void)
+{
+	int gpu_freq = ged_get_cur_freq();
+
+	if (g_ultra_step_size_by_platform[0]) {
+		if (gpu_freq < g_step_size_freq_th[1])
+			return g_ultra_step_size_by_platform[0];
+		else if (gpu_freq < g_step_size_freq_th[2])
+			return g_ultra_step_size_by_platform[1];
+		else
+			return g_ultra_step_size_by_platform[2];
+	}
+
+	if (g_max_core_num == SHADER_CORE &&
+		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
+		early_force_fallback_enable)
+		return ULTRA_HIGH_STEP_SIZE ;
+	else
+		return (dvfs_step_mode & 0xff);
+}
+
+static unsigned int ged_dvfs_ultra_low_step_size_query(void)
+{
+	if (g_step_size_by_platform[0])
+		return ged_dvfs_low_step_size_query();
+
+	if (g_max_core_num == SHADER_CORE &&
+		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
+		early_force_fallback_enable)
+		return ULTRA_LOW_STEP_SIZE ;
+	else
+		return (dvfs_step_mode & 0xff00) >> 8;
 }
 
 static void _init_loading_ud_table(void)
@@ -810,6 +849,31 @@ int ged_write_sysram_pwr_hint(int pwr_hint)
 	return pwr_hint;
 }
 EXPORT_SYMBOL(ged_write_sysram_pwr_hint);
+
+static int ged_dvfs_decide_ultra_step(int step)
+{
+	if (step > 0)
+		return step * 2 + 1;
+	else
+		return 3;
+}
+
+int ged_dvfs_update_step_size(int low_step, int med_step, int high_step)
+{
+	// check step size is not zero
+	if (low_step && med_step && high_step) {
+		g_step_size_by_platform[0] = low_step;
+		g_step_size_by_platform[1] = med_step;
+		g_step_size_by_platform[2] = high_step;
+
+		g_ultra_step_size_by_platform[0] = ged_dvfs_decide_ultra_step(low_step);
+		g_ultra_step_size_by_platform[1] = ged_dvfs_decide_ultra_step(med_step);
+		g_ultra_step_size_by_platform[2] = ged_dvfs_decide_ultra_step(high_step);
+		return GED_OK;
+	}
+	return -1;
+}
+EXPORT_SYMBOL(ged_dvfs_update_step_size);
 
 bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	unsigned long ui32NewFreq, GED_DVFS_COMMIT_TYPE eCommitType)
