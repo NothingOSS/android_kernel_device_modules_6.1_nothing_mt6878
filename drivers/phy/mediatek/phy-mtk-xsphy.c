@@ -1081,7 +1081,7 @@ static int proc_intr_ofs_show(struct seq_file *s, void *unused)
 
 	cover_val_to_str(tmp, 6, str);
 
-	seq_printf(s, "%s = %d\n", INTR_OFS_STR, tmp - inst->efuse_intr);
+	seq_printf(s, "%s = %d\n", INTR_OFS_STR, inst->intr_ofs);
 	seq_printf(s, "%s = %s\n", "intr_val", str);
 
 	return 0;
@@ -1108,7 +1108,7 @@ static ssize_t proc_intr_ofs_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
-	inst->efuse_intr = inst->efuse_intr + val;
+	inst->intr_ofs = val;
 
 	mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL,
 		inst->efuse_intr + val);
@@ -1773,10 +1773,11 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 			     struct xsphy_instance *inst)
 {
 	void __iomem *pbase = inst->port_base;
+	int intr_ofs = inst->intr_ofs > 0 ? inst->intr_ofs : 0;
 
 	if (inst->efuse_intr != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL,
-				     inst->efuse_intr + inst->intr_ofs);
+				     inst->efuse_intr + intr_ofs);
 
 	if (inst->efuse_term_cal != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVEA, P2ARA_RG_TERM_CAL,
