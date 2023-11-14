@@ -533,7 +533,9 @@ static void start_write_bw(void)
 
 	// for hfrp timeout debug
 	readl_relaxed(gmmqos->mminfra_base + MMINFRA_DUMMY);
-
+	//enable vcp
+	if (mmqos_state & VMMRC_VCP_ENABLE)
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
 	orig = read_register(APMCU_MASK_OFFSET);
 	write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
 }
@@ -544,6 +546,9 @@ static void stop_write_bw(void)
 
 	orig = read_register(APMCU_MASK_OFFSET);
 	write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
+	//disable vcp
+	if (mmqos_state & VMMRC_VCP_ENABLE)
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
 }
 
 void clear_reg_value(bool is_on)
@@ -904,7 +909,7 @@ static u32 is_path_write = path_no_type;
 
 static inline bool is_max_bw_to_max_ostdl_policy(void)
 {
-	return !(mmqos_state & DPC_ENABLE) || (g_hrt->cam_occu_bw == 0);
+	return (!(mmqos_state & DPC_ENABLE) && !(mmqos_state & CAM_NO_MAX_OSTDL)) || (g_hrt->cam_occu_bw == 0);
 }
 
 static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
