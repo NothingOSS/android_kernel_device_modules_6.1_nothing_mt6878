@@ -4063,10 +4063,20 @@
 				interrupt-names = "rcs_irq", "pmif_irq","spmi_nack_irq";
 				interrupt-controller;
 				#interrupt-cells = <1>;
-				irq-event-en = <0x0 0x0 0x0 0x0 0x0>;
+				irq-event-en = <0xc0000000 0x0 0x0 0x0 0x0>;
 				spmi-dev-mask = <0x0>;
 				#address-cells = <2>;
 				#size-cells = <0>;
+		};
+
+		spmi_pmif_mpu: spmi-pmif-mpu@1cc04900 {
+			compatible = "mediatek,mt6878-spmi-pmif-mpu";
+			reg = <0 0x1cc04900 0 0x000500>;
+			reg-names = "pmif_mpu";
+			mediatek,pmic-all-rgn-en = <0x221c020>;
+			mediatek,pmic-all-rgn-en-2 = <0x4da>;
+			mediatek,kernel-enable-time = <0x3c>;
+			disable = <0>;
 		};
 
 		gce: gce@1e980000 {
