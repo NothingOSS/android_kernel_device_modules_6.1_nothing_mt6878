@@ -3968,7 +3968,8 @@ static void RPO_rule(struct mtk_drm_private *priv, struct drm_crtc *crtc,
 			continue;
 
 		if (mtk_has_layer_cap(c, MTK_MDP_RSZ_LAYER) &&
-			priv->data->mmsys_id != MMSYS_MT6897)
+			priv->data->mmsys_id != MMSYS_MT6897 &&
+			priv->data->mmsys_id != MMSYS_MT6878)
 			continue;
 
 		if (scale_cnt >= l_rule_info->rpo_scale_num)

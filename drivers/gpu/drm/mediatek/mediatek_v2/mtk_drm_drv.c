@@ -3404,7 +3404,7 @@ static const struct mtk_addon_module_data mt6878_addon_wdma1_data[] = {
 };
 
 static const struct mtk_addon_module_data mt6878_addon_rsz_data[] = {
-	{DISP_RSZ_v7, ADDON_BETWEEN, DDP_COMPONENT_OVL0_2L},
+	{DISP_RSZ_v7, ADDON_EMBED, DDP_COMPONENT_OVL0_2L},
 };
 
 static const struct mtk_addon_module_data addon_mml_sram_only_data[] = {

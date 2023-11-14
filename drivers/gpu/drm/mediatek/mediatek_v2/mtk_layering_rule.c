@@ -666,6 +666,8 @@ void mtk_layering_rule_init(struct drm_device *dev)
 		}
 		l_rule_info.rpo_scale_num =
 		    mtk_ddp_comp_io_cmd(comp, NULL, OVL_GET_SELFLOOP_SUPPORT, NULL) ? 1 : 2;
+		if (private->data->mmsys_id == MMSYS_MT6878)
+			l_rule_info.rpo_scale_num = 1;
 
 		for (i = 0; i < path_data->path_len; i++) {
 			if (mtk_ddp_comp_get_type(path_data->path[i]) == MTK_DISP_RSZ) {

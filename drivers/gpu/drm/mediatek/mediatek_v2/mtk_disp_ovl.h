@@ -45,6 +45,7 @@ struct mtk_disp_ovl_data {
 	unsigned int (*frame_done_event)(struct mtk_ddp_comp *comp);
 	unsigned int (*ovlsys_mapping)(struct mtk_ddp_comp *comp);
 	unsigned int (*ovl_phy_mapping)(struct mtk_ddp_comp *comp);
+	bool pqout_ufodin_loop;
 };
 
 struct compress_info {
