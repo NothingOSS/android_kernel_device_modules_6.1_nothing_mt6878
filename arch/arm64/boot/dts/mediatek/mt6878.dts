@@ -5225,6 +5225,7 @@
 			ged-supply = <&ged>;
 			firmware-idle-hysteresis-time-ms = <5>;
 			exception-mask = <0x1>;
+			gpu-frame-base-optimize = <1>;
 		};
 
 		gpu_mali_opp: opp-table0 {
