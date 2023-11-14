@@ -95,6 +95,9 @@ int mml_crc_cmp_p1;
 module_param(mml_crc_cmp_p1, int, 0644);
 int mml_crc_err;
 module_param(mml_crc_err, int, 0644);
+int mml_crc_test;
+module_param(mml_crc_test, int, 0644);
+
 
 struct mml_dpc {
 	atomic_t task_cnt;
@@ -1358,6 +1361,13 @@ void mml_record_track(struct mml_dev *mml, struct mml_task *task)
 	mml_pipe0_dest_crc = task->dest_crc[0];
 	if (MML_PIPE_CNT > 1)
 		mml_pipe1_dest_crc = task->dest_crc[1];
+
+	if (unlikely(mml_crc_test)) {
+		mml_log("%s mml_crc_test %d job %u", __func__, mml_crc_test, task->job.jobid);
+		record->src_crc[0] = mml_crc_test;
+		record->dest_crc[0] = task->job.jobid;
+		mml_crc_test = 0;
+	}
 
 	mml->record_idx = (mml->record_idx + 1) & MML_RECORD_NUM_MASK;
 
