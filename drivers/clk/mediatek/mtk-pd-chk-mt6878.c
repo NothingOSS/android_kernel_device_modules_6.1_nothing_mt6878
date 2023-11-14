@@ -608,13 +608,6 @@ static u32 get_pd_pwr_status(int pd_id)
 }
 
 static int off_mtcmos_id[] = {
-	PD_NULL,
-};
-
-static int notice_mtcmos_id[] = {
-	MT6878_CHK_PD_MD1,
-	MT6878_CHK_PD_CONN,
-	MT6878_CHK_PD_AUDIO,
 	MT6878_CHK_PD_ISP_MAIN,
 	MT6878_CHK_PD_ISP_DIP1,
 	MT6878_CHK_PD_ISP_VCORE,
@@ -633,6 +626,13 @@ static int notice_mtcmos_id[] = {
 	MT6878_CHK_PD_SSRSYS,
 	MT6878_CHK_PD_SSUSB,
 	MT6878_CHK_PD_MFG0,
+	PD_NULL,
+};
+
+static int notice_mtcmos_id[] = {
+	MT6878_CHK_PD_MD1,
+	MT6878_CHK_PD_CONN,
+	MT6878_CHK_PD_AUDIO,
 	PD_NULL,
 };
 

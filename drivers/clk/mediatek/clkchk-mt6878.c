@@ -1453,18 +1453,18 @@ static struct devapc_vio_callbacks serror_handle = {
 #endif
 
 static const char * const off_pll_names[] = {
-	NULL
-};
-
-static const char * const notice_pll_names[] = {
-	"apll1",
-	"apll2",
 	"univpll",
 	"msdcpll",
 	"mmpll",
 	"ufspll",
 	"mfg-ao-mfgpll",
 	"mfgsc-ao-mfgscpll",
+	NULL
+};
+
+static const char * const notice_pll_names[] = {
+	"apll1",
+	"apll2",
 	NULL
 };
 
