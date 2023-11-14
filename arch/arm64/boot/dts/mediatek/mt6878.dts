@@ -5292,7 +5292,7 @@
 			pd-others = <&disp_dpc>;
 			pd-names = "mminfra_in_dpc";
 			operating-points-v2 = <&opp_table_disp>;
-			vdisp-dvfs-opp = /bits/ 8 <3>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos SLAVE_LARB(39) &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "disp_hrt_qos";
 			pre-define-bw = <0xffffffff>, <0>, <0>;
