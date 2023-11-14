@@ -607,7 +607,7 @@ static struct mtk_panel_params ext_params = {
 	.physical_height_um = 154584,
 	.dsc_param_load_mode = 1, //0: default flow; 1: key param only; 2: full control
 	.cmd_null_pkt_en = 1,
-	.cmd_null_pkt_len = 1400,
+	.cmd_null_pkt_len = 650,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.dsc_params = {
 		.enable = 1,
@@ -645,6 +645,9 @@ static struct mtk_panel_params ext_params = {
 		.rc_tgt_offset_lo = 3,
 		},
 	.data_rate = DATA_RATE1,
+	.dyn_fps = {
+		.data_rate = 560,
+	},
 	/*Msync 2.0*/
 	.msync2_enable = 1,
 	.msync_cmd_table = {
@@ -693,7 +696,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.physical_height_um = 154584,
 	.dsc_param_load_mode = 1, //0: default flow; 1: key param only; 2: full control
 	.cmd_null_pkt_en = 1,
-	.cmd_null_pkt_len = 650,
+	.cmd_null_pkt_len = 240,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.dsc_params = {
 		.enable = 1,
@@ -731,6 +734,9 @@ static struct mtk_panel_params ext_params_90hz = {
 		.rc_tgt_offset_lo = 3,
 		},
 	.data_rate = DATA_RATE1,
+	.dyn_fps = {
+		.data_rate = 780,
+	},
 	/*Msync 2.0*/
 	.msync2_enable = 1,
 	.msync_cmd_table = {
@@ -780,7 +786,7 @@ static struct mtk_panel_params ext_params_120hz = {
 	.physical_height_um = 154584,
 	.dsc_param_load_mode = 1, //0: default flow; 1: key param only; 2: full control
 	.cmd_null_pkt_en = 1,
-	.cmd_null_pkt_len = 235,
+	.cmd_null_pkt_len = 200,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.dsc_params = {
 		.enable = 1,
@@ -818,6 +824,9 @@ static struct mtk_panel_params ext_params_120hz = {
 		.rc_tgt_offset_lo = 3,
 		},
 	.data_rate = DATA_RATE1,
+	.dyn_fps = {
+		.data_rate = 1100,
+	},
 	/*Msync 2.0*/
 	.msync2_enable = 1,
 	.msync_cmd_table = {
