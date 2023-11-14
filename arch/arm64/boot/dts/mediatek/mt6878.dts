@@ -9749,7 +9749,7 @@
 		compatible = "mediatek,mtk-swpm";
 		pmu-boundary-num = <0>;
 		pmu-dsu-support = <1>;
-		pmu-dsu-type = <11>;
+		pmu-dsu-type = <10>;
 		pmu-ai-support = <0>;
 	};
 
@@ -10618,7 +10618,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7,dsu";
 
 			node-32 = "SSPM_SWPM_CPU__POWER",
-				"cpu_L,cpu_B,cpu_BB,dsu,mcusys";
+				"cpu_L,cpu_B,dsu,mcusys";
 
 			node-33 = "SSPM_SWPM_GPU__GPU_STATE_RATIO",
 				"active,idle,off";
