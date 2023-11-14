@@ -903,6 +903,7 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff, size_t count
 	int32_t ret = 0;
 	int32_t retries = 0;
 	int8_t spi_wr = 0;
+	uint16_t data_len = 0;
 	uint8_t *buf;
 
 	if ((count > NVT_TRANSFER_LEN + 3) || (count < 3)) {
@@ -943,11 +944,19 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff, size_t count
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
 	spi_wr = str[0] >> 7;
-	memcpy(buf, str+2, ((str[0] & 0x7F) << 8) | str[1]);
+	data_len = ((str[0] & 0x7F) << 8) | str[1];
+
+	if (data_len > count - 2) {
+		NVT_ERR("invalid data length exceeding buffer length!\n");
+		ret = -EFAULT;
+		goto out;
+	}
+
+	memcpy(buf, str+2, data_len);
 
 	if (spi_wr == NVTWRITE) {	//SPI write
 		while (retries < 20) {
-			ret = CTP_SPI_WRITE(ts->client, buf, ((str[0] & 0x7F) << 8) | str[1]);
+			ret = CTP_SPI_WRITE(ts->client, buf, data_len);
 			if (!ret)
 				break;
 			else
@@ -963,7 +972,7 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff, size_t count
 		}
 	} else if (spi_wr == NVTREAD) {	//SPI read
 		while (retries < 20) {
-			ret = CTP_SPI_READ(ts->client, buf, ((str[0] & 0x7F) << 8) | str[1]);
+			ret = CTP_SPI_READ(ts->client, buf, data_len);
 			if (!ret)
 				break;
 			else
@@ -972,7 +981,7 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff, size_t count
 			retries++;
 		}
 
-		memcpy(str+2, buf, ((str[0] & 0x7F) << 8) | str[1]);
+		memcpy(str+2, buf, data_len);
 		// copy buff to user if spi transfer
 		if (retries < 20) {
 			if (copy_to_user(buff, str, count)) {
