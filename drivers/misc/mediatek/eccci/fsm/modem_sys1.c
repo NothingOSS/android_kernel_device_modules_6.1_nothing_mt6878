@@ -731,10 +731,13 @@ static int md_cd_dump_info(struct ccci_modem *md,
 		struct ccci_smem_region *scp =
 			ccci_md_get_smem_by_user_id(SMEM_USER_CCISM_SCP);
 
-		CCCI_MEM_LOG_TAG(0, TAG,
-			"Dump CCISM share memory\n");
-		ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-			scp->base_ap_view_vir, scp->size);
+		if (scp != NULL) {
+			CCCI_MEM_LOG_TAG(0, TAG,
+				"Dump CCISM share memory\n");
+			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+				scp->base_ap_view_vir, scp->size);
+		} else
+			CCCI_ERROR_LOG(0, TAG, "Error: %s scp is NULL\n", __func__);
 	}
 	if (flag & DUMP_FLAG_SMEM_CCB_CTRL) {
 		struct ccci_smem_region *ccb_ctl =
