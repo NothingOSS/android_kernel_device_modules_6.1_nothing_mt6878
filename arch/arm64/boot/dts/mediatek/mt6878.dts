@@ -3541,6 +3541,21 @@
 		mediatek,ccu-rproc = <&ccu_rproc>;
 	};
 
+	gpio_keys: gpio-keys {
+		compatible = "gpio-keys";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&key_gpio_default>;
+		volumedown {
+			label = "Volume_Down";
+			linux,code = <114>;
+			linux,input-type = <1>;
+			gpios = <&pio 54 1>;
+			wakeup-source;
+			debounce-interval = <30>;
+		};
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
@@ -12265,6 +12280,18 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 	};
 };
+
+/* KEY GPIO standardization start */
+&pio{
+	key_gpio_default:key-default {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO54__FUNC_GPIO54>;
+			input-enable;
+			bias-pull-up;
+		};
+	};
+};
+/* KEY GPIO standardization end */
 
 /* AUDIO GPIO standardization start */
 &pio {
