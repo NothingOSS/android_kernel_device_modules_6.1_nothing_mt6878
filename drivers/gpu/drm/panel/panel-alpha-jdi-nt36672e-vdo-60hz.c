@@ -30,6 +30,7 @@
 #endif
 
 #include "../../../misc/mediatek/gate_ic/gate_i2c.h"
+#include "../mediatek/mediatek_v2/mtk_corner_pattern/panel-alpha-jdi-nt36672e-vdo-60hz.h"
 
 /* enable this to check panel self -bist pattern */
 /* #define PANEL_BIST_PATTERN */
@@ -887,6 +888,10 @@ static struct mtk_panel_params ext_params = {
 	.lane_swap[1][MIPITX_PHY_LANE_CK] = MIPITX_PHY_LANE_CK,
 	.lane_swap[1][MIPITX_PHY_LANE_RX] = MIPITX_PHY_LANE_0,
 	.data_rate = 1190,
+	.round_corner_en = 0,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_tp_size = sizeof(nt36672e_vdo_60hz_top_pattern),
+	.corner_pattern_lt_addr = (void *)nt36672e_vdo_60hz_top_pattern,
 };
 
 static int panel_ata_check(struct drm_panel *panel)

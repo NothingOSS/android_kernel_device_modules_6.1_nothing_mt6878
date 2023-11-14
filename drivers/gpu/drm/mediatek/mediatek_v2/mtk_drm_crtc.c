@@ -11613,17 +11613,17 @@ void mtk_crtc_load_round_corner_pattern(struct drm_crtc *crtc,
 	if (panel_ext && panel_ext->round_corner_en) {
 		__load_rc_memory_free(crtc);
 
-		mtk_crtc->round_corner_gem =
-			__load_rc_pattern(crtc, panel_ext->corner_pattern_tp_size,
-						panel_ext->corner_pattern_lt_addr);
-
-		mtk_crtc->round_corner_gem_l =
-			__load_rc_pattern(crtc, panel_ext->corner_pattern_tp_size_l,
-						panel_ext->corner_pattern_lt_addr_l);
-		mtk_crtc->round_corner_gem_r =
-			__load_rc_pattern(crtc, panel_ext->corner_pattern_tp_size_r,
-						panel_ext->corner_pattern_lt_addr_r);
-
+		if(mtk_crtc->is_dual_pipe) {
+			mtk_crtc->round_corner_gem_l =
+				__load_rc_pattern(crtc, panel_ext->corner_pattern_tp_size_l,
+							panel_ext->corner_pattern_lt_addr_l);
+			mtk_crtc->round_corner_gem_r =
+				__load_rc_pattern(crtc, panel_ext->corner_pattern_tp_size_r,
+							panel_ext->corner_pattern_lt_addr_r);
+		} else
+			mtk_crtc->round_corner_gem =
+				__load_rc_pattern(crtc, panel_ext->corner_pattern_tp_size,
+							panel_ext->corner_pattern_lt_addr);
 	}
 }
 

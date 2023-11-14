@@ -30,6 +30,7 @@
 #endif
 
 #include "../../../misc/mediatek/gate_ic/gate_i2c.h"
+#include "../mediatek/mediatek_v2/mtk_corner_pattern/panel-alpha-jdi-nt36672e-vdo-120hz.h"
 
 /* enable this to check panel self -bist pattern */
 /* #define PANEL_BIST_PATTERN */
@@ -1126,6 +1127,10 @@ static struct mtk_panel_params ext_params = {
 		.hfp = 76,
 		.vfp = 2590,
 	},
+	.round_corner_en = 0,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_tp_size = sizeof(nt36672e_vdo_120hz_top_pattern),
+	.corner_pattern_lt_addr = (void *)nt36672e_vdo_120hz_top_pattern,
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -1209,6 +1214,10 @@ static struct mtk_panel_params ext_params_90hz = {
 		.hfp = 76,
 		.vfp = 940,
 	},
+	.round_corner_en = 0,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_tp_size = sizeof(nt36672e_vdo_120hz_top_pattern),
+	.corner_pattern_lt_addr = (void *)nt36672e_vdo_120hz_top_pattern,
 };
 
 static struct mtk_panel_params ext_params_120hz = {
@@ -1292,6 +1301,10 @@ static struct mtk_panel_params ext_params_120hz = {
 		.hfp = 76,
 		.vfp = 116,
 	},
+	.round_corner_en = 0,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_tp_size = sizeof(nt36672e_vdo_120hz_top_pattern),
+	.corner_pattern_lt_addr = (void *)nt36672e_vdo_120hz_top_pattern,
 };
 
 static int panel_ata_check(struct drm_panel *panel)
@@ -1734,6 +1747,16 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 	else
 		ctx->gate_ic = value;
 
+	value = 0;
+	ret = of_property_read_u32(dev->of_node, "rc-enable", &value);
+	if (ret < 0)
+		value = 0;
+	else {
+		ext_params.round_corner_en = value;
+		ext_params_90hz.round_corner_en = value;
+		ext_params_120hz.round_corner_en = value;
+	}
+	pr_info("%s+ round_corner_en %d\n", __func__,ext_params.round_corner_en);
 
 	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
 	if (backlight) {
