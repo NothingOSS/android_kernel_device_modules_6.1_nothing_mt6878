@@ -1263,6 +1263,7 @@ static int usb_offload_prepare_msg_ext(struct usb_audio_stream_msg *msg,
 	void *vir_addr;
 	int ret, i;
 	bool expend_tr;
+	enum usb_offload_mem_id mem_type;
 
 	/* calculate urb */
 	urb_info = mtk_usb_offload_calculate_urb(uainfo, subs);
@@ -1278,9 +1279,14 @@ static int usb_offload_prepare_msg_ext(struct usb_audio_stream_msg *msg,
 
 	USB_OFFLOAD_INFO("total_size:%d direction:%d\n", total_size, uainfo->direction);
 
+	if (uodev->adv_lowpwr_dl_only && uainfo->direction == SNDRV_PCM_STREAM_CAPTURE)
+		mem_type = USB_OFFLOAD_MEM_DRAM_ID;
+	else
+		mem_type = lowpwr_mem_type();
+
 	/* requeset for memory (urbs + 2nd segment)*/
 	ret = mtk_offload_alloc_mem(buf, total_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
-				lowpwr_mem_type(), false);
+				mem_type, false);
 	if (ret != 0)
 		return ret;
 
@@ -2107,6 +2113,7 @@ static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
 	struct xhci_ring *ring;
 	int num_segs = 1;
 	int cycle_state = 1;
+	enum usb_offload_mem_id mem_type;
 
 	USB_OFFLOAD_MEM_DBG("\n");
 
@@ -2117,8 +2124,13 @@ static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
 
 	init_fake_rsv_sram();
 
+	if (uodev->adv_lowpwr_dl_only && endpoint_type == ISOC_IN_EP)
+		mem_type = USB_OFFLOAD_MEM_DRAM_ID;
+	else
+		mem_type = lowpwr_mem_type();
+
 	ring = xhci_mtk_alloc_ring(xhci, num_segs, cycle_state,
-			ring_type, max_packet, mem_flags, lowpwr_mem_type(), true);
+			ring_type, max_packet, mem_flags, mem_type, true);
 	if (!ring) {
 		USB_OFFLOAD_ERR("ring is NULL\n");
 		return ring;
@@ -2689,6 +2701,8 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->smc_ctrl = of_property_read_bool(pdev->dev.of_node, "smc-ctrl");
 	uodev->smc_suspend = uodev->smc_ctrl ? OFFLOAD_SMC_AUD_SUSPEND : -1;
 	uodev->smc_resume = uodev->smc_ctrl ? OFFLOAD_SMC_AUD_RESUME : -1;
+	uodev->adv_lowpwr_dl_only =
+		of_property_read_bool(pdev->dev.of_node, "adv-lowpower-dl-only");
 
 	uodev->is_streaming = false;
 	uodev->tx_streaming = false;

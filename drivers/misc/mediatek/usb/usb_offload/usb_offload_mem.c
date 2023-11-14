@@ -82,6 +82,12 @@ bool mtk_offload_is_advlowpwr(struct usb_offload_dev *udev)
 	if (!udev->adv_lowpwr)
 		return false;
 
+	/* For downlink only adv_lowpwr, RX data was placed in DRAM and
+	 * memory region might not be recored in memory downgrade_list.
+	 */
+	if (udev->adv_lowpwr_dl_only && udev->rx_streaming)
+		return false;
+
 	/* if list is empty, it means no structure falls to dram,
 	 * so it's in advanced mode, in an other hands, it's basic
 	 */
@@ -292,6 +298,9 @@ int mtk_offload_init_rsv_sram(int min_alloc_order)
 		ret = 0;
 		goto INIT_RSV_SRAM_DONE;
 	}
+	/* For the project that lack of sram */
+	if (uodev->adv_lowpwr_dl_only)
+		size = 12288;
 
 	/* we use allocated sram to pretend resered sram */
 	ret = soc_alloc_sram(&rsv_sram, size);

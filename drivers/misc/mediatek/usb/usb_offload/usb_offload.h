@@ -241,6 +241,7 @@ struct usb_offload_dev {
 	int smc_resume;
 	bool enable_adv_lowpwr;
 	bool adv_lowpwr;
+	bool adv_lowpwr_dl_only;
 	bool is_streaming;
 	bool tx_streaming;
 	bool rx_streaming;
