@@ -272,8 +272,8 @@ void cmdq_set_pkt_size(struct cmdq_client *cl, bool b)
 	if (!cmdq_dump_buf_size)
 		return;
 
-	if (!cl) {
-		cmdq_msg("%s cl is null", __func__);
+	if (!cl || !cl->chan) {
+		cmdq_msg("%s cl or chan is null", __func__);
 		return;
 	}
 
