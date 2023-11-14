@@ -10504,11 +10504,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"apubw_mon_edma0,apubw_mon_edma1,",
 				"apulat_mon_vpu0,apulat_mon_vpu1,apulat_mon_mdla0,",
 				"apulat_mon_mdla1,apulat_mon_mdla2,apulat_mon_mdla3,",
-				"apulat_mon_edma0,apulat_mon_edma1,",
-				"ddr_lv,",
-				"PMQOS_BW0,PMQOS_BW1,PMQOS_BW2,PMQOS_BW3,PMQOS_BW4,PMQOS_BW_TOTAL,",
-				"EMI_Occupy_TOTAL,",
-				"EMI_data_CPU,EMI_data_GPU,EMI_data_MM,EMI_data_MD,EMI_data_TOTAL";
+				"apulat_mon_edma0,apulat_mon_edma1";
 
 			node-3 = "SSPM_CM_MGR_NON_WFX",
 				"non_wfx_0,non_wfx_1,non_wfx_2,non_wfx_3,",
@@ -10709,11 +10705,9 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"active,idle,off";
 
 			node-60 = "__SSPM_GPU_APU_SSC_CNT__",
-				"N_APU_0_R,N_APU_0_W,N_GPU_0_R,N_GPU_0_W,",
-				"N_APU_1_R,N_APU_1_W,N_GPU_1_R,",
-				"N_GPU_1_W,S_APU_0_R,S_APU_0_W,S_GPU_0_R,",
-				"S_GPU_0_W,S_APU_1_R,S_APU_1_W,",
-				"S_GPU_1_R,S_GPU_1_W";
+				"APU_0_R,APU_0_W,GPU_0_R,GPU_0_W,",
+				"APU_1_R,APU_1_W,GPU_1_R,",
+				"GPU_1_W";
 			node-61 = "SSPM_SLBC_SLOT",
 				"enable,force,done,buffer_used,f_buffer,cached_used,force_size";
 			node-62 = "SSPM_SLBC_REF",
