@@ -1963,6 +1963,10 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	struct find_best_candidates_parameters fbc_params;
 	unsigned long cpu_utils[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = ULONG_MAX};
 	int recent_used_cpu, target;
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	int min_num_vvip_cpu = -1;
+	unsigned int num_vvip = 0, min_num_vvip_in_cpu = UINT_MAX;
+#endif
 
 	cpumask_clear(&allowed_cpu_mask);
 
@@ -2132,6 +2136,31 @@ fail:
 	}
 
 	rcu_read_lock();
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	/* iterrate from biggest cpu, find CPU with minimum num VVIP.
+	 * if all CPU have the same num of VVIP, min_num_vvip_cpu = biggest_cpu.
+	 */
+	if (task_is_vip(p, VVIP) && balance_vvip_overutilied && pd) {
+		for (; pd; pd = pd->next) {
+			cpumask_and(cpus, perf_domain_span(pd), &allowed_cpu_mask);
+			for_each_cpu(cpu, cpus) {
+				num_vvip = num_vvip_in_cpu(cpu);
+				if (min_num_vvip_in_cpu > num_vvip) {
+					min_num_vvip_cpu = cpu;
+					min_num_vvip_in_cpu = num_vvip;
+				}
+			}
+		}
+
+		if (min_num_vvip_cpu != -1) {
+			*new_cpu = min_num_vvip_cpu;
+			backup_reason = LB_BACKUP_VVIP;
+			goto backup_unlock;
+		}
+	}
+#endif
+
 	if (cpumask_test_cpu(this_cpu, p->cpus_ptr) && (this_cpu != prev_cpu))
 		target = mtk_wake_affine(p, this_cpu, prev_cpu, sync);
 	else

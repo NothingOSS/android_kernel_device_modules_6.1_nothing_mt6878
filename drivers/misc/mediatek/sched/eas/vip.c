@@ -69,6 +69,19 @@ struct task_struct *next_vip_runnable_in_cpu(struct rq *rq, int type)
 	return NULL;
 }
 
+bool balance_vvip_overutilied;
+void turn_on_vvip_balance_overutilized(void)
+{
+	balance_vvip_overutilied = true;
+}
+EXPORT_SYMBOL_GPL(turn_on_vvip_balance_overutilized);
+
+void turn_off_vvip_balance_overutilized(void)
+{
+	balance_vvip_overutilied = false;
+}
+EXPORT_SYMBOL_GPL(turn_off_vvip_balance_overutilized);
+
 int find_imbalanced_vvip_gear(void)
 {
 	int gear = -1;
@@ -784,6 +797,8 @@ void vip_init(void)
 {
 	struct task_struct *g, *p;
 	int cpu;
+
+	balance_vvip_overutilied = false;
 
 	/* init vip related value to group*/
 	init_vip_group();

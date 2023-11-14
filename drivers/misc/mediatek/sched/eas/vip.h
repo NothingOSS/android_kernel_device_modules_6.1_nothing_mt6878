@@ -59,6 +59,6 @@ extern void vip_init(void);
 
 extern inline bool vip_fair_task(struct task_struct *p);
 extern void _init_tg_mask(struct cgroup_subsys_state *css);
-
+extern bool balance_vvip_overutilied;
 
 #endif /* _VIP_H */
