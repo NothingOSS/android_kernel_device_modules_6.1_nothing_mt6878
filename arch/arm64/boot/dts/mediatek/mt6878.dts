@@ -8927,6 +8927,7 @@
 		usb_offload: usb-offload {
 			compatible = "mediatek,usb-offload";
 			xhci-host = <&usb_host>;
+			sram-version = <3>;
 			adv-lowpower;
 			adv-lowpower-dl-only;
 		};
