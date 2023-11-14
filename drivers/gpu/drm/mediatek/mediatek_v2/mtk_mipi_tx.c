@@ -925,8 +925,8 @@ int mtk_mipi_tx_cphy_lane_config_mt6878(struct phy *phy,
 
 	/*set lane swap*/
 	if (!mtk_panel->params->lane_swap_en) {
-		writel(0x00062101, mtk_crtc->side_config_regs + mipi_tx->disp_offset[1]);
-		writel(0x0, mtk_crtc->side_config_regs + mipi_tx->disp_offset[0]);
+		writel(0x00062101, mtk_crtc->config_regs + mipi_tx->disp_offset[1]);
+		writel(0x0, mtk_crtc->config_regs + mipi_tx->disp_offset[0]);
 		mtk_mipi_tx_update_bits(mipi_tx, MT6897_MIPITX_PHY_SEL0,
 			MT6897_FLD_MIPI_TX_CPHY_EN, 0x1);
 		mtk_mipi_tx_update_bits(mipi_tx, MT6897_MIPITX_PHY_SEL0,
