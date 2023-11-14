@@ -141,6 +141,7 @@ mgk_64_k61_device_modules = [
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-cphy-vdo.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz-hfp.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz.ko",
+    "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz-threshold.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-144hz-hfp.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-144hz.ko",
     "drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-60hz.ko",
