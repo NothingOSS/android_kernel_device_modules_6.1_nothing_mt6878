@@ -25794,7 +25794,7 @@ void mutex_dump_analysis_mt6878(struct mtk_disp_mutex *mutex)
 	void __iomem *module_base = ddp->regs;
 	resource_size_t regs_pa = ddp->regs_pa;
 	char *p = NULL;
-	int len = 0, cnt = 0;
+	int len = 0, cnt = 0, write_done_len = 0;
 	unsigned int val;
 
 	DDPDUMP("== DISP%d Mutex Analysis:0x%pa ==\n", cnt, &regs_pa);
@@ -25823,18 +25823,20 @@ void mutex_dump_analysis_mt6878(struct mtk_disp_mutex *mutex)
 		}
 
 		p += len;
+		write_done_len += len;
 
 		mod0 = readl_relaxed(module_base +
 			DISP_REG_MUTEX_MOD(ddp->data, i));
 		for (j = 0; j < 32; j++) {
 			if ((mod0 & (1 << j))) {
-				len = snprintf(p, sizeof(mutex_module), "%s,",
+				len = snprintf(p, (sizeof(mutex_module) - write_done_len), "%s,",
 					ddp_get_mutex_module0_name_mt6878(j));
 				if (len < 0) {
 					/* Handle sprintf() error */
 					DDPPR_ERR("sprintf error\n");
 				}
 				p += len;
+				write_done_len += len;
 			}
 		}
 		DDPDUMP("%s)\n", mutex_module);
