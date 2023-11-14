@@ -4605,6 +4605,8 @@
 				<0 0>;
 
 			vcc-supply = <&mt6363_vemc>;
+			vccq-supply = <&mt6363_vufs12>;
+			vccq2-supply = <&mt6363_vufs18>;
 
 			resets =	<&ufscfgpdn_rst 0>,
 					<&ufscfgpdn_rst 1>,
@@ -4617,6 +4619,7 @@
 			mediatek,ufs-mphy-debug;
 			mediatek,ufs-disable-mcq;
 			mediatek,ufs-rtff-mtcmos;
+			mediatek,ufs-bypass-vccqx-lpm;
 
 			bootmode = <&chosen>;
 		};
@@ -12340,14 +12343,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 };
 
 &mt6363_vsram_digrf {
-	regulator-always-on;
-};
-
-&mt6363_vufs18 {
-	regulator-always-on;
-};
-
-&mt6363_vufs12 {
 	regulator-always-on;
 };
 
