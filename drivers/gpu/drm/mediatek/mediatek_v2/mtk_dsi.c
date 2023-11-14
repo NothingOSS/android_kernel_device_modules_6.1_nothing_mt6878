@@ -5813,6 +5813,8 @@ static void mtk_dsi_vm_cmdq(struct mtk_dsi *dsi,
 	u32 reg_val;
 
 	config = (msg->tx_len > 2) ? VM_LONG_PACKET : 0;
+	if(dsi->driver_data->vm_rgb_time_interval)
+		config |= (1 << 2);
 
 	if (msg->tx_len > 2) {
 		build_vm_cmdq(dsi, msg, handle);
@@ -11198,6 +11200,7 @@ static const struct mtk_dsi_driver_data mt6878_dsi_driver_data = {
 	.need_bypass_shadow = true,
 	.need_wait_fifo = false,
 	.dsi_buffer = true,
+	.vm_rgb_time_interval = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
 	.urgent_lo_fifo_us = 14,
