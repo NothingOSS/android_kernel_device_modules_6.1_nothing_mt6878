@@ -16,6 +16,9 @@
 #include "pmic_lbat_service.h"
 #include "pmic_lvsys_notify.h"
 
+#define CREATE_TRACE_POINTS
+#include "mtk_low_battery_throttling_trace.h"
+
 #define LBCB_MAX_NUM 16
 #define TEMP_MAX_STAGE_NUM 6
 #define THD_VOLTS_LENGTH 20
@@ -193,6 +196,8 @@ void exec_throttle(unsigned int level)
 		pr_info("[%s] same throttle level\n", __func__);
 		return;
 	}
+
+	trace_low_battery_throttling_level(low_bat_thl_data->low_bat_thl_level);
 
 	low_bat_thl_data->low_bat_thl_level = level;
 	for (i = 0; i < ARRAY_SIZE(lbcb_tb); i++) {

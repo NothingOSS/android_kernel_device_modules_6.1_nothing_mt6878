@@ -11,6 +11,9 @@
 #include "mtk_bp_thl.h"
 #include "../../../gpu/mediatek/gpufreq/v2/include/gpufreq_v2.h"
 
+#define CREATE_TRACE_POINTS
+#include "mtk_low_battery_throttling_trace.h"
+
 #define GPU_LIMIT_FREQ 981000
 
 struct gpu_pt_priv {
@@ -51,6 +54,7 @@ static void gpu_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 	else
 		freq_limit = GPUPPM_RESET_IDX;
 
+	trace_low_battery_throttling_gpu_freq(freq_limit);
 	gpufreq_set_limit(TARGET_DEFAULT, LIMIT_LOW_BATT, freq_limit, GPUPPM_KEEP_IDX);
 }
 #endif

@@ -13,6 +13,10 @@
 #include "mtk_low_battery_throttling.h"
 #include "mtk_bp_thl.h"
 #include "mtk_cpu_power_throttling.h"
+
+#define CREATE_TRACE_POINTS
+#include "mtk_low_battery_throttling_trace.h"
+
 #define CPU_LIMIT_FREQ 900000
 #define CLUSTER_NUM 3
 struct cpu_pt_priv {
@@ -43,7 +47,9 @@ static LIST_HEAD(pt_policy_list);
 static void cpu_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 {
 	struct cpu_pt_policy *pt_policy;
+	int cpu;
 	s32 freq_limit;
+
 	if (level > cpu_pt_info[LBAT_POWER_THROTTLING].max_lv)
 		return;
 	list_for_each_entry(pt_policy, &pt_policy_list, cpu_pt_list) {
@@ -53,6 +59,8 @@ static void cpu_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 			else
 				freq_limit = FREQ_QOS_MAX_DEFAULT_VALUE;
 			freq_qos_update_request(&pt_policy->qos_req, freq_limit);
+			cpu = pt_policy->cpu;
+			trace_low_battery_throttling_cpu_freq(cpu, freq_limit);
 		}
 	}
 }
