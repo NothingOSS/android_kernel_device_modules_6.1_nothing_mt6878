@@ -2897,6 +2897,11 @@
 		clock-names = "apb";
 	};
 
+	smi-test {
+		compatible = "mediatek,smi-testcase";
+		mediatek,larbs = <&smi_larb2>;
+	};
+
 	smi_larb2: smi-larb2@1f002000 {
 		compatible = "mediatek,smi_larb2",
 			"mediatek,mt6878-smi-larb", "mediatek,smi-larb";
@@ -9480,6 +9485,11 @@
 		compatible = "mediatek,mml-test";
 		mediatek,mml = <&mmlsys_config>;
 	};
+
+	mml-ait {
+			compatible = "mediatek,mml-ait";
+			mediatek,mml = <&mmlsys_config>;
+		};
 
 	scp_dvfs: scp-dvfs {
 		compatible = "mediatek,scp-dvfs";
