@@ -10328,7 +10328,7 @@
 		secure-dump-size = <0xc28000>;
 		scp-pm-notify = "enable";
 		scp-thermal-wq = "disable";
-		scp-low-pwr-dbg = "disable";
+		scp-low-pwr-dbg = "enable";
 		scp-cfgreg-ap-en = "enable";
 		scp-ipc-wa = "disable";
 		scp-mem-key = "mediatek,reserve-memory-scp_share";
@@ -10350,6 +10350,7 @@
 				  <15 0x10000 0x0>, /* aod */
 				  <17 0x8000 0x0>, /* scp chre from */
 				  <18 0x8000 0x0>, /* scp chre to */
+				  <19 0x200 0x0>,  /* low power debug */
 				  <20 0x5c0000 0x0>, /* audio common, 5.75MB */
 				  <21 0x80000 0x0>; /* usb audio offload, 512 KB */
 
