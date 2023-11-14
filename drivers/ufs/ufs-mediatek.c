@@ -238,45 +238,6 @@ static void ufs_mtk_crypto_enable(struct ufs_hba *hba)
 	}
 }
 
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING) || \
-	IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
-static void ufs_mtk_pt_callback(struct ufs_hba *hba, bool pt_on)
-{
-	bool atomic_context = in_atomic() || irqs_disabled();
-
-	if (!atomic_context) {
-		if (pt_on)
-			ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_G1);
-		else
-			ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
-	}
-}
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-static void ufs_mtk_low_battery_callback(enum LOW_BATTERY_LEVEL_TAG level, void *data)
-{
-	struct ufs_hba *hba = (struct ufs_hba *) data;
-
-	if (level >= LOW_BATTERY_LEVEL_2)
-		ufs_mtk_pt_callback(hba, true);
-	else
-		ufs_mtk_pt_callback(hba, false);
-}
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
-static void ufs_mtk_battery_oc_callback(enum BATTERY_OC_LEVEL_TAG level, void *data)
-{
-	struct ufs_hba *hba = (struct ufs_hba *) data;
-
-	if (level >= BATTERY_OC_LEVEL_2)
-		ufs_mtk_pt_callback(hba, true);
-	else
-		ufs_mtk_pt_callback(hba, false);
-}
-#endif
-
 static void ufs_mtk_host_reset(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
@@ -1018,18 +979,7 @@ static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
 		/* The last LUs */
 		dev_info(hba->dev, "%s: LUNs ready", __func__);
 		complete(&host->luns_added);
-
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-		register_low_battery_notify(&ufs_mtk_low_battery_callback,
-					    LOW_BATTERY_PRIO_UFS, (void *) hba);
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
-		register_battery_oc_notify(&ufs_mtk_battery_oc_callback,
-					   BATTERY_OC_PRIO_UFS, (void *) hba);
-#endif
 	}
-
 }
 
 void ufs_mtk_trace_vh_ufs_prepare_command(void *data, struct ufs_hba *hba,
