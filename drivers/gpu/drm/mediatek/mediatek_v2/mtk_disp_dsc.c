@@ -1956,7 +1956,7 @@ static const struct mtk_disp_dsc_data mt6878_dsc_driver_data = {
 	.need_obuf_sw = true,
 	.dsi_buffer = true,
 	.shadow_ctrl_reg = 0x0228,
-	.reset_after_eof = false,
+	.reset_after_eof = true,
 };
 
 static const struct of_device_id mtk_disp_dsc_driver_dt_match[] = {

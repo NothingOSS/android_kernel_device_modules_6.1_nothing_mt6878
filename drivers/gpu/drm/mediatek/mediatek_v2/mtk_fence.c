@@ -832,6 +832,7 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 
 	if (layer_info == NULL) {
 		DDPPR_ERR("%s:%d layer_info is null\n", __func__, __LINE__);
+		mtk_drm_gem_ion_free_handle(dmabuf, __func__, __LINE__);
 		return NULL;
 	}
 
@@ -839,6 +840,7 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 		DDPPR_ERR(
 			"FATAL ERROR, sync info not inited, session_id=0x%08x|layer_id=%d\n",
 			session_id, timeline_id);
+		mtk_drm_gem_ion_free_handle(dmabuf, __func__, __LINE__);
 		return NULL;
 	}
 
