@@ -243,10 +243,17 @@ void md1_sleep_timeout_proc(struct ccci_modem *md)
 	struct ccci_smem_region *mdss_dbg =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_MDSS_DBG);
 	struct ccci_per_md *per_md_data = ccci_get_per_md_data();
-	int md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
+	int md_dbg_dump_flag = 0;
 
 	int en_power_check = check_power_off_en(md);
 
+	if (per_md_data != NULL)
+		md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
+	else
+		CCCI_ERROR_LOG(0, FSM, "Error: %s per_md_data is NULL\n", __func__);
+	if (mdss_dbg == NULL || mdccci_dbg == NULL)
+		CCCI_ERROR_LOG(0, FSM, "Error: %s mdss_dbg is %p, mdccci_dbg is %p\n",
+			__func__, mdss_dbg, mdccci_dbg);
 	if (en_power_check
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 		&& atomic_read(&md_dapc_ke_occurred)
@@ -258,7 +265,7 @@ void md1_sleep_timeout_proc(struct ccci_modem *md)
 		atomic_set(&en_flight_timeout, 1);
 #endif
 		CCCI_MEM_LOG_TAG(0, TAG, "Dump MD EX log\n");
-		if (md_dbg_dump_flag & (1 << MD_DBG_DUMP_SMEM)) {
+		if ((md_dbg_dump_flag & (1 << MD_DBG_DUMP_SMEM)) && (mdss_dbg != NULL) && (mdccci_dbg != NULL)) {
 			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
 				mdccci_dbg->base_ap_view_vir,
 				mdccci_dbg->size);
@@ -312,8 +319,15 @@ static int md_cd_pre_stop(struct ccci_modem *md, unsigned int stop_type)
 	struct ccci_smem_region *mdss_dbg =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_MDSS_DBG);
 	struct ccci_per_md *per_md_data = ccci_get_per_md_data();
-	int md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
+	int md_dbg_dump_flag = 0;
 
+	if (per_md_data != NULL)
+		md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
+	else
+		CCCI_ERROR_LOG(0, FSM, "Error: %s per_md_data is NULL\n", __func__);
+	if (mdss_dbg == NULL || mdccci_dbg == NULL)
+		CCCI_ERROR_LOG(0, FSM, "Error: %s mdss_dbg is %p, mdccci_dbg is %p\n",
+			__func__, mdss_dbg, mdccci_dbg);
 	/* 1. mutex check */
 	if (atomic_add_return(1, &md->reset_on_going) > 1) {
 		CCCI_NORMAL_LOG(0, TAG,
@@ -337,7 +351,8 @@ static int md_cd_pre_stop(struct ccci_modem *md, unsigned int stop_type)
 		if (pending) {
 			CCCI_NORMAL_LOG(0, TAG, "WDT IRQ occur.");
 			CCCI_MEM_LOG_TAG(0, TAG, "Dump MD EX log\n");
-			if (md_dbg_dump_flag & (1 << MD_DBG_DUMP_SMEM)) {
+			if ((md_dbg_dump_flag & (1 << MD_DBG_DUMP_SMEM)) && (mdss_dbg != NULL) &&
+				(mdccci_dbg != NULL)) {
 				ccci_util_mem_dump(
 					CCCI_DUMP_MEM_DUMP,
 					mdccci_dbg->base_ap_view_vir,
@@ -472,6 +487,10 @@ static void md_cd_smem_sub_region_init_old(struct ccci_modem *md)
 	struct ccci_smem_region *dbm =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_DBM);
 
+	if (dbm == NULL) {
+		CCCI_ERROR_LOG(0, TAG, "Error: %s dbm is NULL\n", __func__);
+		return;
+	}
 	/* Region 0, dbm */
 	addr = (int __iomem *)dbm->base_ap_view_vir;
 	addr[0] = 0x44444444; /* Guard pattern 1 header */
@@ -501,6 +520,10 @@ static void md_cd_smem_sub_region_init_new(struct ccci_modem *md)
 	struct ccci_smem_region *dbm =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_DBM);
 
+	if (dbm == NULL) {
+		CCCI_ERROR_LOG(0, TAG, "Error: %s dbm is NULL\n", __func__);
+		return;
+	}
 	/* Region 0, dbm */
 	addr = (int __iomem *)dbm->base_ap_view_vir;
 	init_md_section_level(KR_MD1, addr);
@@ -517,7 +540,8 @@ static void config_ap_runtime_data_v2(struct ccci_modem *md,
 	/*AP query MD feature set */
 
 	ap_feature->share_memory_support = INTERNAL_MODEM;
-	ap_feature->ap_runtime_data_addr = runtime_data->base_md_view_phy;
+	if (runtime_data != NULL)
+		ap_feature->ap_runtime_data_addr = runtime_data->base_md_view_phy;
 	ap_feature->ap_runtime_data_size = CCCI_SMEM_SIZE_RUNTIME_AP;
 	ap_feature->md_runtime_data_addr =
 		ap_feature->ap_runtime_data_addr + CCCI_SMEM_SIZE_RUNTIME_AP;
@@ -551,7 +575,8 @@ static void config_ap_runtime_data_v2_1(struct ccci_modem *md,
 
 	/* to let md know that this is new AP. */
 	ap_feature->share_memory_support = MULTI_MD_MPU_SUPPORT;
-	ap_feature->ap_runtime_data_addr = runtime_data->base_md_view_phy;
+	if (runtime_data != NULL)
+		ap_feature->ap_runtime_data_addr = runtime_data->base_md_view_phy;
 	ap_feature->ap_runtime_data_size = CCCI_SMEM_SIZE_RUNTIME_AP;
 	ap_feature->md_runtime_data_addr =
 		ap_feature->ap_runtime_data_addr + CCCI_SMEM_SIZE_RUNTIME_AP;
@@ -695,10 +720,12 @@ static int md_cd_dump_info(struct ccci_modem *md,
 
 		CCCI_MEM_LOG_TAG(0, TAG,
 			"Dump exception share memory\n");
-		ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-			mdccci_dbg->base_ap_view_vir, mdccci_dbg->size);
-		ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-			mdss_dbg->base_ap_view_vir, mdss_dbg->size);
+		if (mdccci_dbg != NULL)
+			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+				mdccci_dbg->base_ap_view_vir, mdccci_dbg->size);
+		if (mdss_dbg != NULL)
+			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+				mdss_dbg->base_ap_view_vir, mdss_dbg->size);
 	}
 	if (flag & DUMP_FLAG_SMEM_CCISM) {
 		struct ccci_smem_region *scp =
@@ -904,6 +931,11 @@ int ccci_md_force_assert(enum MD_FORCE_ASSERT_TYPE type,
 	struct ccci_smem_region *force_assert =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_FORCE_ASSERT);
 
+	if (force_assert == NULL) {
+		CCCI_ERROR_LOG(0, FSM, "Error: %s force_assert is NULL\n",
+			__func__);
+		return ret;
+	}
 	if (md->is_force_asserted != 0)
 		return ret;
 	mdee_set_ex_time_str(type, param);
@@ -996,9 +1028,11 @@ static ssize_t md_cd_dump_store(struct ccci_modem *md,
 			struct ccci_smem_region *low_pwr =
 				ccci_md_get_smem_by_user_id(SMEM_USER_RAW_DBM);
 
-			CCCI_MEM_LOG_TAG(0, TAG, "Dump MD SLP registers\n");
-			ccci_util_cmpt_mem_dump(CCCI_DUMP_MEM_DUMP,
-				low_pwr->base_ap_view_vir, low_pwr->size);
+			if (low_pwr != NULL) {
+				CCCI_MEM_LOG_TAG(0, TAG, "Dump MD SLP registers\n");
+				ccci_util_cmpt_mem_dump(CCCI_DUMP_MEM_DUMP,
+					low_pwr->base_ap_view_vir, low_pwr->size);
+			}
 		}
 		//md->ops->dump_info(md, DUMP_FLAG_SMEM_MDSLP, NULL, 0);
 		if (strncmp(buf, "dpmaif", count - 1) == 0)
