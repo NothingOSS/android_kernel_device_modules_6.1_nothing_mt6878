@@ -313,6 +313,7 @@ struct xsphy_instance {
 	u32 index;
 	u32 type;
 	/* only for HQA test */
+	bool property_ready;
 	int efuse_intr;
 	int efuse_term_cal;
 	int efuse_tx_imp;
@@ -353,6 +354,7 @@ struct mtk_xsphy {
 	int src_ref_clk; /* MHZ, reference clock for slew rate calibrate */
 	int src_coef;    /* coefficient for slew rate calibrate */
 	bool tx_chirpK_disable; /* Disable tx chirpK at normol status */
+	bool bc11_switch_disable; /* Force usb control dpdm */
 	struct proc_dir_entry *root;
 	struct workqueue_struct *wq;
 	int (*suspend)(struct device *dev);
@@ -568,6 +570,8 @@ static ssize_t proc_tx_lctxcm1_write(struct file *file,
 	if (kstrtouint(buf, 10, &val))
 		return -EINVAL;
 
+	inst->tx_lctxcm1 = val;
+
 	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1);
 
 	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXCM1, val);
@@ -626,6 +630,9 @@ static ssize_t proc_tx_lctxc0_write(struct file *file,
 	if (kstrtouint(buf, 10, &val))
 		return -EINVAL;
 
+	inst->tx_lctxc0 = val;
+
+
 	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXC0);
 
 	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXC0, val);
@@ -682,6 +689,8 @@ static ssize_t proc_tx_lctxcp1_write(struct file *file,
 
 	if (kstrtouint(buf, 10, &val))
 		return -EINVAL;
+
+	inst->tx_lctxcp1 = val;
 
 	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXCP1);
 
@@ -829,6 +838,9 @@ static ssize_t proc_term_sel_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
+	inst->eye_term = val;
+	inst->eye_term_host = val;
+
 	mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_TERM_SEL, val);
 
 	return count;
@@ -879,6 +891,9 @@ static ssize_t proc_vrt_sel_write(struct file *file,
 
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
+
+	inst->eye_vrt = val;
+	inst->eye_vrt_host = val;
 
 	mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_VRT_SEL, val);
 
@@ -931,6 +946,9 @@ static ssize_t proc_phy_rev6_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
+	inst->rev6 = val;
+	inst->rev6_host = val;
+
 	mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6, val);
 
 	return count;
@@ -982,6 +1000,8 @@ static ssize_t proc_discth_write(struct file *file,
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
+	inst->discth = val;
+
 	mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_DISCTH, val);
 
 	return count;
@@ -1032,6 +1052,8 @@ static ssize_t proc_rx_sqth_write(struct file *file,
 
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
+
+	inst->rx_sqth = val;
 
 	mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_SQTH, val);
 
@@ -1085,6 +1107,8 @@ static ssize_t proc_intr_ofs_write(struct file *file,
 
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
+
+	inst->efuse_intr = inst->efuse_intr + val;
 
 	mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL,
 		inst->efuse_intr + val);
@@ -1531,10 +1555,15 @@ static void u2_phy_instance_set_mode(struct mtk_xsphy *xsphy,
 	} else {
 		switch (submode) {
 		case PHY_MODE_BC11_SW_SET:
+			if (xsphy->bc11_switch_disable)
+				break;
+
 			mtk_phy_set_bits(inst->port_base + XSP_USBPHYACR6,
 					 P2A6_RG_BC11_SW_EN);
 			break;
 		case PHY_MODE_BC11_SW_CLR:
+			if (xsphy->bc11_switch_disable)
+				break;
 			/* dont' need to switch back to usb when phy off */
 			if (inst->phy->power_count > 0)
 				mtk_phy_clear_bits(inst->port_base + XSP_USBPHYACR6,
@@ -1650,38 +1679,51 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 
 	switch (inst->type) {
 	case PHY_TYPE_USB2:
-		device_property_read_u32(dev, "mediatek,efuse-intr",
-					 &inst->efuse_intr);
-		device_property_read_u32(dev, "mediatek,efuse-term",
-					 &inst->efuse_term_cal);
-		device_property_read_u32(dev, "mediatek,eye-src",
-					 &inst->eye_src);
-		device_property_read_u32(dev, "mediatek,eye-vrt",
-					 &inst->eye_vrt);
-		device_property_read_u32(dev, "mediatek,eye-term",
-					 &inst->eye_term);
-		device_property_read_u32(dev, "mediatek,discth",
-					 &inst->discth);
-		device_property_read_u32(dev, "mediatek,rx-sqth",
-					 &inst->rx_sqth);
-		device_property_read_u32(dev, "mediatek,rev6",
-				 &inst->rev6);
-		device_property_read_u32(dev, "mediatek,intr-ofs",
-					 &inst->intr_ofs);
+		if (device_property_read_u32(dev, "mediatek,efuse-intr",
+					 &inst->efuse_intr) || inst->efuse_intr < 0)
+			inst->efuse_intr = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,efuse-term",
+					 &inst->efuse_term_cal) || inst->efuse_term_cal < 0)
+			inst->efuse_term_cal = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,eye-src",
+					 &inst->eye_src) || inst->eye_src < 0)
+			inst->eye_src =	-EINVAL;
+		if (device_property_read_u32(dev, "mediatek,eye-vrt",
+					 &inst->eye_vrt) || inst->eye_vrt < 0)
+			inst->eye_vrt = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,eye-term",
+					 &inst->eye_term) || inst->eye_term < 0)
+			inst->eye_term = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,discth",
+					 &inst->discth) || inst->discth < 0)
+			inst->discth = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,rx-sqth",
+					 &inst->rx_sqth) || inst->rx_sqth < 0)
+			inst->rx_sqth = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,rev6",
+					 &inst->rev6) || inst->rev6 < 0)
+			inst->rev6 = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,intr-ofs",
+					 &inst->intr_ofs) || inst->intr_ofs < 0)
+			inst->intr_ofs = -EINVAL;
 		if (device_property_read_u32(dev, "mediatek,pll-fbksel",
-				 &inst->pll_fbksel))
-			inst->pll_fbksel = -1;
+				 &inst->pll_fbksel) || inst->pll_fbksel < 0)
+			inst->pll_fbksel = -EINVAL;
 		if (device_property_read_u32(dev, "mediatek,pll-posdiv",
-				 &inst->pll_posdiv))
-			inst->pll_posdiv = -1;
-		device_property_read_u32(dev, "mediatek,eye-src-host",
-					 &inst->eye_src_host);
-		device_property_read_u32(dev, "mediatek,eye-vrt-host",
-					 &inst->eye_vrt_host);
-		device_property_read_u32(dev, "mediatek,eye-term-host",
-					 &inst->eye_term_host);
-		device_property_read_u32(dev, "mediatek,rev6-host",
-				 &inst->rev6_host);
+				 &inst->pll_posdiv) || inst->pll_posdiv < 0)
+			inst->pll_posdiv = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,eye-src-host",
+					 &inst->eye_src_host) || inst->eye_src_host < 0)
+			inst->eye_src_host = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,eye-vrt-host",
+					 &inst->eye_vrt_host) || inst->eye_vrt_host < 0)
+			inst->eye_vrt_host = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,eye-term-host",
+					 &inst->eye_term_host) || inst->eye_term_host < 0)
+			inst->eye_term_host = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,rev6-host",
+					&inst->rev6_host) || inst->rev6_host < 0)
+			inst->rev6_host = -EINVAL;
 		if (!device_property_read_u32_array(dev, "mediatek,lpm-parameter",
 			inst->lpm_para, PHY_PLL_PARA_CNT))
 			inst->lpm_quirk = true;
@@ -1696,21 +1738,24 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 			inst->rev6_host);
 		break;
 	case PHY_TYPE_USB3:
-		device_property_read_u32(dev, "mediatek,efuse-intr",
-					 &inst->efuse_intr);
-		device_property_read_u32(dev, "mediatek,efuse-tx-imp",
-					 &inst->efuse_tx_imp);
-		device_property_read_u32(dev, "mediatek,efuse-rx-imp",
-					 &inst->efuse_rx_imp);
+		if (device_property_read_u32(dev, "mediatek,efuse-intr",
+					 &inst->efuse_intr) || inst->efuse_intr < 0)
+			inst->efuse_intr = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,efuse-tx-imp",
+					 &inst->efuse_tx_imp) || inst->efuse_tx_imp < 0)
+			inst->efuse_tx_imp = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,efuse-rx-imp",
+					 &inst->efuse_rx_imp) || inst->efuse_rx_imp < 0)
+			inst->efuse_rx_imp = -EINVAL;
 		if (device_property_read_u32(dev, "mediatek,tx-lctxcm1",
-					 &inst->tx_lctxcm1))
-			inst->tx_lctxcm1 = -1;
+					 &inst->tx_lctxcm1) || inst->tx_lctxcm1 < 0)
+			inst->tx_lctxcm1 = -EINVAL;
 		if (device_property_read_u32(dev, "mediatek,tx-lctxc0",
-					 &inst->tx_lctxc0))
-			inst->tx_lctxc0 = -1;
+					 &inst->tx_lctxc0) || inst->tx_lctxc0 < 0)
+			inst->tx_lctxc0 = -EINVAL;
 		if (device_property_read_u32(dev, "mediatek,tx-lctxcp1",
-					 &inst->tx_lctxcp1))
-			inst->tx_lctxcp1 = -1;
+					 &inst->tx_lctxcp1) || inst->tx_lctxcp1 < 0)
+			inst->tx_lctxcp1 = -EINVAL;
 		inst->u3_rx_fix = device_property_read_bool(dev, "mediatek,u3-rx-fix");
 		inst->u3_gen2_hqa = device_property_read_bool(dev, "mediatek,u3-gen2-hqa");
 
@@ -1729,43 +1774,43 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 {
 	void __iomem *pbase = inst->port_base;
 
-	if (inst->efuse_intr)
+	if (inst->efuse_intr != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL,
 				     inst->efuse_intr + inst->intr_ofs);
 
-	if (inst->efuse_term_cal)
+	if (inst->efuse_term_cal != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVEA, P2ARA_RG_TERM_CAL,
 				     inst->efuse_term_cal);
 
-	if (inst->eye_src)
+	if (inst->eye_src != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCTRL,
 				     inst->eye_src);
 
-	if (inst->eye_vrt)
+	if (inst->eye_vrt != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_VRT_SEL,
 				     inst->eye_vrt);
 
-	if (inst->eye_term)
+	if (inst->eye_term != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_TERM_SEL,
 				     inst->eye_term);
 
-	if (inst->discth)
+	if (inst->discth != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_DISCTH,
 				    inst->discth);
 
-	if (inst->rx_sqth)
+	if (inst->rx_sqth != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_SQTH,
 				    inst->rx_sqth);
 
-	if (inst->rev6)
+	if (inst->rev6 != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6,
 				     inst->rev6);
 
-	if (inst->pll_fbksel >= 0)
+	if (inst->pll_fbksel != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE0, P2A2R0_RG_PLL_FBKSEL,
 				     inst->pll_fbksel);
 
-	if (inst->pll_posdiv >= 0)
+	if (inst->pll_posdiv != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE1, P2A2R1_RG_PLL_POSDIV,
 				     inst->pll_posdiv);
 
@@ -1776,19 +1821,19 @@ static void u2_phy_host_props_set(struct mtk_xsphy *xsphy,
 {
 	void __iomem *pbase = inst->port_base;
 
-	if (inst->eye_src_host)
+	if (inst->eye_src_host != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCTRL,
 				     inst->eye_src_host);
 
-	if (inst->eye_vrt_host)
+	if (inst->eye_vrt_host != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_VRT_SEL,
 				     inst->eye_vrt_host);
 
-	if (inst->eye_term_host)
+	if (inst->eye_term_host != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR1, P2A1_RG_TERM_SEL,
 				     inst->eye_term_host);
 
-	if (inst->rev6_host)
+	if (inst->rev6_host != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6,
 				    inst->rev6_host);
 }
@@ -1798,19 +1843,19 @@ static void u3_phy_props_set(struct mtk_xsphy *xsphy,
 {
 	void __iomem *pbase = inst->port_base;
 
-	if (inst->efuse_intr)
+	if (inst->efuse_intr != -EINVAL)
 		mtk_phy_update_field(xsphy->glb_base + SSPXTP_PHYA_GLB_00,
 				     RG_XTP_GLB_BIAS_INTR_CTRL, inst->efuse_intr);
 
-	if (inst->efuse_tx_imp)
+	if (inst->efuse_tx_imp != -EINVAL)
 		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_04,
 				     RG_XTP_LN0_TX_IMPSEL, inst->efuse_tx_imp);
 
-	if (inst->efuse_rx_imp)
+	if (inst->efuse_rx_imp != -EINVAL)
 		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_14,
 				     RG_XTP_LN0_RX_IMPSEL, inst->efuse_rx_imp);
 
-	if (inst->tx_lctxcm1 >= 0) {
+	if (inst->tx_lctxcm1 != -EINVAL) {
 		mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00,
 				 RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1);
 
@@ -1818,7 +1863,7 @@ static void u3_phy_props_set(struct mtk_xsphy *xsphy,
 				    RG_XTP0_DAIF_LN_TX_LCTXCM1, inst->tx_lctxcm1);
 	}
 
-	if (inst->tx_lctxc0 >= 0) {
+	if (inst->tx_lctxc0 != -EINVAL) {
 		mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00,
 				 RG_XTP0_DAIF_FRC_LN_TX_LCTXC0);
 
@@ -1826,7 +1871,7 @@ static void u3_phy_props_set(struct mtk_xsphy *xsphy,
 				    RG_XTP0_DAIF_LN_TX_LCTXC0, inst->tx_lctxc0);
 	}
 
-	if (inst->tx_lctxcp1 >= 0) {
+	if (inst->tx_lctxcp1 != -EINVAL) {
 		mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00,
 				 RG_XTP0_DAIF_FRC_LN_TX_LCTXCP1);
 
@@ -1890,11 +1935,15 @@ static int mtk_phy_power_on(struct phy *phy)
 	struct xsphy_instance *inst = phy_get_drvdata(phy);
 	struct mtk_xsphy *xsphy = dev_get_drvdata(phy->dev.parent);
 	void __iomem *pbase = inst->port_base;
+	enum phy_mode mode = inst->phy->attrs.mode;
 
 	if (inst->type == PHY_TYPE_USB2) {
 		u2_phy_instance_power_on(xsphy, inst);
 		u2_phy_slew_rate_calibrate(xsphy, inst);
-		u2_phy_props_set(xsphy, inst);
+		if (mode == PHY_MODE_USB_HOST)
+			u2_phy_host_props_set(xsphy, inst);
+		else
+			u2_phy_props_set(xsphy, inst);
 	} else if (inst->type == PHY_TYPE_USB3) {
 		u3_phy_instance_power_on(xsphy, inst);
 		u3_phy_props_set(xsphy, inst);
@@ -2165,8 +2214,11 @@ static struct phy *mtk_phy_xlate(struct device *dev,
 		return ERR_PTR(-EINVAL);
 	}
 
-	phy_parse_property(xsphy, inst);
-	phy_parse_efuse_property(xsphy, inst);
+	if (!inst->property_ready) {
+		phy_parse_property(xsphy, inst);
+		phy_parse_efuse_property(xsphy, inst);
+		inst->property_ready = true;
+	}
 
 	return inst->phy;
 }
@@ -2243,8 +2295,11 @@ static int mtk_xsphy_probe(struct platform_device *pdev)
 
 	xsphy->tx_chirpK_disable = device_property_read_bool(dev,
 				"tx-chirpk-capable");
-
 	dev_info(dev, "tx-chirpK-capable = %d\n", xsphy->tx_chirpK_disable);
+
+	xsphy->bc11_switch_disable = device_property_read_bool(dev,
+			"bc11-switch-disable");
+	dev_info(dev, "bc11-switch-disable = %d\n", xsphy->bc11_switch_disable);
 
 	/* create phy workqueue */
 	xsphy->wq = create_singlethread_workqueue("xsphy");
