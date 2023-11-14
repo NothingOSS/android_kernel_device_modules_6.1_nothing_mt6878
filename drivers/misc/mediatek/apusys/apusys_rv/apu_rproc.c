@@ -398,9 +398,8 @@ static int apu_probe(struct platform_device *pdev)
 			apu->apusys_aee_coredump_mem_start,
 			apu->apusys_aee_coredump_mem_size);
 		apu->apu_aee_coredump_mem_base =
-			ioremap_cache(apu->apusys_aee_coredump_mem_start,
-				apu->apusys_aee_coredump_mem_size);
-
+			memremap(apu->apusys_aee_coredump_mem_start,
+				apu->apusys_aee_coredump_mem_size, MEMREMAP_WC);
 		apu->apusys_aee_coredump_info = (struct apusys_aee_coredump_info_t *)
 			apu->apu_aee_coredump_mem_base;
 	}
