@@ -475,7 +475,7 @@ static int pe5p_get_tbat(struct pe5p_hal *hal)
 {
 	int ret = 0;
 	int tmp_ret;
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy;
 
 	bat_psy = devm_power_supply_get_by_phandle(hal->dev, "gauge");
@@ -525,7 +525,7 @@ int pe5p_hal_get_soc(struct chg_alg_device *alg, u32 *soc)
 	int ret;
 	int ret_tmp;
 	struct power_supply *bat_psy;
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct pe5p_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
 
 	bat_psy = devm_power_supply_get_by_phandle(hal->dev, "gauge");
