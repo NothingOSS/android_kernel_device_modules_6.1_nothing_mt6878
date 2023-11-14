@@ -3438,6 +3438,12 @@
 		iommus = <&apu_iommu0 M4U_L42_APU_CODE>;
 	};
 
+
+	apusys_aov:apusys-aov {
+		compatible = "mediatek,apusys_aov-v0";
+		status = "disabled";
+	};
+
 	mminfra-debug@1e827000 {
 		compatible = "mediatek,mminfra-debug";
 		reg = <0 0x1e827000 0 0x90>;
