@@ -638,12 +638,13 @@ ssize_t port_rpc_ecid_show(char *buf)
 {
 	unsigned int i, info_num, size = 4095;
 	int len = 0;
+	char *p, *tmp, ecid_name[32];
 
 	info_num = ecid_info_node.vpa_info_num;
 	len += scnprintf(buf + len , size - len,
-		"sub6_rf Name: %s info_num: %u ecid_i: 0x%x ecid_h: 0x%x\n",
-		ecid_info_node.sub6_rf_name,
+		"sub6_rf info_num: %u Name: %s:%X %X\n",
 		ecid_info_node.vpa_info_num,
+		ecid_info_node.sub6_rf_name,
 		ecid_info_node.sub6_rf_ecid_i,
 		ecid_info_node.sub6_rf_ecid_h);
 
@@ -654,14 +655,23 @@ ssize_t port_rpc_ecid_show(char *buf)
 		return len;
 	}
 	for (i = 0; i < info_num; i++) {
-		len += snprintf(buf + len , size - len,
-			"mipi_port: %hhu usid: %hhu type_name: %s type_id: 0x%x ecid_x_pox: 0x%x ecid_y_pox: 0x%x\n",
-			ecid_info_node.rpc_vpa_public_info[i].mipi_port,
-			ecid_info_node.rpc_vpa_public_info[i].new_usid,
-			ecid_info_node.rpc_vpa_public_info[i].vpa_type_name,
-			ecid_info_node.rpc_vpa_public_info[i].vpa_type_id,
-			ecid_info_node.rpc_vpa_public_info[i].ecid_x_pox,
-			ecid_info_node.rpc_vpa_public_info[i].ecid_y_pox);
+		memset(ecid_name, 0, sizeof(ecid_name));
+		tmp = ecid_info_node.rpc_vpa_public_info[i].vpa_type_name;
+		p = strchr(tmp, '_');
+		if (p != NULL) {
+			strncpy(ecid_name, tmp, p - tmp < sizeof(ecid_name) - 1 ? p - tmp : sizeof(ecid_name) - 1);
+			scnprintf(ecid_name, sizeof(ecid_name), "%sP_%d_ECID", ecid_name, i+1);
+		} else
+			strncpy(ecid_name, tmp, sizeof(ecid_name) - 1);
+
+		len += scnprintf(buf + len , size - len,
+			"mipi_port: %hhu usid: %hhu type_name: %s:%X %X %X\n",
+				ecid_info_node.rpc_vpa_public_info[i].mipi_port,
+				ecid_info_node.rpc_vpa_public_info[i].new_usid,
+				ecid_name,
+				ecid_info_node.rpc_vpa_public_info[i].vpa_type_id,
+				ecid_info_node.rpc_vpa_public_info[i].ecid_x_pox,
+				ecid_info_node.rpc_vpa_public_info[i].ecid_y_pox);
 	}
 
 	return len;
