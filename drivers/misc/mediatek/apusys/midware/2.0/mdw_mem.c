@@ -348,7 +348,11 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	}
 
 	if (!m->mdev) {
-		m->mdev = mdw_mem_rsc_get_dev(APUSYS_MEMORY_CODE);
+		if (m->flags & F_MDW_MEM_HIGHADDR)
+			m->mdev = mdw_mem_rsc_get_dev(APUSYS_MEMORY_DATA);
+		else
+			m->mdev = mdw_mem_rsc_get_dev(APUSYS_MEMORY_CODE);
+
 		if (!m->mdev) {
 			mdw_drv_err("get mem dev fail\n");
 			ret = -ENODEV;
@@ -356,6 +360,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		}
 	}
 
+	mdw_mem_debug("mem flags(%llx) dev %s\n", m->flags, dev_name(m->mdev));
 	map = kzalloc(sizeof(*map), GFP_KERNEL);
 	if (!map) {
 		ret = -ENOMEM;
@@ -738,6 +743,9 @@ static int mdw_mem_ioctl_map(struct mdw_fpriv *mpriv,
 	struct dma_buf *dbuf = NULL;
 	int ret = -ENOMEM, handle = (int)in->map.handle;
 	uint32_t size = in->map.size;
+	uint64_t flags = in->map.flags;
+	bool in_highaddr = (flags & F_MDW_MEM_HIGHADDR) ? true : false;
+	bool m_highaddr = false;
 
 	memset(args, 0, sizeof(*args));
 
@@ -762,9 +770,19 @@ static int mdw_mem_ioctl_map(struct mdw_fpriv *mpriv,
 			m->dbuf = dbuf;
 			m->type = MDW_MEM_TYPE_MAIN;
 			m->handle = handle;
+			m->flags = flags;
 		}
 	} else {
 		mdw_mem_put(mpriv, m);
+	}
+
+	/* Compare user input addr with memory addr */
+	m_highaddr = (m->flags & F_MDW_MEM_HIGHADDR) ? true : false;
+	if (in_highaddr != m_highaddr) {
+		mdw_drv_err("input addr flags(%llx) not match with m->flags(%llx)\n",
+			flags, m->flags);
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* map apu va */

@@ -114,6 +114,8 @@ struct mdw_mem_in {
 		struct {
 			uint64_t handle;
 			uint32_t size;
+			uint64_t flags;
+			uint64_t reserved;
 		} map;
 		struct {
 			uint64_t handle;
