@@ -4800,7 +4800,7 @@ static unsigned int update_trim_code(const bool is_negative,
 static void calculate_lr_finetrim_code(struct mt6369_priv *priv)
 {
 	struct hp_trim_data *hp_trim = &priv->hp_trim_3_pole;
-	unsigned int reg_value;
+	unsigned int reg_value = 0;
 
 	int finetrim_l[TRIM_STEP_NUM - 2] = {0, 0};
 	int finetrim_r[TRIM_STEP_NUM - 2] = {0, 0};
@@ -4879,7 +4879,7 @@ static void calculate_lr_trim_code(struct mt6369_priv *priv)
 
 	unsigned int hpl_trim_code, hpr_trim_code;
 	bool hpl_negative, hpr_negative;
-	unsigned int reg_value;
+	unsigned int reg_value = 0;
 
 	dev_info(priv->dev, "%s(), Start DCtrim Calibrating\n", __func__);
 
@@ -5019,7 +5019,7 @@ static void get_hp_trim_offset(struct mt6369_priv *priv, bool force)
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 	struct dc_trim_data *dc_trim = &priv->dc_trim;
 	struct hp_trim_data *hp_trim_3_pole = &priv->hp_trim_3_pole;
-	unsigned int reg_value;
+	unsigned int reg_value = 0;
 
 	if (dc_trim->calibrated && !force)
 		return;
@@ -5172,7 +5172,7 @@ static int detect_impedance(struct mt6369_priv *priv)
 	int dc_sum = 0, detect_sum = 0;
 	int pick_impedance = 0, impedance = 0, phase_flag = 0;
 	int cur_dc = 0;
-	unsigned int value;
+	unsigned int value = 0;
 
 	/* params by chip */
 	int auxcable_impedance = 5000;
@@ -7225,11 +7225,12 @@ static ssize_t mt6369_codec_sysfs_write(struct file *filp, struct kobject *kobj,
 		goto exit;
 	}
 
-	if (count > MAX_DEBUG_WRITE_INPUT)
-		count = MAX_DEBUG_WRITE_INPUT;
+	if (count >= MAX_DEBUG_WRITE_INPUT)
+		count = MAX_DEBUG_WRITE_INPUT - 1;
 
 	memset((void *)input, 0, MAX_DEBUG_WRITE_INPUT);
 	memcpy(input, buf, count);
+	input[count] = '\0';
 
 	str_begin = kstrndup(input, MAX_DEBUG_WRITE_INPUT - 1,
 			     GFP_KERNEL);
@@ -7317,14 +7318,15 @@ static ssize_t mt6369_debugfs_write(struct file *f, const char __user *buf,
 		goto exit;
 	}
 
-	if (count > MAX_DEBUG_WRITE_INPUT)
-		count = MAX_DEBUG_WRITE_INPUT;
+	if (count >= MAX_DEBUG_WRITE_INPUT)
+		count = MAX_DEBUG_WRITE_INPUT - 1;
 
 	memset((void *)input, 0, MAX_DEBUG_WRITE_INPUT);
 
 	if (copy_from_user(input, buf, count))
 		dev_warn(priv->dev, "%s(), copy_from_user fail, count = %zu\n",
 			 __func__, count);
+	input[count] = '\0';
 
 	str_begin = kstrndup(input, MAX_DEBUG_WRITE_INPUT - 1,
 			     GFP_KERNEL);
