@@ -241,6 +241,8 @@ void MTKGPUQoS_mode(int seg_flag)
 		else {
 			if (seg_flag && idx >= low_idx)
 				gpu_info_buf->freq = GPU_BW_LP_MODE;
+			else if (idx <= GPU_BM_PEAK_INDEX_TOP_LIMIT)
+				gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
 			else if (idx <= high_idx)
 				gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
 			else
