@@ -209,6 +209,44 @@ static void filter_2nd_display(struct drm_mtk_layering_info *disp_info)
 	}
 }
 
+static void filter_3rd_display(struct drm_device *dev,
+	struct drm_mtk_layering_info *disp_info)
+{
+	unsigned int i = 0, j = 0;
+	struct mtk_drm_private *priv = dev->dev_private;
+	const u8 disp_idx = get_layering_opt(LYE_OPT_SPHRT) ? disp_info->disp_idx : 0;
+	struct drm_mtk_layer_config *lc;
+
+	if (priv->data->mmsys_id != MMSYS_MT6878 || disp_idx != 3)
+		return;
+
+	for (j = 0; j < disp_info->layer_num[i]; j++) {
+		if (mtk_is_gles_layer(disp_info, i, j))
+			continue;
+
+		lc = &disp_info->input_config[i][j];
+
+		/* Rollback Resize layer to GPU */
+/*
+ *		if ((lc->src_height != lc->dst_height) ||
+ *		    (lc->src_width != lc->dst_width)) {
+ *			mtk_rollback_layer_to_GPU(disp_info, i, j);
+ *			DDPDBG("%s disp_idx:%d Rollback Resize layer to GPU i:%d, j:%d\n",
+ *				__func__, disp_idx, i, j);
+ *			continue;
+ *		}
+ */
+
+		/* Rollback YUV layer to GPU */
+		if (mtk_is_yuv(lc->src_fmt)) {
+			mtk_rollback_layer_to_GPU(disp_info, i, j);
+			DDPDBG("%s disp_idx:%d Rollback YUV layer to GPU i:%d, j:%d\n",
+				__func__, disp_idx, i, j);
+			continue;
+		}
+	}
+}
+
 static bool is_ovl_wcg(enum mtk_drm_dataspace ds)
 {
 	bool ret = false;
@@ -381,6 +419,8 @@ static bool filter_by_hw_limitation(struct drm_device *dev,
 
 	/* Is this nessasary? */
 	filter_2nd_display(disp_info);
+
+	filter_3rd_display(dev, disp_info);
 
 	return flag;
 }

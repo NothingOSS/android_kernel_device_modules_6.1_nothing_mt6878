@@ -4497,6 +4497,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	if (l_rule_ops->fbdc_adjust_layout)
 		l_rule_ops->fbdc_adjust_layout(&layering_info,
 					       ADJUST_LAYOUT_OVERLAP_CAL);
+
 	overlap_num = calc_hrt_num(dev, &layering_info);
 	layering_info.hrt_weight = overlap_num;
 	DDPINFO("overlap_num %u of frame %u\n", layering_info.hrt_weight,

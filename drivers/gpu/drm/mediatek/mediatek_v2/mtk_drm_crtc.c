@@ -17363,7 +17363,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		if (!priv->data->not_support_csc)
 			mtk_crtc->crtc_caps.ovl_csc_bit_number = 18;
 	}
-	if (check_comp_in_crtc(path_data, MTK_DISP_CCORR) &&
+	if (check_comp_in_crtc(path_data, MTK_DISP_CCORR) ||
 			check_comp_in_crtc(path_data, MTK_DISP_AAL))
 		mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PQ;
 	DDPINFO("%s:%x, csc:%u\n", crtc_caps, caps_value, mtk_crtc->crtc_caps.ovl_csc_bit_number);
