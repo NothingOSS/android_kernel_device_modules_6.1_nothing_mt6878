@@ -848,6 +848,7 @@ static void disp_aal_wait_hist(struct mtk_ddp_comp *comp)
 			ret = wait_event_interruptible(aal_data->primary_data->hist_wq,
 					(atomic_read(&aal_data->hist_available) == 1) &&
 					(atomic_read(&aal1_data->hist_available) == 1) &&
+					comp->mtk_crtc->enabled &&
 					!atomic_read(&aal_data->primary_data->should_stop));
 		}
 		AALFLOW_LOG("aal0 and aal1 hist_available = 1, waken up, ret = %d\n", ret);
@@ -856,6 +857,7 @@ static void disp_aal_wait_hist(struct mtk_ddp_comp *comp)
 		AALFLOW_LOG("wait_event_interruptible\n");
 		ret = wait_event_interruptible(aal_data->primary_data->hist_wq,
 				atomic_read(&aal_data->hist_available) == 1 &&
+				comp->mtk_crtc->enabled &&
 				!atomic_read(&aal_data->primary_data->should_stop));
 		AALFLOW_LOG("hist_available = 1, waken up, ret = %d\n", ret);
 	} else

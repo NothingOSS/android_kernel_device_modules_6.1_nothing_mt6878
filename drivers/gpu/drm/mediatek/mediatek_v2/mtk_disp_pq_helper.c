@@ -652,13 +652,6 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 		return -1;
 	}
 
-	if (!(mtk_crtc->enabled)) {
-		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
-		mtk_drm_trace_end();
-
-		return -1;
-	}
-
 	if (is_atomic_commit)
 		pq_cmdq_handle = cmdq_handle;
 	else {
@@ -679,6 +672,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	mtk_vblank_config_rec_start(mtk_crtc, pq_cmdq_handle, PQ_HELPER_CONFIG);
 
 	/* call comp frame config */
+	mtk_pq_wake_get(~0, to_mtk_crtc(crtc)->pq_data);
 	pm_ret = mtk_vidle_pq_power_get(__func__);
 	for (index = 0; index < cmds_len; index++) {
 		unsigned int pq_type = requests[index].cmd >> 16;
@@ -726,6 +720,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	}
 	if (!pm_ret)
 		mtk_vidle_pq_power_put(__func__);
+	mtk_pq_wake_put(~0, to_mtk_crtc(crtc)->pq_data);
 
 	/* atomic commit will flush in crtc */
 	if (!is_atomic_commit) {
