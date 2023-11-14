@@ -1,6 +1,6 @@
-load("//kernel-6.1:modules.bzl", "COMMON_GKI_MODULES_LIST")
+load("//kernel-6.1:modules.bzl", "get_gki_modules_list")
 
-mgk_module_outs = COMMON_GKI_MODULES_LIST + [
+mgk_module_outs = get_gki_modules_list("arm64") + [
     "drivers/firmware/arm_ffa/ffa-module.ko",
     "drivers/gpu/drm/display/drm_display_helper.ko",
     "drivers/gpu/drm/drm_dma_helper.ko",
