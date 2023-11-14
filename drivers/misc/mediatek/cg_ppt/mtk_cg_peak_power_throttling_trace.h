@@ -82,6 +82,17 @@ struct cg_ppt_combo_info {
 	int cpu_combo4;
 };
 
+struct cg_sm_info {
+	int gacboost_mode;
+	int gacboost_hint;
+	int gf_ema_1;
+	int gf_ema_2;
+	int gf_ema_3;
+	int gt_ema_1;
+	int gt_ema_2;
+	int gt_ema_3;
+};
+
 #endif /*__TRACE_CG_PPT_STRUCT__*/
 
 TRACE_EVENT(
@@ -229,6 +240,41 @@ TRACE_EVENT(cg_ppt_combo_info,
 	__entry->cpu_combo2,
 	__entry->cpu_combo3,
 	__entry->cpu_combo4)
+);
+
+
+TRACE_EVENT(cg_sm_info,
+	TP_PROTO(const struct cg_sm_info *data),
+	TP_ARGS(data),
+	TP_STRUCT__entry(
+		__field(int, gacboost_mode)
+		__field(int, gacboost_hint)
+		__field(int, gf_ema_1)
+		__field(int, gf_ema_2)
+		__field(int, gf_ema_3)
+		__field(int, gt_ema_1)
+		__field(int, gt_ema_2)
+		__field(int, gt_ema_3)
+	),
+	TP_fast_assign(
+		__entry->gacboost_mode                 = data->gacboost_mode;
+		__entry->gacboost_hint                 = data->gacboost_hint;
+		__entry->gf_ema_1                      = data->gf_ema_1;
+		__entry->gf_ema_2                      = data->gf_ema_2;
+		__entry->gf_ema_3                      = data->gf_ema_3;
+		__entry->gt_ema_1                      = data->gt_ema_1;
+		__entry->gt_ema_2                      = data->gt_ema_2;
+		__entry->gt_ema_3                      = data->gt_ema_3;
+	),
+	TP_printk("gacboost_mode=%d gacboost_hint=%d gf_ema_1=%d gf_ema_2=%d gf_ema_3=%d gt_ema_1=%d gt_ema_2=%d gt_ema_3=%d",
+	__entry->gacboost_mode,
+	__entry->gacboost_hint,
+	__entry->gf_ema_1,
+	__entry->gf_ema_2,
+	__entry->gf_ema_3,
+	__entry->gt_ema_1,
+	__entry->gt_ema_2,
+	__entry->gt_ema_3)
 );
 
 

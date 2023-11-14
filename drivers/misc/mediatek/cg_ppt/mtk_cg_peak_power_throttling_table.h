@@ -9,6 +9,9 @@
 
 #include "mtk_cg_peak_power_throttling_def.h"
 
+
+#define CPU_MAX_CLUSTERS 10
+
 /*
  * -----------------------------------------------
  * IP Peak Power Table
@@ -133,35 +136,48 @@ extern struct peakpowercombotableDataRow
  * -----------------------------------------------
  */
 struct cswrunInfo {
-	short cg_sync_enable; /*1:enable*/
-	short is_fastdvfs_enabled;
+	int cg_sync_enable; /*1:enable*/
+	int is_fastdvfs_enabled;
+	int cpu_max_freq_m[CPU_MAX_CLUSTERS];
 };
 
 struct gswrunInfo {
 	int cgppb_mw;
 	int gpu_preboost_time_us;
 
-	short cgsync_action;
-	short is_gpu_favor;
-	short combo_idx;
-	unsigned short gpu_limit_freq_m;
+	int cgsync_action;
+	int is_gpu_favor;
+	int combo_idx;
+	int gpu_limit_freq_m;
 };
 
 struct moInfo {
-	short mo_favor_cpu;
-	short mo_favor_gpu;
-	short mo_favor_multiscene;
-	short mo_cpu_avs;
-	short mo_gpu_avs;
-	short mo_gpu_curr_freq_power_calc;
+	int mo_favor_cpu;
+	int mo_favor_gpu;
+	int mo_favor_multiscene;
+	int mo_cpu_avs;
+	int mo_gpu_avs;
+	int mo_gpu_curr_freq_power_calc;
 	unsigned int mo_status;
+};
+
+struct cgsmInfo {
+	int gacboost_mode;
+	int gacboost_hint;
+	int data_valid;
+	int gf_ema_1;
+	int gf_ema_2;
+	int gf_ema_3;
+	int gt_ema_1;
+	int gt_ema_2;
+	int gt_ema_3;
 };
 
 struct DlptSramLayout {
 	/*meta-data (status)*/
-	unsigned short data_moved;
-	unsigned short cpu_data_valid;
-	unsigned short gpu_data_valid;
+	int data_moved;
+	int cpu_data_valid;
+	int gpu_data_valid;
 	/*table*/
 	struct ippeakpowertableDataRow
 	ip_peak_power_table[IP_PEAK_POWER_TABLE_IDX_ROW_COUNT]
@@ -177,9 +193,14 @@ struct DlptSramLayout {
 	__ppt_table_alignment__;
 
 	/*misc info*/
-	struct cswrunInfo cswrun_info;
-	struct gswrunInfo gswrun_info;
-	struct moInfo mo_info;
+	struct cswrunInfo cswrun_info
+	__ppt_table_alignment__;
+	struct gswrunInfo gswrun_info
+	__ppt_table_alignment__;
+	struct moInfo mo_info
+	__ppt_table_alignment__;
+	struct cgsmInfo cgsm_info
+	__ppt_table_alignment__;
 }  __ppt_table_alignment__;
 
 #endif /*_MTK_CG_PEAK_POWER_THROTTLING_TABLE_H_*/

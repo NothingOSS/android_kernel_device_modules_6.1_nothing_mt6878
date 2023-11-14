@@ -265,7 +265,7 @@ void print_structure_values(void *structure_ptr, unsigned int size)
 		 (unsigned long long)structure_ptr, size);
 
 	for (i = 0; i < num_values; i++) {
-		offset += snprintf(buffer + offset, buf_len - offset, "%hu ",
+		offset += snprintf(buffer + offset, buf_len - offset, "%6hu ",
 				   data_ptr[i]);
 		if (i % 8 == 7) {
 			pp_print("%s\n", buffer);

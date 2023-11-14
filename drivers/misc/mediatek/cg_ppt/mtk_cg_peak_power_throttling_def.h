@@ -38,19 +38,28 @@
  * CGPPT Model Option
  * ========================================================
  */
-#define MO_FAVOR_CPU                 ( 1 << 0 )
-#define MO_FAVOR_GPU                 ( 1 << 1 )
-#define MO_FAVOR_MULTISCENE          ( 1 << 2 )
-#define MO_CPU_AVS                   ( 1 << 3 )
-#define MO_GPU_AVS                   ( 1 << 4 )
-#define MO_GPU_CURR_FREQ_POWER_CALC  ( 1 << 5 )
+#define MO_FAVOR_CPU                 (1 << 0)
+#define MO_FAVOR_GPU                 (1 << 1)
+#define MO_FAVOR_MULTISCENE          (1 << 2)
+#define MO_CPU_AVS                   (1 << 3)
+#define MO_GPU_AVS                   (1 << 4)
+#define MO_GPU_CURR_FREQ_POWER_CALC  (1 << 5)
 
 #define CGPPT_CHECKBIT(value, bit_mask) (((value) & (bit_mask)) == (bit_mask))
 #define CGPPT_SETBIT(value, bit_mask) ((value) |= (bit_mask))
 #define CGPPT_CLEARBIT(value, bit_mask) ((value) &= ~(bit_mask))
 
 
-
+/*
+ * ========================================================
+ * GAC Boost Option
+ * ========================================================
+ */
+#define GACBOOST_CPU_BOOST                         (1<<0)
+#define GACBOOST_CCI_FREQ                          (1<<1)
+#define GACBOOST_CM_MGR_MAP_DRAM_ENABLE            (1<<2)
+#define GACBOOST_GPU_GED_FALLBACK_FREQUENCY_ADJUST (1<<3)
+#define CPU_BOOST_FOREGROUND                       (1<<4)
 
 
 
@@ -84,8 +93,10 @@ extern void cg_ppt_dlpt_sram_remap(uintptr_t virtual_addr);
  * [SW Runner]
  * ========================================================
  */
-#elif defined(CFG_CPU_PEAKPOWERTHROTTLING) ||                                  \
-	defined(CFG_GPU_PEAKPOWERTHROTTLING)
+#elif defined(CFG_CPU_PEAKPOWERTHROTTLING) || \
+defined(CFG_GPU_PEAKPOWERTHROTTLING) || \
+defined(CFG_CPU_SIGNALMONITOR)       || \
+defined(CFG_GPU_SIGNALMONITOR)
 
 #include "mtk_cg_peak_power_throttling_plat_eb.h"
 #include "mt_printf.h"
