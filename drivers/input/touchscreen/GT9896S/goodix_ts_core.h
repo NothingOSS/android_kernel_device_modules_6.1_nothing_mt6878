@@ -593,6 +593,20 @@ static inline struct gt9896s_ts_board_data *board_data(
 	return &(core->ts_dev->board_data);
 }
 
+#ifdef GT9896S_TZ
+static inline struct gt9896s_ts_bdata_tz *get_tz_bdata(
+		struct gt9896s_ts_core *core)
+{
+	if (!core || !core->ts_dev)
+		return NULL;
+
+	if (!core->ts_dev->board_data.ts_bdata_tz.tz_enable)
+		return NULL;
+
+	return &(core->ts_dev->board_data.ts_bdata_tz);
+}
+#endif
+
 /*
  * get touch device pointer
  */

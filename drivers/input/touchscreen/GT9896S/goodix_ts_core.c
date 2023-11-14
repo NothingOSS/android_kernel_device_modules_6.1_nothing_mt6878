@@ -1187,7 +1187,7 @@ static irqreturn_t gt9896s_ts_threadirq_func(int irq, void *data)
 	u8 irq_flag = 0;
 	int r;
 #ifdef GT9896S_TZ
-	if (board_data(core_data)->ts_bdata_tz.tz_enable)
+	if (get_tz_bdata(core_data))
 		core_data->ts_core_tz.tz_irq_status = true;
 #endif
 	core_data->irq_trig_cnt++;
@@ -1874,7 +1874,7 @@ static void gt9896s_ts_tz_on(struct gt9896s_ts_core *core)
 {
 	struct gt9896s_ts_core_tz *ts_tz = &core->ts_core_tz;
 
-	if (!board_data(core)->ts_bdata_tz.tz_enable)
+	if (!get_tz_bdata(core))
 		return;
 
 	if (atomic_read(&ts_tz->tz_on))
@@ -1893,7 +1893,7 @@ static void gt9896s_ts_tz_off(struct gt9896s_ts_core *core)
 	struct gt9896s_ts_core_tz *ts_tz = &core->ts_core_tz;
 	int ret;
 
-	if (!board_data(core)->ts_bdata_tz.tz_enable)
+	if (!get_tz_bdata(core))
 		return;
 
 	if (!atomic_read(&ts_tz->tz_on))
@@ -1910,6 +1910,9 @@ void thermal_zone_monitor(struct gt9896s_ts_bdata_tz *ts_tz)
 	static int last_reset_temp = INT_MAX;
 	int ret;
 	int temp;
+
+	if (!ts_tz)
+		return;
 
 	if (ts_tz->tz_dev == NULL) {
 		ts_info("Get thermal zone '%s'", ts_tz->tz_name);
@@ -1930,12 +1933,17 @@ void thermal_zone_monitor(struct gt9896s_ts_bdata_tz *ts_tz)
 
 	if ((temp < ts_tz->temperature_threshold) && ((last_reset_temp == INT_MAX)
 		|| abs(temp - last_reset_temp) >= ts_tz->temperature_difference)) {
-		ts_info("current temperature %d requires reset, last reset at temperature %d",
-				temp, last_reset_temp);
 		if (atomic_read(&delayed_reset) == 1){
-			ts_info("last reset marked was not executed!");
+			ts_info("current temp %d requires reset, no reset occurred at temp %d",
+					temp, last_reset_temp);
 		} else {
-			ts_info("last reset marked was executed already!");
+			if (last_reset_temp == INT_MAX) {
+				ts_info("current temp %d requires reset, first time below zero",
+					temp);
+			} else {
+				ts_info("current temp %d requires reset, last reset at temp %d",
+					temp, last_reset_temp);
+			}
 			atomic_set(&delayed_reset, 1);
 		}
 		last_reset_temp = temp;
@@ -1956,7 +1964,7 @@ static void gt9896s_temp_monitor_work(struct work_struct *work)
 	if (!atomic_read(&ts_tz->tz_on))
 		return;
 
-	thermal_zone_monitor(&board_data(core)->ts_bdata_tz);
+	thermal_zone_monitor(get_tz_bdata(core));
 exit:
 	ts_tz->tz_irq_status = false;
 	schedule_delayed_work(&ts_tz->tz_work, 2 * HZ);
@@ -1966,11 +1974,13 @@ void gt9896s_ts_tz_init(struct gt9896s_ts_core *core)
 {
 	struct gt9896s_ts_core_tz *ts_tz = &core->ts_core_tz;
 
-	if (!board_data(core)->ts_bdata_tz.tz_enable)
+	atomic_set(&delayed_reset, 0);
+
+	if (!get_tz_bdata(core))
 		return;
 
 	INIT_DELAYED_WORK(&ts_tz->tz_work, gt9896s_temp_monitor_work);
-	atomic_set(&delayed_reset, 0);
+
 	atomic_set(&ts_tz->tz_on, 0);
 	gt9896s_ts_tz_on(core);
 	ts_info("init temperature check work");
