@@ -305,6 +305,7 @@ static int limit_cfreq2cap;
 static int limit_rfreq2cap;
 static int limit_cfreq2cap_m;
 static int limit_rfreq2cap_m;
+static int limit_min_cap_target_t;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -373,6 +374,7 @@ module_param(rl_learning_rate_p, int, 0644);
 module_param(rl_learning_rate_n, int, 0644);
 module_param(rl_expect_fps_margin, int, 0644);
 module_param(aa_b_minus_idle_time, int, 0644);
+module_param(limit_min_cap_target_t, int, 0644);
 
 static DEFINE_SPINLOCK(freq_slock);
 static DEFINE_MUTEX(fbt_mlock);
@@ -4573,7 +4575,7 @@ int fbt_get_rl_ko_is_ready(void)
 
 int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int rl_is_ready, int rl_active, unsigned int target_fps_ori,
-	unsigned int target_fpks, unsigned long long target_t,
+	unsigned int last_target_fps_ori, unsigned int target_fpks, unsigned long long target_t,
 	int target_fps_margin, unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
 	unsigned long long t_queue_end, unsigned long long next_vsync,
 	int expected_fps_margin, int learning_rate_p, int learning_rate_n, int quota_clamp_max,
@@ -4587,10 +4589,14 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int test_blc_wt_b, test_blc_wt_m, test_blc_wt;
 	unsigned long long t_fps_margin_exp_time;
 	unsigned long long rl_target_t = last_target_t_ns;
+	int limit_min_cap = 1;
 
 	if (out_target_t_ns)
 		*out_target_t_ns = target_t;
 	rl_target_fpks = target_fpks + expected_fps_margin * 100;
+
+	if (limit_min_cap_target_t)
+		limit_min_cap = limit_min_cap_target_t;
 
 	if (rl_is_ready && rl_active == 2) {
 		if (fbt_cal_target_time_fp) {
@@ -4599,30 +4605,38 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 				quota_diff_clamp_max, learning_rate_p,
 				learning_rate_n, next_vsync, &rl_target_t);
 		}
+		if (last_target_fps_ori != target_fps_ori && target_fps_ori) {
+			rl_target_t = 1000000000 / (unsigned long long) target_fps_ori;
+			fpsgo_systrace_c_fbt(pid, buffer_id, target_fps_ori, "expected_fps_ori");
+			goto out;
+		}
 
 		if (!ret && last_target_t_ns) {
 			unsigned long long last_target_t_100us;
 			unsigned long long t_q2q_100us = nsec_to_100usec_ull(t_q2q_ns);
 
 			last_target_t_100us = nsec_to_100usec_ull(last_target_t_ns);
-			if (separate_aa_active) {
-				fbt_cal_blc(aa_b, last_target_t_100us, 1,
-					t_q2q_100us, 0, &test_blc_wt_b);
-				fbt_cal_blc(aa_m, last_target_t_100us, 1,
-					t_q2q_100us, 0, &test_blc_wt_m);
-				if ((test_blc_wt_b <= 1 && test_blc_wt_m <= 1 &&
-					rl_target_t > last_target_t_ns) ||
-					(test_blc_wt_b >= limit_cap_b &&
-					test_blc_wt_m >= limit_cap_m &&
-					rl_target_t < last_target_t_ns))
-					rl_target_t = last_target_t_ns;
-			} else {
-				fbt_cal_blc(aa_n, last_target_t_100us, 1,
-					t_q2q_100us, 0, &test_blc_wt);
-				if ((test_blc_wt <= 1 && rl_target_t > last_target_t_ns) ||
-					(test_blc_wt >= limit_cap &&
-					rl_target_t < last_target_t_ns))
-					rl_target_t = last_target_t_ns;
+			if (last_target_fps_ori == target_fps_ori) {
+				if (separate_aa_active) {
+					fbt_cal_blc(aa_b, last_target_t_100us, 1,
+						t_q2q_100us, 0, &test_blc_wt_b);
+					fbt_cal_blc(aa_m, last_target_t_100us, 1,
+						t_q2q_100us, 0, &test_blc_wt_m);
+					if ((test_blc_wt_b <= limit_min_cap &&
+						test_blc_wt_m <= limit_min_cap &&
+						rl_target_t > last_target_t_ns) ||
+						(test_blc_wt_b >= limit_cap_b &&
+						test_blc_wt_m >= limit_cap_m &&
+						rl_target_t < last_target_t_ns))
+						rl_target_t = last_target_t_ns;
+				} else {
+					fbt_cal_blc(aa_n, last_target_t_100us, 1,
+						t_q2q_100us, 0, &test_blc_wt);
+					if ((test_blc_wt <= 1 && rl_target_t > last_target_t_ns) ||
+						(test_blc_wt >= limit_cap &&
+						rl_target_t < last_target_t_ns))
+						rl_target_t = last_target_t_ns;
+				}
 			}
 			if (target_fps_margin > 0) {
 				t_fps_margin_exp_time = 1000000000000ULL /
@@ -4637,7 +4651,7 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 						__func__, target_fps_margin, t_fps_margin_exp_time);
 			}
 		}
-
+out:
 		if (!ret && out_target_t_ns)
 			*out_target_t_ns = rl_target_t;
 		fpsgo_systrace_c_fbt(pid, buffer_id, rl_target_t, "target_t_ns");
@@ -4760,7 +4774,7 @@ static int fbt_boost_policy(
 
 	next_vsync = fbt_get_next_vsync_locked(ts);
 	fbt_cal_target_time_ns(pid, buffer_id, rl_ko_is_ready, gcc_enable_active, target_fps_ori,
-		target_fpks, target_time, fps_margin, boost_info->last_target_time_ns,
+		thread_info->target_fps_origin, target_fpks, target_time, fps_margin, boost_info->last_target_time_ns,
 		thread_info->Q2Q_time, ts, next_vsync, expected_fps_margin_final,
 		rl_learning_rate_p, rl_learning_rate_n, quota_v2_clamp_max,
 		quota_v2_diff_clamp_min_final, quota_v2_diff_clamp_max_final, separate_aa_final,
@@ -5700,6 +5714,8 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	blc_wt = fbt_boost_policy(runtime,
 			targettime, targetfps, targetfps_ori, fps_margin,
 			thr, ts, loading, targetfpks, cooler_on);
+
+	thr->target_fps_origin = targetfps_ori;
 
 	limited_cap = fbt_get_max_userlimit_freq();
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, limited_cap, "limited_cap");
@@ -9355,6 +9371,8 @@ int __init fbt_cpu_init(void)
 	rl_expect_fps_margin = -1;
 
 	aa_b_minus_idle_time = 0;
+
+	limit_min_cap_target_t = 0;
 
 	if (cluster_num <= 0)
 		FPSGO_LOGE("cpufreq policy not found");

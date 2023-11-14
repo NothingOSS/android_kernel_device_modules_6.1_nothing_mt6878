@@ -73,6 +73,7 @@ static unsigned long long vsync_ts_last;
 static unsigned int vsync_count;
 static unsigned long long vsync_duration_sum;
 static unsigned long long last_cam_queue_ts;
+static int fstb_vsync_app_fps_disable;
 
 int fstb_no_r_timer_enable;
 EXPORT_SYMBOL(fstb_no_r_timer_enable);
@@ -482,8 +483,11 @@ static void fstb_post_process_target_fps(int tfps, int margin, int diff,
 {
 	int local_tfps, local_margin;
 	int min_limit = min_fps_limit * 1000;
-	int max_limit = min(dfps_ceiling * 1000, FSTB_USEC_DIVIDER * 1000 / vsync_period);
+	int max_limit = dfps_ceiling * 1000;
 	unsigned long long local_time = 1000000000000ULL;
+
+	if (!fstb_vsync_app_fps_disable)
+		max_limit = min(max_limit, FSTB_USEC_DIVIDER * 1000 / vsync_period);
 
 	local_tfps = tfps * 1000;
 	local_tfps += diff;
@@ -1850,11 +1854,12 @@ static void fstb_fps_stats(struct work_struct *work)
 		kfree(work);
 
 	mutex_lock(&fstb_lock);
-	if (vsync_count) {
+	if (vsync_count)
 		vsync_period = div64_u64(vsync_duration_sum, vsync_count);
-		vsync_count = 0;
-		vsync_duration_sum = 0;
-	}
+	else
+		vsync_period = 1;
+	vsync_count = 0;
+	vsync_duration_sum = 0;
 
 	if (gbe_fstb2gbe_poll_fp)
 		gbe_fstb2gbe_poll_fp(&fstb_frame_infos);
@@ -2405,6 +2410,10 @@ FSTB_SYSFS_READ(fstb_self_ctrl_fps_enable, 1, fstb_self_ctrl_fps_enable);
 FSTB_SYSFS_WRITE_VALUE(fstb_self_ctrl_fps_enable, fstb_self_ctrl_fps_enable, 0, 1);
 static KOBJ_ATTR_RW(fstb_self_ctrl_fps_enable);
 
+FSTB_SYSFS_READ(fstb_vsync_app_fps_disable, 1, fstb_vsync_app_fps_disable);
+FSTB_SYSFS_WRITE_VALUE(fstb_vsync_app_fps_disable, fstb_vsync_app_fps_disable, 0, 1);
+static KOBJ_ATTR_RW(fstb_vsync_app_fps_disable);
+
 FSTB_SYSFS_READ(fstb_no_r_timer_enable, 1, fstb_no_r_timer_enable);
 FSTB_SYSFS_WRITE_VALUE(fstb_no_r_timer_enable, fstb_no_r_timer_enable, 0, 1);
 static KOBJ_ATTR_RW(fstb_no_r_timer_enable);
@@ -2744,6 +2753,8 @@ int mtk_fstb_init(void)
 				&kobj_attr_fstb_tfps_info);
 		fpsgo_sysfs_create_file(fstb_kobj,
 				&kobj_attr_fstb_frs_info);
+		fpsgo_sysfs_create_file(fstb_kobj,
+				&kobj_attr_fstb_vsync_app_fps_disable);
 	}
 
 	wq = alloc_ordered_workqueue("%s", WQ_MEM_RECLAIM | WQ_HIGHPRI, "mt_fstb");
@@ -2807,6 +2818,8 @@ int __exit mtk_fstb_exit(void)
 			&kobj_attr_fstb_tfps_info);
 	fpsgo_sysfs_remove_file(fstb_kobj,
 			&kobj_attr_fstb_frs_info);
+	fpsgo_sysfs_remove_file(fstb_kobj,
+				&kobj_attr_fstb_vsync_app_fps_disable);
 
 	fpsgo_sysfs_remove_dir(&fstb_kobj);
 

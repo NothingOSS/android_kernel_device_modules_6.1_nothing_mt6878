@@ -176,7 +176,8 @@ static int fbt_ux_cal_perf(
 
 		if (fpsgo_ux_gcc_enable == 2) {
 			fbt_cal_target_time_ns(thread_info->pid, thread_info->buffer_id,
-				fbt_get_rl_ko_is_ready(), 2, target_fps_ori, target_fpks,
+				fbt_get_rl_ko_is_ready(), 2, target_fps_ori,
+				thread_info->target_fps_origin, target_fpks,
 				target_time, 0, boost_info->last_target_time_ns, thread_info->Q2Q_time,
 				0, 0, thread_info->attr.expected_fps_margin_by_pid, 10, 10,
 				0, thread_info->attr.quota_v2_diff_clamp_min_by_pid,

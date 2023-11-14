@@ -331,6 +331,8 @@ struct render_info {
 
 	/* boost policy */
 	struct fpsgo_boost_attr attr;
+
+	int target_fps_origin;
 };
 
 #if FPSGO_MW
