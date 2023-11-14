@@ -2834,7 +2834,7 @@ static const enum mtk_ddp_comp_id mt6989_scaling_main[] = {
 };
 
 static const enum mtk_ddp_comp_id mt6878_scaling_main[] = {
-	DDP_COMPONENT_RSZ1,
+	DDP_COMPONENT_RSZ0,
 };
 
 /* CRTC0 */
