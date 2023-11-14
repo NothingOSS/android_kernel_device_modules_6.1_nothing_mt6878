@@ -91,6 +91,10 @@ void gpueb_dump_status(char *log_buf, int *log_len, int log_size)
 		gpueb_pr_logbuf(log_buf, log_len, log_size,
 			"GPUEB_CFGREG_MDSP_CFG (0x%x): 0x%08x",
 			(0x13C60000 + 0x634), readl(g_gpueb_reg_base + 0x634));
+		/* 0x13C607D0 */
+		gpueb_pr_logbuf(log_buf, log_len, log_size,
+			"GPUEB_CFGREG_AXI_BIST_CON_DEBUG (0x%x): 0x%08x",
+			(0x13C60000 + 0x7D0), readl(g_gpueb_reg_base + 0x7D0));
 		/* 0x13C6071C */
 		gpueb_pr_logbuf(log_buf, log_len, log_size,
 			"GPUEB_CFGREG_DBG_APB_PC (0x%x): 0x%08x",
@@ -188,6 +192,9 @@ static int gpueb_status_proc_show(struct seq_file *m, void *v)
 		/* 0x13C60634 */
 		seq_printf(m, "@%s: GPUEB_CFGREG_MDSP_CFG (0x%x): 0x%08x\n", __func__,
 			(0x13C60000 + 0x634), readl(g_gpueb_reg_base + 0x634));
+		/* 0x13C607D0 */
+		seq_printf(m, "@%s: GPUEB_CFGREG_AXI_BIST_CON_DEBUG (0x%x): 0x%08x\n", __func__,
+			(0x13C60000 + 0x7D0), readl(g_gpueb_reg_base + 0x7D0));
 		/* 0x13C6071C */
 		seq_printf(m, "@%s: GPUEB_CFGREG_DBG_APB_PC (0x%x): 0x%08x\n", __func__,
 			(0x13C60000 + 0x71C), readl(g_gpueb_reg_base + 0x71C));
