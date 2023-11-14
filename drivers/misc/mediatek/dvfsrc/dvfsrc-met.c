@@ -272,6 +272,12 @@ static const struct dvfsrc_met_data mt6897_data = {
 	.max_emi_mon =  7,
 };
 
+static const struct dvfsrc_met_data mt6878_data = {
+	.met = &mt6983_met_config,
+	.version = 0x6878,
+	.max_emi_mon =  7,
+};
+
 static const struct of_device_id dvfsrc_met_of_match[] = {
 #if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6873)
 	{
@@ -316,6 +322,9 @@ static const struct of_device_id dvfsrc_met_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6897-dvfsrc",
 		.data = &mt6897_data,
+	}, {
+		.compatible = "mediatek,mt6878-dvfsrc",
+		.data = &mt6878_data,
 	},
 #endif
 	{

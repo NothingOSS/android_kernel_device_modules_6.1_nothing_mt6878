@@ -117,6 +117,7 @@ static char *met_src_name[SRC_MAX] = {
 
 #define DVFSRC_VCORE_REQUEST (0x80)
 #define DVFSRC_DEBUG_STA_0 (0x29C)
+#define DVFSRC_DEBUG_STA_1 (0x2A0)
 #define DVFSRC_DEBUG_STA_2 (0x2A4)
 #define DVFSRC_DEBUG_STA_8 (0x2BC)
 
@@ -284,7 +285,11 @@ static void vcorefs_get_src_misc_info(struct mtk_dvfsrc_met *dvfs)
 	met_vcorefs_src[PMQOS_BW2] = dvfsrc_met_read(dvfs, DVFSRC_SW_BW_2);
 	met_vcorefs_src[PMQOS_BW3] = dvfsrc_met_read(dvfs, DVFSRC_SW_BW_3);
 	met_vcorefs_src[PMQOS_BW4] = dvfsrc_met_read(dvfs, DVFSRC_SW_BW_4);
-	met_vcorefs_src[PMQOS_BW5] = dvfsrc_met_read(dvfs, DVFSRC_SW_BW_5);
+	if (dvfs->dvd->version == 0x6878) {
+		met_vcorefs_src[PMQOS_BW5] =
+			(dvfsrc_met_read(dvfs, DVFSRC_DEBUG_STA_1) >> 12) & 0x3FF;
+	} else
+		met_vcorefs_src[PMQOS_BW5] = dvfsrc_met_read(dvfs, DVFSRC_SW_BW_5);
 	met_vcorefs_src[PMQOS_BW6] = dvfsrc_met_read(dvfs, DVFSRC_SW_BW_6);
 	met_vcorefs_src[PMQOS_BW7] = dvfsrc_met_read(dvfs, DVFSRC_SW_BW_7);
 	met_vcorefs_src[PMQOS_BW8] = dvfsrc_met_read(dvfs, DVFSRC_SW_BW_8);
@@ -298,6 +303,10 @@ static void vcorefs_get_src_misc_info(struct mtk_dvfsrc_met *dvfs)
 	}
 	met_vcorefs_src[HRT_ISP_BW] = dvfsrc_met_read(dvfs, DVFSRC_ISP_HRT);
 	met_vcorefs_src[HRT_MD_BW] = mtk_dvfsrc_query_debug_info(DVFSRC_MD_HRT_BW);
+	if (dvfs->dvd->version == 0x6878) {
+		met_vcorefs_src[HRT_DISP_BW] =
+			dvfsrc_met_read(dvfs, DVFSRC_DEBUG_STA_1) & 0x3FF;
+	}
 
 	sta0 = dvfsrc_met_read(dvfs, DVFSRC_DEBUG_STA_0);
 	met_vcorefs_src[MD2SPM] = sta0 & 0xFFFF;
