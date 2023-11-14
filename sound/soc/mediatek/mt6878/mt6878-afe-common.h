@@ -30,7 +30,6 @@
 #else
 /* delete define below if your feature don't want to skip */
 //#define SKIP_SB_DSP
-#define SKIP_SB_USB_OFFLOAD
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
