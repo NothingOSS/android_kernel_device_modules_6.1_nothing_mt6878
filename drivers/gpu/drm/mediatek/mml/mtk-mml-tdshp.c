@@ -712,16 +712,18 @@ static void tdshp_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* read tdshp clarity status */
-	for (i = 0; i < TDSHP_CLARITY_STATUS_NUM; i++) {
-		cmdq_pkt_read_addr(pkt, base_pa +
-			tdshp->data->reg_table[TDSHP_STATUS_00] + i * 4, idx_val);
-		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+	if (tdshp->data->reg_table[TDSHP_STATUS_00] != REG_NOT_SUPPORT) {
+		for (i = 0; i < TDSHP_CLARITY_STATUS_NUM; i++) {
+			cmdq_pkt_read_addr(pkt, base_pa +
+				tdshp->data->reg_table[TDSHP_STATUS_00] + i * 4, idx_val);
+			cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 
-		lop.reg = true;
-		lop.idx = idx_out;
-		rop.reg = false;
-		rop.value = 4;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+			lop.reg = true;
+			lop.idx = idx_out;
+			rop.reg = false;
+			rop.value = 4;
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+		}
 	}
 
 
@@ -1260,16 +1262,18 @@ static void tdshp_hist_work(struct work_struct *work_item)
 	}
 
 	/* read tdshp clarity status */
-	for (i = 0; i < TDSHP_CLARITY_STATUS_NUM; i++) {
-		cmdq_pkt_read_addr(pkt, base_pa +
-			tdshp->data->reg_table[TDSHP_STATUS_00] + i * 4, idx_val);
-		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+	if (tdshp->data->reg_table[TDSHP_STATUS_00] != REG_NOT_SUPPORT) {
+		for (i = 0; i < TDSHP_CLARITY_STATUS_NUM; i++) {
+			cmdq_pkt_read_addr(pkt, base_pa +
+				tdshp->data->reg_table[TDSHP_STATUS_00] + i * 4, idx_val);
+			cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 
-		lop.reg = true;
-		lop.idx = idx_out;
-		rop.reg = false;
-		rop.value = 4;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+			lop.reg = true;
+			lop.idx = idx_out;
+			rop.reg = false;
+			rop.value = 4;
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+		}
 	}
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",

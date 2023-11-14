@@ -1279,8 +1279,9 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_WIN_Y_MAIN],
 		(win_y_end << 16) | win_y_start, U32_MAX);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_CTRL],
-		(hist_last_tile << 2) | (hist_first_tile << 1) | 1, U32_MAX);
+	if (aal->data->reg_table[AAL_BILATERAL_STATUS_CTRL] != REG_NOT_SUPPORT)
+		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_CTRL],
+			(hist_last_tile << 2) | (hist_first_tile << 1) | 1, U32_MAX);
 
 exit:
 	mml_pq_trace_ex_end();
@@ -1410,17 +1411,19 @@ static void aal_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
 	}
 
-	for (i = 0; i < AAL_CLARITY_STATUS_NUM; i++) {
-		cmdq_pkt_read_addr(pkt,
-			base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_00] + i * 4,
-			idx_val);
-		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+	if (aal->data->reg_table[AAL_BILATERAL_STATUS_00] != REG_NOT_SUPPORT) {
+		for (i = 0; i < AAL_CLARITY_STATUS_NUM; i++) {
+			cmdq_pkt_read_addr(pkt,
+				base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_00] + i * 4,
+				idx_val);
+			cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 
-		lop.reg = true;
-		lop.idx = idx_out;
-		rop.reg = false;
-		rop.value = 4;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+			lop.reg = true;
+			lop.idx = idx_out;
+			rop.reg = false;
+			rop.value = 4;
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+		}
 	}
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
@@ -2399,18 +2402,19 @@ static void clarity_hist_work(struct work_struct *work_item)
 	cmdq_pkt_assign_command(pkt, idx_out, (u32)pa);
 	cmdq_pkt_assign_command(pkt, idx_out + 1, (u32)(pa >> 32));
 
+	if (aal->data->reg_table[AAL_BILATERAL_STATUS_00] != REG_NOT_SUPPORT) {
+		for (i = 0; i < AAL_CLARITY_STATUS_NUM; i++) {
+			cmdq_pkt_read_addr(pkt,
+				base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_00] + i * 4,
+				idx_val);
+			cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 
-	for (i = 0; i < AAL_CLARITY_STATUS_NUM; i++) {
-		cmdq_pkt_read_addr(pkt,
-			base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_00] + i * 4,
-			idx_val);
-		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
-
-		lop.reg = true;
-		lop.idx = idx_out;
-		rop.reg = false;
-		rop.value = 4;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+			lop.reg = true;
+			lop.idx = idx_out;
+			rop.reg = false;
+			rop.value = 4;
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+		}
 	}
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
