@@ -320,6 +320,7 @@ void mtk_smi_common_ostdl_set(struct device *dev, const u32 port, bool is_write,
 	if (val) {
 		if (is_other_ostd_existed(orig_val, !is_write))
 			write_val |= BIT(OSTDL_EN);
+		write_val &= ~((MASK_7) << (is_write ? WR_LIMIT_LSB : RD_LIMIT_LSB));
 		write_val |= (val & MASK_7) << (is_write ? WR_LIMIT_LSB : RD_LIMIT_LSB);
 	} else {
 		write_val &= ~BIT(OSTDL_EN);
