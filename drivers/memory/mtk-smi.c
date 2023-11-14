@@ -195,6 +195,7 @@ struct mtk_smi_larb { /* larb: local arbiter */
 	unsigned char			*bank;
 	bool				skip_busy_check;
 	bool				skip_restore;
+	bool				skip_rpm_cb;
 };
 
 #define MAX_COMMON_FOR_CLAMP		(3)
@@ -2863,6 +2864,11 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	ret = component_add(dev, &mtk_smi_larb_component_ops);
 	of_property_read_u32(dev->of_node, "mediatek,larb-id", &larb->larbid);
 
+	if (of_property_read_bool(dev->of_node, "skip-rpm-cb")) {
+		larb->skip_rpm_cb = true;
+		dev_notice(dev, "skip rpm callback\n");
+	}
+
 	if (of_property_read_bool(dev->of_node, "init-power-on")) {
 		dev_notice(dev, "%s: init power on\n", __func__);
 		ret = pm_runtime_get_sync(dev);
@@ -2903,6 +2909,13 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev)
 
 	rs_start = ktime_get();
 	atomic_inc(&larb->smi.ref_count);
+	if (larb->skip_rpm_cb) {
+		if (log_level & 1 << log_config_bit)
+			dev_notice(dev, "[SMI]%s: larb%d skip rpm callback\n",
+						__func__, larb->larbid);
+		return 0;
+	}
+
 	if (log_level & 1 << log_config_bit)
 		pr_info("[SMI]larb:%d callback get ref_count:%d\n",
 			larb->larbid, atomic_read(&larb->smi.ref_count));
@@ -3142,6 +3155,13 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev)
 	const struct mtk_smi_larb_gen *larb_gen = larb->larb_gen;
 
 	atomic_dec(&larb->smi.ref_count);
+	if (larb->skip_rpm_cb) {
+		if (log_level & 1 << log_config_bit)
+			dev_notice(dev, "[SMI]%s: larb%d skip rpm callback\n",
+						__func__, larb->larbid);
+		return 0;
+	}
+
 	if (log_level & 1 << log_config_bit)
 		pr_info("[SMI]larb:%d callback put ref_count:%d\n",
 			larb->larbid, atomic_read(&larb->smi.ref_count));
