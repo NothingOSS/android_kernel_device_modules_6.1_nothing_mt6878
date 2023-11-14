@@ -1469,7 +1469,7 @@ static const char * const notice_pll_names[] = {
 };
 
 static const char * const bypass_pll_name[] = {
-
+	"univpll",
 	NULL
 };
 

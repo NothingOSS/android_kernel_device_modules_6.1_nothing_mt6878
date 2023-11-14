@@ -624,7 +624,6 @@ static int off_mtcmos_id[] = {
 	MT6878_CHK_PD_MM_PROC,
 	MT6878_CHK_PD_CSI_RX,
 	MT6878_CHK_PD_SSRSYS,
-	MT6878_CHK_PD_SSUSB,
 	MT6878_CHK_PD_MFG0,
 	PD_NULL,
 };
@@ -633,6 +632,7 @@ static int notice_mtcmos_id[] = {
 	MT6878_CHK_PD_MD1,
 	MT6878_CHK_PD_CONN,
 	MT6878_CHK_PD_AUDIO,
+	MT6878_CHK_PD_SSUSB,
 	PD_NULL,
 };
 
