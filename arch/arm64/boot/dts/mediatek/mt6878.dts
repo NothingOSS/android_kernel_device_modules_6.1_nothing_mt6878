@@ -4888,6 +4888,14 @@
 				"infra-ccif2-md";
 		};
 
+		gpu_qos: gpu-qos@112000 {
+			compatible = "mediatek,gpu_qos";
+			qos-sysram-support = <1>;
+			reg = <0 0x112000 0 0x20>;
+			qos-mode = <0>;
+			qos-value = <0>;
+		};
+
 		gpueb: gpueb@13c00000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
