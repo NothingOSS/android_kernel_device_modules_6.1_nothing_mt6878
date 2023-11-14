@@ -737,8 +737,10 @@ static void rdma_config_smi(struct mml_comp_rdma *rdma,
 	/* config smi addr to emi (iova) or sram, and bw throttling */
 	if (mode == MML_MODE_SRAM_READ || mode == MML_MODE_APUDC)
 		value = 0xf << 16;
-	else
+	else if (mode == MML_MODE_MML_DECOUPLE)
 		value = 0x1 << 3;
+	else
+		value = 0;
 
 	cmdq_pkt_write(pkt, NULL, rdma->smi_larb_con, value, mask);
 }

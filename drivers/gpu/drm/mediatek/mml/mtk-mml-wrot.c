@@ -549,8 +549,10 @@ static void wrot_config_smi(struct mml_comp_wrot *wrot,
 	/* config smi addr to emi (iova) or sram, and bw throttling */
 	if (mode == MML_MODE_RACING)
 		value = 0xf << 16;
-	else
+	else if (mode == MML_MODE_MML_DECOUPLE)
 		value = 0x1 << 3;
+	else
+		value = 0;
 
 	cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con, value, mask);
 }
