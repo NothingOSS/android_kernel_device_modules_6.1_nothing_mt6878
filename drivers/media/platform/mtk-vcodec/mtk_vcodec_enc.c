@@ -303,7 +303,12 @@ void venc_dump_frame_data(struct mtk_vcodec_ctx *ctx, unsigned long frm_va)
 	struct vb2_v4l2_buffer *src_vb2_v4l2;
 	struct vb2_buffer *src_buf;
 
-	if (inst != NULL && inst->vcu_inst.abort) {
+	if (inst == NULL) {
+		mtk_v4l2_err("invalid inst when dump frame");
+		return;
+	}
+
+	if (inst->vcu_inst.abort) {
 		mtk_v4l2_err("abort when dump frame");
 		return;
 	}
