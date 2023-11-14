@@ -160,6 +160,7 @@ enum ufs_mtk_host_caps {
 
 	UFS_MTK_CAP_MCQ_BROKEN_RTC             = 1 << 10,
 	UFS_MTK_CAP_MPHY_DUMP                  = 1 << 11,
+	UFS_MTK_CAP_BYPASS_VCCQX_LPM           = 1 << 12,
 };
 
 struct ufs_mtk_crypt_cfg {
@@ -343,8 +344,9 @@ enum {
 /* UFS MTK ip version value */
 enum {
 	IP_VER_NONE   = 0x0,
-	IP_VER_MT6897 = 0x01440000,
-	IP_VER_MT6989 = 0x01450000
+	IP_VER_MT6878 = 0x10420200,
+	IP_VER_MT6897 = 0x10440000,
+	IP_VER_MT6989 = 0x10450000
 };
 
 struct tag_bootmode {
