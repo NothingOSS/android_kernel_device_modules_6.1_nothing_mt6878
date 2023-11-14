@@ -778,6 +778,7 @@ static void vcp_wait_ready_timeout(struct timer_list *t)
 	if (ret < 0)
 		return;
 	vcp_dump_last_regs(mmup_enable_count());
+	mtk_smi_dbg_dump_for_mminfra();
 	vcp_turn_mminfra_off();
 }
 #endif
