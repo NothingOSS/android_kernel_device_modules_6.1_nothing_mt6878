@@ -287,7 +287,7 @@ void __gpufreq_dump_power_tracker_status(void)
 		DRV_WriteReg32(MFG_POWER_TRACKER_SETTING, val);
 		udelay(1);
 
-		GPUFREQ_LOGI("[SLOT %d] STATUS0: 0x%08x, STATUS1: 0x%08x",
+		GPUFREQ_LOGI("[SLOT %d] TIME_STAMP: 0x%08x, STATUS1: 0x%08x",
 			i, DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS0),
 			DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS1));
 	}

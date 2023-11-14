@@ -113,9 +113,9 @@
 #define MFG_I2M_PROTECTOR_CFG_01        (g_mfg_top_base + 0xF64)              /* 0x13FBFF64 */
 #define MFG_I2M_PROTECTOR_CFG_02        (g_mfg_top_base + 0xF68)              /* 0x13FBFF68 */
 #define MFG_I2M_PROTECTOR_CFG_03        (g_mfg_top_base + 0xFA8)              /* 0x13FBFFA8 */
-#define MFG_POWER_TRACKER_SETTING       (MFG_TOP_CFG_BASE + 0xFE0)            /* 0x13FBFFF0 */
-#define MFG_POWER_TRACKER_PDC_STATUS0   (MFG_TOP_CFG_BASE + 0xFE4)            /* 0x13FBFFF8 */
-#define MFG_POWER_TRACKER_PDC_STATUS1   (MFG_TOP_CFG_BASE + 0xFE8)            /* 0x13FBFFFC */
+#define MFG_POWER_TRACKER_SETTING       (g_mfg_top_base + 0xFE0)              /* 0x13FBFFE0 */
+#define MFG_POWER_TRACKER_PDC_STATUS0   (g_mfg_top_base + 0xFE4)              /* 0x13FBFFE4 */
+#define MFG_POWER_TRACKER_PDC_STATUS1   (g_mfg_top_base + 0xFE8)              /* 0x13FBFFE8 */
 
 #define MFG_PLL_BASE                    (g_mfg_pll_base)                      /* 0x13FA0000 */
 #define MFG_PLL_CON0                    (g_mfg_pll_base + 0x008)              /* 0x13FA0008 */
