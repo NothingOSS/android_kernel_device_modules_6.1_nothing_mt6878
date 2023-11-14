@@ -4921,6 +4921,10 @@
 			clear = <0x014>;
 		};
 
+		ktf-emislc-test {
+			compatible = "mediatek,ktf-emislc-test";
+		};
+
 		nemi-hre-emi-apb@10344000 {
 			compatible = "mediatek,nemi_hre_emi_apb";
 			reg = <0 0x10344000 0 0x1000>;
