@@ -5506,7 +5506,7 @@
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos SLAVE_LARB(39) &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "disp_hrt_qos";
-			pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>;
+			pre-define-bw = <0xffffffff>, <4200>, <0>, <1400>;
 			crtc-ovl-usage = <0x7>, <0x2>, <0x2>, <0x8>;
 			nvmem-cells = <&efuse_segment>;
 			nvmem-cell-names = "efuse_seg_disp_cell";
@@ -9969,6 +9969,7 @@
 				<&level_spi6>,
 				<&level_spi7>,
 				<&level_dsi0>,
+				<&level_dsi1>,
 				<&level_apusys_rv_apu_wdt>,
 				<&level_apusys_rv_mbox0 &level_apusys_rv_mbox1>,
 				<&level_apusys_rv_ce_exp>,
@@ -10044,6 +10045,10 @@
 			};
 			level_dsi0: level-dsi0 {
 				target = <&dsi0>;
+				value = <0 0 0 0>;
+			};
+			level_dsi1: level-dsi1 {
+				target = <&dsi1>;
 				value = <0 0 0 0>;
 			};
 			level_apusys_rv_apu_wdt: level-apusys-rv-apu-wdt {
