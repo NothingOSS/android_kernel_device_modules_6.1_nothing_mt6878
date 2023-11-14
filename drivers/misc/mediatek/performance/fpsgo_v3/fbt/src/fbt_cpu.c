@@ -3004,6 +3004,35 @@ EXIT:
 	return hit;
 }
 
+static int check_limit_cap(int is_rescue)
+{
+	int cap = 0, opp, cluster;
+	int max_cap = 0;
+
+	if (limit_policy == FPSGO_LIMIT_NONE || !limit_clus_ceil)
+		return 0;
+
+	for (cluster = cluster_num - 1; cluster >= 0 ; cluster--) {
+		struct fbt_syslimit *limit = &limit_clus_ceil[cluster];
+
+		opp = (is_rescue) ? limit->ropp : limit->copp;
+		if (opp == -1)
+			opp = 0;
+
+		if (opp >= 0 && opp < nr_freq_cpu) {
+			cap = fbt_cluster_X2Y(cluster, opp, OPP, CAP, 1, __func__);
+			if (cap > max_cap)
+				max_cap = cap;
+		}
+	}
+
+	if (max_cap <= 0)
+		return 0;
+
+	return max_cap;
+}
+
+
 void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,
 				unsigned long long t_duration)
 {
@@ -3348,6 +3377,7 @@ static void fbt_do_jerk_locked(struct render_info *thr, struct fbt_jerk *jerk, i
 	if (!blc_wt || (separate_aa_final && !(blc_wt_b && blc_wt_m)))
 		goto EXIT;
 
+	limit_cap = check_limit_cap(1);
 	blc_wt = fbt_limit_capacity(blc_wt, 1);
 	if (separate_aa_final) {
 		blc_wt_b = fbt_limit_capacity(blc_wt_b, 1);
@@ -4688,7 +4718,7 @@ static int fbt_boost_policy(
 	u64 t2wnt = 0ULL;
 	int active_jerk_id = 0;
 	long long rescue_target_t, qr_quota_adj;
-	int isolation_cap = 100, limit_max_cap = 100;
+	int isolation_cap = 100, limit_max_cap = 100, limit_sys_max_cap = 100;
 	int getcap_ret = 0, filter_ret = 0, get_aa_ret = 0;
 	long aa_n, aa_b, aa_m;
 	int is_filter_frame_active;
@@ -4761,7 +4791,6 @@ static int fbt_boost_policy(
 		mutex_unlock(&blc_mlock);
 	}
 
-
 	get_aa_ret = fbt_get_aa(loading, boost_info->cl_loading, cluster_num, t1, t_Q2Q,
 		separate_aa_final, max_cap_cluster, sec_cap_cluster, &aa_n, &aa_b, &aa_m);
 
@@ -4772,9 +4801,14 @@ static int fbt_boost_policy(
 		ff_obj, pid, buffer_id, target_fps, ff_window_size, ff_kmin, aa_n, aa_b, aa_m,
 		&filtered_aa_n, &filtered_aa_b, &filtered_aa_m);
 
-	limit_max_cap = fbt_get_limit_capacity(0);
+	limit_cap = check_limit_cap(0);
+	limit_sys_max_cap = fbt_get_limit_capacity(0);
 	fbt_get_limit_max_capacity(&thread_info->attr, 0, &limit_max_cap, &limit_cap_b,
 		&limit_cap_m, &limit_util, &limit_util_b, &limit_util_m);
+
+	limit_max_cap = min(limit_sys_max_cap, limit_max_cap);
+	limit_cap_b = min(limit_sys_max_cap, limit_cap_b);
+	limit_cap_m = min(limit_sys_max_cap, limit_cap_m);
 
 	t2 = target_time;
 
@@ -6278,34 +6312,6 @@ static int fbt_get_opp_by_freq(int cluster, unsigned int freq)
 	opp = clamp(opp, 0, nr_freq_cpu - 1);
 
 	return opp;
-}
-
-static int check_limit_cap(int is_rescue)
-{
-	int cap = 0, opp, cluster;
-	int max_cap = 0;
-
-	if (limit_policy == FPSGO_LIMIT_NONE || !limit_clus_ceil)
-		return 0;
-
-	for (cluster = cluster_num - 1; cluster >= 0 ; cluster--) {
-		struct fbt_syslimit *limit = &limit_clus_ceil[cluster];
-
-		opp = (is_rescue) ? limit->ropp : limit->copp;
-		if (opp == -1)
-			opp = 0;
-
-		if (opp >= 0 && opp < nr_freq_cpu) {
-			cap = fbt_cluster_X2Y(cluster, opp, OPP, CAP, 1, __func__);
-			if (cap > max_cap)
-				max_cap = cap;
-		}
-	}
-
-	if (max_cap <= 0)
-		return 0;
-
-	return max_cap;
 }
 
 static void fbt_set_cap_limit(void)
