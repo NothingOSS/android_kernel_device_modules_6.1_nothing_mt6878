@@ -157,6 +157,9 @@ int register_low_battery_notify(low_battery_callback lb_cb,
 		return -EINVAL;
 	}
 
+	if (!lb_cb)
+		return -EINVAL;
+
 	if (lbcb_tb[prio_val].lbcb != 0)
 		pr_info("[%s] Notice: LBCB has been registered\n", __func__);
 
