@@ -82,6 +82,7 @@ struct mtk_mmsys_driver_data {
 	bool doze_ctrl_pmic;
 	bool can_compress_rgb565;
 	bool need_seg_id;
+	bool not_support_csc;
 	void (*disable_merge_irq)(struct drm_device *drm);
 	enum PF_TS_TYPE pf_ts_type;
 };

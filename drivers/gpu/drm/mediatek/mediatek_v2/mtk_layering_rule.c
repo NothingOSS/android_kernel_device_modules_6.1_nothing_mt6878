@@ -227,11 +227,40 @@ static bool is_ovl_wcg(enum mtk_drm_dataspace ds)
 	return ret;
 }
 
-static bool is_ovl_standard(struct drm_device *dev, enum mtk_drm_dataspace ds)
+static bool is_ovl_standard(struct drm_device *dev, enum mtk_drm_dataspace ds,
+			struct drm_crtc *crtc, bool has_wcg, struct drm_mtk_layer_config *c)
 {
 	struct mtk_drm_private *priv = dev->dev_private;
 	enum mtk_drm_dataspace std = ds & MTK_DRM_DATASPACE_STANDARD_MASK;
-	bool ret = false;
+	bool ret = false; /* GPU handle */
+
+	if (priv->data->not_support_csc) {
+		struct mtk_panel_params *panel_params = NULL;
+
+		panel_params = mtk_drm_get_lcm_ext_params(crtc);
+		if (!panel_params) {
+			DDPPR_ERR("%s failed, panel_params is NULL\n", __func__);
+			return false;
+		}
+		if (panel_params->lcm_color_mode == MTK_DRM_COLOR_MODE_DISPLAY_P3) {
+			if (!has_wcg || is_ovl_wcg(ds))
+				ret = true; /* OVL handle */
+		} else if (panel_params->lcm_color_mode == MTK_DRM_COLOR_MODE_NATIVE) {
+			if (!is_ovl_wcg(ds) && (std != MTK_DRM_DATASPACE_STANDARD_BT2020) &&
+				(std != MTK_DRM_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE))
+				ret = true; /* OVL handle */
+		} else
+			DDPPR_ERR("%s, panel color mode is %d, not expect?\n",
+					  __func__, panel_params->lcm_color_mode);
+		/* avoid to push MML */
+		if (ret == false) {
+			if (c->layer_caps & MTK_MML_OVL_LAYER)
+				DDPINFO("%s, remove MTK_MML_OVL_LAYER\n", __func__);
+			c->layer_caps &= ~MTK_MML_OVL_LAYER;
+		}
+
+		return ret;
+	}
 
 	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_WCG) &&
 	    is_ovl_wcg(ds))
@@ -252,24 +281,43 @@ static bool is_ovl_standard(struct drm_device *dev, enum mtk_drm_dataspace ds)
 static void filter_by_wcg(struct drm_device *dev,
 			  struct drm_mtk_layering_info *disp_info)
 {
-	unsigned int j;
-	struct drm_mtk_layer_config *c;
+	unsigned int j, m;
+	struct drm_mtk_layer_config *c, *c1;
 	unsigned int disp_idx = 0;
 	unsigned int condition;
+	struct mtk_drm_private *priv = dev->dev_private;
+	struct drm_crtc *crtc;
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		disp_idx = disp_info->disp_idx;
 
+	crtc = priv->crtc[disp_idx];
+
 	for (; disp_idx < HRT_DISP_TYPE_NUM ; disp_idx++) {
+		bool has_wcg_layer = false;
+		/* check all layers is sRGB */
+		if (priv->data->not_support_csc) {
+			for (m = 0; m < disp_info->layer_num[disp_idx]; m++) {
+				c1 = &disp_info->input_config[disp_idx][m];
+
+				if (is_ovl_wcg(c1->dataspace)) {
+					has_wcg_layer = true;
+					DDPINFO("%s, has wcg layers m=%d, ds:%d\n",
+							__func__, m, c1->dataspace);
+					break;
+				}
+			}
+		}
 		for (j = 0; j < disp_info->layer_num[disp_idx]; j++) {
 			c = &disp_info->input_config[disp_idx][j];
+
 			/* TODO: check disp WCG cap */
 			condition = (disp_idx == 0) || !is_ovl_wcg(c->dataspace);
 			if (condition &&
-			    (is_ovl_standard(dev, c->dataspace) ||
+			    (is_ovl_standard(dev, c->dataspace, crtc, has_wcg_layer, c) ||
 			     mtk_has_layer_cap(c, MTK_MDP_HDR_LAYER)))
 				continue;
-
+			DDPINFO("%s, to GPU j=%d, ds:%d, cap:0x%x\n", __func__, j, c->dataspace, c->layer_caps);
 			mtk_rollback_layer_to_GPU(disp_info, disp_idx, j);
 		}
 		if (get_layering_opt(LYE_OPT_SPHRT))

@@ -10276,7 +10276,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		/* set lcm_color_mode */
 		panel_params = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
-		if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_OVL_WCG)) {
+		if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_OVL_WCG)
+			|| private->data->not_support_csc) {
 			if (panel_params)
 				connector_caps->conn_caps.lcm_color_mode =
 					panel_params->lcm_color_mode;

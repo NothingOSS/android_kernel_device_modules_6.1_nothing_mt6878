@@ -5742,6 +5742,7 @@ static const struct mtk_mmsys_driver_data mt6878_mmsys_driver_data = {
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
 	.need_seg_id = true,
+	.not_support_csc = true,
 	.pf_ts_type = IRQ_CMDQ_CB,
 };
 
@@ -6274,7 +6275,8 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 
 	/* setting lcm_color_mode to HWC change to DSI_FILL_CONNECTOR_PROP_CAPS */
 	caps_info->lcm_color_mode = MTK_DRM_COLOR_MODE_NATIVE;
-	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_OVL_WCG)) {
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_OVL_WCG) ||
+		private->data->not_support_csc) {
 		if (params)
 			caps_info->lcm_color_mode = params->lcm_color_mode;
 		else

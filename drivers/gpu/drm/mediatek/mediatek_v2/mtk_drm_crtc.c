@@ -17360,12 +17360,13 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 					MTK_DRM_OPT_PARTIAL_UPDATE))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
 		}
-		mtk_crtc->crtc_caps.ovl_csc_bit_number = 18;
+		if (!priv->data->not_support_csc)
+			mtk_crtc->crtc_caps.ovl_csc_bit_number = 18;
 	}
 	if (check_comp_in_crtc(path_data, MTK_DISP_CCORR) &&
 			check_comp_in_crtc(path_data, MTK_DISP_AAL))
 		mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PQ;
-	DDPINFO("%s:%x\n", crtc_caps, caps_value);
+	DDPINFO("%s:%x, csc:%u\n", crtc_caps, caps_value, mtk_crtc->crtc_caps.ovl_csc_bit_number);
 
 	mtk_crtc->ovl_usage_status = priv->ovlsys_usage[pipe];
 	mtk_crtc->planes = devm_kzalloc(dev,
