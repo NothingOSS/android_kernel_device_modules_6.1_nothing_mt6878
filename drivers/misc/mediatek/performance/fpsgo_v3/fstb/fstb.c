@@ -479,14 +479,15 @@ static int fstb_enter_get_target_fps(int pid, unsigned long long bufID, int tgid
 }
 
 static void fstb_post_process_target_fps(int tfps, int margin, int diff,
-	int *final_tfps, int *final_tfpks, unsigned long long *final_time)
+	int *final_tfps, int *final_tfpks, unsigned long long *final_time,
+	int vsync_fps_disable)
 {
 	int local_tfps, local_margin;
 	int min_limit = min_fps_limit * 1000;
 	int max_limit = dfps_ceiling * 1000;
 	unsigned long long local_time = 1000000000000ULL;
 
-	if (!fstb_vsync_app_fps_disable)
+	if (!vsync_fps_disable)
 		max_limit = min(max_limit, FSTB_USEC_DIVIDER * 1000 / vsync_period);
 
 	local_tfps = tfps * 1000;
@@ -591,6 +592,7 @@ static struct FSTB_FRAME_INFO *add_new_frame_info(int pid, unsigned long long bu
 	new_frame_info->target_time = 0;
 	new_frame_info->self_ctrl_fps_enable = 0;
 	new_frame_info->notify_target_fps = 0;
+	new_frame_info->vsync_app_fps_disable = 0;
 	new_frame_info->master_type = master_type;
 
 	if (test_bit(ADPF_TYPE, &master_type)) {
@@ -629,10 +631,12 @@ static void fstb_update_policy_cmd(struct FSTB_FRAME_INFO *iter,
 	if (policy) {
 		iter->self_ctrl_fps_enable = policy->self_ctrl_fps_enable;
 		iter->notify_target_fps = policy->notify_target_fps;
+		iter->vsync_app_fps_disable = policy->vsync_app_fps_disable;
 		policy->ts = ts;
 	} else {
 		iter->self_ctrl_fps_enable = fstb_self_ctrl_fps_enable ? 1 : 0;
 		iter->notify_target_fps = 0;
+		iter->vsync_app_fps_disable = 0;
 	}
 }
 
@@ -643,7 +647,8 @@ static void fstb_delete_policy_cmd(struct FSTB_POLICY_CMD *iter)
 	struct rb_node *rbn = NULL;
 
 	if (iter) {
-		if (!iter->self_ctrl_fps_enable && !iter->notify_target_fps) {
+		if (!iter->self_ctrl_fps_enable && !iter->notify_target_fps &&
+			!iter->vsync_app_fps_disable) {
 			min_iter = iter;
 			goto delete;
 		} else
@@ -701,6 +706,7 @@ static struct FSTB_POLICY_CMD *fstb_get_policy_cmd(int tgid,
 	iter->tgid = tgid;
 	iter->self_ctrl_fps_enable = 0;
 	iter->notify_target_fps = 0;
+	iter->vsync_app_fps_disable = 0;
 	iter->ts = ts;
 
 	rb_link_node(&iter->rb_node, parent, p);
@@ -724,6 +730,8 @@ static void fstb_set_policy_cmd(int cmd, int value, int tgid,
 			iter->self_ctrl_fps_enable = value;
 		else if (cmd == 1)
 			iter->notify_target_fps = value;
+		else if (cmd == 2)
+			iter->vsync_app_fps_disable = value;
 
 		if (!op)
 			fstb_delete_policy_cmd(iter);
@@ -1263,7 +1271,7 @@ out:
 		local_final_tfps = fstb_arbitrate_target_fps(local_final_tfps,
 				&tolerence_fps, iter);
 		fstb_post_process_target_fps(local_final_tfps, tolerence_fps, iter->target_fps_diff,
-				&local_final_tfps, NULL, NULL);
+				&local_final_tfps, NULL, NULL, iter->vsync_app_fps_disable);
 
 		ged_kpi_set_target_FPS_margin(iter->bufid, local_final_tfps, tolerence_fps,
 			iter->target_fps_diff, iter->cpu_time);
@@ -1719,7 +1727,7 @@ void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 		(*quantile_cpu_time) = -1;
 		(*quantile_gpu_time) = -1;
 		fstb_post_process_target_fps(dfps_ceiling, 0, 0,
-			&local_final_tfps, &local_final_tfpks, &total_time);
+			&local_final_tfps, &local_final_tfpks, &total_time, fstb_vsync_app_fps_disable);
 	} else if (test_bit(ADPF_TYPE, &iter->master_type)) {
 		local_final_tfpks = div64_u64(1000000000000ULL, iter->target_time);
 		local_final_tfps = local_final_tfpks / 1000;
@@ -1741,7 +1749,7 @@ void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 				iter->target_fps_margin_v2 : iter->target_fps_margin;
 		local_tfps = fstb_arbitrate_target_fps(local_tfps, &tolerence_fps, iter);
 		fstb_post_process_target_fps(local_tfps, tolerence_fps, iter->target_fps_diff,
-			&local_final_tfps, &local_final_tfpks, &total_time);
+			&local_final_tfps, &local_final_tfpks, &total_time, iter->vsync_app_fps_disable);
 		iter->target_time = total_time;
 	}
 
@@ -2516,7 +2524,7 @@ static ssize_t fpsgo_status_show(struct kobject *kobj,
 	hlist_for_each_entry(iter, &fstb_frame_infos, hlist) {
 		if (iter) {
 			length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-					"%d\t0x%llx\t%s\t%d\t\t%d\t\t%d\t\t%d\t\t%d\t%lld\t\t(%d,%d,%lu)\n",
+					"%d\t0x%llx\t%s\t%d\t\t%d\t\t%d\t\t%d\t\t%d\t%lld\t\t(%d,%d,%d,%lu)\n",
 					iter->pid,
 					iter->bufid,
 					iter->proc_name,
@@ -2531,6 +2539,7 @@ static ssize_t fpsgo_status_show(struct kobject *kobj,
 					iter->gpu_time,
 					iter->self_ctrl_fps_enable,
 					iter->notify_target_fps,
+					iter->vsync_app_fps_disable,
 					iter->master_type);
 			pos += length;
 		}
@@ -2616,11 +2625,12 @@ static ssize_t fstb_policy_cmd_show(struct kobject *kobj,
 		iter = rb_entry(rbn, struct FSTB_POLICY_CMD, rb_node);
 		length = scnprintf(temp + pos,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"%dth\ttgid:%d\tfstb_self_ctrl_fps_enable:%d\tnotify_target_fps:%d\tts:%llu\n",
+			"%dth\ttgid:%d\tfstb_self_ctrl_fps_enable:%d\tnotify_target_fps:%d\tvsync_fps_disable:%d\tts:%llu\n",
 			i,
 			iter->tgid,
 			iter->self_ctrl_fps_enable,
 			iter->notify_target_fps,
+			iter->vsync_app_fps_disable,
 			iter->ts);
 		pos += length;
 		i++;
@@ -2697,6 +2707,11 @@ FSTB_SYSFS_READ(notify_fstb_target_fps_by_pid, 0, 0);
 FSTB_SYSFS_WRITE_POLICY_CMD(notify_fstb_target_fps_by_pid, 1, min_fps_limit, dfps_ceiling);
 static KOBJ_ATTR_RW(notify_fstb_target_fps_by_pid);
 
+FSTB_SYSFS_READ(fstb_vsync_app_fps_disable_by_pid, 0, 0);
+FSTB_SYSFS_WRITE_POLICY_CMD(fstb_vsync_app_fps_disable_by_pid, 2, 1, 1);
+static KOBJ_ATTR_RW(fstb_vsync_app_fps_disable_by_pid);
+
+
 void init_fstb_callback(void)
 {
 	int i;
@@ -2755,6 +2770,8 @@ int mtk_fstb_init(void)
 				&kobj_attr_fstb_frs_info);
 		fpsgo_sysfs_create_file(fstb_kobj,
 				&kobj_attr_fstb_vsync_app_fps_disable);
+		fpsgo_sysfs_create_file(fstb_kobj,
+				&kobj_attr_fstb_vsync_app_fps_disable_by_pid);
 	}
 
 	wq = alloc_ordered_workqueue("%s", WQ_MEM_RECLAIM | WQ_HIGHPRI, "mt_fstb");
@@ -2820,6 +2837,8 @@ int __exit mtk_fstb_exit(void)
 			&kobj_attr_fstb_frs_info);
 	fpsgo_sysfs_remove_file(fstb_kobj,
 				&kobj_attr_fstb_vsync_app_fps_disable);
+	fpsgo_sysfs_remove_file(fstb_kobj,
+				&kobj_attr_fstb_vsync_app_fps_disable_by_pid);
 
 	fpsgo_sysfs_remove_dir(&fstb_kobj);
 

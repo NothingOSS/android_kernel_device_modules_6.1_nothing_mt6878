@@ -181,7 +181,7 @@ static int fbt_ux_cal_perf(
 				target_time, 0, boost_info->last_target_time_ns, thread_info->Q2Q_time,
 				0, 0, thread_info->attr.expected_fps_margin_by_pid, 10, 10,
 				0, thread_info->attr.quota_v2_diff_clamp_min_by_pid,
-				thread_info->attr.quota_v2_diff_clamp_max_by_pid,
+				thread_info->attr.quota_v2_diff_clamp_max_by_pid, 0,
 				0, aa_n, aa_n, aa_n, 100, 100, 100, &t2);
 			boost_info->last_target_time_ns = t2;
 		}

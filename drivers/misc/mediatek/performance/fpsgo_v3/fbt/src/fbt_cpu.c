@@ -2547,6 +2547,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->expected_fps_margin_by_pid = rl_expect_fps_margin;
 	render_attr->quota_v2_diff_clamp_min_by_pid = quota_v2_diff_clamp_min;
 	render_attr->quota_v2_diff_clamp_max_by_pid = quota_v2_diff_clamp_max;
+	render_attr->limit_min_cap_target_t_by_pid = limit_min_cap_target_t;
 	render_attr->aa_b_minus_idle_t_by_pid = aa_b_minus_idle_time;
 	render_attr->limit_cfreq2cap_by_pid = limit_cfreq2cap;
 	render_attr->limit_rfreq2cap_by_pid = limit_rfreq2cap;
@@ -2728,6 +2729,9 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->limit_cfreq2cap_m_by_pid = pid_attr.limit_cfreq2cap_m_by_pid;
 	if (pid_attr.limit_rfreq2cap_m_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->limit_rfreq2cap_m_by_pid = pid_attr.limit_rfreq2cap_m_by_pid;
+	if (pid_attr.limit_min_cap_target_t_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->limit_min_cap_target_t_by_pid =
+			pid_attr.limit_min_cap_target_t_by_pid;
 
 by_tid:
 	fpsgo_attr_tid = fpsgo_find_attr_by_tid(thr->pid, 0);
@@ -4579,7 +4583,7 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int target_fps_margin, unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
 	unsigned long long t_queue_end, unsigned long long next_vsync,
 	int expected_fps_margin, int learning_rate_p, int learning_rate_n, int quota_clamp_max,
-	int quota_diff_clamp_min, int quota_diff_clamp_max,
+	int quota_diff_clamp_min, int quota_diff_clamp_max, int limit_min_cap_final,
 	int separate_aa_active, long aa_n, long aa_b,
 	long aa_m, int limit_cap, int limit_cap_b, int limit_cap_m,
 	unsigned long long *out_target_t_ns)
@@ -4595,8 +4599,8 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 		*out_target_t_ns = target_t;
 	rl_target_fpks = target_fpks + expected_fps_margin * 100;
 
-	if (limit_min_cap_target_t)
-		limit_min_cap = limit_min_cap_target_t;
+	if (limit_min_cap_final)
+		limit_min_cap = limit_min_cap_final;
 
 	if (rl_is_ready && rl_active == 2) {
 		if (fbt_cal_target_time_fp) {
@@ -4705,6 +4709,7 @@ static int fbt_boost_policy(
 	long filtered_aa_n, filtered_aa_b, filtered_aa_m;
 	int quota_v2_diff_clamp_min_final;
 	int quota_v2_diff_clamp_max_final;
+	int limit_min_cap_target_t_final;
 	int limit_cap_b = 100, limit_cap_m = 100;
 	int limit_util = 1024, limit_util_b = 1024, limit_util_m = 1024;
 
@@ -4727,6 +4732,7 @@ static int fbt_boost_policy(
 	expected_fps_margin_final = thread_info->attr.expected_fps_margin_by_pid;
 	quota_v2_diff_clamp_min_final = thread_info->attr.quota_v2_diff_clamp_min_by_pid;
 	quota_v2_diff_clamp_max_final = thread_info->attr.quota_v2_diff_clamp_max_by_pid;
+	limit_min_cap_target_t_final = thread_info->attr.limit_min_cap_target_t_by_pid;
 
 
 	cur_ts = fpsgo_get_time();
@@ -4777,7 +4783,8 @@ static int fbt_boost_policy(
 		thread_info->target_fps_origin, target_fpks, target_time, fps_margin, boost_info->last_target_time_ns,
 		thread_info->Q2Q_time, ts, next_vsync, expected_fps_margin_final,
 		rl_learning_rate_p, rl_learning_rate_n, quota_v2_clamp_max,
-		quota_v2_diff_clamp_min_final, quota_v2_diff_clamp_max_final, separate_aa_final,
+		quota_v2_diff_clamp_min_final, quota_v2_diff_clamp_max_final,
+		limit_min_cap_target_t_final,  separate_aa_final,
 		filtered_aa_n, filtered_aa_b, filtered_aa_m,
 		limit_max_cap, limit_cap_b, limit_cap_m, &t2);
 
@@ -7574,6 +7581,11 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->limit_rfreq2cap_m_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->limit_rfreq2cap_m_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "limit_min_cap_target_time")) {
+		if ((val <= 100 && val >= 0) && action == 's')
+			boost_attr->limit_min_cap_target_t_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->limit_min_cap_target_t_by_pid = BY_PID_DEFAULT_VAL;
 	}
 
 delete_pid:

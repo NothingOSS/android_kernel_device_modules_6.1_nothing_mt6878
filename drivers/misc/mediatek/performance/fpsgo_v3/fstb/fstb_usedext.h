@@ -67,6 +67,7 @@ struct FSTB_FRAME_INFO {
 	int self_ctrl_fps_enable;
 	int notify_target_fps;
 	int magt_target_fps;
+	int vsync_app_fps_disable;
 
 	unsigned long master_type;
 };
@@ -103,6 +104,7 @@ struct FSTB_POLICY_CMD {
 	int tgid;
 	int self_ctrl_fps_enable;
 	int notify_target_fps;
+	int vsync_app_fps_disable;
 	unsigned long long ts;
 };
 
