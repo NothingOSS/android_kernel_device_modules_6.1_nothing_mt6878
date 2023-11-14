@@ -42,6 +42,7 @@ struct apusys_aov_ctx {
 static struct apusys_aov_ctx *aov_ctx;
 static struct dentry *apusys_dbg_root;
 
+static const unsigned int version_number_0;
 static const unsigned int version_number_1 = 1;
 static const unsigned int version_number_2 = 2;
 
@@ -762,7 +763,11 @@ static const struct dev_pm_ops apusys_aov_pm_cb = {
 };
 
 static const struct of_device_id apusys_aov_of_match[] = {
+	/* apusys_aov-v0 is only used to bridge SCP IPI mechanism for NP-Micro v1.x */
+	{ .compatible = "mediatek,apusys_aov-v0", .data = &version_number_0},
+	/* apusys_aov-v1 is used to support AOV APU v2.0 (mt6985) */
 	{ .compatible = "mediatek,apusys_aov-v1", .data = &version_number_1},
+	/* apusys_aov-v2 is used to support AOV APU v2.5 (after mt6989) */
 	{ .compatible = "mediatek,apusys_aov", .data = &version_number_2},
 	{ .compatible = "mediatek,apusys_aov-v2", .data = &version_number_2},
 	{},

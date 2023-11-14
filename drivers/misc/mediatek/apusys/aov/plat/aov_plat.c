@@ -22,6 +22,8 @@ int aov_plat_init(struct platform_device *pdev, unsigned int version)
 
 	switch (version) {
 	case 0:
+		/* No need platform callback */
+		break;
 	case 1:
 	{
 		ret = aov_rpmsg_v1_init();
@@ -65,6 +67,8 @@ void aov_plat_exit(struct platform_device *pdev, unsigned int version)
 {
 	switch (version) {
 	case 0:
+		/* No need platform callback */
+		break;
 	case 1:
 		aov_rpmsg_v1_exit();
 		aov_recovery_v1_exit();
