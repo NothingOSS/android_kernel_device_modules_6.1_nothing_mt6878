@@ -152,9 +152,9 @@ static int set_pcm_intf(struct usb_interface *intf, int iface, int alt,
 	pid = chip->dev->descriptor.idProduct;
 	USB_OFFLOAD_MEM_DBG("vid:0x%x pid:0x%x\n", vid, pid);
 
-	if (vid == 0x20b1 && pid == 0x302e) {
-		/* Shanling UA1 Pro adaptor */
-		USB_OFFLOAD_INFO("Shanling UA1 Pro: turn on/off interface again\n");
+	if ((vid == 0x20b1 && pid == 0x302e) ||
+		(vid == 0x2fc6 && pid == 0xf822)) {
+		USB_OFFLOAD_INFO("turn on/off interface again\n");
 		err = usb_set_interface(chip->dev, ep->iface, 0);
 		if (err < 0) {
 			USB_OFFLOAD_ERR("fail to set interface 0\n");
