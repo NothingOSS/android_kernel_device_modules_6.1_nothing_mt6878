@@ -2889,6 +2889,8 @@
 		reg = <0 0x1e801000 0 0x1000>;
 		mediatek,smi-supply = <&disp_ssc0_smi_2x1_sub_comm 0 &disp_ssc1_smi_2x1_sub_comm 0>;
 		mediatek,common-id = <0>;
+		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		operating-points-v2 = <&opp_table_mminfra>;
 		smi-common;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
 	};
@@ -3407,7 +3409,7 @@
 					&smi_larb28 &smi_larb29 &smi_larb30
 					&smi_larb33 &smi_larb34 &smi_larb38>;
 		mediatek,commons-supply = <&smi_disp_common>;
-		mmqos-state = <0x0>;
+		mmqos-state = <0x48d>;
 		mmqos-log-level = <0>;
 		clocks = <&topckgen_clk CLK_TOP_MMINFRA_SEL>;
 		clock-names = "mm";
@@ -3420,6 +3422,7 @@
 		vmmrc-mask-bit = <8>;
 		vmmrc-on-table = <0x2e788>;
 		vmmrc-off-table = <0x2e7a8>;
+		mminfra-base = <0x1e800000>;
 	};
 
 	ccucammain: ccucammain {
