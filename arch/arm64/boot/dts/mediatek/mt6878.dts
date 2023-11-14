@@ -10325,7 +10325,7 @@
 		scp-dram-region = "enable";   /* enable scp dram region manage */
 		scp-protect = "enable";   /* enable scp protections */
 		secure-dump = "enable";   /* enable dump via secure world*/
-		secure-dump-size = <0xc28000>;
+		secure-dump-size = <0xce8000>;
 		scp-pm-notify = "enable";
 		scp-thermal-wq = "disable";
 		scp-low-pwr-dbg = "enable";
