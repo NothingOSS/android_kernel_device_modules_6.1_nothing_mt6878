@@ -5036,11 +5036,6 @@ void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp;
 	struct mtk_ddp_comp *output_comp;
 
-	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-		DDPMSG("video mode does not support resolution switch!!!\n");
-		return;
-	}
-
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (!output_comp) {
 		DDPMSG("output_comp is null!\n");
@@ -5071,25 +5066,33 @@ void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
 
 	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 1);
 
-	mtk_crtc_pkt_create(&cevent_cmdq_handle, &mtk_crtc->base,
-				mtk_crtc->gce_obj.client[CLIENT_CFG]);
-	/* 1. wait frame done & wait DSI not busy */
-	cmdq_pkt_wait_no_clear(cevent_cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
-	/* Clear stream block to prevent trigger loop start */
-	cmdq_pkt_clear_event(cevent_cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-	cmdq_pkt_wfe(cevent_cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-	cmdq_pkt_clear_event(cevent_cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
-	cmdq_pkt_wfe(cevent_cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
-	cmdq_pkt_flush(cevent_cmdq_handle);
-	cmdq_pkt_destroy(cevent_cmdq_handle);
+	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		mtk_crtc_pkt_create(&cevent_cmdq_handle, &mtk_crtc->base,
+			mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		/* 1. wait frame done & wait DSI not busy */
+		cmdq_pkt_wait_no_clear(cevent_cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+		/* Clear stream block to prevent trigger loop start */
+		cmdq_pkt_clear_event(cevent_cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+		cmdq_pkt_wfe(cevent_cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+		cmdq_pkt_clear_event(cevent_cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+		cmdq_pkt_wfe(cevent_cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+		cmdq_pkt_flush(cevent_cmdq_handle);
+		cmdq_pkt_destroy(cevent_cmdq_handle);
+	}
 
 	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 				mtk_crtc->gce_obj.client[CLIENT_CFG]);
+
+	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		/* vdo mode wait frame done */
+		cmdq_pkt_wfe(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+	}
 
 	if (mtk_crtc->is_dual_pipe &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_TILE_OVERHEAD)) {
@@ -5227,17 +5230,19 @@ void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
 	atomic_set(&mtk_crtc->singal_for_mode_switch, 1);
 	wake_up_interruptible(&mtk_crtc->mode_switch_wq);
 
-	/* set frame done */
-	mtk_crtc_pkt_create(&sevent_cmdq_handle, &mtk_crtc->base,
-				mtk_crtc->gce_obj.client[CLIENT_CFG]);
-	cmdq_pkt_set_event(sevent_cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-	cmdq_pkt_set_event(sevent_cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
-	cmdq_pkt_set_event(sevent_cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-	cmdq_pkt_flush(sevent_cmdq_handle);
-	cmdq_pkt_destroy(sevent_cmdq_handle);
+	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		/* set frame done */
+		mtk_crtc_pkt_create(&sevent_cmdq_handle, &mtk_crtc->base,
+			mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		cmdq_pkt_set_event(sevent_cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+		cmdq_pkt_set_event(sevent_cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+		cmdq_pkt_set_event(sevent_cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+		cmdq_pkt_flush(sevent_cmdq_handle);
+		cmdq_pkt_destroy(sevent_cmdq_handle);
+	}
 }
 
 void mtk_crtc_mode_switch_config(struct mtk_drm_crtc *mtk_crtc,

@@ -77,6 +77,39 @@ static char bl_tb0[] = { 0x51, 0xff };
 #define FHD_CLK_60		   (((FHD_CLK_60_X10 % 10) != 0) ?             \
 				(FHD_CLK_60_X10 / 10 + 1) : (FHD_CLK_60_X10 / 10))
 
+#define HD_FRAME_WIDTH    (720)
+#define HD_HFP            (76)
+#define HD_HSA            (12)
+#define HD_HBP            (80)
+#define HD_HTOTAL         (HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP)
+#define HD_FRAME_HEIGHT   (1600)
+#define HD_VFP_120        (94)
+#define HD_VFP_90         (927)
+#define HD_VFP_60         (2620)
+#define HD_VSA            (10)
+#define HD_VBP            (10)
+#define HD_VTOTAL_120     (HD_FRAME_HEIGHT + HD_VFP_120 + HD_VSA + HD_VBP)
+#define HD_VTOTAL_90      (HD_FRAME_HEIGHT + HD_VFP_90 + HD_VSA + HD_VBP)
+#define HD_VTOTAL_60      (HD_FRAME_HEIGHT + HD_VFP_60 + HD_VSA + HD_VBP)
+#define HD_FRAME_TOTAL_120 (HD_VTOTAL_120 * HD_HTOTAL)
+#define HD_FRAME_TOTAL_90  (HD_VTOTAL_90 * HD_HTOTAL)
+#define HD_FRAME_TOTAL_60  (HD_VTOTAL_60 * HD_HTOTAL)
+#define HD_VREFRESH_120   (120)
+#define HD_VREFRESH_90    (90)
+#define HD_VREFRESH_60    (60)
+#define HD_CLK_120_X10    ((HD_FRAME_TOTAL_120 * HD_VREFRESH_120) / 100)
+#define HD_CLK_90_X10     ((HD_FRAME_TOTAL_90 * HD_VREFRESH_90) / 100)
+#define HD_CLK_60_X10     ((HD_FRAME_TOTAL_60 * HD_VREFRESH_60) / 100)
+#define HD_CLK_120		   (((HD_CLK_120_X10 % 10) != 0) ?             \
+			(HD_CLK_120_X10 / 10 + 1) : (HD_CLK_120_X10 / 10))
+#define HD_CLK_90		   (((HD_CLK_90_X10 % 10) != 0) ?             \
+				(HD_CLK_90_X10 / 10 + 1) : (HD_CLK_90_X10 / 10))
+#define HD_CLK_60		   (((HD_CLK_60_X10 % 10) != 0) ?             \
+				(HD_CLK_60_X10 / 10 + 1) : (HD_CLK_60_X10 / 10))
+
+static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_NO_USE;
+static int current_fps = 120;
+
 #ifndef BYPASSI2C
 /* i2c control start */
 #define LCM_I2C_ID_NAME "I2C_LCD_BIAS"
@@ -301,6 +334,7 @@ static void jdi_panel_init(struct jdi *ctx)
 	jdi_dcs_write_seq_static(ctx, 0XC2, 0X1B, 0XA0);
 	jdi_dcs_write_seq_static(ctx, 0XE9, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0XFF, 0X20);
+
 	//REGR 0XFE,0X20
 	jdi_dcs_write_seq_static(ctx, 0XFB, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0X01, 0X66);
@@ -938,6 +972,42 @@ static const struct drm_display_mode performance_mode_120hz = {
 	.vtotal = 2400 + FHD_VFP_120 + 10 + 10,//VBP
 };
 
+static const struct drm_display_mode hd_mode_60 = {
+	.clock = HD_CLK_60,
+	.hdisplay = HD_FRAME_WIDTH,
+	.hsync_start = HD_FRAME_WIDTH + HD_HFP,
+	.hsync_end = HD_FRAME_WIDTH + HD_HFP + HD_HSA,
+	.htotal = HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP,
+	.vdisplay = HD_FRAME_HEIGHT,
+	.vsync_start = HD_FRAME_HEIGHT + HD_VFP_60,
+	.vsync_end = HD_FRAME_HEIGHT + HD_VFP_60 + HD_VSA,
+	.vtotal = HD_FRAME_HEIGHT + HD_VFP_60 + HD_VSA + HD_VBP,
+};
+
+static const struct drm_display_mode hd_mode_90 = {
+	.clock = HD_CLK_90,
+	.hdisplay = HD_FRAME_WIDTH,
+	.hsync_start = HD_FRAME_WIDTH + HD_HFP,
+	.hsync_end = HD_FRAME_WIDTH + HD_HFP + HD_HSA,
+	.htotal = HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP,
+	.vdisplay = HD_FRAME_HEIGHT,
+	.vsync_start = HD_FRAME_HEIGHT + HD_VFP_90,
+	.vsync_end = HD_FRAME_HEIGHT + HD_VFP_90 + HD_VSA,
+	.vtotal = HD_FRAME_HEIGHT + HD_VFP_90 + HD_VSA + HD_VBP,
+};
+
+static const struct drm_display_mode hd_mode_120 = {
+	.clock = HD_CLK_120,
+	.hdisplay = HD_FRAME_WIDTH,
+	.hsync_start = HD_FRAME_WIDTH + HD_HFP,
+	.hsync_end = HD_FRAME_WIDTH + HD_HFP + HD_HSA,
+	.htotal = HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP,
+	.vdisplay = HD_FRAME_HEIGHT,
+	.vsync_start = HD_FRAME_HEIGHT + HD_VFP_120,
+	.vsync_end = HD_FRAME_HEIGHT + HD_VFP_120 + HD_VSA,
+	.vtotal = HD_FRAME_HEIGHT + HD_VFP_120 + HD_VSA + HD_VBP,
+};
+
 static const struct drm_display_mode performance_mode_30hz = {
 	.clock = 185253,
 	.hdisplay = 1080,
@@ -1246,7 +1316,7 @@ static int jdi_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	return 0;
 }
 
-struct drm_display_mode *get_mode_by_id_hfp(struct drm_connector *connector,
+struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
 	unsigned int mode)
 {
 	struct drm_display_mode *m;
@@ -1259,13 +1329,14 @@ struct drm_display_mode *get_mode_by_id_hfp(struct drm_connector *connector,
 	}
 	return NULL;
 }
+
 static int mtk_panel_ext_param_set(struct drm_panel *panel,
 			struct drm_connector *connector, unsigned int mode)
 {
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	int dst_fps = 0;
-	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
+	struct drm_display_mode *m = get_mode_by_id(connector, mode);
 
 	dst_fps = m ? drm_mode_vrefresh(m) : -EINVAL;
 
@@ -1291,7 +1362,51 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 		ret = -EINVAL;
 	}
 
+	if (!ret)
+		current_fps = drm_mode_vrefresh(m);
+
 	return ret;
+}
+
+static int mtk_panel_ext_param_get(struct drm_panel *panel,
+	struct drm_connector *connector,
+	struct mtk_panel_params **ext_param,
+	unsigned int mode)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, mode);
+
+	if (drm_mode_vrefresh(m) == 120)
+		*ext_param = &ext_params_120hz;
+	else if (drm_mode_vrefresh(m) == 90)
+		*ext_param = &ext_params_90hz;
+	else if (drm_mode_vrefresh(m) == 60)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == 30)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == 24)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == 10)
+		*ext_param = &ext_params;
+	else
+		ret = 1;
+
+	if (!ret)
+		current_fps = drm_mode_vrefresh(m);
+
+	return ret;
+}
+
+enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
+{
+	pr_info("res_switch_type: %d\n", res_switch_type);
+	return res_switch_type;
+}
+
+#define REAL_MODE_NUM           (3)
+int mtk_scaling_mode_mapping(int mode_idx)
+{
+	return (mode_idx % REAL_MODE_NUM);
 }
 
 static void mode_switch_to_120(struct drm_panel *panel)
@@ -1342,7 +1457,7 @@ static int mode_switch(struct drm_panel *panel,
 {
 	int ret = 0;
 	int dst_fps = 0;
-	struct drm_display_mode *m = get_mode_by_id_hfp(connector, dst_mode);
+	struct drm_display_mode *m = get_mode_by_id(connector, dst_mode);
 
 	pr_info("%s cur_mode = %d dst_mode %d\n", __func__, cur_mode, dst_mode);
 
@@ -1388,9 +1503,12 @@ static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = jdi_setbacklight_cmdq,
 	.ext_param_set = mtk_panel_ext_param_set,
+	.ext_param_get = mtk_panel_ext_param_get,
 	.mode_switch = mode_switch,
 	.ata_check = panel_ata_check,
 	.set_value = mtk_set_value,
+	.get_res_switch_type = mtk_get_res_switch_type,
+	.scaling_mode_mapping = mtk_scaling_mode_mapping,
 };
 #endif
 
@@ -1433,12 +1551,15 @@ static int jdi_get_modes(struct drm_panel *panel,
 	struct drm_display_mode *mode4;
 	struct drm_display_mode *mode5;
 	struct drm_display_mode *mode6;
+	struct drm_display_mode *mode7;
+	struct drm_display_mode *mode8;
+	struct drm_display_mode *mode9;
 
-	mode = drm_mode_duplicate(connector->dev, &default_mode);
+	mode = drm_mode_duplicate(connector->dev, &performance_mode_120hz);
 	if (!mode) {
 		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
-			 default_mode.hdisplay, default_mode.vdisplay,
-			 drm_mode_vrefresh(&default_mode));
+			 performance_mode_120hz.hdisplay, performance_mode_120hz.vdisplay,
+			 drm_mode_vrefresh(&performance_mode_120hz));
 		return -ENOMEM;
 	}
 
@@ -1458,11 +1579,11 @@ static int jdi_get_modes(struct drm_panel *panel,
 	mode2->type = DRM_MODE_TYPE_DRIVER;
 	drm_mode_probed_add(connector, mode2);
 
-	mode3 = drm_mode_duplicate(connector->dev, &performance_mode_120hz);
+	mode3 = drm_mode_duplicate(connector->dev, &default_mode);
 	if (!mode3) {
 		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
-			 performance_mode_120hz.hdisplay, performance_mode_120hz.vdisplay,
-			 drm_mode_vrefresh(&performance_mode_120hz));
+			 default_mode.hdisplay, default_mode.vdisplay,
+			 drm_mode_vrefresh(&default_mode));
 		return -ENOMEM;
 	}
 
@@ -1508,6 +1629,42 @@ static int jdi_get_modes(struct drm_panel *panel,
 		drm_mode_probed_add(connector, mode6);
 	}
 
+	mode7 = drm_mode_duplicate(connector->dev, &hd_mode_60);
+	if (!mode7) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 hd_mode_60.hdisplay, hd_mode_60.vdisplay,
+			 drm_mode_vrefresh(&hd_mode_60));
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(mode7);
+	mode7->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode7);
+
+	mode8 = drm_mode_duplicate(connector->dev, &hd_mode_90);
+	if (!mode8) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 hd_mode_90.hdisplay, hd_mode_90.vdisplay,
+			 drm_mode_vrefresh(&hd_mode_90));
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(mode8);
+	mode8->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode8);
+
+	mode9 = drm_mode_duplicate(connector->dev, &hd_mode_120);
+	if (!mode9) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 hd_mode_120.hdisplay, hd_mode_120.vdisplay,
+			 drm_mode_vrefresh(&hd_mode_120));
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(mode9);
+	mode9->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode9);
+
 	connector->display_info.width_mm = 70;
 	connector->display_info.height_mm = 152;
 
@@ -1528,6 +1685,7 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
 	struct jdi *ctx;
 	struct device_node *backlight;
+	unsigned int res_switch;
 	unsigned int value;
 	unsigned int lcm_degree;
 	int ret;
@@ -1563,6 +1721,12 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
 			MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_NO_EOT_PACKET |
 			MIPI_DSI_CLOCK_NON_CONTINUOUS;
+
+	ret = of_property_read_u32(dev->of_node, "res-switch", &res_switch);
+	if (ret < 0)
+		res_switch = 0;
+	else
+		res_switch_type = (enum RES_SWITCH_TYPE)res_switch;
 
 	ret = of_property_read_u32(dev->of_node, "gate-ic", &value);
 	if (ret < 0)

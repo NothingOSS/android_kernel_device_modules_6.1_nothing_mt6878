@@ -2211,11 +2211,24 @@ static void mtk_dsi_config_vdo_timing(struct mtk_dsi *dsi)
 	writel(dsi->vsa, dsi->regs + DSI_VSA_NL);
 	writel(dsi->vbp, dsi->regs + DSI_VBP_NL);
 	writel(dsi->vfp, dsi->regs + DSI_VFP_NL);
-	if (!dsi->is_slave)
+	if (!dsi->is_slave) {
+		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dsi->encoder.crtc);
+
 		vact = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
-	else
+		if (mtk_crtc->scaling_ctx.scaling_en &&
+			(mtk_crtc->res_switch == RES_SWITCH_ON_AP) &&
+			(mtk_crtc->scaling_ctx.scaling_mode != NULL))
+			vact = mtk_crtc->scaling_ctx.scaling_mode->vdisplay;
+	} else {
+		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dsi->master_dsi->encoder.crtc);
+
 		vact = mtk_dsi_get_virtual_heigh(dsi,
 			dsi->master_dsi->encoder.crtc);
+		if (mtk_crtc->scaling_ctx.scaling_en &&
+			(mtk_crtc->res_switch == RES_SWITCH_ON_AP) &&
+			(mtk_crtc->scaling_ctx.scaling_mode != NULL))
+			vact = mtk_crtc->scaling_ctx.scaling_mode->vdisplay;
+	}
 	writel(vact, dsi->regs + DSI_VACT_NL);
 
 	writel(dsi->hsa_byte, dsi->regs + DSI_HSA_WC);
@@ -4867,6 +4880,12 @@ unsigned int mtk_dsi_mode_change_index(struct mtk_dsi *dsi,
 				mode_chg_index |= MODE_DSI_RES;
 		}
 
+		if ((mtk_crtc->res_switch != RES_SWITCH_NO_USE)
+			&& !mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
+			if (!drm_mode_equal_res(adjust_mode, old_mode))
+				mode_chg_index |= MODE_DSI_RES;
+		}
+
 		if (drm_mode_vfp(adjust_mode) != drm_mode_vfp(old_mode))
 			mode_chg_index |= MODE_DSI_VFP;
 
@@ -4889,6 +4908,12 @@ unsigned int mtk_dsi_mode_change_index(struct mtk_dsi *dsi,
 	} else if (cur_panel_params && adjust_panel_params) {
 		if ((mtk_crtc->res_switch != RES_SWITCH_NO_USE)
 			&& mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
+			if (!drm_mode_equal_res(adjust_mode, old_mode))
+				mode_chg_index |= MODE_DSI_RES;
+		}
+
+		if ((mtk_crtc->res_switch != RES_SWITCH_NO_USE)
+			&& !mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 			if (!drm_mode_equal_res(adjust_mode, old_mode))
 				mode_chg_index |= MODE_DSI_RES;
 		}
@@ -8658,6 +8683,9 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 		//vdo mode
+		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP)
+			hact = mtk_crtc->scaling_ctx.lcm_width;
+
 		if (to_info.is_support) {
 			hact += (to_info.left_overhead + to_info.right_overhead);
 			DDPDBG("%s vdo mode hact with total overhead %d\n", __func__, hact);
@@ -8780,6 +8808,11 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 		//vdo mode
 		u32 hact = mode->hdisplay;
+
+		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP)
+			hact = mtk_crtc->scaling_ctx.lcm_width;
+		else
+			hact = mode->hdisplay;
 
 		if (to_info.is_support) {
 			hact += (to_info.left_overhead + to_info.right_overhead);
