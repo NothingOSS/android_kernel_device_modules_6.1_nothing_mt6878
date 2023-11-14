@@ -3302,6 +3302,19 @@ static const enum mtk_ddp_comp_id mt6878_mtk_ddp_main[] = {
 	//DDP_COMPONENT_PWM0,
 };
 
+static const enum mtk_ddp_comp_id mt6878_mtk_ddp_third[] = {
+	DDP_COMPONENT_OVL2_2L,
+};
+
+static const enum mtk_ddp_comp_id mt6878_mtk_ddp_secondary[] = {
+	DDP_COMPONENT_OVL3_2L,
+	DDP_COMPONENT_PQ0_IN_CB2,
+	DDP_COMPONENT_PQ0_OUT_CB6,
+	DDP_COMPONENT_SPLIT_OUT_CB4,
+	DDP_COMPONENT_COMP0_OUT_CB4,
+	DDP_COMPONENT_DSI1,
+};
+
 static const struct mtk_addon_module_data addon_ovl_rsz_data[] = {
 	{OVL_RSZ, ADDON_EMBED, DDP_COMPONENT_OVL0_2L},
 };
@@ -4247,6 +4260,28 @@ static const struct mtk_addon_scenario_data mt6873_addon_main[ADDON_SCN_NR] = {
 			},
 };
 
+static const struct mtk_addon_scenario_data mt6878_addon_ext[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+};
+
+static const struct mtk_addon_scenario_data mt6878_addon_secondary_path[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+};
+
 static const struct mtk_addon_scenario_data mt6873_addon_ext[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
@@ -5036,6 +5071,23 @@ static const struct mtk_crtc_path_data mt6878_mtk_main_path_data = {
 	.scaling_data = mt6878_scaling_main,
 };
 
+static const struct mtk_crtc_path_data mt6878_mtk_third_path_data = {
+	.path[DDP_MAJOR][0] = mt6878_mtk_ddp_third,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6878_mtk_ddp_third),
+	.addon_data = mt6878_addon_ext,
+};
+
+static const struct mtk_crtc_path_data mt6878_mtk_secondary_path_data = {
+	.path[DDP_MAJOR][0] = mt6878_mtk_ddp_secondary,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6878_mtk_ddp_secondary),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+//	.dual_path[0] = mt6878_mtk_ddp_dual_secondary_dp,
+//	.dual_path_len[0] = ARRAY_SIZE(mt6878_mtk_ddp_dual_secondary_dp),
+	.addon_data = mt6878_addon_secondary_path,
+//	.addon_data_dual = mt6878_addon_secondary_path_dual,
+};
+
+
 const struct mtk_session_mode_tb mt6779_mode_tb[MTK_DRM_SESSION_NUM] = {
 		[MTK_DRM_SESSION_DL] = {
 
@@ -5678,8 +5730,9 @@ static const struct mtk_mmsys_driver_data mt6855_mmsys_driver_data = {
 
 static const struct mtk_mmsys_driver_data mt6878_mmsys_driver_data = {
 	.main_path_data = &mt6878_mtk_main_path_data,
-	// .ext_path_data = &mt6878_mtk_main_path_data,
-	// .third_path_data = &mt6878_mtk_main_path_data,
+	.ext_path_data = &mt6878_mtk_third_path_data,
+	.third_path_data = &mt6878_mtk_third_path_data,
+	.fourth_path_data_secondary = &mt6878_mtk_secondary_path_data,
 	.fake_eng_data = &mt6878_fake_eng_data,
 	.mmsys_id = MMSYS_MT6878,
 	.mode_tb = mt6878_mode_tb,

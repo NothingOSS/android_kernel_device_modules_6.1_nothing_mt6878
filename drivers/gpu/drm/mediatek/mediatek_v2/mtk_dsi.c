@@ -4989,6 +4989,7 @@ int mtk_dsi_analysis(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
 	unsigned int reg_val;
+	const char *mode_state = NULL;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -5002,6 +5003,16 @@ int mtk_dsi_analysis(struct mtk_ddp_comp *comp)
 		DDPDUMP("MIPITX Clock:%d\n", mtk_mipi_tx_pll_get_rate(dsi->phy));
 	}
 
+	if (DISP_REG_GET_FIELD(MODE_FLD_REG_MODE_CON,
+				   baddr + DSI_MODE_CTRL)) {
+		/* VDO mode */
+		reg_val = (readl(baddr + 0x164)) & 0xff;
+		mode_state = mtk_dsi_vdo_mode_parse_state(reg_val);
+	} else {
+		reg_val = (readl(baddr + 0x160)) & 0xffff;
+		mode_state = mtk_dsi_cmd_mode_parse_state(reg_val);
+	}
+
 	DDPDUMP("start:%x,busy:%d,DSI_DUAL_EN:%d\n",
 		DISP_REG_GET_FIELD(START_FLD_REG_START, baddr + DSI_START),
 		DISP_REG_GET_FIELD(INTSTA_FLD_REG_BUSY, baddr + DSI_INTSTA),
@@ -5012,9 +5023,7 @@ int mtk_dsi_analysis(struct mtk_ddp_comp *comp)
 						    baddr + DSI_MODE_CTRL)),
 		DISP_REG_GET_FIELD(PHY_FLD_REG_LC_HSTX_EN,
 				   baddr + DSI_PHY_LCCON),
-		mtk_dsi_cmd_mode_parse_state(
-			DISP_REG_GET_FIELD(STATE_DBG6_FLD_REG_CMCTL_STATE,
-					   baddr + DSI_STATE_DBG6)));
+		mode_state);
 
 	reg_val = readl(DSI_INTEN + baddr);
 	DDPDUMP("IRQ_EN,RD_RDY:%d,CMD_DONE:%d,SLEEPOUT_DONE:%d\n",
