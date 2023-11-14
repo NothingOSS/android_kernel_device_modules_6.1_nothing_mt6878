@@ -486,6 +486,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/wlcdrv/wlcdrv.ko",
     "drivers/mmc/host/cqhci.ko",
     "drivers/mmc/host/mtk-mmc-dbg.ko",
+    "drivers/mmc/host/mtk-wp.ko",
     "drivers/mmc/host/mtk-mmc.ko",
     "drivers/mmc/host/mtk-sd.ko",
     "drivers/nvmem/nvmem-mt6338-efuse.ko",

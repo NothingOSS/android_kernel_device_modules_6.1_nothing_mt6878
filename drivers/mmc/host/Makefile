@@ -12,6 +12,7 @@ ccflags-y += -I$(srctree)/include/ufs/
 
 obj-$(CONFIG_DEVICE_MODULES_MMC_MTK)			+= mtk-sd.o
 obj-$(CONFIG_MMC_MTK_PRO)		+= mtk-mmc.o
+obj-$(CONFIG_DEVICE_MODULES_MMC_MTK_WP)		    += mtk-wp.o
 obj-$(CONFIG_DEVICE_MODULES_MMC_DEBUG)			+= mtk-mmc-dbg.o
 obj-$(CONFIG_DEVICE_MODULES_MMC_CQHCI)			+= cqhci.o
 cqhci-y					+= cqhci-core.o
