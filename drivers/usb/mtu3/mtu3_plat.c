@@ -347,6 +347,28 @@ out:
 }
 EXPORT_SYMBOL_GPL(ssusb_offload_unregister);
 
+static bool ssusb_pm_runtime_forbid(struct ssusb_mtk *ssusb)
+{
+	struct device_node *of_chosen;
+	char *bootargs;
+	bool forbid = false;
+
+	of_chosen = of_find_node_by_path("/chosen");
+	if (!of_chosen)
+		goto done;
+
+	bootargs = (char *)of_get_property(of_chosen,
+			"bootargs", NULL);
+	if (!bootargs)
+		goto done;
+
+	if (strstr(bootargs, "usb2uart_mode=1") ||
+		strstr(bootargs, "usb2jtag_mode=1"))
+		forbid = true;
+done:
+	return forbid;
+}
+
 void ssusb_set_force_vbus(struct ssusb_mtk *ssusb, bool vbus_on)
 {
 	u32 u2ctl;
@@ -855,7 +877,11 @@ static int mtu3_probe(struct platform_device *pdev)
 	device_enable_async_suspend(dev);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
-	/* pm_runtime_forbid(dev); */
+
+	if (ssusb_pm_runtime_forbid(ssusb)) {
+		pm_runtime_forbid(dev);
+		dev_info(dev, "pm_runtime forbid\n");
+	}
 
 	return 0;
 
