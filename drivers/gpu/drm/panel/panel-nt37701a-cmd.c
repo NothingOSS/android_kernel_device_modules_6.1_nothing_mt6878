@@ -963,7 +963,7 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 	if (atomic_read(&doze_enable)) {
 		pr_info("%s: Return it when aod on, %d %d %d\n",
 			__func__, level, bl_tb[1], bl_tb[2]);
-		return 0;
+		//return 0; //need for SQC set backlight
 	}
 	if (doze_had && is_aod_mode()) {
 		pr_info("%s is in AOD mode need to call doze disable\n", __func__);
@@ -1371,6 +1371,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.ext_param_set = mtk_panel_ext_param_set,
 	.ext_param_get = mtk_panel_ext_param_get,
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
+	.set_aod_light_mode = lcm_setbacklight_cmdq,
 	.set_bl_elvss_cmdq = lcm_set_bl_elvss_cmdq,
 	.mode_switch = mode_switch,
 	.doze_enable = panel_doze_enable,
