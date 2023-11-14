@@ -66,6 +66,7 @@
 		dither0 = &disp_dither0;
 		dither1 = &disp_dither1;
 		dsi0 = &dsi0;
+		dsi1 = &dsi1;
 		mutex0 = &disp_mutex0;
 		mtksmmu0 = &disp_iommu;
 		mtksmmu1 = &apu_iommu0;
@@ -5338,8 +5339,8 @@
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos SLAVE_LARB(39) &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "disp_hrt_qos";
-			pre-define-bw = <0xffffffff>, <0>, <0>;
-			crtc-ovl-usage = <7>, <0>, <0>;
+			pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>;
+			crtc-ovl-usage = <0x7>, <0x2>, <0x2>, <0x8>;
 			nvmem-cells = <&efuse_segment>;
 			nvmem-cell-names = "efuse_seg_disp_cell";
 
@@ -5393,26 +5394,26 @@
 				"disp_mutex0_eof",
 				// "disp_mutex1_eof",
 				"disp_token_stream_dirty0",
-				// "disp_token_stream_dirty1",
-				// "disp_token_stream_dirty3",
+				"disp_token_stream_dirty1",
+				"disp_token_stream_dirty3",
 				"disp_wait_dsi0_te",
-				// "disp_wait_dsi1_te",
+				"disp_wait_dsi1_te",
 				"disp_token_stream_eof0",
-				// "disp_token_stream_eof1",
-				// "disp_token_stream_eof3",
+				"disp_token_stream_eof1",
+				"disp_token_stream_eof3",
 				"disp_dsi0_eof",
-				// "disp_dsi1_eof",
+				"disp_dsi1_eof",
 				"disp_token_esd_eof0",
-				// "disp_token_esd_eof1",
-				// "disp_token_esd_eof3",
+				"disp_token_esd_eof1",
+				"disp_token_esd_eof3",
 				// "disp_rdma0_eof0",
 				"disp_wdma1_eof0",
 				"disp_token_stream_block0",
-				// "disp_token_stream_block1",
-				// "disp_token_stream_block3",
+				"disp_token_stream_block1",
+				"disp_token_stream_block3",
 				"disp_token_cabc_eof0",
-				// "disp_token_cabc_eof1",
-				// "disp_token_cabc_eof3",
+				"disp_token_cabc_eof1",
+				"disp_token_cabc_eof3",
 				"disp_wdma1_eof2",
 				// "disp_wait_dp_intf0_te",
 				// "disp_dp_intf0_eof",
@@ -5421,12 +5422,12 @@
 				"disp_token_vfp_period0",
 				"disp_token_disp_va_start0",
 				"disp_token_disp_va_end0",
-				"disp_token_disp_va_start2",
-				"disp_token_disp_va_end2",
+				"disp_token_disp_va_start3",
+				"disp_token_disp_va_end3",
 				"disp_token_disp_te0",
 				"disp_token_disp_prefetch_te0",
-				// "disp_dsi0_targetline0",
-				// "disp_dsi1_targetline0",
+				"disp_dsi0_targetline0",
+				"disp_dsi1_targetline0",
 				"disp_token_disp_v_idle_power_on0",
 				"disp_token_disp_check_trigger_merge0",
 				"dpc_disp1_prete";
@@ -5435,26 +5436,26 @@
 				<&gce CMDQ_EVENT_DISPSYS_STREAM_DONE_ENG_EVENT_0>,
 				// <&gce CMDQ_EVENT_DISPSYS_DP_INTF_FRAME_DONE>,
 				<&gce CMDQ_SYNC_TOKEN_CONFIG_DIRTY>,
-				// <&gce CMDQ_SYNC_TOKEN_CONFIG_DIRTY_1>,
-				// <&gce CMDQ_SYNC_TOKEN_CONFIG_DIRTY_3>,
+				<&gce CMDQ_SYNC_TOKEN_CONFIG_DIRTY_1>,
+				<&gce CMDQ_SYNC_TOKEN_CONFIG_DIRTY_3>,
 				<&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_TE_ENG_EVENT>,
-				// <&gce CMDQ_EVENT_DISPSYS_DISP_DSI1_TE_ENG_EVENT>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_DSI1_TE_ENG_EVENT>,
 				<&gce CMDQ_SYNC_TOKEN_STREAM_EOF>,
-				// <&gce CMDQ_SYNC_TOKEN_STREAM_EOF_1>,
-				// <&gce CMDQ_SYNC_TOKEN_STREAM_EOF_3>,
+				<&gce CMDQ_SYNC_TOKEN_STREAM_EOF_1>,
+				<&gce CMDQ_SYNC_TOKEN_STREAM_EOF_3>,
 				<&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_FRAME_DONE>,
-				// <&gce CMDQ_EVENT_DISPSYS_DISP_DSI1_FRAME_DONE>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_DSI1_FRAME_DONE>,
 				<&gce CMDQ_SYNC_TOKEN_ESD_EOF>,
-				// <&gce CMDQ_SYNC_TOKEN_ESD_EOF_1>,
-				// <&gce CMDQ_SYNC_TOKEN_ESD_EOF_3>,
+				<&gce CMDQ_SYNC_TOKEN_ESD_EOF_1>,
+				<&gce CMDQ_SYNC_TOKEN_ESD_EOF_3>,
 				// <&gce CMDQ_EVENT_DISPSYS_DISP_MDP_RDMA0_FRAME_DONE>,
 				<&gce CMDQ_EVENT_DISPSYS_DISP_WDMA1_FRAME_DONE>,
 				<&gce CMDQ_SYNC_TOKEN_STREAM_BLOCK>,
-				// <&gce CMDQ_SYNC_TOKEN_STREAM_BLOCK_1>,
-				// <&gce CMDQ_SYNC_TOKEN_STREAM_BLOCK_3>,
+				<&gce CMDQ_SYNC_TOKEN_STREAM_BLOCK_1>,
+				<&gce CMDQ_SYNC_TOKEN_STREAM_BLOCK_3>,
 				<&gce CMDQ_SYNC_TOKEN_CABC_EOF>,
-				// <&gce CMDQ_SYNC_TOKEN_CABC_EOF_1>,
-				// <&gce CMDQ_SYNC_TOKEN_CABC_EOF_3>,
+				<&gce CMDQ_SYNC_TOKEN_CABC_EOF_1>,
+				<&gce CMDQ_SYNC_TOKEN_CABC_EOF_3>,
 				<&gce CMDQ_EVENT_DISPSYS_DISP_WDMA1_FRAME_DONE>,
 				// <&gce CMDQ_EVENT_DISPSYS_DISP_DP_INTF0_SOF>,
 				// <&gce CMDQ_EVENT_DISPSYS1_DP_INTF_FRAME_DONE>,
@@ -5467,8 +5468,8 @@
 				<&gce CMDQ_SYNC_TOKEN_DISP_VA_END>,
 				<&gce CMDQ_SYNC_TOKEN_TE_0>,
 				<&gce CMDQ_SYNC_TOKEN_PREFETCH_TE_0>,
-				// <&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_TARGET_LINE_ENG_EVENT>,
-				// <&gce CMDQ_EVENT_DISPSYS_DISP_DSI1_TARGET_LINE_ENG_EVENT>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_TARGET_LINE_ENG_EVENT>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_DSI1_TARGET_LINE_ENG_EVENT>,
 				<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
 				<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>,
 				<&gce CMDQ_EVENT_DISPSYS_DISP_DPC_DT6>;
@@ -5961,7 +5962,7 @@
 			compatible = "mediatek, dsi_te-eint";
 			status = "disabled";
 		};
-#if 0
+
 		dsi1: dsi@1401b000 {
 			compatible = "mediatek,disp_dsi1",
 					"mediatek,mt6878-dsi";
@@ -5973,6 +5974,7 @@
 			<&dispsys_config_clk CLK_MM_DSI1>,
 			<&mipi_tx_config1>;
 			clock-names = "engine", "digital", "hs";
+			status = "disabled";
 		};
 
 		dsi1_te: dsi1-te {
@@ -5981,17 +5983,17 @@
 		};
 
 		mipi_tx_config1: mipi-tx-config@11e10000 {
-			status = "disabled";
 			compatible = "mediatek,mipi_tx_config1",
 						"mediatek,mt6878-mipi-tx";
-			reg = <0 0x11e60000 0 0x1000>;
+			reg = <0 0x11e10000 0 0x1000>;
 			clocks = <&clk26m>;
 			#clock-cells = <0>;
 			#phy-cells = <0>;
 			clock-output-names = "mipi_tx1_pll";
-			dispsys-sel-offset = <0x170 0x174>;
+			dispsys-sel-offset = <0x178 0x17c>;
+			status = "disabled";
 		};
-#endif
+
 		mipi_tx_config0: mipi-tx-config@11e50000 {
 			compatible = "mediatek,mipi_tx_config0",
 						"mediatek,mt6878-mipi-tx";
