@@ -2445,6 +2445,7 @@
 		mediatek,larb-id = <4>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE1>;
 		skip-busy-check;
+		skip-rpm-cb;
 	};
 
 	smi_larb5: smi-larb5@1600d000 {
@@ -2455,6 +2456,7 @@
 		mediatek,larb-id = <5>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE0>;
 		skip-busy-check;
+		skip-rpm-cb;
 	};
 
 	smi_disp_venc_sub_comm0: smi-disp-venc-sub-comm0@17070000 {
