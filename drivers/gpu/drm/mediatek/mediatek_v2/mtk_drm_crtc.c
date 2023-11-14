@@ -13968,9 +13968,8 @@ void mtk_drm_crtc_discrete_update(struct drm_crtc *crtc,
 			client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 			mtk_crtc_pkt_create(&pending_handle, crtc, client);
 
-			if (!mtk_crtc->skip_frame)
-				cmdq_pkt_set_event(pending_handle,
-					mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+			cmdq_pkt_set_event(pending_handle,
+				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 
 			mtk_crtc->pending_handle = pending_handle;
 		} else
@@ -14046,7 +14045,8 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 		else
 			mtk_ddp_comp_layer_config(comp, plane_index, plane_state, cmdq_handle);
 
-		if (mtk_crtc->path_data->is_discrete_path)
+		if (mtk_crtc->path_data->is_discrete_path &&
+			(!mtk_crtc->skip_frame))
 			mtk_drm_crtc_discrete_update(crtc, plane_index, plane_state, cmdq_handle);
 
 #ifndef DRM_CMDQ_DISABLE
