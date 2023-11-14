@@ -2410,8 +2410,7 @@ void disp_aal_dre3_check_reset_to_linear(struct mtk_ddp_comp *comp)
 		}
 	}
 	/* write each block dre curve last point */
-	if(!write_curve16(aal_data, dre3_gain, dre_blk_x_num, dre_blk_y_num, 1))
-		goto _return;
+	write_curve16(aal_data, dre3_gain, dre_blk_x_num, dre_blk_y_num, 1);
 _return:
 	spin_unlock_irqrestore(&aal_data->primary_data->dre3_gain_lock, flags);
 }
