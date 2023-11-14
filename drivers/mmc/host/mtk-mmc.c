@@ -65,6 +65,7 @@ static const struct mtk_mmc_compatible mt8135_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt8173_compat = {
@@ -86,6 +87,7 @@ static const struct mtk_mmc_compatible mt8173_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt8183_compat = {
@@ -109,6 +111,7 @@ static const struct mtk_mmc_compatible mt8183_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt8195_compat = {
@@ -131,6 +134,7 @@ static const struct mtk_mmc_compatible mt8195_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt2701_compat = {
@@ -152,6 +156,7 @@ static const struct mtk_mmc_compatible mt2701_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt2712_compat = {
@@ -175,6 +180,7 @@ static const struct mtk_mmc_compatible mt2712_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt7622_compat = {
@@ -198,6 +204,7 @@ static const struct mtk_mmc_compatible mt7622_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt8516_compat = {
@@ -219,6 +226,7 @@ static const struct mtk_mmc_compatible mt8516_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt7620_compat = {
@@ -240,6 +248,7 @@ static const struct mtk_mmc_compatible mt7620_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt6779_compat = {
@@ -263,6 +272,7 @@ static const struct mtk_mmc_compatible mt6779_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible common_v2_compat = {
@@ -286,6 +296,7 @@ static const struct mtk_mmc_compatible common_v2_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt6985_compat = {
@@ -309,6 +320,7 @@ static const struct mtk_mmc_compatible mt6985_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt6886_compat = {
@@ -332,6 +344,7 @@ static const struct mtk_mmc_compatible mt6886_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt6897_compat = {
@@ -355,6 +368,7 @@ static const struct mtk_mmc_compatible mt6897_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt6989_compat = {
@@ -380,6 +394,7 @@ static const struct mtk_mmc_compatible mt6989_compat = {
 		.infra_ack_bit = BIT(14),
 		.infra_ack_paddr = 0x1c001104,
 	},
+	.need_power_voter = false,
 };
 
 static const struct mtk_mmc_compatible mt6878_compat = {
@@ -404,6 +419,7 @@ static const struct mtk_mmc_compatible mt6878_compat = {
 		.enable = false,
 	},
 	.set_crypto_enable_in_sw = true,
+	.need_power_voter = true,
 };
 
 static const struct of_device_id msdc_of_ids[] = {
@@ -2915,6 +2931,8 @@ static void msdc_hs400_enhanced_strobe(struct mmc_host *mmc,
 #define MMC_MTK_SIP_CRYPTO_CTRL	BIT(1)
 #define MMC_MTK_SIP_INFRA_REQ	BIT(2)
 #define MMC_MTK_SIP_INFRA_REQ_RELEASE	BIT(3)
+#define MMC_MTK_SIP_POWER_VOTER_REQ	BIT(4)
+#define MMC_MTK_SIP_POWER_VOTER_RELEASE	BIT(5)
 
 /* SMC call wapper function */
 #define mmc_mtk_crypto_ctrl(smcc_res) \
@@ -2928,6 +2946,15 @@ static void msdc_hs400_enhanced_strobe(struct mmc_host *mmc,
 #define mmc_mtk_infra_req_release(smcc_res, id) \
 	arm_smccc_smc(MTK_SIP_MMC_CONTROL, \
 		MMC_MTK_SIP_INFRA_REQ_RELEASE, id, 0, 0, 0, 0, 0, &smcc_res)
+
+#define mmc_mtk_power_vote_req(smcc_res) \
+	arm_smccc_smc(MTK_SIP_MMC_CONTROL, \
+		MMC_MTK_SIP_POWER_VOTER_REQ, 0, 0, 0, 0, 0, 0, &smcc_res)
+
+#define mmc_mtk_power_vote_release(smcc_res) \
+	arm_smccc_smc(MTK_SIP_MMC_CONTROL, \
+		MMC_MTK_SIP_POWER_VOTER_RELEASE, 0, 0, 0, 0, 0, 0, &smcc_res)
+
 
 static void mmc_mtk_crypto_enable(struct mmc_host *mmc)
 {
@@ -3636,6 +3663,28 @@ static int infra_req_release(struct msdc_host *host)
 	return 0;
 }
 
+static void msdc_power_voter_req(struct msdc_host *host)
+{
+	struct arm_smccc_res res;
+
+	mmc_mtk_power_vote_req(res);
+	if (res.a0)
+		pr_info("%s: power voter request fail, err: %lu\n",
+			 __func__, res.a0);
+
+}
+
+static void msdc_power_voter_release(struct msdc_host *host)
+{
+	struct arm_smccc_res res;
+
+	mmc_mtk_power_vote_release(res);
+	if (res.a0)
+		pr_info("%s: power voter release fail, err: %lu\n",
+			 __func__, res.a0);
+
+}
+
 static int __maybe_unused msdc_runtime_suspend(struct device *dev)
 {
 	struct mmc_host *mmc = dev_get_drvdata(dev);
@@ -3650,6 +3699,9 @@ static int __maybe_unused msdc_runtime_suspend(struct device *dev)
 
 	msdc_save_reg(host);
 	msdc_gate_clock(host);
+
+	if(host->dev_comp->need_power_voter && host->id == MSDC_EMMC)
+		msdc_power_voter_release(host);
 
 	/* release spm request to avoid infra can not keep off */
 	if (host->dev_comp->infra_check.enable)
@@ -3689,6 +3741,9 @@ static int __maybe_unused msdc_runtime_resume(struct device *dev)
 		if (ret)
 			pr_info("mmc%d infra ack polling fail\n", host->id);
 	}
+
+	if(host->dev_comp->need_power_voter && host->id == MSDC_EMMC)
+		msdc_power_voter_req(host);
 
 	ret = msdc_ungate_clock(host);
 	if (ret)
