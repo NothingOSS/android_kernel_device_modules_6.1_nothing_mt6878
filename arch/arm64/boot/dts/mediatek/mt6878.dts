@@ -1575,6 +1575,9 @@
 		proc2-supply = <&mt6363_vbuck6>; //B
 		proc3-supply = <&mt6363_vbuck5>; //DSU
 
+		/* curve adjustment */
+		curve-adj-base = <&curve_adj>;
+
 		/* leakage info */
 		// nvmem-cells = <&lkginfo>;
 		// nvmem-cell-names = "lkginfo";
@@ -3684,6 +3687,10 @@
 
 		cpu_pll: mcusys-pll1u-top@1000c000 {
 			reg = <0 0x0c030000 0 0x1000>; /* 4KB */
+		};
+
+		curve_adj: curve-adjust@c56f010 {
+			reg = <0 0x0c56f010 0 0x18c>;
 		};
 
 		topckgen-ao@1001b000 {
