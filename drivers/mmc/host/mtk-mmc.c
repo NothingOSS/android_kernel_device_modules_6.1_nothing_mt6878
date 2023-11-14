@@ -35,7 +35,6 @@
 #include <linux/mmc/slot-gpio.h>
 
 #include "../core/card.h"
-#include "../core/queue.h"
 #include "cqhci.h"
 #include "mtk-mmc.h"
 #include "mtk-mmc-dbg.h"
@@ -427,9 +426,6 @@ static const struct of_device_id msdc_of_ids[] = {
 	{}
 };
 MODULE_DEVICE_TABLE(of, msdc_of_ids);
-
-static bool ra_fixed;
-static int  rw_times;
 
 static void sdr_set_bits(void __iomem *reg, u32 bs)
 {
@@ -1283,44 +1279,6 @@ static void msdc_cmd_next(struct msdc_host *host,
 		msdc_start_data(host, mrq, cmd, cmd->data);
 }
 
-static bool modify_ra_in_bottom(struct mmc_request *mrq)
-{
-	struct mmc_queue_req *mqrq;
-	struct request *req;
-	unsigned long pre_ra_pages;
-
-	mqrq = container_of(mrq, struct mmc_queue_req, brq.mrq);
-	req = blk_mq_rq_from_pdu(mqrq);
-	if (!req || !req->q)
-		return false;
-	if (!req->q->disk || !req->q->disk->bdi)
-		return false;
-
-	pre_ra_pages = req->q->disk->bdi->ra_pages;
-	pr_info("[ra_in_fix] before fix ra = %lu\n", pre_ra_pages);
-	req->q->disk->bdi->ra_pages = RA_FOR_PERF;
-	pr_info("[ra_in_fix] after fix ra = %lu  request_queue = %p  disk = %p bdi = %p\n",
-				req->q->disk->bdi->ra_pages, req->q, req->q->disk, req->q->disk->bdi);
-
-	if (pre_ra_pages == RA_FOR_PERF)
-		return true;
-	return false;
-}
-
-static bool mmc_op_read(u32 opcode)
-{
-	return opcode == MMC_READ_SINGLE_BLOCK ||
-	       opcode == MMC_READ_MULTIPLE_BLOCK;
-}
-
-static bool mmc_op_write(u32 opcode)
-{
-	return opcode == MMC_WRITE_BLOCK ||
-	       opcode == MMC_WRITE_MULTIPLE_BLOCK;
-}
-
-
-
 static void msdc_ops_request(struct mmc_host *mmc, struct mmc_request *mrq)
 {
 	struct msdc_host *host = mmc_priv(mmc);
@@ -1338,16 +1296,6 @@ static void msdc_ops_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	if (mrq->data) {
 		mmc_mtk_biolog_send_command(0, mrq);
 		mmc_mtk_biolog_check(mmc, 1);
-	}
-
-	if (ra_fixed == false) {
-		if ((mmc_op_write(mrq->cmd->opcode) || mmc_op_read(mrq->cmd->opcode))
-		&& mmc_card_sd(mmc->card) && (rw_times < EARLY_RW)) {
-			rw_times++;
-			pr_info("[ra_count_r] %d cmd = %d\n", rw_times, mrq->cmd->opcode);
-			if (modify_ra_in_bottom(mrq))
-				ra_fixed = true;
-		}
 	}
 
 	/* if SBC is required, we have HW option and SW option.
@@ -2689,10 +2637,6 @@ static int msdc_get_cd(struct mmc_host *mmc)
 end:
 	if (host->block_bad_card != 0 ||
 		mmc->trigger_card_event != false) {
-		if (host->card_inserted == 0 && mmc_card_sd(mmc->card)) {
-			rw_times = 0;
-			ra_fixed = false;
-		}
 		pr_info(
 			"%s:card status:%s block bad card<%d> trigger card event<%d>",
 			__func__, host->card_inserted ? "inserted" : "removed",
