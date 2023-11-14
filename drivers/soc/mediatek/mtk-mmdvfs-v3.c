@@ -1498,8 +1498,8 @@ static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_
 {
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
-		mmdvfs_v3_release_step(true);
 		mmdvfs_release_step_done = true;
+		mmdvfs_v3_release_step(true);
 		mmdvfs_reset_ccu();
 		cb_timestamp[0] = sched_clock();
 		mmdvfs_reset_clk(true);
@@ -1559,8 +1559,8 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		mutex_unlock(&mmdvfs_vcp_cb_mutex);
 		break;
 	case VCP_EVENT_SUSPEND:
+		mmdvfs_release_step_done = true;
 		mmdvfs_v3_release_step(false);
-		mmdvfs_release_step_done = false;
 		if (dpc_fp)
 			dpc_fp(false, false);
 		if (mmdvfs_swrgo) {
