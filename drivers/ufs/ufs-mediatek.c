@@ -190,13 +190,6 @@ static bool ufs_mtk_is_mphy_dump(struct ufs_hba *hba)
 	return !!(host->caps & UFS_MTK_CAP_MPHY_DUMP);
 }
 
-static bool ufs_mtk_is_bypass_vccqx_lpm(struct ufs_hba *hba)
-{
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-
-	return !!(host->caps & UFS_MTK_CAP_BYPASS_VCCQX_LPM);
-}
-
 static void ufs_mtk_cfg_unipro_cg(struct ufs_hba *hba, bool enable)
 {
 	u32 tmp;
@@ -819,9 +812,6 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	if (of_property_read_bool(np, "mediatek,ufs-broken-rtc"))
 		host->caps |= UFS_MTK_CAP_MCQ_BROKEN_RTC;
 
-	if (of_property_read_bool(np, "mediatek,ufs-bypass-vccqx-lpm"))
-		host->caps |= UFS_MTK_CAP_BYPASS_VCCQX_LPM;
-
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
 		host->caps |= UFS_MTK_CAP_MPHY_DUMP;
@@ -1133,29 +1123,6 @@ static int ufs_mtk_install_tracepoints(struct ufs_hba *hba)
 	}
 
 	return 0;
-}
-
-/*
- * HW version format has been changed from 01MMmmmm to 1MMMmmmm, since
- * project MT6878. In order to perform correct version comparison,
- * version number is changed by SW for the following projects.
- * IP_VER_MT6897	0x01440000 to 0x10440000
- * IP_VER_MT6989	0x01450000 to 0x10450000
- * IP_VER_MT6991	0x01460000 to 0x10460000
- */
-static void ufs_mtk_get_hw_ip_version(struct ufs_hba *hba)
-{
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	u32 hw_ip_ver;
-
-	hw_ip_ver = ufshcd_readl(hba, REG_UFS_MTK_IP_VER);
-
-	if ((hw_ip_ver & 0xFF000000) == 0x01000000) {
-		hw_ip_ver &= ~0xFF000000;
-		hw_ip_ver |= 0x10000000;
-	}
-
-	host->ip_ver = hw_ip_ver;
 }
 
 static void ufs_mtk_get_controller_version(struct ufs_hba *hba)
@@ -1662,7 +1629,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	/* Enable WriteBooster */
 	hba->caps |= UFSHCD_CAP_WB_EN;
 
-	/* Enable clk scaling*/
+	/* enable clk scaling*/
 	hba->caps |= UFSHCD_CAP_CLK_SCALING;
 	host->clk_scale_up = true; /* default is max freq */
 
@@ -1703,7 +1670,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	ufs_mtk_setup_clocks(hba, true, POST_CHANGE);
 
-	ufs_mtk_get_hw_ip_version(hba);
+	host->ip_ver = ufshcd_readl(hba, REG_UFS_MTK_IP_VER);
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	ufs_mtk_check_bus_init(host->ip_ver);
@@ -2397,12 +2364,7 @@ static void ufs_mtk_vccqx_set_lpm(struct ufs_hba *hba, bool lpm)
 {
 	struct ufs_vreg *vccqx = NULL;
 
-	if (!hba->vreg_info.vcc ||
-	    (!hba->vreg_info.vccq && !hba->vreg_info.vccq2) ||
-	    (hba->vreg_info.vcc &&
-	     hba->vreg_info.vcc->enabled &&
-	     !ufs_mtk_is_allow_vccqx_lpm(hba)) ||
-	    ufs_mtk_is_bypass_vccqx_lpm(hba))
+	if (!hba->vreg_info.vccq && !hba->vreg_info.vccq2)
 		return;
 
 	if (hba->vreg_info.vccq)
@@ -2424,16 +2386,37 @@ static void ufs_mtk_vsx_set_lpm(struct ufs_hba *hba, bool lpm)
 
 static void ufs_mtk_dev_vreg_set_lpm(struct ufs_hba *hba, bool lpm)
 {
+	bool skip_vccqx = false;
+
 	/* Prevent entering LPM when device is still active */
 	if (lpm && ufshcd_is_ufs_dev_active(hba))
 		return;
 
+	/* Skip vccqx lpm control and control vsx only */
+	if (!hba->vreg_info.vccq && !hba->vreg_info.vccq2)
+		skip_vccqx = true;
+
+	/* VCC is always-on, control vsx only */
+	if (!hba->vreg_info.vcc)
+		skip_vccqx = true;
+
+	/* Broken vcc keep vcc always on, most case control vsx only */
+	if (lpm && hba->vreg_info.vcc && hba->vreg_info.vcc->enabled) {
+		/* Some device vccqx/vsx can enter lpm */
+		if (ufs_mtk_is_allow_vccqx_lpm(hba))
+			skip_vccqx = false;
+		else /* control vsx only */
+			skip_vccqx = true;
+	}
+
 	if (lpm) {
-		ufs_mtk_vccqx_set_lpm(hba, lpm);
+		if (!skip_vccqx)
+			ufs_mtk_vccqx_set_lpm(hba, lpm);
 		ufs_mtk_vsx_set_lpm(hba, lpm);
 	} else {
 		ufs_mtk_vsx_set_lpm(hba, lpm);
-		ufs_mtk_vccqx_set_lpm(hba, lpm);
+		if (!skip_vccqx)
+			ufs_mtk_vccqx_set_lpm(hba, lpm);
 	}
 }
 
@@ -2677,8 +2660,7 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 	ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_fixups);
 
 	if (STR_PRFX_EQUAL("H9HQ15AFAMBDAR", dev_info->model))
-		host->caps |= UFS_MTK_CAP_BROKEN_VCC |
-			UFS_MTK_CAP_ALLOW_VCCQX_LPM;
+		host->caps |= UFS_MTK_CAP_BROKEN_VCC | UFS_MTK_CAP_ALLOW_VCCQX_LPM;
 
 	if (ufs_mtk_is_broken_vcc(hba) && hba->vreg_info.vcc &&
 	    (hba->dev_quirks & UFS_DEVICE_QUIRK_DELAY_AFTER_LPM)) {
