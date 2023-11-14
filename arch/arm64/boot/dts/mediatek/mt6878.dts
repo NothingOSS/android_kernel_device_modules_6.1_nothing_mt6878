@@ -9144,6 +9144,16 @@
 						<&dvfsrc_freq_opp5>,
 						<&dvfsrc_freq_opp6>;
 			};
+
+			dvfsrc-met {
+				compatible = "mediatek,dvfsrc-met";
+				rc-vcore-supply = <&dvfsrc_vcore>;
+				interconnects = <&dvfsrc MT6873_MASTER_DBGIF
+							&dvfsrc MT6873_SLAVE_DDR_EMI>,
+						<&dvfsrc MT6873_MASTER_HRT_DBGIF
+							&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+				interconnect-names = "icc-bw", "icc-hrt-bw";
+			};
 		};
 
 		afe: mt6878-afe-pcm@11050000 {
