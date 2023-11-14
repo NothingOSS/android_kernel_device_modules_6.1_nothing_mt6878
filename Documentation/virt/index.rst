@@ -16,7 +16,6 @@ Linux Virtualization Support
    coco/sev-guest
    hyperv/index
    gunyah/index
-   geniezone/introduction
 
 .. only:: html and subproject
 
