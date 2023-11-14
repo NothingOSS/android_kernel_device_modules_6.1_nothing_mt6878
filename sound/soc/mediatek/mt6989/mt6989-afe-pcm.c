@@ -1662,7 +1662,7 @@ static int ul_cm0_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		channels = mtk_get_channel_value();
 		mt6989_enable_cm_bypass(afe, CM0, 0x0);
-		mt6989_set_cm(afe, CM0, 0x7, false, channels);
+		mt6989_set_cm(afe, CM0, 0x1, false, channels);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		mt6989_enable_cm_bypass(afe, CM0, 0x1);
@@ -1688,7 +1688,7 @@ static int ul_cm1_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		channels = mtk_get_channel_value();
 		mt6989_enable_cm_bypass(afe, CM1, 0x0);
-		mt6989_set_cm(afe, CM1, 0x7, false, channels);
+		mt6989_set_cm(afe, CM1, 0x1, false, channels);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		mt6989_enable_cm_bypass(afe, CM1, 0x1);
@@ -4893,7 +4893,7 @@ static int mt6989_afe_runtime_suspend(struct device *dev)
 				       (value & AUDIO_ENGEN_MON_SFT) == 0,
 				       20,
 				       1 * 1000 * 1000);
-	dev_dbg(afe->dev, "%s() read_poll ret %d\n", __func__, ret);
+	dev_info(afe->dev, "%s() read_poll ret %d\n", __func__, ret);
 	if (ret)
 		dev_info(afe->dev, "%s(), ret %d\n", __func__, ret);
 
@@ -4936,7 +4936,7 @@ static int mt6989_afe_runtime_resume(struct device *dev)
 	int ret = 0;
 
 	ret = mt6989_afe_enable_clock(afe);
-	dev_dbg(afe->dev, "%s(), enable_clock ret %d\n", __func__, ret);
+	dev_info(afe->dev, "%s(), enable_clock ret %d\n", __func__, ret);
 
 	if (ret)
 		return ret;

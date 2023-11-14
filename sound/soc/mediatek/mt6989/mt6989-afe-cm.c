@@ -33,6 +33,23 @@ static int mt6989_convert_cm_ch(unsigned int ch)
 	return ch - 1;
 }
 
+static unsigned int calculate_cm_update(int rate, int ch)
+{
+	int update_val;
+
+	pr_info("%s(), rate %d, channel %d\n",
+		 __func__, rate, ch);
+
+	update_val = 26000000 / rate / (ch / 2);
+	update_val = update_val * 10 / 7;
+	if (update_val > 100)
+		update_val = 100;
+	if (update_val < 7)
+		update_val = 7;
+
+	return (unsigned int)update_val;
+}
+
 int mt6989_set_cm(struct mtk_base_afe *afe, int id,
 	       unsigned int update, bool swap, unsigned int ch)
 {
@@ -46,6 +63,7 @@ int mt6989_set_cm(struct mtk_base_afe *afe, int id,
 	int cm_swap_shift = 0;
 	int cm_ch_shift = 0;
 	unsigned int rate = 0;
+	unsigned int update_val = 0;
 
 	pr_info("%s()-0, CM%d, rate %d, update %d, swap %d, ch %d\n",
 		__func__, id, rate, update, swap, ch);
@@ -79,10 +97,10 @@ int mt6989_set_cm(struct mtk_base_afe *afe, int id,
 		pr_info("%s(), CM%d not found\n", __func__, id);
 		return 0;
 	}
-
+	update_val = (update == 0x1)? calculate_cm_update(rate, (int)ch) : 0x64;
 	/* update cnt */
 	mtk_regmap_update_bits(afe->regmap, cm_reg,
-			       cm_update_mask, update, cm_update_shift);
+			       cm_update_mask, update_val, cm_update_shift);
 
 	/* rate */
 	mtk_regmap_update_bits(afe->regmap, cm_reg,
