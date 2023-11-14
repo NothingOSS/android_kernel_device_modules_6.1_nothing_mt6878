@@ -27,16 +27,20 @@ enum mdw_tag_type {
 
 void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status)
 {
-	uint64_t param1 = 0, param2 = 0, param3 = 0;
+	uint64_t param1 = 0, param2 = 0, param3 = 0, param4 = 0, param5 = 0;
 
 	if (status == MDW_CMD_ENQUE) {
 		param1 = c->tgid;
 		param2 = c->power_etime;
 		param3 = c->inference_id;
+		param4 = c->num_subcmds;
+		param5 = c->priority;
 	} else if (status == MDW_CMD_START) {
 		param1 = c->uid;
 		param2 = c->inference_id;
 		param3 = c->start_ts;
+		param4 = c->num_subcmds;
+		param5 = c->priority;
 	} else if (status == MDW_CMD_DONE) {
 		param1 = c->rv_cb_time;
 		param2 = c->inference_id;
@@ -47,8 +51,8 @@ void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status)
 		c->pid,
 		param1,
 		c->rvid,
-		c->num_subcmds,
-		c->priority,
+		param4,
+		param5,
 		c->softlimit,
 		c->power_dtime,
 		param2,
@@ -61,8 +65,8 @@ void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status)
 static void
 probe_rv_mdw_cmd(void *data, uint32_t status, pid_t pid,
 		uint64_t param1, uint64_t rvid,
-		uint32_t num_subcmds,
-		uint32_t priority,
+		uint64_t param4,
+		uint64_t param5,
 		uint32_t softlimit,
 		uint32_t pwr_dtime,
 		uint64_t param2,
@@ -80,8 +84,8 @@ probe_rv_mdw_cmd(void *data, uint32_t status, pid_t pid,
 	t.d.cmd.pid = pid;
 	t.d.cmd.param1 = param1;
 	t.d.cmd.rvid = rvid;
-	t.d.cmd.num_subcmds = num_subcmds;
-	t.d.cmd.priority = priority;
+	t.d.cmd.param4 = param4;
+	t.d.cmd.param5 = param5;
 	t.d.cmd.softlimit = softlimit;
 	t.d.cmd.pwr_dtime = pwr_dtime;
 	t.d.cmd.param2 = param2;
@@ -110,7 +114,7 @@ void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
 		sc_einfo[sc_idx].executed_core_bitmap,
 		sc_einfo[sc_idx].tcm_usage,
 		history_iptime,
-		c->subcmds[sc_idx].hse_en);
+		c->sync_info);
 }
 
 /* The parameters must aligned with trace_mdw_rv_subcmd() */
@@ -125,7 +129,7 @@ probe_rv_mdw_subcmd(void *data, uint32_t status,
 		uint32_t executed_core_bmp,
 		uint32_t tcm_usage,
 		uint32_t history_iptime,
-		uint32_t hse_en)
+		uint64_t sync_info)
 {
 	struct mdw_rv_tag t;
 
@@ -144,7 +148,7 @@ probe_rv_mdw_subcmd(void *data, uint32_t status,
 	t.d.subcmd.executed_core_bmp = executed_core_bmp;
 	t.d.subcmd.tcm_usage = tcm_usage;
 	t.d.subcmd.history_iptime = history_iptime;
-	t.d.subcmd.hse_en = hse_en;
+	t.d.subcmd.sync_info = sync_info;
 
 	apu_tag_add(mdw_rv_tags, &t);
 }
@@ -160,7 +164,9 @@ void mdw_cmd_deque_trace(struct mdw_cmd *c, uint32_t status)
 		c->handle_cmd_result_time,
 		c->load_aware_pwroff_time,
 		c->enter_mpriv_release_time,
-		c->mpriv_release_time);
+		c->mpriv_release_time,
+		c->einfos->c.sc_rets,
+		c->einfos->c.ret);
 }
 
 /* The parameters must aligned with trace_mdw_rv_cmd_deque() */
@@ -171,7 +177,9 @@ probe_rv_mdw_cmd_deque(void *data, uint32_t status,
 		uint64_t handle_cmd_result_time,
 		uint64_t load_aware_pwroff_time,
 		uint64_t enter_mpriv_release_time,
-		uint64_t mpriv_release_time)
+		uint64_t mpriv_release_time,
+		uint64_t sc_rets,
+		uint64_t c_ret)
 
 {
 	struct mdw_rv_tag t;
@@ -190,6 +198,8 @@ probe_rv_mdw_cmd_deque(void *data, uint32_t status,
 	t.d.deqcmd.load_aware_pwroff_time = load_aware_pwroff_time;
 	t.d.deqcmd.enter_mpriv_release_time = enter_mpriv_release_time;
 	t.d.deqcmd.mpriv_release_time = mpriv_release_time;
+	t.d.deqcmd.sc_rets = sc_rets;
+	t.d.deqcmd.c_ret = c_ret;
 
 	apu_tag_add(mdw_rv_tags, &t);
 }
@@ -204,9 +214,9 @@ static void mdw_rv_tag_enq_printf(struct seq_file *s, struct mdw_rv_tag *t)
 	seq_printf(s, "%s,", status);
 	seq_printf(s, "pid=%d,inf_id=0x%llx,tgid=%llu,rvid=0x%llx,",
 		t->d.cmd.pid, t->d.cmd.param3, t->d.cmd.param1, t->d.cmd.rvid);
-	seq_printf(s, "num_subcmds=%u,", t->d.cmd.num_subcmds);
-	seq_printf(s, "priority=%u,softlimit=%u,",
-		t->d.cmd.priority, t->d.cmd.softlimit);
+	seq_printf(s, "num_subcmds=%llu,", t->d.cmd.param4);
+	seq_printf(s, "priority=%llu,softlimit=%u,",
+		t->d.cmd.param5, t->d.cmd.softlimit);
 	seq_printf(s, "pwr_dtime=%u,", t->d.cmd.pwr_dtime);
 	seq_printf(s, "pwr_etime=%llu,", t->d.cmd.param2);
 	seq_printf(s, "pwr_plcy=0x%x,tolerance=0x%x\n",
@@ -240,7 +250,6 @@ static void mdw_rv_tag_done_printf(struct seq_file *s, struct mdw_rv_tag *t)
 		t->d.cmd.pid, t->d.cmd.param2, t->d.cmd.rvid);
 	seq_printf(s, "enter_rv_cb=%llu,", t->d.cmd.param3);
 	seq_printf(s, "rv_cb=%llu\n", t->d.cmd.param1);
-
 }
 
 static void mdw_rv_tag_seq_cmd(struct seq_file *s, struct mdw_rv_tag *t)
@@ -277,8 +286,8 @@ static void mdw_rv_tag_seq_subcmd(struct seq_file *s, struct mdw_rv_tag *t)
 	seq_printf(s, "was_preempted=0x%x,exc_core_bmp=0x%x,",
 		t->d.subcmd.was_preempted,
 		t->d.subcmd.executed_core_bmp);
-	seq_printf(s, "tcm_usage=0x%x,h_iptime=%u,hse_en=%u\n",
-		t->d.subcmd.tcm_usage, t->d.subcmd.history_iptime, t->d.subcmd.hse_en);
+	seq_printf(s, "tcm_usage=0x%x,h_iptime=%u,sync_info=0x%llx\n",
+		t->d.subcmd.tcm_usage, t->d.subcmd.history_iptime, t->d.subcmd.sync_info);
 }
 
 static void mdw_rv_tag_seq_cmd_deque(struct seq_file *s, struct mdw_rv_tag *t)
@@ -297,7 +306,9 @@ static void mdw_rv_tag_seq_cmd_deque(struct seq_file *s, struct mdw_rv_tag *t)
 	seq_printf(s, "hnd_cmd=%llu,", t->d.deqcmd.handle_cmd_result_time);
 	seq_printf(s, "las_pwroff=%llu,", t->d.deqcmd.load_aware_pwroff_time);
 	seq_printf(s, "enter_mpriv_release=%llu,", t->d.deqcmd.enter_mpriv_release_time);
-	seq_printf(s, "mpriv_release=%llu\n", t->d.deqcmd.mpriv_release_time);
+	seq_printf(s, "mpriv_release=%llu,", t->d.deqcmd.mpriv_release_time);
+	seq_printf(s, "sc_rets=0x%llx,", t->d.deqcmd.sc_rets);
+	seq_printf(s, "c_ret=0x%llx\n", t->d.deqcmd.c_ret);
 }
 
 static int mdw_rv_tag_seq(struct seq_file *s, void *tag, void *priv)

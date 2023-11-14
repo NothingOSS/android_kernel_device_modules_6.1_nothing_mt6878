@@ -11,7 +11,7 @@
 
 #define MDW_TAG_CMD_PRINT \
 	"%u,pid=%d,uid=0x%llx,rvid=0x%llx,"\
-	"num_subcmds=%u,priority=%u,"\
+	"num_subcmds=%llu,priority=%llu,"\
 	"softlimit=%u,pwr_dtime=%u,sc_rets=0x%llx,"\
 	"pwr_plcy=%x,tolerance=%x,start_ts=0x%llx"\
 
@@ -19,21 +19,21 @@
 	"%u,rvid=0x%llx,inf_id=0x%llx,"\
 	"%u,type=%u,ipstart_ts=0x%x,ipend_ts=0x%x,"\
 	"was_preempted=0x%x,executed_core_bmp=0x%x,"\
-	"tcm_usage=0x%x,history_iptime=%u,hse_en=%u"\
+	"tcm_usage=0x%x,history_iptime=%u,sync_info=0x%llx"\
 
 #define MDW_TAG_CMD_DONE_PRINT \
 	"%u,rvid=0x%llx,inf_id=0x%llx,enter_complt=%llu,pb_put_time=%llu"\
 	"pb_put_time=%llu,handle_cmd_result_time=%llu,"\
 	"load_aware_pwroff_time=%llu,enter_mpriv_release_time=%llu,"\
-	"mpriv_release_time=%llu"\
+	"mpriv_release_time=%llu,sc_rets=0x%llx,ret=0x%llx"\
 
 TRACE_EVENT(mdw_rv_cmd,
 	TP_PROTO(uint32_t status,
 		pid_t pid,
 		uint64_t uid,
 		uint64_t rvid,
-		uint32_t num_subcmds,
-		uint32_t priority,
+		uint64_t num_subcmds,
+		uint64_t priority,
 		uint32_t softlimit,
 		uint32_t pwr_dtime,
 		uint64_t sc_rets,
@@ -51,8 +51,8 @@ TRACE_EVENT(mdw_rv_cmd,
 		__field(pid_t, pid)
 		__field(uint64_t, uid)
 		__field(uint64_t, rvid)
-		__field(uint32_t, num_subcmds)
-		__field(uint32_t, priority)
+		__field(uint64_t, num_subcmds)
+		__field(uint64_t, priority)
 		__field(uint32_t, softlimit)
 		__field(uint32_t, pwr_dtime)
 		__field(uint64_t, sc_rets)
@@ -103,12 +103,12 @@ TRACE_EVENT(mdw_rv_subcmd,
 		uint32_t executed_core_bmp,
 		uint32_t tcm_usage,
 		uint32_t history_iptime,
-		uint32_t hse_en
+		uint64_t sync_info
 		),
 	TP_ARGS(status, rvid, inf_id, sc_type, sc_idx,
 		ipstart_ts, ipend_ts,
 		was_preempted, executed_core_bmp,
-		tcm_usage, history_iptime, hse_en
+		tcm_usage, history_iptime, sync_info
 		),
 	TP_STRUCT__entry(
 		__field(uint32_t, status)
@@ -122,7 +122,7 @@ TRACE_EVENT(mdw_rv_subcmd,
 		__field(uint32_t, executed_core_bmp)
 		__field(uint32_t, tcm_usage)
 		__field(uint32_t, history_iptime)
-		__field(uint32_t, hse_en)
+		__field(uint64_t, sync_info)
 	),
 	TP_fast_assign(
 		__entry->status = status;
@@ -136,7 +136,7 @@ TRACE_EVENT(mdw_rv_subcmd,
 		__entry->executed_core_bmp = executed_core_bmp;
 		__entry->tcm_usage = tcm_usage;
 		__entry->history_iptime = history_iptime;
-		__entry->hse_en = hse_en;
+		__entry->sync_info = sync_info;
 	),
 	TP_printk(
 		MDW_TAG_SUBCMD_PRINT,
@@ -151,7 +151,7 @@ TRACE_EVENT(mdw_rv_subcmd,
 		__entry->executed_core_bmp,
 		__entry->tcm_usage,
 		__entry->history_iptime,
-		__entry->hse_en
+		__entry->sync_info
 	)
 );
 
@@ -165,12 +165,15 @@ TRACE_EVENT(mdw_rv_cmd_deque,
 		uint64_t handle_cmd_result_time,
 		uint64_t load_aware_pwroff_time,
 		uint64_t enter_mpriv_release_time,
-		uint64_t mpriv_release_time
+		uint64_t mpriv_release_time,
+		uint64_t sc_rets,
+		uint64_t c_ret
 		),
 	TP_ARGS(status, rvid, inf_id,
 		enter_complt, pb_put_time,
 		cmdbuf_out_time, handle_cmd_result_time,
-		load_aware_pwroff_time, enter_mpriv_release_time, mpriv_release_time
+		load_aware_pwroff_time, enter_mpriv_release_time, mpriv_release_time,
+		sc_rets, c_ret
 		),
 	TP_STRUCT__entry(
 		__field(uint32_t, status)
@@ -183,6 +186,8 @@ TRACE_EVENT(mdw_rv_cmd_deque,
 		__field(uint64_t, load_aware_pwroff_time)
 		__field(uint64_t, enter_mpriv_release_time)
 		__field(uint64_t, mpriv_release_time)
+		__field(uint64_t, sc_rets)
+		__field(uint64_t, c_ret)
 	),
 	TP_fast_assign(
 		__entry->status = status;
@@ -195,6 +200,8 @@ TRACE_EVENT(mdw_rv_cmd_deque,
 		__entry->load_aware_pwroff_time = load_aware_pwroff_time;
 		__entry->enter_mpriv_release_time = enter_mpriv_release_time;
 		__entry->mpriv_release_time = mpriv_release_time;
+		__entry->sc_rets = sc_rets;
+		__entry->c_ret = c_ret;
 	),
 	TP_printk(
 		MDW_TAG_CMD_DONE_PRINT,
@@ -207,7 +214,9 @@ TRACE_EVENT(mdw_rv_cmd_deque,
 		__entry->handle_cmd_result_time,
 		__entry->load_aware_pwroff_time,
 		__entry->enter_mpriv_release_time,
-		__entry->mpriv_release_time
+		__entry->mpriv_release_time,
+		__entry->sc_rets,
+		__entry->c_ret
 	)
 );
 

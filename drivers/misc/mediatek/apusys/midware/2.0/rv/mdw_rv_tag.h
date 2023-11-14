@@ -26,8 +26,8 @@ struct mdw_rv_tag {
 			pid_t pid;
 			uint64_t param1;
 			uint64_t rvid;
-			uint32_t num_subcmds;
-			uint32_t priority;
+			uint64_t param4;
+			uint64_t param5;
 			uint32_t softlimit;
 			uint32_t pwr_dtime;
 			uint64_t param2;
@@ -47,7 +47,7 @@ struct mdw_rv_tag {
 			uint32_t executed_core_bmp;
 			uint32_t tcm_usage;
 			uint32_t history_iptime;
-			uint32_t hse_en;
+			uint64_t sync_info;
 		} subcmd;
 		struct mdw_tag_deque_cmd {
 			uint32_t status;
@@ -60,6 +60,8 @@ struct mdw_rv_tag {
 			uint64_t load_aware_pwroff_time;
 			uint64_t enter_mpriv_release_time;
 			uint64_t mpriv_release_time;
+			uint64_t sc_rets;
+			uint64_t c_ret;
 		} deqcmd;
 	} d;
 };

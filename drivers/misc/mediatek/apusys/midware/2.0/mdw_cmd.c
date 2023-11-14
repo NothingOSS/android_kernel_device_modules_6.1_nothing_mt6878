@@ -32,6 +32,10 @@
 #define MDW_CMD_GEN_INFID(session, cnt) ((mdw_world << 60) | ((session & 0xfffffff) << 32) \
 	 | (cnt & 0xffffffff))
 
+/* 64-bit sync info : [cbfc vid(32bit) | cbfc_en(16bit) | hse_en(16bit)] */
+#define MDW_CMD_GEN_SYNC_INFO(vid, cbfc_en, hse_en) ((vid << 32) | ( cbfc_en << 16) \
+	 | (hse_en))
+
 static void mdw_cmd_cmdbuf_out(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 {
 	struct mdw_subcmd_kinfo *ksubcmd = NULL;
@@ -1100,7 +1104,12 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 	struct mdw_subcmd_exec_info *sc_einfo = NULL;
 	int i = 0, ret = -EINVAL;
 	uint32_t h_iptime = 0, c_iptime = 0;
+	uint32_t producer_idx = 0, consumer_idx = 0, cbfc_en = 0;
 	uint64_t predict_start_ts = 0;
+	int64_t vid_array[MDW_SUBCMD_MAX] = {0};
+	int64_t vid = 0;
+
+	memset(vid_array, -1, sizeof(vid_array));
 
 	/* check history table */
 	ch_tbl = mdw_cmd_ch_tbl_find(c);
@@ -1112,13 +1121,33 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 	if (!sc_einfo)
 		goto out;
 
+	/* assign vid for check cbfc enable */
+	for (i = 0; i < c->num_links; i++) {
+		producer_idx = c->links[i].producer_idx;
+		consumer_idx = c->links[i].consumer_idx;
+		if (consumer_idx < MDW_SUBCMD_MAX && producer_idx < MDW_SUBCMD_MAX) {
+			vid_array[producer_idx] = c->links[i].vid;
+			vid_array[consumer_idx] = c->links[i].vid;
+		} else {
+			mdw_drv_err("unexcepted producer_idx(%d) consumer_idx(%d)\n",
+					producer_idx, consumer_idx);
+		}
+	}
+
 	/* calculate history ip_time */
 	for (i = 0; i < c->num_subcmds; i++) {
 		h_iptime = ch_tbl->h_sc_einfo[i].ip_time;
 		c_iptime = sc_einfo[i].ip_time;
 
-		if (sc_einfo[i].was_preempted) {
-			mdw_flw_debug("sc was preempted, skip this iptime\n");
+		if (vid_array[i] != -1 ) {
+			cbfc_en = 1;
+			vid = vid_array[i];
+		}
+		c->sync_info = MDW_CMD_GEN_SYNC_INFO(vid, cbfc_en, c->subcmds[i].hse_en);
+
+		if (sc_einfo[i].was_preempted || sc_einfo[i].ret) {
+			mdw_flw_debug("sc was preempted or failed, skip this iptime\n");
+			mdw_subcmd_trace(c, i, ch_tbl->h_sc_einfo[i].ip_time, MDW_CMD_SCHED);
 			continue;
 		}
 
