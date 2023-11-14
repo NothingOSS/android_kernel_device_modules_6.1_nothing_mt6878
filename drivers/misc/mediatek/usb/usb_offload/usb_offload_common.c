@@ -78,6 +78,46 @@ unsigned int usb_offload_log;
 module_param(usb_offload_log, uint, 0644);
 MODULE_PARM_DESC(usb_offload_log, "Enable/Disable USB Offload log");
 
+unsigned int debug_memory_log;
+module_param(debug_memory_log, uint, 0644);
+MODULE_PARM_DESC(debug_memory_log, "Enable/Disable Debug Memory log");
+
+u32 sram_version = 0x2;
+module_param(sram_version, uint, 0644);
+MODULE_PARM_DESC(sram_version, "Sram Version Control");
+
+/* region counter for ERST/EV_RING/TR_RING/URB */
+static u8 rsv_region;
+#define REGION_ERST_SFT     (0)
+#define REGION_EV_RING_SFT  (1)
+#define REGION_TR_RING_SFT  (2)
+#define REGION_URB_SFT      (4)
+#define REGION_ERST_MSK     (0x1 << REGION_ERST_SFT)
+#define REGION_EV_RING_MSK  (0x1 << REGION_EV_RING_SFT)
+#define REGION_TR_RING_MSK  (0x3 << REGION_TR_RING_SFT)
+#define REGION_URB_MSK      (0x3 << REGION_URB_SFT)
+
+#define inc_region(region) do { \
+	u8 temp = ((rsv_region & REGION_##region##_MSK) >> REGION_##region##_SFT); \
+	\
+	if (sram_version != 0x3)\
+		break; \
+	temp = temp + 1; \
+	rsv_region &= ~(REGION_##region##_MSK); \
+	rsv_region |= ((temp << REGION_##region##_SFT) & REGION_##region##_MSK); \
+	USB_OFFLOAD_MEM_DBG("rsv_region:0x%x\n", rsv_region); \
+} while(0)
+#define dec_region(region) do { \
+	u8 temp = ((rsv_region & REGION_##region##_MSK) >> REGION_##region##_SFT); \
+	\
+	if (!temp || sram_version != 0x3)\
+		break; \
+	temp = temp - 1; \
+	rsv_region &= ~(REGION_##region##_MSK); \
+	rsv_region |= ((temp << REGION_##region##_SFT) & REGION_##region##_MSK); \
+	USB_OFFLOAD_MEM_DBG("rsv_region:0x%x\n", rsv_region); \
+} while(0)
+
 static enum usb_offload_mem_id lowpwr_mem_type(void)
 {
 	return uodev->adv_lowpwr ?
@@ -111,8 +151,11 @@ static void print_all_memory(void)
 		if (buf_allocated[i].allocated)
 			USB_OFFLOAD_MEM_DBG("urb%d:0x%llx\n", i, buf_allocated[i].dma_addr);
 	}
+
+	USB_OFFLOAD_MEM_DBG("rsv_region:0x%x\n", rsv_region);
 }
 
+static bool ir_lost;
 static struct usb_audio_dev uadev[SNDRV_CARDS];
 struct usb_offload_dev *uodev;
 static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
@@ -127,12 +170,16 @@ static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
 static void xhci_mtk_free_ring(struct xhci_hcd *xhci, struct xhci_ring *ring);
 static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev);
 static int xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev);
+static int xhci_initialize_ir(struct usb_offload_dev *udev);
+static void xhci_free_ir(struct usb_offload_dev *udev);
 static void xhci_mtk_free_erst(struct usb_offload_dev *udev);
 static void xhci_mtk_free_event_ring(struct usb_offload_dev *udev);
 static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
 	struct xhci_ring *ring, dma_addr_t phys, void *vir);
 static int xhci_mtk_update_erst(struct usb_offload_dev *udev,
 	struct xhci_segment *first,	struct xhci_segment *last, unsigned int num_segs);
+static int xhci_mtk_realloc_transfer_ring(struct snd_usb_substream *subs);
+static void fake_sram_pwr_ctrl(bool power);
 
 static int set_interface(struct usb_device *udev,
 			     struct usb_host_interface *alts,
@@ -150,7 +197,7 @@ static int set_pcm_intf(struct usb_interface *intf, int iface, int alt,
 
 	vid = chip->dev->descriptor.idVendor;
 	pid = chip->dev->descriptor.idProduct;
-	USB_OFFLOAD_MEM_DBG("vid:0x%x pid:0x%x\n", vid, pid);
+	USB_OFFLOAD_DBG("vid:0x%x pid:0x%x\n", vid, pid);
 
 	if ((vid == 0x20b1 && pid == 0x302e) ||
 		(vid == 0x2fc6 && pid == 0xf822)) {
@@ -192,11 +239,18 @@ static void memory_cleanup(void)
 	mtk_usb_offload_free_allocated(true);
 	mtk_usb_offload_free_allocated(false);
 
-	/* free event ring related resource */
-	xhci_mtk_free_erst(uodev);
-	xhci_mtk_free_event_ring(uodev);
+	/* free interrupter resource */
+	xhci_free_ir(uodev);
 
-	USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d\n", is_vcore_hold);
+	/* disconnect event may came prior to freeing transfer ring
+	 * check rsv_region before powering off sram
+	 */
+	if (sram_version == 0x3 && !rsv_region) {
+		fake_sram_pwr_ctrl(false);
+		rsv_region = 0;
+	}
+
+	USB_OFFLOAD_DBG("is_vcore_hold:%d\n", is_vcore_hold);
 	if (is_vcore_hold) {
 		usb_boost_vcore_control(false);
 		USB_OFFLOAD_INFO("request releasing vcore\n");
@@ -230,10 +284,8 @@ static void deinit_fake_rsv_sram(void)
 
 static void fake_sram_pwr_ctrl(bool power)
 {
-	if (uodev->adv_lowpwr) {
-		USB_OFFLOAD_MEM_DBG("power:%d\n", power);
+	if (uodev->adv_lowpwr)
 		mtk_offload_rsv_sram_pwr_ctrl(power);
-	}
 }
 
 static void adsp_ee_recovery(void)
@@ -556,7 +608,7 @@ static bool is_pcm_size_valid(struct usb_audio_stream_info *uainfo)
 	pkt_sz = 10 * (((uainfo->bit_depth * uainfo->number_of_ch) >> 3) * uainfo->bit_rate) / data_ep->pps;
 	ringbuf_sz = pkt_sz * packs_per_ms * uainfo->dram_size * uainfo->dram_cnt;
 
-	USB_OFFLOAD_MEM_DBG("10*pkt_sz:%d 10*ringbuf_sz:%d 10*pcm_sz:%d\n",
+	USB_OFFLOAD_DBG("10*pkt_sz:%d 10*ringbuf_sz:%d 10*pcm_sz:%d\n",
 		pkt_sz, ringbuf_sz, 10* uainfo->pcm_size);
 
 	/* cause we multiple pkt_sz by 10 before, pcm_size should be also multipled */
@@ -759,7 +811,7 @@ static int info_idx_from_ifnum(unsigned int card_num, int intf_num, bool enable)
 {
 	int i;
 
-	USB_OFFLOAD_MEM_DBG("enable:%d, card_num:%d, intf_num:%d\n",
+	USB_OFFLOAD_DBG("enable:%d, card_num:%d, intf_num:%d\n",
 			enable, card_num, intf_num);
 
 	/*
@@ -772,10 +824,10 @@ static int info_idx_from_ifnum(unsigned int card_num, int intf_num, bool enable)
 		return 0;
 	}
 
-	USB_OFFLOAD_MEM_DBG("num_intf:%d\n", uadev[card_num].num_intf);
+	USB_OFFLOAD_DBG("num_intf:%d\n", uadev[card_num].num_intf);
 
 	for (i = 0; i < uadev[card_num].num_intf; i++) {
-		USB_OFFLOAD_MEM_DBG("info_idx:%d, in_use:%d, intf_num:%d\n",
+		USB_OFFLOAD_DBG("info_idx:%d, in_use:%d, intf_num:%d\n",
 			i,
 			uadev[card_num].info[i].in_use,
 			uadev[card_num].info[i].intf_num);
@@ -1115,8 +1167,7 @@ int send_uas_ipi_msg_to_adsp(struct usb_audio_stream_msg *uas_msg)
 	struct ipi_msg_t ipi_msg;
 	uint8_t task_scene = 0;
 
-	USB_OFFLOAD_MEM_DBG("msg: %p, size: %lu\n",
-			uas_msg, sizeof(*uas_msg));
+	USB_OFFLOAD_DBG("msg: %p, size: %lu\n",	uas_msg, sizeof(*uas_msg));
 
 	if (uas_msg->uainfo.direction == 0)
 		task_scene = TASK_SCENE_USB_DL;
@@ -1157,8 +1208,14 @@ static int mtk_usb_offload_free_allocated(bool is_in)
 		return 0;
 	}
 
+	if (!buf->allocated) {
+		USB_OFFLOAD_INFO("buf(%s) has already freed\n",
+			is_in ? "in" : "out");
+		return 0;
+	}
 	if (mtk_offload_free_mem(buf))
 		USB_OFFLOAD_ERR("Fail to free urb\n");
+	dec_region(URB);
 	return 0;
 }
 
@@ -1289,6 +1346,7 @@ static int usb_offload_prepare_msg_ext(struct usb_audio_stream_msg *msg,
 				mem_type, false);
 	if (ret != 0)
 		return ret;
+	inc_region(URB);
 
 	/* assign memory for 2nd segment */
 	phy_addr = buf->dma_addr;
@@ -1368,7 +1426,6 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 	}
 
 	mutex_lock(&uodev->dev_lock);
-	USB_OFFLOAD_MEM_DBG("inside mutex\n");
 
 	if (subs->cur_audiofmt)
 		interface = subs->cur_audiofmt->iface;
@@ -1433,7 +1490,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 			if (!ep)
 				USB_OFFLOAD_ERR("no data ep\n");
 			else
-				USB_OFFLOAD_MEM_DBG("stop data ep\n");
+				USB_OFFLOAD_DBG("stop data ep\n");
 			info->data_ep_pipe = 0;
 		}
 
@@ -1449,8 +1506,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 	}
 
 	substream = subs->pcm_substream;
-	USB_OFFLOAD_MEM_DBG("pcm_substream->wait_time: %lu\n",
-			substream->wait_time);
+	USB_OFFLOAD_DBG("pcm_substream->wait_time: %lu\n", substream->wait_time);
 
 	if (!substream->ops->hw_params || !substream->ops->hw_free
 		|| !substream->ops->prepare) {
@@ -1476,7 +1532,17 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 			return ret;
 		}
 
-		USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d dir:%d speed:%d\n",
+		if (sram_version == 0x3) {
+			/* re-placing trasnfer ring on rsv_sram/dram */
+			ret = xhci_mtk_realloc_transfer_ring(subs);
+			USB_OFFLOAD_INFO("re-alloc transfer ring, ret: %d\n", ret);
+			if (ret != 0) {
+				mutex_unlock(&uodev->dev_lock);
+				return ret;
+			}
+		}
+
+		USB_OFFLOAD_DBG("is_vcore_hold:%d dir:%d speed:%d\n",
 			is_vcore_hold, uainfo->direction, subs->dev->speed);
 		if (uainfo->direction &&
 			subs->dev->speed == USB_SPEED_HIGH) {
@@ -1493,7 +1559,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 
 		msg.uainfo.direction = uainfo->direction;
 
-		USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d dir:%d speed:%d\n",
+		USB_OFFLOAD_DBG("is_vcore_hold:%d dir:%d speed:%d\n",
 			is_vcore_hold, uainfo->direction, subs->dev->speed);
 		if (uainfo->direction &&
 			subs->dev->speed == USB_SPEED_HIGH) {
@@ -1562,11 +1628,10 @@ static struct xhci_device_context_array *xhci_mtk_alloc_dcbaa(struct xhci_hcd *x
 		return NULL;
 	}
 
-	USB_OFFLOAD_MEM_DBG("size of dcbaa: %lu\n", sizeof(*xhci_ctx));
 	xhci_ctx = (struct xhci_device_context_array *) buf_dcbaa->dma_area;
 	xhci_ctx->dma = buf_dcbaa->dma_addr;
-	USB_OFFLOAD_MEM_DBG("xhci_ctx.dev_context_ptrs:%p xhci_ctx.dma:%llx\n",
-			xhci_ctx->dev_context_ptrs, xhci_ctx->dma);
+	USB_OFFLOAD_MEM_DBG("#dcbaa vir:%p phy:0x%llx size:%lu\n",
+			xhci_ctx->dev_context_ptrs, xhci_ctx->dma, sizeof(*xhci_ctx));
 
 	buf_ctx = kzalloc(sizeof(struct usb_offload_buffer) * BUF_CTX_SIZE, GFP_KERNEL);
 
@@ -1619,12 +1684,10 @@ static void xhci_mtk_alloc_container_ctx(struct xhci_hcd *xhci, struct xhci_cont
 				buf_ctx_slot, ctx->size);
 		return;
 	}
-	USB_OFFLOAD_MEM_DBG("Success allocated mem for USB Offload Context %d\n", buf_ctx_slot);
 
 	ctx->bytes = buf_ctx[buf_ctx_slot].dma_area;
 	ctx->dma = buf_ctx[buf_ctx_slot].dma_addr;
-	USB_OFFLOAD_MEM_DBG("ctx.bytes: %p, ctx.dma: %llx, ctx.size: %d\n",
-			ctx->bytes, ctx->dma, ctx->size);
+	USB_OFFLOAD_MEM_DBG("#ctx%d vir:%p dma:0x%llx size:%d\n", buf_ctx_slot, ctx->bytes, ctx->dma, ctx->size);
 }
 
 static void xhci_mtk_free_container_ctx(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx)
@@ -1635,15 +1698,11 @@ static void xhci_mtk_free_container_ctx(struct xhci_hcd *xhci, struct xhci_conta
 		if (buf_ctx[idx].allocated && buf_ctx[idx].dma_addr == ctx->dma) {
 			if (mtk_offload_free_mem(&buf_ctx[idx]))
 				USB_OFFLOAD_ERR("FAIL: free mem ctx: %d\n", idx);
-			else
-				USB_OFFLOAD_MEM_DBG("Free mem ctx: %d DONE\n", idx);
 			return;
 		}
 	}
-	USB_OFFLOAD_MEM_DBG("NO Context MATCH to be freed. ctx.bytes:%p ctx.dma:%llx ctx.size:%d\n",
-			ctx->bytes,
-			ctx->dma,
-			ctx->size);
+	USB_OFFLOAD_MEM_DBG("NO Context MATCH to be freed. vir:%p dma:0x%llx size:%d\n",
+			ctx->bytes,	ctx->dma, ctx->size);
 }
 
 static int get_first_avail_buf_seg_idx(void)
@@ -1656,8 +1715,9 @@ static int get_first_avail_buf_seg_idx(void)
 	}
 
 	for (idx = 0; idx < BUF_SEG_SIZE; idx++) {
-		USB_OFFLOAD_MEM_DBG("buf_seg[%d] alloc:%d va:%p phy:0x%llx size:%zu\n",
+		USB_OFFLOAD_MEM_DBG("buf_seg[%d]:%p alloc:%d va:%p phy:0x%llx size:%zu\n",
 					idx,
+					&buf_seg[idx],
 					buf_seg[idx].allocated,
 					buf_seg[idx].dma_area,
 					buf_seg[idx].dma_addr,
@@ -1693,7 +1753,7 @@ static void xhci_mtk_usb_offload_segment_free(struct xhci_hcd *xhci,
 				goto done;
 			}
 		}
-		USB_OFFLOAD_INFO("NO Segment MATCH to be freed. seg->trbs: %p, seg->dma: %llx\n",
+		USB_OFFLOAD_INFO("NO Segment MATCH to be freed. seg->trbs:%p, seg->dma:0x%llx\n",
 				seg->trbs, seg->dma);
 done:
 		seg->trbs = NULL;
@@ -1751,16 +1811,14 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 		kfree(seg);
 		return NULL;
 	}
-	USB_OFFLOAD_MEM_DBG("Success allocated mem id: %d for USB Offload Seg %d\n",
-			mem_id, buf_seg_slot);
 
 	seg->trbs = (void *) buf->dma_area;
 	seg->dma = 0;
 	dma = buf->dma_addr;
-	USB_OFFLOAD_MEM_DBG("seg->trbs:%p, dma:0x%llx, size:%lu\n",
-			seg->trbs,
-			dma,
-			sizeof(*buf));
+	USB_OFFLOAD_MEM_DBG("#%s_ring%d vir:%p phy:0x%llx size:%lu\n",
+			type == TYPE_EVENT ? "ev" : "tr",
+			type == TYPE_EVENT ? 0 : buf_seg_slot,
+			seg->trbs, dma, (unsigned long)buf->dma_bytes);
 
 	if (!seg->trbs) {
 		USB_OFFLOAD_ERR("No seg->trbs\n");
@@ -1819,11 +1877,6 @@ static int xhci_mtk_usb_offload_alloc_segments_for_ring(struct xhci_hcd *xhci,
 {
 	struct xhci_segment *prev;
 	bool chain_links;
-
-	USB_OFFLOAD_MEM_DBG("mem_id: %d, ring->first_seg: %p, ring->last_seg: %p\n",
-			mem_id, first, last);
-	USB_OFFLOAD_MEM_DBG("num_segs: %d, cycle_state: %d, ring_type: %d, max_packet: %d\n",
-			num_segs, cycle_state, type, max_packet);
 
 	/* Set chain bit for 0.95 hosts, and for isoc rings on AMD 0.96 host */
 	chain_links = !!(xhci_link_trb_quirk(xhci) ||
@@ -2086,6 +2139,11 @@ static void xhci_mtk_free_event_ring(struct usb_offload_dev *udev)
 
 	xhci_mtk_free_ring(udev->xhci, udev->event_ring);
 	udev->event_ring = NULL;
+	dec_region(EV_RING);
+
+	/* Detect by check_service: kfree(NULL) is safe, remove NULL checker */
+	kfree(udev->backup_ev_ring);
+	udev->backup_ev_ring = NULL;
 }
 
 static void xhci_mtk_free_erst(struct usb_offload_dev *udev)
@@ -2103,6 +2161,11 @@ static void xhci_mtk_free_erst(struct usb_offload_dev *udev)
 		udev->erst->entries = NULL;
 		udev->erst = NULL;
 		udev->num_entries_in_use = 0;
+		dec_region(ERST);
+
+		/* Detect by check_service: kfree(NULL) is safe, remove NULL checker */
+		kfree(udev->backup_erst);
+		udev->backup_erst = NULL;
 	}
 }
 
@@ -2120,6 +2183,16 @@ static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
 	if (endpoint_type != ISOC_OUT_EP && endpoint_type != ISOC_IN_EP) {
 		USB_OFFLOAD_ERR("wrong endpoint type, type=%d\n", endpoint_type);
 		return NULL;
+	}
+
+	if (sram_version == 0x3) {
+		/* place transfer ring on native dram
+		 * to prevent from occupying sram in non-offload mode
+		 */
+		ring = xhci_ring_alloc_(xhci, 2, 1, ring_type, max_packet, mem_flags);
+		if (ring && ring->first_seg)
+			USB_OFFLOAD_MEM_DBG("(native ring) vir:%p phy:0x%llx\n", ring, ring->first_seg->dma);
+		return ring;
 	}
 
 	init_fake_rsv_sram();
@@ -2162,6 +2235,99 @@ static int get_segment_buf(struct xhci_ring *ring, struct usb_offload_buffer **b
 	return 0;
 }
 
+/* realloc transfer ring, placing on adsp/ap-view memory (sram or dram) */
+static int xhci_mtk_realloc_transfer_ring(struct snd_usb_substream *subs)
+{
+	struct usb_host_endpoint *ep;
+	struct xhci_hcd *xhci = uodev->xhci;
+	struct xhci_virt_device *virt_dev;
+	struct xhci_ep_ctx *out_ep_ctx, *in_ep_ctx;
+	struct xhci_input_control_ctx *ctrl_ctx;
+	struct usb_hcd *hcd = xhci->main_hcd;
+	struct xhci_ring *ring;
+	unsigned int slot_id, ep_id;
+	int num_segs = 1, max_packet;
+	int cycle_state = 1;
+	enum xhci_ring_type ring_type;
+	enum usb_offload_mem_id mem_type;
+
+	ep = usb_pipe_endpoint(subs->dev, subs->data_endpoint->pipe);
+	if (!ep) {
+		USB_OFFLOAD_ERR("host endpoint is NULL\n");
+		return -1;
+	}
+
+	slot_id = subs->dev->slot_id;
+	virt_dev = xhci->devs[slot_id];
+	if (!virt_dev) {
+		USB_OFFLOAD_ERR("(slot:%d) virtual device is NULL\n", slot_id);
+		return -1;
+	}
+
+	ep_id = xhci_get_endpoint_index_(&ep->desc);
+	USB_OFFLOAD_INFO("(slot:%d ep:%d) virt_dev:%p\n", slot_id, ep_id, virt_dev);
+
+	out_ep_ctx = xhci_get_ep_ctx__(xhci, virt_dev->out_ctx, ep_id);
+	in_ep_ctx = xhci_get_ep_ctx__(xhci, virt_dev->in_ctx, ep_id);
+	if (!out_ep_ctx || !in_ep_ctx) {
+		USB_OFFLOAD_ERR("(slot:%d ep:%d) endpoint context is NULL\n", slot_id, ep_id);
+		return -1;
+	}
+
+	/* 1. create new ring
+	 * note that it's unnecessary to free old ring, because as long as we pull
+	 * high drop_flag, xhci_check_bandwidth_() would free old one.
+	 *
+	 * virt_dev->eps[ep_id].ring is the ring which xhci currently uses.
+	 * virt_dev->eps[ep_id].new_ring is the temp buffer where we place new ring.
+	 * xhci_check_bandwidth_() would assign (ring = new_ring).
+	 */
+	if (uodev->adv_lowpwr_dl_only && usb_endpoint_dir_in(&ep->desc))
+		mem_type = USB_OFFLOAD_MEM_DRAM_ID;
+	else
+		mem_type = lowpwr_mem_type();
+
+	max_packet = virt_dev->eps[ep_id].ring->bounce_buf_len;
+	ring_type = virt_dev->eps[ep_id].ring->type;
+	ring = xhci_mtk_alloc_ring(xhci, num_segs, cycle_state, ring_type,
+		max_packet, GFP_NOIO, mem_type, true);
+	if (!ring) {
+		USB_OFFLOAD_ERR("ring is NULL\n");
+		return -1;
+	}
+	inc_region(TR_RING);
+	virt_dev->eps[ep_id].new_ring = ring;
+	USB_OFFLOAD_INFO("(slot:%d ep:%d) create new ring, ring:%p va:%p phy:0x%llx\n",
+		slot_id, ep_id, virt_dev->eps[ep_id].new_ring,
+		virt_dev->eps[ep_id].new_ring->first_seg->trbs,
+		virt_dev->eps[ep_id].new_ring->first_seg->dma);
+
+	/* 2. update dequeue pointer of output ep context */
+	out_ep_ctx->deq = cpu_to_le64(virt_dev->eps[ep_id].new_ring->first_seg->dma |
+					virt_dev->eps[ep_id].new_ring->cycle_state);
+
+	/* 3. copy output endpoint context to input endpoint context */
+	in_ep_ctx->ep_info = out_ep_ctx->ep_info;
+	in_ep_ctx->ep_info2 = out_ep_ctx->ep_info2;
+	in_ep_ctx->deq = out_ep_ctx->deq;
+	in_ep_ctx->tx_info = out_ep_ctx->tx_info;
+	if (xhci->quirks & XHCI_MTK_HOST) {
+		in_ep_ctx->reserved[0] = out_ep_ctx->reserved[0];
+		in_ep_ctx->reserved[1] = out_ep_ctx->reserved[1];
+	}
+
+	/* 4. pull high both add and drop flag to reconfigure ep
+	 * note ep_id is actully the index of virt_dev->eps
+	 * for input control context, it should be (ep_id + 1)
+	 */
+	ctrl_ctx = (struct xhci_input_control_ctx *)virt_dev->in_ctx->bytes;
+	ctrl_ctx->add_flags = cpu_to_le32(BIT(ep_id + 1));
+	ctrl_ctx->drop_flags = cpu_to_le32(BIT(ep_id + 1));
+
+	/* 5. inform XHC to reconfigure endoint */
+	return xhci_check_bandwidth_(hcd, virt_dev->udev);
+}
+
 /* Xhci checkes ep type before allocating transfer ring but it doesn't
  * when it comes to freeing transfer ring. So here, prior to actually
  * free memory, we'll check if segment lies on buf_seg.
@@ -2178,10 +2344,12 @@ static void xhci_mtk_free_transfer_ring(struct xhci_hcd *xhci,
 	if (ret != 0)
 		return;
 
-	if (buf)
+	if (buf) {
 		xhci_mtk_free_ring(xhci, ring);
+		dec_region(TR_RING);
+	}
 	else {
-		USB_OFFLOAD_MEM_DBG("phy:0x%llx isn't under mamaged\n", ring->first_seg->dma);
+		USB_OFFLOAD_MEM_DBG("phy:0x%llx isn't under managed\n", ring->first_seg->dma);
 		xhci_ring_free_(xhci, ring);
 	}
 }
@@ -2190,19 +2358,36 @@ static int xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev)
 {
 	int num_segs = 1;
 	int cycle_state = 1;
+	int ret;
 
 	udev->event_ring = xhci_mtk_alloc_ring(udev->xhci, num_segs, cycle_state,
 			TYPE_EVENT, 0, GFP_ATOMIC, lowpwr_mem_type(), true);
 	if (!udev->event_ring) {
 		USB_OFFLOAD_ERR("error allocating event ring\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto FAIL_ALLOCATE_EV_RING;
 	}
 
 	USB_OFFLOAD_INFO("[event ring] va:%p phy:0x%llx\n",
 		udev->event_ring->first_seg->trbs,
 		(unsigned long long)udev->event_ring->first_seg->dma);
 
+	inc_region(EV_RING);
+	if (sram_version == 0x3) {
+		udev->backup_ev_ring = kzalloc(USB_OFFLOAD_TRB_SEGMENT_SIZE, GFP_ATOMIC);
+		if (!udev->backup_ev_ring) {
+			USB_OFFLOAD_ERR("error allocating backup event ring\n");
+			ret = -ENOMEM;
+			goto FAIL_ALLOCATE_BACKUP_EV_RING;
+		}
+	}
 	return 0;
+FAIL_ALLOCATE_BACKUP_EV_RING:
+	xhci_mtk_free_ring(udev->xhci, udev->event_ring);
+	udev->event_ring = NULL;
+	dec_region(EV_RING);
+FAIL_ALLOCATE_EV_RING:
+	return ret;
 }
 
 static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev)
@@ -2217,10 +2402,10 @@ static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev)
 	}
 
 	udev->num_entries_in_use = 1;
-
 	udev->erst = kzalloc(sizeof(struct xhci_erst), GFP_ATOMIC);
 	if (!udev->erst) {
 		USB_OFFLOAD_ERR("Allocate xhci_erst Fail!!!\n");
+		ret = -ENOMEM;
 		goto FAIL_TO_ALLOC_XHCI_ERST;
 	}
 	udev->erst->entries = (struct xhci_erst_entry *)buf_ev_table->dma_area;
@@ -2233,7 +2418,21 @@ static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev)
 		buf_ev_table->is_sram,
 		buf_ev_table->is_rsv);
 
+	inc_region(ERST);
+	if (sram_version == 0x3) {
+		udev->backup_erst = kzalloc(sizeof(struct xhci_erst_entry)
+			* ERST_NUMBER, GFP_ATOMIC);
+		if (!udev->backup_erst){
+			USB_OFFLOAD_ERR("error allocating backup erst\n");
+			ret = -ENOMEM;
+			goto FAIL_TO_ALLOC_XHCI_BACKUP_ERST;
+		}
+	}
 	return 0;
+FAIL_TO_ALLOC_XHCI_BACKUP_ERST:
+	kfree(udev->erst);
+	udev->erst = NULL;
+	dec_region(ERST);
 FAIL_TO_ALLOC_XHCI_ERST:
 	udev->num_entries_in_use = 0;
 	if (mtk_offload_free_mem(buf_ev_table))
@@ -2242,9 +2441,141 @@ FAIL_TO_ALLOC_ERST:
 	return ret;
 }
 
+#define USB_OFFLOAD_XHCI_INTR_TARGET 1
+static int xhci_initialize_ir(struct usb_offload_dev *udev)
+{
+	int ret = 0, i;
+	unsigned int val;
+	u64 val_64;
+	struct xhci_hcd *xhci = udev->xhci;
+	struct xhci_ring *ev_ring = udev->event_ring;
+	struct xhci_erst *erst = udev->erst;
+	struct xhci_intr_reg *ir_set = &xhci->run_regs->ir_set[USB_OFFLOAD_XHCI_INTR_TARGET];
+	struct xhci_segment *seg;
+	struct xhci_erst_entry *entry;
+
+	/* 1. set event ring info into erst */
+	erst->num_entries = ev_ring->num_segs;
+	seg = ev_ring->first_seg;
+	for (i = 0; i < ev_ring->num_segs; i++) {
+		entry = &erst->entries[i];
+		entry->seg_addr = cpu_to_le64(seg->dma);
+		entry->seg_size = cpu_to_le32(USB_OFFLOAD_TRBS_PER_SEGMENT);
+		entry->rsvd = 0;
+		seg = seg->next;
+		USB_OFFLOAD_MEM_DBG("entry%d seg_addr:0x%llx seg_size:0x%lx\n",
+			i, (unsigned long long)entry->seg_addr, (unsigned long)entry->seg_size);
+	}
+
+	/* 2. pass event ring table to hardware */
+	ir_set = &xhci->run_regs->ir_set[USB_OFFLOAD_XHCI_INTR_TARGET];
+	val = readl(&ir_set->erst_size);
+	val &= ERST_SIZE_MASK;
+	val |= EV_MAX_SEG;
+	writel(val, &ir_set->erst_size);
+
+	val_64 = xhci_read_64(xhci, &ir_set->erst_base);
+	val_64 &= ERST_PTR_MASK;
+	val_64 |= (erst->erst_dma_addr & (u64) ~ERST_PTR_MASK);
+	xhci_write_64(xhci, val_64, &ir_set->erst_base);
+
+	USB_OFFLOAD_MEM_DBG("erat_base:0x%llx erst_size:0x%lx\n",
+		(unsigned long long)(xhci_read_64(xhci, &ir_set->erst_base) & ERST_PTR_MASK),
+		(unsigned long)readl(&ir_set->erst_size));
+	return ret;
+}
+
+static void xhci_free_ir(struct usb_offload_dev *udev)
+{
+	xhci_mtk_free_erst(uodev);
+	xhci_mtk_free_event_ring(uodev);
+}
+
+static int xhci_backup_ir(struct usb_offload_dev *udev)
+{
+	int i;
+	struct xhci_erst_entry *entry, *backup_entry;
+	struct xhci_erst *erst = udev->erst;
+	struct xhci_ring *ev_ring = udev->event_ring;
+	struct xhci_segment *seg;
+	void *ev_src, *ev_des;
+
+	if (!erst || !ev_ring) {
+		USB_OFFLOAD_ERR("erst/ev_ring are NULL\n");
+		return -EINVAL;
+	}
+
+	ir_lost = true;
+	USB_OFFLOAD_MEM_DBG("ir_lost:%d->%d\n", !ir_lost, ir_lost);
+
+	/* backup event ring table */
+	for (i = 0; i < ERST_NUMBER; i++) {
+		entry = &erst->entries[i];
+		backup_entry = &udev->backup_erst[i];
+		memcpy((void *)backup_entry, (void *)entry, ERST_SIZE);
+	}
+
+	seg = ev_ring->first_seg;
+	ev_des = (void *)udev->backup_ev_ring;
+	if (!seg || !ev_des) {
+		USB_OFFLOAD_ERR("seg/ev_des are NULL\n");
+		return -EINVAL;
+	}
+
+	/* backup event ring */
+	for (i = 0; i < ev_ring->num_segs; i++) {
+		ev_src = (void *)seg->trbs;
+		memcpy(ev_des, ev_src, USB_OFFLOAD_TRB_SEGMENT_SIZE);
+		ev_des += USB_OFFLOAD_TRB_SEGMENT_SIZE;
+		seg = seg->next;
+	}
+
+	return 0;
+}
+
+static int xhci_restore_ir(struct usb_offload_dev *udev)
+{
+	int i;
+	struct xhci_erst_entry *entry, *backup_entry;
+	struct xhci_erst *erst = udev->erst;
+	struct xhci_ring *ev_ring = udev->event_ring;
+	struct xhci_segment *seg;
+	void *ev_src, *ev_des;
+
+	if (!erst || !ev_ring) {
+		USB_OFFLOAD_ERR("erst/ev_ring are NULL\n");
+		return -EINVAL;
+	}
+
+	ir_lost = false;
+	USB_OFFLOAD_MEM_DBG("ir_lost:%d->%d\n", !ir_lost, ir_lost);
+
+	for (i = 0; i < ERST_NUMBER; i++) {
+		entry = &erst->entries[i];
+		backup_entry = &udev->backup_erst[i];
+		memcpy((void *)entry, (void *)backup_entry, ERST_SIZE);
+	}
+
+	seg = ev_ring->first_seg;
+	ev_src = (void *)udev->backup_ev_ring;
+	if (!seg || !ev_src) {
+		USB_OFFLOAD_ERR("seg/ev_src are NULL\n");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < ev_ring->num_segs; i++) {
+		ev_des = (void *)seg->trbs;
+		memcpy(ev_des, ev_src, USB_OFFLOAD_TRB_SEGMENT_SIZE);
+		ev_src += USB_OFFLOAD_TRB_SEGMENT_SIZE;
+		seg = seg->next;
+	}
+
+	return 0;
+}
+
 static bool xhci_mtk_is_streaming(struct xhci_hcd *xhci)
 {
-	USB_OFFLOAD_MEM_DBG("is_streaming: %d\n", uodev->is_streaming);
+	USB_OFFLOAD_DBG("is_streaming: %d\n", uodev->is_streaming);
 	return uodev->is_streaming;
 }
 
@@ -2272,7 +2603,7 @@ static int check_is_multiple_ep(struct usb_host_config *config)
 	if (!config)
 		return -1;
 
-	USB_OFFLOAD_MEM_DBG("num of intf: %d\n", config->desc.bNumInterfaces);
+	USB_OFFLOAD_DBG("num of intf: %d\n", config->desc.bNumInterfaces);
 
 	for (i = 0; i < config->desc.bNumInterfaces; i++) {
 
@@ -2295,7 +2626,7 @@ static int check_is_multiple_ep(struct usb_host_config *config)
 						uodev->connected);
 				return -1;
 			}
-			USB_OFFLOAD_MEM_DBG("intf:%d, alt:%d, numEP: %d, class:0x%x, sub:0x%x\n",
+			USB_OFFLOAD_DBG("intf:%d, alt:%d, numEP: %d, class:0x%x, sub:0x%x\n",
 					i, j,
 					intfd->bNumEndpoints,
 					intfd->bInterfaceClass,
@@ -2476,13 +2807,12 @@ static long usb_offload_ioctl(struct file *fp,
 
 		/* Fiil in info of reserved region */
 		if (value == 1) {
+			init_fake_rsv_sram();
 			xhci_mem->adv_lowpwr = uodev->adv_lowpwr;
 			mtk_offload_get_rsv_mem_info(USB_OFFLOAD_MEM_DRAM_ID,
 				&xhci_mem->xhci_dram_addr, &xhci_mem->xhci_dram_size);
 			mtk_offload_get_rsv_mem_info(USB_OFFLOAD_MEM_SRAM_ID,
 				&xhci_mem->xhci_sram_addr, &xhci_mem->xhci_sram_size);
-
-			init_fake_rsv_sram();
 
 			ret = xhci_mtk_alloc_event_ring(uodev);
 			if (ret) {
@@ -2496,6 +2826,15 @@ static long usb_offload_ioctl(struct file *fp,
 				USB_OFFLOAD_ERR("error allocating erst\n");
 				kfree(xhci_mem);
 				goto fail;
+			}
+
+			if (sram_version == 0x3) {
+				ret = xhci_initialize_ir(uodev);
+				if (ret != 0) {
+					USB_OFFLOAD_ERR("error initializing ir\n");
+					kfree(xhci_mem);
+					goto fail;
+				}
 			}
 
 			xhci_mem->erst_table = (unsigned long long)uodev->erst->erst_dma_addr;
@@ -2512,6 +2851,7 @@ static long usb_offload_ioctl(struct file *fp,
 			xhci_mem->erst_table = 0;
 			xhci_mem->ev_ring = 0;
 		}
+		xhci_mem->sram_version = sram_version;
 
 		USB_OFFLOAD_INFO("adsp_exception:%d, adsp_ready:%d\n",
 				uodev->adsp_exception, uodev->adsp_ready);
@@ -2523,8 +2863,13 @@ static long usb_offload_ioctl(struct file *fp,
 			uodev->tx_streaming = false;
 			uodev->rx_streaming = false;
 			uodev->adsp_inited = false;
-		} else
+		} else {
 			uodev->adsp_inited = true;
+			if (sram_version == 0x3) {
+				xhci_backup_ir(uodev);
+				fake_sram_pwr_ctrl(false);
+			}
+		}
 		kfree(xhci_mem);
 		break;
 	case USB_OFFLOAD_ENABLE_STREAM:
@@ -2552,6 +2897,19 @@ static long usb_offload_ioctl(struct file *fp,
 			goto fail;
 		}
 
+
+		if (uainfo.enable && sram_version == 0x3) {
+			fake_sram_pwr_ctrl(true);
+			USB_OFFLOAD_MEM_DBG("ir_lost:%d\n", ir_lost);
+			if (ir_lost) {
+				/* non-1st time starting stream, but sram power-off before */
+				ret = xhci_restore_ir(uodev);
+				if (ret != 0) {
+					USB_OFFLOAD_ERR("xhci_restore_ir fail\n");
+					goto fail;
+				}
+			}
+		}
 
 		if (cmd == USB_OFFLOAD_ENABLE_STREAM) {
 			switch (uainfo.direction) {
@@ -2616,6 +2974,16 @@ static long usb_offload_ioctl(struct file *fp,
 		}
 		uodev->is_streaming = uodev->tx_streaming || uodev->rx_streaming;
 
+		if (!uainfo.enable && !uodev->is_streaming && sram_version == 0x3) {
+			/* power-off sram if no streaming */
+			ret = xhci_backup_ir(uodev);
+			if (ret != 0) {
+				USB_OFFLOAD_ERR("xhci_backup_ir fail\n");
+				goto fail;
+			}
+			fake_sram_pwr_ctrl(false);
+		}
+
 		if (uodev->is_streaming) {
 			mtk_clk_notify(NULL, NULL, NULL, 1, 1, 0, CLK_EVT_BYPASS_PLL);
 			USB_OFFLOAD_MEM_DBG("CLK_EVT_BYPASS_PLL 1 suspend\n");
@@ -2669,7 +3037,7 @@ int xhci_mtk_ssusb_offload_get_mode(struct device *dev)
 		return SSUSB_OFFLOAD_MODE_NONE;
 
 	is_in_advanced = mtk_offload_is_advlowpwr(uodev);
-	USB_OFFLOAD_MEM_DBG("is_streaming:%d, is_in_advanced:%d\n",
+	USB_OFFLOAD_DBG("is_streaming:%d, is_in_advanced:%d\n",
 		uodev->is_streaming, is_in_advanced);
 
 	/* we only release APSRC request in advanced mode by
@@ -2719,9 +3087,15 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->erst = NULL;
 	uodev->num_entries_in_use = 0;
 	is_vcore_hold = false;
+	uodev->backup_erst = NULL;
+	uodev->backup_ev_ring = NULL;
+	ir_lost = false;
+	rsv_region = 0;
+	if (of_property_read_u32(pdev->dev.of_node, "sram-version", &sram_version))
+		sram_version = 0x2;
 
-	USB_OFFLOAD_INFO("adv_lowpwr:%d smc_suspend:%d smc_resume:%d\n",
-		uodev->adv_lowpwr, uodev->smc_suspend, uodev->smc_resume);
+	USB_OFFLOAD_INFO("adv_lowpwr:%d smc_suspend:%d smc_resume:%d sram_version:%d\n",
+		uodev->adv_lowpwr, uodev->smc_suspend, uodev->smc_resume, sram_version);
 
 	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci-host", 0);
 	if (node_xhci_host) {
@@ -2848,7 +3222,8 @@ static int __maybe_unused usb_offload_suspend(struct device *dev)
 
 	if (!uodev->is_streaming) {
 		/* turn rsv_sram off if it's not streaming */
-		fake_sram_pwr_ctrl(false);
+		if (sram_version != 0x3)
+			fake_sram_pwr_ctrl(false);
 		return 0;
 	}
 
@@ -2862,7 +3237,8 @@ static int __maybe_unused usb_offload_resume(struct device *dev)
 		return 0;
 
 	if (!uodev->is_streaming) {
-		fake_sram_pwr_ctrl(true);
+		if (sram_version != 0x3)
+			fake_sram_pwr_ctrl(true);
 		return 0;
 	}
 
@@ -2878,12 +3254,11 @@ static int __maybe_unused usb_offload_runtime_suspend(struct device *dev)
 		return 0;
 
 	if (!uodev->is_streaming) {
-		/* turn rsv_sram off if it's not streaming */
-		fake_sram_pwr_ctrl(false);
+		if (sram_version != 0x3)
+			fake_sram_pwr_ctrl(false);
 		return 0;
 	}
 
-	/* if it's streaming, call to TFA if it's required */
 	return usb_offload_smc_ctrl(uodev->smc_suspend);
 }
 
@@ -2896,7 +3271,8 @@ static int __maybe_unused usb_offload_runtime_resume(struct device *dev)
 		return 0;
 
 	if (!uodev->is_streaming) {
-		fake_sram_pwr_ctrl(true);
+		if (sram_version != 0x3)
+			fake_sram_pwr_ctrl(true);
 		return 0;
 	}
 

@@ -50,6 +50,8 @@ usb_offload_mem_buffer[USB_OFFLOAD_MEM_NUM] = {
 		.pool     = NULL,
 	},
 };
+
+static bool sram_pwr_on;
 static struct usb_offload_buffer rsv_sram;
 static DEFINE_MUTEX(rsv_sram_lock);
 
@@ -249,6 +251,9 @@ static int sram_runtime_pm_ctrl(unsigned int sram_type, bool pwr_on)
 
 static void sram_power_ctrl(unsigned int sram_type, bool power)
 {
+	if (sram_version == 0x3)
+		return;
+
 	if (sram_type >= MEM_TYPE_NUM) {
 		USB_OFFLOAD_ERR("wrong sram_type\n");
 		return;
@@ -281,7 +286,17 @@ DONE_SRAM_PWR_CTRL:
 
 int mtk_offload_rsv_sram_pwr_ctrl(bool power)
 {
-	return sram_runtime_pm_ctrl(rsv_sram.type, power);
+	if (sram_version != 0x3)
+		return sram_runtime_pm_ctrl(rsv_sram.type, power);
+
+	USB_OFFLOAD_MEM_DBG("power:%d sram_pwr_on:%d\n", power, sram_pwr_on);
+	if (power != sram_pwr_on) {
+		sram_pwr_on = power;
+		USB_OFFLOAD_MEM_DBG("sram_pwr_on:%d->%d\n", !sram_pwr_on, sram_pwr_on);
+		sram_runtime_pm_ctrl(rsv_sram.type, power);
+	}
+
+	return 0;
 }
 
 int mtk_offload_init_rsv_sram(int min_alloc_order)
@@ -311,7 +326,11 @@ int mtk_offload_init_rsv_sram(int min_alloc_order)
 		goto INIT_RSV_SRAM_DONE;
 	}
 
-	sram_power_ctrl(rsv_sram.type, true);
+	sram_pwr_on = 0;
+	if (sram_version == 0x3)
+		mtk_offload_rsv_sram_pwr_ctrl(true);
+	else
+		sram_power_ctrl(rsv_sram.type, true);
 
 	phy_addr = rsv_sram.dma_addr;
 	usb_offload_mem_buffer[mem_id].phy_addr = (unsigned long long)phy_addr;
@@ -512,10 +531,6 @@ static int mtk_usb_offload_genpool_allocate_memory(unsigned char **vaddr,
 		*paddr = gen_pool_virt_to_phys(gen_pool_usb_offload,
 					(unsigned long)*vaddr);
 	}
-
-	USB_OFFLOAD_MEM_DBG("va:%p phy:0x%llx size:%u, mem_id:%d\n",
-		*vaddr, (unsigned long long)*paddr, size, mem_id);
-
 error:
 	return ret;
 }

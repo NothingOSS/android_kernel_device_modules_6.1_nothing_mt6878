@@ -121,6 +121,7 @@ struct ssusb_offload {
 
 struct mem_info_xhci {
 	bool adv_lowpwr;
+	unsigned int sram_version;
 	unsigned int xhci_dram_addr;
 	unsigned int xhci_dram_size;
 	unsigned int xhci_sram_addr;
@@ -232,6 +233,8 @@ struct usb_offload_dev {
 	struct xhci_hcd *xhci;
 	struct xhci_ring *event_ring;
 	struct xhci_erst *erst;
+	struct xhci_erst_entry *backup_erst;
+	unsigned char *backup_ev_ring;
 	unsigned int num_entries_in_use;
 	u32 intr_num;
 	unsigned long card_slot;
@@ -263,8 +266,13 @@ extern bool usb_offload_ready(void);
 
 extern struct usb_offload_dev *uodev;
 extern unsigned int usb_offload_log;
+#define USB_OFFLOAD_DBG(fmt, args...) do { \
+	if (usb_offload_log > 0) \
+		pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
+	} while (0)
+extern unsigned int debug_memory_log;
 #define USB_OFFLOAD_MEM_DBG(fmt, args...) do { \
-	if (usb_offload_log > 1) \
+	if (debug_memory_log > 0) \
 		pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
 	} while (0)
 
@@ -283,6 +291,7 @@ extern unsigned int usb_offload_log;
 		pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
 	} while (0)
 
+extern u32 sram_version;
 extern int soc_init_aud_intf(void);
 extern int mtk_offload_init_rsv_dram(int min_alloc_order);
 extern int mtk_offload_init_rsv_sram(int min_alloc_order);
