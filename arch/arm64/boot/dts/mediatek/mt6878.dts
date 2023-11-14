@@ -10705,8 +10705,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"cpu_emi_bw";
 
 			node-30 = "SSPM_SWPM_CPU__DVFS",
-				"vproc3,vproc2,vproc1,cpuL_freq,cpuBL_freq,cpuB_freq,cpu_L_opp,",
-				"cpu_BL_opp,cpu_B_opp,cci_volt,cci_freq,cci_opp";
+				"vproc2,vproc1,cpuL_freq,cpuB_freq,cpu_L_opp,",
+				"cpu_B_opp,cci_volt,cci_freq,cci_opp";
 
 			node-31 = "SSPM_SWPM_CPU__LKG_POWER",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7,dsu";
