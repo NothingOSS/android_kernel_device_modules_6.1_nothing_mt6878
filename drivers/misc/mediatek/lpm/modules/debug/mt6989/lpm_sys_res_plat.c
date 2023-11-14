@@ -303,14 +303,31 @@ static int lpm_sys_res_get_log_enable(void)
 	return common_log_enable;
 }
 
+static int lpm_sys_res_get_id_name(struct sys_res_mapping **map, unsigned int *size)
+{
+	unsigned int res_mapping_len;
+
+	if (!map || !size)
+		return -1;
+
+	res_mapping_len = sizeof(sys_res_mapping) / sizeof(struct sys_res_mapping);
+
+	*size = res_mapping_len;
+	*map = (struct sys_res_mapping *)&sys_res_mapping;
+
+	return 0;
+}
+
 static void lpm_sys_res_log(unsigned int scene)
 {
 	#define LOG_BUF_OUT_SZ		(768)
 
 	unsigned long flag;
 	struct sys_res_record *sys_res_record;
+	struct sys_res_mapping *map = NULL;
 	uint64_t time, sys_index, sig_tbl_index;
 	uint64_t threshold, ratio;
+	unsigned int res_mapping_len, tmp_active_time, tmp_id;
 	int time_type, ratio_type;
 	char scene_name[15];
 	char sys_res_log_buf[LOG_BUF_OUT_SZ] = { 0 };
@@ -321,6 +338,8 @@ static void lpm_sys_res_log(unsigned int scene)
 		return;
 
 	sys_res_update = update_lpm_sys_res_record();
+
+	lpm_sys_res_get_id_name(&map, &res_mapping_len);
 
 	if (sys_res_update) {
 		pr_info("[name:spm&][SPM] SWPM data is invalid\n");
@@ -403,22 +422,22 @@ static void lpm_sys_res_log(unsigned int scene)
 				"]; ");
 	}
 	pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
+
+	sys_res_log_size = 0;
+	for (i = 0; i < res_mapping_len; i++) {
+		tmp_id = map[i].id;
+		tmp_active_time = lpm_sys_res_get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, tmp_id);
+		sys_res_log_size += scnprintf(
+				sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"%s: %u.%03u%s",
+				map[i].name, tmp_active_time / 1000, tmp_active_time % 1000,
+				i < res_mapping_len - 1 ? "," : "\n");
+	}
+	pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
+
 	spin_unlock_irqrestore(&sys_res_lock, flag);
-}
-
-static int lpm_sys_res_get_id_name(struct sys_res_mapping **map, unsigned int *size)
-{
-	unsigned int res_mapping_len;
-
-	if (!map || !size)
-		return -1;
-
-	res_mapping_len = sizeof(sys_res_mapping) / sizeof(struct sys_res_mapping);
-
-	*size = res_mapping_len;
-	*map = (struct sys_res_mapping *)&sys_res_mapping;
-
-	return 0;
 }
 
 static struct lpm_sys_res_ops sys_res_ops = {
