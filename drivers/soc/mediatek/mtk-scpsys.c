@@ -478,6 +478,49 @@ static int clear_bus_protection(struct regmap *map, struct bus_prot *bp)
 	return ret;
 }
 
+static int clear_bus_protection_with_retry(struct regmap *map, struct bus_prot *bp)
+{
+	u32 val = 0;
+	u32 clr_ofs = bp->clr_ofs;
+	u32 en_ofs = bp->en_ofs;
+	u32 sta_ofs = bp->sta_ofs;
+	u32 mask = bp->mask;
+	u32 ack_mask = bp->ack_mask;
+	bool ignore_ack = bp->ignore_clr_ack;
+	int retry = 0;
+	int ret = 0;
+
+	while (retry <= 10) {
+		if (clr_ofs)
+			regmap_write(map, clr_ofs, mask);
+		else
+			regmap_update_bits(map, en_ofs, mask, 0);
+
+		/* check bus protect enable setting */
+		regmap_read(map, en_ofs, &val);
+		if ((val & mask) == 0x0)
+			break;
+
+		pr_err("%s Bus protect CLR fail & retry!! val=0x%x, mask=0x%x\n",
+			__func__, val, ack_mask);
+
+		retry++;
+	}
+
+	if (ignore_ack)
+		return 0;
+
+	ret = regmap_read_poll_timeout_atomic(map, sta_ofs,
+			val, !(val & ack_mask),
+			MTK_POLL_DELAY_US, MTK_POLL_TIMEOUT);
+
+	if (ret < 0) {
+		pr_err("%s val=0x%x, mask=0x%x, (val & mask)=0x%x\n",
+			__func__, val, ack_mask, (val & ack_mask));
+	}
+	return ret;
+}
+
 static int scpsys_bus_protect_disable(struct scp_domain *scpd, unsigned int index)
 {
 	struct scp *scp = scpd->scp;
@@ -510,9 +553,15 @@ static int scpsys_bus_protect_disable(struct scp_domain *scpd, unsigned int inde
 			pr_notice("[%d] bus en: 0x%08x, sta: 0x%08x before restore\n",
 					i, val, val2);
 			/* restore bus protect setting */
-			clear_bus_protection(map, &bp);
+			if (MTK_SCPD_CAPS(scpd, MTK_SCPD_BUS_PROT_CLR_RETRY))
+				clear_bus_protection_with_retry(map, &bp);
+			else
+				clear_bus_protection(map, &bp);
 		} else {
-			ret = clear_bus_protection(map, &bp);
+			if (MTK_SCPD_CAPS(scpd, MTK_SCPD_BUS_PROT_CLR_RETRY))
+				ret = clear_bus_protection_with_retry(map, &bp);
+			else
+				ret = clear_bus_protection(map, &bp);
 
 			if (ret)
 				goto ERR;
