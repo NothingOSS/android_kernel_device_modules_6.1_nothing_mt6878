@@ -2959,6 +2959,7 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info,
 	struct drm_mtk_layer_config *c;
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv = drm_dev->dev_private;
 
 	if (!get_layering_opt(LYE_OPT_CLEAR_LAYER))
 		return;
@@ -3031,8 +3032,14 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info,
 
 		if (mtk_has_layer_cap(c, MTK_DISP_CLIENT_CLEAR_LAYER)) {
 			*scn_decision_flag |= SCN_CLEAR;
-			if ((*scn_decision_flag & SCN_IDLE))
-				disp_info->hrt_weight += 400;
+			if ((*scn_decision_flag & SCN_IDLE)) {
+				if ((priv->data->mmsys_id == MMSYS_MT6897) ||
+					(priv->data->mmsys_id == MMSYS_MT6989) ||
+					(priv->data->mmsys_id == MMSYS_MT6878))
+					disp_info->hrt_weight += (400 * 10000) / default_emi_eff;
+				else
+					disp_info->hrt_weight += 400;
+			}
 		}
 
 		for (i = 0; i < disp_info->layer_num[di]; i++) {
@@ -3278,6 +3285,9 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 		disp_info->hrt_num =
 			get_hrt_level(max_ovl_cnt * HRT_UINT_BOUND_BPP, 0);
 		disp_info->hrt_weight = max_ovl_cnt * 4;
+		if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) &&
+			(disp_info->hrt_weight <= sum_overlap_w_of_bwm))
+			sum_overlap_w_of_bwm = disp_info->hrt_weight;
 	}
 
 	return 0;
@@ -4367,6 +4377,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	int disp_idx = 0, hrt_idx;
 	struct debug_gles_range dbg_gles = {-1, -1};
 	struct mtk_lye_ddp_state lye_state = {0};
+	struct mtk_drm_private *priv = dev->dev_private;
 
 	DRM_MMP_EVENT_START(layering, (unsigned long)disp_info_user,
 			(unsigned long)dev);
@@ -4542,9 +4553,17 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		}
 		scn_decision_flag |= SCN_IDLE;
 		layering_info.hrt_num = HRT_LEVEL_LEVEL0;
-		layering_info.hrt_weight = 400;
-		if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
-			sum_overlap_w_of_bwm = 400;
+		if ((priv->data->mmsys_id == MMSYS_MT6897) ||
+				(priv->data->mmsys_id == MMSYS_MT6989) ||
+				(priv->data->mmsys_id == MMSYS_MT6878)) {
+			layering_info.hrt_weight = (400 * 10000) / default_emi_eff;
+			if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
+				sum_overlap_w_of_bwm = (400 * 10000) / default_emi_eff;
+		} else {
+			layering_info.hrt_weight = 400;
+			if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
+				sum_overlap_w_of_bwm = 400;
+		}
 	}
 	check_gles_change(&dbg_gles, __LINE__, false);
 
