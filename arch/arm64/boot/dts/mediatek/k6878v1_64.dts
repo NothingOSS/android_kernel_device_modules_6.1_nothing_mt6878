@@ -239,6 +239,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 		reg = <0>;
 		pm-enable-gpios = <&pio 149 0>;
 		reset-gpios = <&pio 90 0>;
+		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
