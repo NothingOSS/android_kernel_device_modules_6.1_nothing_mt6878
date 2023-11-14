@@ -9680,8 +9680,8 @@
 		rw-emi-size = <0x480000>;
 		emi-alignment = <0x100000>;
 		emi-max-addr = <0x90000000>;
-
-		status = "okay";
+		hwid-node = <92 132 131>;
+		adie-sku = <1 1 0 0 2 2 1 0>;  /* mt6637 = 0, mt6631 = 1 , mt6631 + mt6686 = 2 */
 	};
 
 	pda: pda@1a180000 {
