@@ -88,6 +88,9 @@ int find_imbalanced_vvip_gear(void)
 		for_each_cpu(cpu, &cpus) {
 			num_vvip_in_gear += num_vvip_in_cpu(cpu);
 			num_cpu += 1;
+
+			if (trace_sched_find_imbalanced_vvip_gear_enabled())
+				trace_sched_find_imbalanced_vvip_gear(cpu, num_vvip_in_gear);
 		}
 
 		/* Choice it since it's beggiest gaar without VVIP*/
@@ -429,6 +432,24 @@ void vip_enqueue_task(struct rq *rq, struct task_struct *p)
 		vts->sum_exec_snapshot = p->se.sum_exec_runtime;
 }
 
+void check_vip_num(struct rq *rq)
+{
+	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
+
+	/* temp patch for counter issue*/
+	if (list_empty(&vrq->vip_tasks)) {
+		if (vrq->num_vvip_tasks != 0 ) {
+			vrq->num_vvip_tasks = 0;
+			pr_info("cpu=%d error VVIP number\n", cpu_of(rq));
+		}
+		if (vrq->num_vip_tasks != 0) {
+			vrq->num_vip_tasks = 0;
+			pr_info("cpu=%d error VIP number\n", cpu_of(rq));
+		}
+	}
+	/* end of temp patch*/
+}
+
 static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 {
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
@@ -657,6 +678,8 @@ void vip_dequeue_task(void *unused, struct rq *rq, struct task_struct *p, int fl
 
 	if (!list_empty(&vts->vip_list) && vts->vip_list.next)
 		deactivate_vip_task(p, rq);
+
+	check_vip_num(rq);
 
 	/*
 	 * Reset the exec time during sleep so that it starts
