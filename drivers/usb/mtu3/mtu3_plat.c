@@ -96,7 +96,8 @@ static void ssusb_hwrscs_req(struct ssusb_mtk *ssusb,
 	ret = readl_poll_timeout_atomic(ibase + U3D_SSUSB_SPM_CTRL_ACK,
 		value, (spm_ctrl == (value & SSUSB_SPM_REQ_MSK)), 100, 20000);
 	if (ret)
-		dev_info(ssusb->dev, "%s spm ctrl timeout\n", __func__);
+		dev_info(ssusb->dev, "%s timeout, spm_ctrl=0x%x, value=0x%x\n",
+			__func__, spm_ctrl, value);
 
 	/* wait 2ms */
 	mdelay(2);
