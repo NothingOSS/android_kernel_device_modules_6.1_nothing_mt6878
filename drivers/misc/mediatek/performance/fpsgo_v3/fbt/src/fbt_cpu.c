@@ -2287,8 +2287,12 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	ls_groupmask_final = thr->attr.ls_groupmask_by_pid;
 	vip_mask_final = thr->attr.vip_mask_by_pid;
 	set_vvip_final = thr->attr.set_vvip_by_pid;
-
 	fbt_get_user_group_setting(thr, user_cpumask);
+
+	if (boost_VIP_final == FPSGO_TASK_VIP)
+		turn_on_vvip_balance_overutilized();
+	else
+		turn_off_vvip_balance_overutilized();
 
 	if (!min_cap) {
 		fbt_clear_min_cap(thr);

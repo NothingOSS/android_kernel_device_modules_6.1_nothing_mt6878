@@ -35,6 +35,8 @@ extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
 extern void set_task_vvip(int pid);
 extern void unset_task_vvip(int pid);
+extern void turn_on_vvip_balance_overutilized(void);
+extern void turn_off_vvip_balance_overutilized(void);
 
 
 
