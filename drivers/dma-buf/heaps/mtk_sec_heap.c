@@ -74,6 +74,7 @@ enum sec_heap_page_type {
 	PROT_PAGE,
 	WFD_PAGE,
 	SAPU_PAGE,
+	TEE_PAGE,
 	PAGE_HEAPS_NUM,
 };
 

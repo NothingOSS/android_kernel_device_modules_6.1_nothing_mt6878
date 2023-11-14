@@ -42,6 +42,7 @@ static inline void trusted_mem_type_enum_validate(void)
 	COMPILE_ASSERT((int)TRUSTED_MEM_REQ_2D_FR == (int)TRUSTED_MEM_2D_FR);
 	COMPILE_ASSERT((int)TRUSTED_MEM_REQ_SAPU_ENGINE_SHM == (int)TRUSTED_MEM_SAPU_ENGINE_SHM);
 	COMPILE_ASSERT((int)TRUSTED_MEM_REQ_SAPU_PAGE == (int)TRUSTED_MEM_SAPU_PAGE);
+	COMPILE_ASSERT((int)(TRUSTED_MEM_REQ_TEE_PAGE) == (int)TRUSTED_MEM_TEE_PAGE);
 	COMPILE_ASSERT((int)TRUSTED_MEM_REQ_AP_MD_SHM == (int)TRUSTED_MEM_AP_MD_SHM);
 	COMPILE_ASSERT((int)TRUSTED_MEM_REQ_AP_SCP_SHM == (int)TRUSTED_MEM_AP_SCP_SHM);
 	COMPILE_ASSERT((int)(TRUSTED_MEM_MAX - 1) == (int)TRUSTED_MEM_AP_SCP_SHM);
@@ -87,6 +88,8 @@ get_mem_type(enum TRUSTED_MEM_REQ_TYPE req_type)
 		return TRUSTED_MEM_TUI_REGION;
 	case TRUSTED_MEM_REQ_SAPU_PAGE:
 		return TRUSTED_MEM_SAPU_PAGE;
+	case TRUSTED_MEM_REQ_TEE_PAGE:
+		return TRUSTED_MEM_TEE_PAGE;
 	default:
 		pr_info("[TMEM] %s: req_type=%d not found\n", __func__, req_type);
 		return TRUSTED_MEM_SVP_REGION;
@@ -246,9 +249,8 @@ int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 	pr_debug("[TMEM][%d] page-based: size = 0x%x\n", mem_type, size);
 
 	/* we need the FF-A handle of SEL2/EL3 to do memory mapping at TEE */
-	if (is_tee_mmap_by_page_enabled() &&
-		((mem_type == TRUSTED_MEM_SVP_PAGE) || (mem_type == TRUSTED_MEM_WFD_PAGE)))
-		return tmem_ffa_page_alloc(MTEE_MCHUNKS_SVP, sg_tbl, handle);
+	if (is_tee_mmap_by_page_enabled() && (mem_type == TRUSTED_MEM_TEE_PAGE))
+		return tmem_ffa_page_alloc(MTEE_MCHUNKS_TEE, sg_tbl, handle);
 
 	/* we need the FF-A handle of EL2 SPM to do memory mapping at MTEE */
 	if ((mem_type == TRUSTED_MEM_PROT_PAGE) || (mem_type == TRUSTED_MEM_SAPU_PAGE))
