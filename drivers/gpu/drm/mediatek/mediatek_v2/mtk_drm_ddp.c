@@ -28722,6 +28722,22 @@ void mtk_ddp_clean_ovl_pq_crossbar(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pk
 		}
 		break;
 	}
+	case MMSYS_MT6878:
+	{
+		unsigned int addr[] = {MT6878_OVL_PQ_OUT_CROSSBAR0_MOUT_EN,
+				       MT6878_OVL_PQ_OUT_CROSSBAR1_MOUT_EN,
+				       MT6878_OVL_PQ_OUT_CROSSBAR2_MOUT_EN,
+				       MT6878_OVL_PQ_OUT_CROSSBAR3_MOUT_EN,
+				       MT6878_OVL_PQ_IN_CROSSBAR0_MOUT_EN,
+				       MT6878_OVL_PQ_IN_CROSSBAR1_MOUT_EN};
+
+		for (i = 0; i < ARRAY_SIZE(addr); ++i) {
+			if (mtk_crtc->config_regs_pa)
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					       mtk_crtc->config_regs_pa + addr[i], 0, ~0);
+		}
+		break;
+	}
 	default:
 		break;
 	}
