@@ -9319,13 +9319,18 @@
 			etdm-ip-mode = <0>; /* 0: One IP multi-channel 1: Multi-IP 2-channel */
 		};
 
-		audio-sram@11059000 {
+		audio_sram: audio-sram@11059000 {
 			compatible = "mediatek,audio_sram";
 			reg = <0 0x11059000 0 0xf900>;
 			prefer-mode = <0>;
 			mode-size = <0xf900 0x14c00>;
 			block-size = <0x1000>;
 		};
+
+		audio_xhci_sram: audio-xhci-sram {
+			compatible = "mediatek,audio_xhci_sram";
+		};
+
 
 		btcvsd_snd: mtk-btcvsd-snd@18830000 {
 			compatible = "mediatek,mtk-btcvsd-snd";

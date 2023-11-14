@@ -288,6 +288,17 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	};
 };
 
+&audio_sram {
+	reg = <0 0x11059000 0 0xc000>;
+	mode-size = <0xc000 0x11300>;
+};
+
+&audio_xhci_sram {
+	reg = <0 0x11065000 0 0x3900>;
+	mode-size = <0x3900>;
+	afe-reserved;
+};
+
 #include <k6878v1_64/cust.dtsi>
 #include "mediatek/cust_mt6878_touch_1080x2400.dtsi"
 #include "mediatek/cust_mt6878_camera_v4l2.dtsi"
