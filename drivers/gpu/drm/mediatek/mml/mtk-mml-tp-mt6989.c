@@ -942,6 +942,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	} else {
 		if (cfg->info.dest[0].pq_config.en_region_pq) {
 			mml_err("[topology]not support 2 in 1 out, back to 1in1out");
+			cfg->info.dest[0].pq_config.en_region_pq = false;
 			scene = PATH_MML_PQ;
 		} else {
 			/* 1 in 1 out with PQs */
