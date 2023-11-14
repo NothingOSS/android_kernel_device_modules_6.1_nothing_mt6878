@@ -1365,6 +1365,13 @@
 				bus-freq-mhz = <624>;
 				isr-dump = <0>;
 			};
+			monitor7 {
+				monitor-name = "debug_ctrl_ao_MMUP_AO";
+				base = <0x1ec51000>;
+				num-ports = <13>;
+				bus-freq-mhz = <728>;
+				isr-dump = <0>;
+			};
 		};
 	};
 
