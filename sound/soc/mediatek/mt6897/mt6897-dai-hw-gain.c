@@ -157,11 +157,11 @@ static int mt6897_gain0_set(struct snd_kcontrol *kcontrol,
 	regmap_update_bits(afe->regmap,
 			   AFE_GAIN0_CON1_L,
 			   GAIN_TARGET_L_MASK_SFT,
-			   kHWGainMap_IPM2P[i] << GAIN_TARGET_L_SFT);
+			   kHWGainMap_IPM2P[index] << GAIN_TARGET_L_SFT);
 	regmap_update_bits(afe->regmap,
 			   AFE_GAIN0_CON1_R,
 			   GAIN_TARGET_R_MASK_SFT,
-			   kHWGainMap_IPM2P[i] << GAIN_TARGET_R_SFT);
+			   kHWGainMap_IPM2P[index] << GAIN_TARGET_R_SFT);
 
 	return 0;
 }
@@ -199,11 +199,11 @@ static int mt6897_gain1_set(struct snd_kcontrol *kcontrol,
 	regmap_update_bits(afe->regmap,
 			   AFE_GAIN1_CON1_L,
 			   GAIN_TARGET_L_MASK_SFT,
-			   kHWGainMap_IPM2P[i] << GAIN_TARGET_L_SFT);
+			   kHWGainMap_IPM2P[index] << GAIN_TARGET_L_SFT);
 	regmap_update_bits(afe->regmap,
 			   AFE_GAIN1_CON1_R,
 			   GAIN_TARGET_R_MASK_SFT,
-			   kHWGainMap_IPM2P[i] << GAIN_TARGET_R_SFT);
+			   kHWGainMap_IPM2P[index] << GAIN_TARGET_R_SFT);
 
 	return 0;
 }

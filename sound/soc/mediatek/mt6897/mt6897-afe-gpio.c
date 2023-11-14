@@ -176,17 +176,14 @@ int mt6897_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			mt6897_afe_gpio_adda_ch34_dl(afe, enable);
 		break;
 	case MT6897_DAI_I2S_IN0:
-		if (enable)
-			mt6897_afe_gpio_select(afe, MT6897_AFE_GPIO_I2SIN0_ON);
-		else
-			mt6897_afe_gpio_select(afe, MT6897_AFE_GPIO_I2SIN0_OFF);
-		break;
 	case MT6897_DAI_I2S_OUT0:
 		if (enable) {
 			mt6897_afe_gpio_select(afe, MT6897_AFE_GPIO_I2SIN0_ON);
 			mt6897_afe_gpio_select(afe, MT6897_AFE_GPIO_I2SOUT0_ON);
-		} else
+		} else {
+			mt6897_afe_gpio_select(afe, MT6897_AFE_GPIO_I2SIN0_OFF);
 			mt6897_afe_gpio_select(afe, MT6897_AFE_GPIO_I2SOUT0_OFF);
+		}
 		break;
 	case MT6897_DAI_VOW:
 		if (enable) {
