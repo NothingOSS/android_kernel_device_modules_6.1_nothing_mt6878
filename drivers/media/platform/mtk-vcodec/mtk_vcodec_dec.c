@@ -2721,10 +2721,12 @@ static int mtk_vdec_set_param(struct mtk_vcodec_ctx *ctx)
 static int vidioc_vdec_reqbufs(struct file *file, void *priv, struct v4l2_requestbuffers *rb)
 {
 	struct mtk_vcodec_ctx *ctx = fh_to_ctx(priv);
+	struct vb2_queue *vq = v4l2_m2m_get_vq(ctx->m2m_ctx, rb->type);
 
 	mtk_v4l2_debug(1, "[%d] reqbufs count %d, type %d, ctx state %d",
 		ctx->id, rb->count, rb->type, mtk_vcodec_get_state(ctx));
-	if (rb->count == 0 && (mtk_vcodec_is_state(ctx, MTK_STATE_HEADER) || mtk_vcodec_is_state(ctx, MTK_STATE_STOP)))
+	if (rb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE && rb->count == 0 && vq->num_buffers > 0 &&
+	    (mtk_vcodec_is_state(ctx, MTK_STATE_HEADER) || mtk_vcodec_is_state(ctx, MTK_STATE_STOP)))
 		mtk_vdec_reset_decoder(ctx, false, NULL, rb->type);
 
 	return v4l2_m2m_reqbufs(file, ctx->m2m_ctx, rb);
