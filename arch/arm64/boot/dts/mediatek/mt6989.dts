@@ -13364,7 +13364,7 @@
 	mtkheap-page-sapu {
 		compatible = "mediatek,dmaheap-mtk-sec-page";
 		heap-name = "mtk_sapu_page-uncached";
-		trusted-mem-type = <16>;
+		trusted-mem-type = <14>;
 	};
 
 	mtkheap-region-saup-data {
