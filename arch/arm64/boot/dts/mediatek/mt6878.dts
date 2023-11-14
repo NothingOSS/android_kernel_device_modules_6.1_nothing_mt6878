@@ -4872,10 +4872,10 @@
 				<&topckgen_clk CLK_TOP_SENINF3_SEL>,
 				<&topckgen_clk CLK_TOP_CAMTM_SEL>,
 				<&topckgen_clk CLK_TOP_UNIVPLL_D4_D2>,
-				<&topckgen_clk CLK_TOP_UNIVPLL_D7>,
+				<&topckgen_clk CLK_TOP_MMPLL_D4_D2>,
 				<&topckgen_clk CLK_TOP_UNIVPLL_D6>,
-				<&topckgen_clk CLK_TOP_UNIVPLL_D5>;
-				//<&mmdvfs_clk CLK_MMDVFS_CAM>;
+				<&topckgen_clk CLK_TOP_UNIVPLL_D5>,
+				<&mmdvfs_clk CLK_MMDVFS_CAM>;
 
 			clock-names = "clk_cam_seninf",
 				"clk_cam_cam",
