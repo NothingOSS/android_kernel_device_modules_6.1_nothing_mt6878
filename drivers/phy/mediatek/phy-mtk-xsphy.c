@@ -365,6 +365,7 @@ static void u2_phy_host_props_set(struct mtk_xsphy *xsphy,
 		struct xsphy_instance *inst);
 static void u3_phy_props_set(struct mtk_xsphy *xsphy,
 		struct xsphy_instance *inst);
+static int mtk_phy_get_mode(struct mtk_xsphy *xsphy);
 static struct proc_dir_entry *usb_root;
 
 static ssize_t proc_sib_write(struct file *file,
@@ -1169,6 +1170,16 @@ static int u2_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
+	if (mtk_phy_get_mode(xsphy) == XSP_MODE_JTAG) {
+		file = proc_create_data(USB_JTAG_REG, 0644,
+			phy_root, &proc_jtag_fops, inst);
+		if (!file) {
+			dev_info(dev, "failed to creat proc file: %s\n", USB_JTAG_REG);
+			ret = -ENOMEM;
+			goto err1;
+		}
+	}
+
 	inst->phy_root = phy_root;
 	return 0;
 err1:
@@ -1840,7 +1851,6 @@ static int mtk_phy_init(struct phy *phy)
 	case PHY_TYPE_USB2:
 		u2_phy_instance_init(xsphy, inst);
 		u2_phy_props_set(xsphy, inst);
-		queue_work(xsphy->wq, &inst->procfs_work);
 		/* show default u2 driving setting */
 		dev_info(xsphy->dev, "device src:%d vrt:%d term:%d rev6:%d\n",
 			inst->eye_src, inst->eye_vrt,
@@ -1856,7 +1866,6 @@ static int mtk_phy_init(struct phy *phy)
 		break;
 	case PHY_TYPE_USB3:
 		u3_phy_props_set(xsphy, inst);
-		queue_work(xsphy->wq, &inst->procfs_work);
 		/* show default u3 driving setting */
 		dev_info(xsphy->dev, "u3_intr:%d, tx-imp:%d, rx-imp:%d\n",
 			inst->efuse_intr, inst->efuse_tx_imp,
@@ -1870,6 +1879,8 @@ static int mtk_phy_init(struct phy *phy)
 		clk_disable_unprepare(inst->ref_clk);
 		return -EINVAL;
 	}
+
+	queue_work(xsphy->wq, &inst->procfs_work);
 
 	return 0;
 }
@@ -2053,9 +2064,6 @@ static int mtk_phy_jtag_init(struct phy *phy)
 	struct device_node *np = dev->of_node;
 	struct of_phandle_args args;
 	struct regmap *reg_base;
-	struct proc_dir_entry *root = xsphy->root;
-	struct proc_dir_entry *phy_root;
-	struct proc_dir_entry *file;
 	u32 jtag_vers;
 	u32 tmp;
 	int ret;
@@ -2107,25 +2115,8 @@ static int mtk_phy_jtag_init(struct phy *phy)
 		break;
 	}
 
-	phy_root = proc_mkdir(U2_PHY_STR, root);
-	if (!root) {
-		dev_info(dev, "failed to creat dir proc %s\n", U2_PHY_STR);
-		ret = -ENOMEM;
-		goto err0;
-	}
+	queue_work(xsphy->wq, &inst->procfs_work);
 
-	file = proc_create_data(USB_JTAG_REG, 0644,
-			phy_root, &proc_jtag_fops, inst);
-	if (!file) {
-		dev_info(dev, "failed to creat proc file: %s\n", USB_JTAG_REG);
-		ret = -ENOMEM;
-		goto err1;
-	}
-
-	return 0;
-err1:
-	proc_remove(phy_root);
-err0:
 	return ret;
 }
 
@@ -2274,6 +2265,8 @@ static int mtk_xsphy_probe(struct platform_device *pdev)
 
 		xsphy->phys[port] = inst;
 
+		INIT_WORK(&inst->procfs_work, mtk_xsphy_procfs_init_worker);
+
 		/* change ops to usb uart or jtage mode */
 		mode = mtk_phy_get_mode(xsphy);
 		switch (mode) {
@@ -2329,8 +2322,6 @@ static int mtk_xsphy_probe(struct platform_device *pdev)
 		inst->index = port;
 		phy_set_drvdata(phy, inst);
 		port++;
-
-		INIT_WORK(&inst->procfs_work, mtk_xsphy_procfs_init_worker);
 
 		inst->ref_clk = devm_clk_get(&phy->dev, "ref");
 		if (IS_ERR(inst->ref_clk)) {
