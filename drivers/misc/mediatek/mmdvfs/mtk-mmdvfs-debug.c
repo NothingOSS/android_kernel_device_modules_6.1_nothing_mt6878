@@ -78,7 +78,8 @@ struct mmdvfs_debug {
 	u32 *clk_ofs;
 	u32 clk_base_pa;
 	void __iomem *clk_base;
-	struct notifier_block nb;
+	struct notifier_block smi_dbg_nb;
+	struct notifier_block fmeter_nb;
 	struct work_struct	work;
 	struct workqueue_struct *workq;
 
@@ -817,9 +818,10 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	else
 		g_mmdvfs->reg_vmm = reg;
 
-	g_mmdvfs->nb.notifier_call = mmdvfs_debug_smi_cb;
-	mtk_smi_dbg_register_notifier(&g_mmdvfs->nb);
-	mtk_mmdvfs_fmeter_register_notifier(&g_mmdvfs->nb);
+	g_mmdvfs->smi_dbg_nb.notifier_call = mmdvfs_debug_smi_cb;
+	mtk_smi_dbg_register_notifier(&g_mmdvfs->smi_dbg_nb);
+	g_mmdvfs->fmeter_nb.notifier_call = mmdvfs_debug_smi_cb;
+	mtk_mmdvfs_fmeter_register_notifier(&g_mmdvfs->fmeter_nb);
 
 	g_mmdvfs->vote_step = 0xff;
 	of_property_read_u32(g_mmdvfs->dev->of_node, "vote-step", &g_mmdvfs->vote_step);
