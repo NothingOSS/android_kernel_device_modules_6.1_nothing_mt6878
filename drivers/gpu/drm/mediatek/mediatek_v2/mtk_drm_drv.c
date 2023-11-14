@@ -8772,6 +8772,10 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_POSTALIGN},
 	{.compatible = "mediatek,mt6897-disp-postalign",
 	 .data = (void *)MTK_DISP_POSTALIGN},
+	{.compatible = "mediatek,disp1_splitter0",
+	 .data = (void *)MTK_DISP_SPLITTER},
+	{.compatible = "mediatek,disp1_splitter1",
+	 .data = (void *)MTK_DISP_SPLITTER},
 	{} };
 
 static struct disp_iommu_device disp_iommu;
@@ -9208,7 +9212,7 @@ SKIP_OVLSYS_CONFIG:
 		 * DDP component structure. The others are initialized here.
 		 */
 		if (comp_type == MTK_DISP_OVL ||
-		    comp_type == MTK_DISP_MERGE ||
+		    comp_type == MTK_DISP_MERGE || comp_type == MTK_DISP_SPLITTER ||
 		    comp_type == MTK_DISP_RDMA || comp_type == MTK_DISP_MDP_RDMA
 		    || comp_type == MTK_DISP_WDMA || comp_type == MTK_DISP_RSZ
 		    || comp_type == MTK_DISP_MDP_RSZ ||
@@ -9252,9 +9256,7 @@ SKIP_OVLSYS_CONFIG:
 			ret = mtk_ddp_comp_init(dev, node, comp, comp_id, NULL);
 			if (ret)
 				goto err_node;
-
-		      private
-			->ddp_comp[comp_id] = comp;
+			private->ddp_comp[comp_id] = comp;
 		}
 	}
 
@@ -9526,7 +9528,8 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_disp_dlo_async_driver,
 	&mtk_disp_dli_async_driver,
 	&mtk_mmlsys_bypass_driver,
-	&mtk_disp_merge_driver
+	&mtk_disp_merge_driver,
+	&mtk_disp_splitter_driver,
 };
 
 static int __init mtk_drm_init(void)
