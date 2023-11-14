@@ -9812,6 +9812,8 @@
 				<&spm_pmic &spm_vcore>;
 		constraints = <&rc_bus26m &rc_syspll &rc_vcore>;
 		spm-cond = <&spm_cond_pll>;
+		lpm-gov-enable = <1>;
+		cpu-gov-info = <&cpul &cpub>;
 		cg-shift = <0>; /* cg blocking index */
 		pll-shift = <0>; /* pll blocking index */
 
@@ -9945,6 +9947,17 @@
 					"ADSPPLL",
 					"APLL1",
 					"APLL2";
+			};
+		};
+
+		cpu-gov-info-list {
+			cpul: cpul {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-l";
+			};
+			cpub: cpub {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-b";
 			};
 		};
 
