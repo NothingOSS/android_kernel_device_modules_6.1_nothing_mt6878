@@ -1371,6 +1371,10 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		else
 			cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
 				0x1, U32_MAX);
+	} else if (MML_FMT_COMPRESS(src->format)) {
+		/* debug for compress to dump crc */
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
+			(mml_rdma_dbg << 13) + 0x1, U32_MAX);
 	}
 
 	rdma_color_fmt(cfg, rdma_frm);
@@ -1990,6 +1994,10 @@ force_reset:
 		else
 			cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON,
 				0x1, U32_MAX);
+	} else if (MML_FMT_COMPRESS(src->format)) {
+		/* debug for compress to dump crc */
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON,
+			(mml_rdma_dbg << 13) + 0x1, U32_MAX);
 	} else {
 		/* keep disable */
 		cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON, 0x0, U32_MAX);
@@ -2343,6 +2351,12 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	}
 
 	if (mml_rdma_crc) {
+		value[31] = readl(base + RDMA_CHKS_EXTR);
+		value[32] = readl(base + RDMA_DEBUG_CON);
+		mml_err("RDMA_CHKS_EXTR %#010x RDMA_DEBUG_CON %#010x",
+			value[31], value[32]);
+	} else if (comp_con & BIT(12)) {
+		/* debug for compress to dump crc */
 		value[31] = readl(base + RDMA_CHKS_EXTR);
 		value[32] = readl(base + RDMA_DEBUG_CON);
 		mml_err("RDMA_CHKS_EXTR %#010x RDMA_DEBUG_CON %#010x",
