@@ -529,6 +529,16 @@
 		cm-perf-mode-ceiling-opp = <0>;
 		cm-perf-mode-thd = <5>;
 	};
+	fpsgo: fpsgo {
+		compatible = "mediatek,fpsgo";
+		interconnects = <&dvfsrc MT6873_MASTER_MCUSYS &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "fpsgo-perf-bw";
+		required-opps = <&dvfsrc_freq_opp0>;
+		cpu-limit = <2>;
+		gcc-enable = <1>;
+		fbt-cpu-mask = <255 240 15 15 240 240>;
+		sbe-resceue-enable = <1>;
+	};
 
 	efuse: efuse@11f10000 {
 		compatible = "mediatek,devinfo";
