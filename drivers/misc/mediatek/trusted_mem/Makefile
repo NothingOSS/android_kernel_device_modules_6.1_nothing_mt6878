@@ -73,10 +73,12 @@ trusted_mem-y += tests/ut_ssheap.o
 endif # !CONFIG_TEST_MTK_TRUSTED_MEMORY
 
 ifneq ($(filter y m,$(CONFIG_ARM_FFA_TRANSPORT)),)
+ifeq ($(CONFIG_TEST_MTK_TRUSTED_MEMORY),m)
 tmem_ffa-y += tests/ut_common.o
 tmem_ffa-y += tests/ut_server.o
 tmem_ffa-y += tests/ut_cases.o
 tmem_ffa-y += tests/ut_ssheap.o
+endif
 endif
 
 ifneq ($(filter y m,$(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)),)
