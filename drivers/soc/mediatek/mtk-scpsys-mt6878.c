@@ -324,13 +324,12 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.sram_slp_ack_bits = GENMASK(13, 13),
 		.basic_clk_name = {"mmup"},
 		.bp_table = {
-			BUS_PROT(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
+			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6878_VLP_AXI_PROT_EN_MM_PROC),
-			BUS_PROT(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
+			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6878_VLP_AXI_PROT_EN_MM_PROC_2ND),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP | MTK_SCPD_IS_PWR_CON_ON
-			| MTK_SCPD_BUS_PROT_CLR_RETRY | default_cap,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP | MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6878_POWER_DOMAIN_CSI_RX] = {
 		.name = "csi-rx",
