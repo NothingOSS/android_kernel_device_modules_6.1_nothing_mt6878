@@ -70,6 +70,8 @@ $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_EXPORT_ENV := BAZEL_DO_NOT_DETECT_CPP_TOOLCH
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG := --//build/bazel_mgk_rules:kernel_version=$(patsubst kernel-%,%,$(LINUX_KERNEL_VERSION)) --experimental_writable_outputs
 ifneq ($(filter yes no,$(COVERITY_LOCAL_SCAN)),)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=local
+else
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=stamp --repo_manifest=$(abspath $(KERNEL_DIR)/fake_manifest.xml)
 endif
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_OUT := $(KERNEL_BAZEL_DIST_OUT)
