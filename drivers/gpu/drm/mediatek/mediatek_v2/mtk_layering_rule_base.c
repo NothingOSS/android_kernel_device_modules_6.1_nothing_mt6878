@@ -640,6 +640,32 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 	layer_info = NULL;
 }
 
+static void dump_disp_caps_info(struct drm_device *dev,
+					struct drm_mtk_layering_info *disp_info, const int line)
+{
+	int j;
+	unsigned int disp_idx = 0;
+	struct mtk_drm_private *priv = dev->dev_private;
+
+	if (priv->data->mmsys_id != MMSYS_MT6878)
+		return;
+
+	if (get_layering_opt(LYE_OPT_SPHRT))
+		disp_idx = disp_info->disp_idx;
+
+	for (; disp_idx < HRT_DISP_TYPE_NUM ; disp_idx++) {
+		if (disp_info->layer_num[disp_idx] <= 0)
+			continue;
+
+		for (j = 0; j < disp_info->layer_num[disp_idx]; j++) {
+			struct drm_mtk_layer_config *c = &disp_info->input_config[disp_idx][j];
+
+			if (MTK_MML_OVL_LAYER & c->layer_caps)
+				DDPINFO("%s, %d, idx=%d, j=%d, cap=0x%x\n", __func__, line, disp_idx, j, c->layer_caps);
+		}
+	}
+}
+
 static void check_gles_change(struct debug_gles_range *dbg_gles, const int line, const bool print)
 {
 	if (dbg_gles->head != layering_info.gles_head[0] ||
@@ -4412,6 +4438,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	DDPMSG("[Input data]\n");
 	dump_disp_info(&layering_info, DISP_DEBUG_LEVEL_INFO);
 #endif
+	dump_disp_caps_info(dev, &layering_info, __LINE__);
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		disp_idx = disp_info_user->disp_idx;
