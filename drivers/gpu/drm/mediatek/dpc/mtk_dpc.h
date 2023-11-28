@@ -24,12 +24,18 @@
  */
 
 #define DT_MAX_TIMEOUT   40329
+#define DT_MIN_VBLANK    2500
+#define DT_MIN_FRAME     2000
+
 #define DT_TE_30  32500
 #define DT_TE_45  21600
 #define DT_TE_60  16000
 #define DT_TE_90  10700
 #define DT_TE_120 8000
 #define DT_TE_150 6300
+#define DT_TE_180 5200
+#define DT_TE_210 4400
+#define DT_TE_240 3800
 #define DT_TE_360 2650
 #define DT_TE_SAFEZONE 650
 #define DT_OFF0 240
@@ -141,7 +147,7 @@ struct dpc_funcs {
 	void (*dpc_group_enable)(const u16 group, bool en);
 	void (*dpc_pause)(const enum mtk_dpc_subsys subsys, bool en);
 	void (*dpc_config)(const enum mtk_dpc_subsys subsys, bool en);
-	int (*dpc_dt_set)(u32 us);
+	int (*dpc_dt_set)(u32 dur_frame, u32 dur_vblank);
 	void (*dpc_mtcmos_vote)(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
 	int (*dpc_vidle_power_keep)(const enum mtk_vidle_voter_user);
 	void (*dpc_vidle_power_release)(const enum mtk_vidle_voter_user);

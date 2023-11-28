@@ -97,6 +97,7 @@ static spinlock_t vlp_lock; /* power status protection*/
 static spinlock_t dpc_lock;
 static enum mtk_panel_type g_panel_type = PANEL_TYPE_COUNT;
 static unsigned int g_te_duration; //us
+static unsigned int g_vb_duration; //us
 
 static const char *mtk_dpc_vidle_cap_name[DPC_VIDLE_CAP_COUNT] = {
 	"MTCMOS_OFF",
@@ -1393,38 +1394,63 @@ static unsigned int dpc_align_fps_duration(unsigned int duration)
 		duration = DT_TE_120;
 	else if (duration >= DT_TE_150)
 		duration = DT_TE_150;
-	else
+	else if (duration >= DT_TE_180)
+		duration = DT_TE_180;
+	else if (duration >= DT_TE_210)
+		duration = DT_TE_210;
+	else if (duration >= DT_TE_240)
+		duration = DT_TE_240;
+	else if (duration >= DT_TE_360)
 		duration = DT_TE_360;
+	else
+		duration = DT_MIN_FRAME;
 
 	return duration;
 }
 
 static int dpc_vidle_is_available(void)
 {
-	/*disable vidle function when VDO panel >=120hz*/
-	if (g_te_duration <= DT_TE_120 && g_panel_type == PANEL_TYPE_VDO)
+	int ret = 0;
+
+	if (g_priv->vidle_mask == 0)
 		return 0;
 
-	return 1;
+	switch (g_panel_type) {
+	case PANEL_TYPE_VDO:
+		/* support vidle if VDO vblank period is enough */
+		if (g_vb_duration > DT_MIN_VBLANK)
+			ret = 1;
+		break;
+	case PANEL_TYPE_CMD:
+		/* support vidle if CMD frame period is enough */
+		if (g_te_duration > DT_MIN_FRAME)
+			ret = 1;
+		break;
+	default:
+		break;
+	}
+
+	return ret;
 }
 
-static int dpc_dt_set_dur(u32 us)
+/* dur_frame and dur_vblank are in unit of us*/
+static int dpc_dt_set_dur(u32 dur_frame, u32 dur_vblank)
 {
 	unsigned int duration = 0;
 	unsigned long flags = 0;
 
-	if (us == 0)
+	if (dur_frame == 0)
 		return -1;
 
 	if (dpc_pm_ctrl(true))
 		return -1;
 
 	spin_lock_irqsave(&dpc_lock, flags);
-	duration = dpc_align_fps_duration(us);
-	if (g_te_duration == duration)
+	duration = dpc_align_fps_duration(dur_frame);
+	if (g_te_duration == duration && g_vb_duration == dur_vblank)
 		goto out;
 
-	dpc_mmp(dt, MMPROFILE_FLAG_START, g_te_duration, us);
+	dpc_mmp(dt, MMPROFILE_FLAG_START, g_te_duration, dur_frame);
 	/* update DT table affected by TE duration */
 	dpc_dt_update_table(1, duration - DT_OVL_OFFSET);
 	dpc_dt_update_table(5, duration - DT_DISP1_OFFSET);
@@ -1442,10 +1468,11 @@ static int dpc_dt_set_dur(u32 us)
 	dpc_dt_set(40, duration - DT_MMINFRA_OFFSET);
 
 	g_te_duration = duration;
-	dpc_mmp(dt, MMPROFILE_FLAG_END, duration, 0);
+	g_vb_duration = dur_vblank;
+	dpc_mmp(dt, MMPROFILE_FLAG_END, g_te_duration, g_vb_duration);
 
 	if (dpc_vidle_is_available() == 0) {
-		if (g_panel_type == PANEL_TYPE_VDO) {
+		if (g_panel_type == PANEL_TYPE_VDO && g_priv->vidle_mask) {
 			dpc_dt_update_table(4, DT_MAX_TIMEOUT);
 			dpc_dt_update_table(11, DT_MAX_TIMEOUT);
 			dpc_dt_update_table(32, DT_MAX_TIMEOUT);
@@ -1646,9 +1673,6 @@ static void dpc_mml_group_enable_func(const enum mtk_dpc_mml_vidle group, bool e
 static void dpc_disp_group_pause(bool en)
 {
 	bool enable = !en;
-
-	if (enable && !dpc_vidle_is_available())
-		return;
 
 	dpc_disp_group_enable_func(DPC_DISP_VIDLE_MTCMOS, enable, false);
 	dpc_disp_group_enable_func(DPC_DISP_VIDLE_MTCMOS_DISP1, enable, false);
@@ -1901,15 +1925,11 @@ void dpc_enable(bool en)
 	unsigned int dt_mask = 0;
 	unsigned long flags = 0;
 
-	if (g_panel_type >= PANEL_TYPE_COUNT) {
-		DPCERR("invalid panel type:%d", g_panel_type);
+	if (g_panel_type >= PANEL_TYPE_COUNT)
 		return;
-	}
 
-	if (g_priv->vidle_mask == 0) {
-		DPCERR("invalid vidle mask:0x%x", g_priv->vidle_mask);
+	if (g_priv->vidle_mask == 0)
 		return;
-	}
 
 	if (dpc_pm_ctrl(true))
 		return;
@@ -1924,6 +1944,13 @@ void dpc_enable(bool en)
 	}
 
 	spin_lock_irqsave(&dpc_lock, flags);
+	if (en && dpc_vidle_is_available() == 0) {
+		DPCERR("in-available, cap:0x%x, dur:%u-%u, panel:%d, en:%d",
+			g_priv->vidle_mask, g_te_duration, g_vb_duration,
+			g_panel_type, en);
+		goto inavail;
+	}
+
 	if (en) {
 		if (debug_runtime_ctrl) {
 			debug_mmp = 1;
@@ -2029,6 +2056,7 @@ void dpc_enable(bool en)
 		dpc_mmp(dpc, MMPROFILE_FLAG_END, en, g_panel_type);
 	atomic_set(&g_priv->dpc_en_cnt, en ? 1 : 0);
 
+inavail:
 	spin_unlock_irqrestore(&dpc_lock, flags);
 
 	/* disable hfrp after vidle off if necessary */
@@ -2534,15 +2562,24 @@ void dpc_pause(const enum mtk_dpc_subsys subsys, bool en)
 {
 	unsigned long flags = 0;
 
-	if (g_panel_type >= PANEL_TYPE_COUNT && en)
+	if (g_panel_type >= PANEL_TYPE_COUNT && !en)
+		return;
+
+	if (g_priv->vidle_mask == 0 && !en)
 		return;
 
 	if (dpc_pm_ctrl(true))
 		return;
 
 	spin_lock_irqsave(&dpc_lock, flags);
+	if (!en && dpc_vidle_is_available() == 0) {
+		DPCERR("in-available, cap:0x%x, dur:%u-%u, panel:%d, en:%d",
+			g_priv->vidle_mask, g_te_duration, g_vb_duration,
+			g_panel_type, en);
+		goto out;
+	}
 
-	dpc_mmp(dpc, MMPROFILE_FLAG_PULSE, BIT(subsys), en);
+	dpc_mmp(dpc, MMPROFILE_FLAG_PULSE, BIT(subsys), !en);
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys))
 		dpc_disp_group_pause(en);
 	else if (MTK_DPC_OF_MML_SUBSYS(subsys))
@@ -2552,6 +2589,7 @@ void dpc_pause(const enum mtk_dpc_subsys subsys, bool en)
 		WARN_ON(1);
 	}
 
+out:
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	dpc_pm_ctrl(false);
 }
@@ -2568,22 +2606,26 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 	unsigned int mask = 0x0;
 	unsigned long flags = 0;
 
-	if (g_panel_type >= PANEL_TYPE_COUNT && en) {
-		DPCERR("skip en:%d invalid panel type:%d", en, g_panel_type);
+	if (g_panel_type >= PANEL_TYPE_COUNT && en)
 		return;
-	}
 
-	if (g_priv->vidle_mask == 0 && en) {
-		DPCERR("invalid vidle mask:0x%x", g_priv->vidle_mask);
+	if (g_priv->vidle_mask == 0 && en)
 		return;
-	}
 
 	if (dpc_pm_ctrl(true))
 		return;
 
 	spin_lock_irqsave(&dpc_lock, flags);
+	if (en && dpc_vidle_is_available() == 0) {
+		DPCERR("in-available, cap:0x%x, dur:%u-%u, panel:%d, en:%d",
+			g_priv->vidle_mask, g_te_duration, g_vb_duration,
+			g_panel_type, en);
+		goto out;
+	}
+
 	if (en && atomic_read(&g_priv->dpc_en_cnt) == 0) {
-		DPCERR("enable DT before config dpc group, en:%d", en);
+		DPCERR("enable DT before config dpc group, en:%d, cnt:%d",
+			en, atomic_read(&g_priv->dpc_en_cnt));
 		goto out;
 	}
 

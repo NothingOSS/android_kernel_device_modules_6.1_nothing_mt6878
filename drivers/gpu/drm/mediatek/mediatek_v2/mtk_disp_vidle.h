@@ -57,9 +57,8 @@ struct mtk_vdisp_funcs {
 };
 
 bool mtk_vidle_is_ff_enabled(void);
-int mtk_set_dt_configure(unsigned int us);
 int mtk_vidle_update_dt_by_type(void *_crtc, enum mtk_panel_type type);
-int mtk_vidle_update_dt_by_period(void *_crtc, unsigned int duration);
+int mtk_vidle_update_dt_by_period(void *_crtc, unsigned int dur_frame, unsigned int dur_vblank);
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en);
 void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en);
 void mtk_vidle_flag_init(void *crtc);

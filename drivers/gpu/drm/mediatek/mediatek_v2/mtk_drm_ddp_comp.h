@@ -713,6 +713,7 @@ enum mtk_ddp_io_cmd {
 	NOTIFY_CONNECTOR_SWITCH,
 	OVL_PHY_USAGE,
 	BYPASS_SPR2RGB,
+	DSI_GET_PANEL_VBLANK_PERIOD_US,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
