@@ -755,7 +755,8 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 	mml_trace_ex_begin("%s", __func__);
 
 	if (cfg->info.mode != MML_MODE_APUDC &&
-		unlikely(task->config->info.mode != MML_MODE_SRAM_READ)) {
+		unlikely(task->config->info.mode != MML_MODE_SRAM_READ) &&
+		!task->buf.src.dma[0].iova) {
 		mml_mmp(buf_map, MMPROFILE_FLAG_START,
 			((u64)task->job.jobid << 16) | comp->id, 0);
 
@@ -769,15 +770,14 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 			((u64)task->job.jobid << 16) | comp->id,
 			(unsigned long)task->buf.src.dma[0].iova);
 
-		mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
-			__func__, comp->id,
+		mml_msg("%s comp %u dma %p iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+			__func__, comp->id, task->buf.src.dma[0].dmabuf,
 			task->buf.src.dma[0].iova,
 			task->buf.src.size[0],
 			task->buf.src.dma[1].iova,
 			task->buf.src.size[1],
 			task->buf.src.dma[2].iova,
 			task->buf.src.size[2]);
-
 	}
 
 	mml_trace_ex_end();

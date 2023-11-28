@@ -17,6 +17,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/debugfs.h>
 #include <linux/minmax.h>
+#include <linux/dma-mapping.h>
+#include <mtk-smmu-v3.h>
 
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/mmqos.h>
@@ -160,6 +162,9 @@ struct mml_dev {
 	u32 crc_idx[MML_PIPE_CNT];
 #endif
 	bool tablet_ext;
+
+	struct device *mmu_dev; /* for dmabuf to iova */
+	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
 };
 
 struct platform_device *mml_get_plat_device(struct platform_device *pdev)
@@ -1182,6 +1187,12 @@ done:
 #endif
 }
 
+struct device *mml_get_mmu_dev(struct mml_dev *mml, bool secure)
+{
+	return secure ? mml->mmu_dev_sec : mml->mmu_dev;
+}
+EXPORT_SYMBOL_GPL(mml_get_mmu_dev);
+
 bool mml_dl_enable(struct mml_dev *mml)
 {
 	return mml->dl_en;
@@ -1683,6 +1694,18 @@ static int mml_probe(struct platform_device *pdev)
 		ret = PTR_ERR(mml->sys);
 		dev_err(dev, "failed to init mml sys: %d\n", ret);
 		goto err_sys_add;
+	}
+
+	if (smmu_v3_enabled()) {
+		/* shared smmu device, setup 34bit in dts */
+		mml->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
+		mml->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+	} else {
+		mml->mmu_dev = dev;
+		mml->mmu_dev_sec = dev;
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		if (ret)
+			mml_err("fail to config sys dma mask %d", ret);
 	}
 
 	thread_cnt = of_count_phandle_with_args(

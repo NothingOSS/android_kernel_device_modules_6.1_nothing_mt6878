@@ -520,12 +520,18 @@ static u32 frame_calc_layer_hrt(struct mml_drm_ctx *ctx, struct mml_frame_info *
 	return (u32)hrt;
 }
 
-static s32 frame_buf_to_task_buf(struct mml_file_buf *fbuf,
-				  struct mml_buffer *user_buf,
+static s32 frame_buf_to_task_buf(struct mml_drm_ctx *ctx, struct mml_file_buf *fbuf,
+				  struct mml_buffer *user_buf, bool secure,
 				  const char *name)
 {
 	u8 i;
 	s32 ret = 0;
+	struct device *mmu_dev = mml_get_mmu_dev(ctx->mml, secure);
+
+	if (unlikely(!mmu_dev)) {
+		mml_err("%s mmu_dev is null", __func__);
+		return -EFAULT;
+	}
 
 	if (user_buf->use_dma)
 		mml_buf_get(fbuf, user_buf->dmabuf, user_buf->cnt, name);
@@ -542,6 +548,26 @@ static s32 frame_buf_to_task_buf(struct mml_file_buf *fbuf,
 	if (user_buf->fence >= 0) {
 		fbuf->fence = sync_file_get_fence(user_buf->fence);
 		mml_msg("[drm]get dma fence %p by %d", fbuf->fence, user_buf->fence);
+	}
+
+	if (fbuf->dma[0].dmabuf) {
+		mml_mmp(buf_map, MMPROFILE_FLAG_START,
+			atomic_read(&ctx->job_serial), 0);
+
+		/* get iova */
+		ret = mml_buf_iova_get(mmu_dev, fbuf);
+		if (ret < 0)
+			mml_err("%s iova fail %d", __func__, ret);
+
+		mml_mmp(buf_map, MMPROFILE_FLAG_END,
+			atomic_read(&ctx->job_serial),
+			(unsigned long)fbuf->dma[0].iova);
+
+		mml_msg("%s %s dmabuf %p iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+			__func__, name, fbuf->dma[0].dmabuf,
+			fbuf->dma[0].iova, fbuf->size[0],
+			fbuf->dma[1].iova, fbuf->size[1],
+			fbuf->dma[2].iova, fbuf->size[2]);
 	}
 
 	return ret;
@@ -1007,8 +1033,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 	if (cfg->info.mode == MML_MODE_APUDC) {
 		task->buf.src.apu_handle = mml_get_apu_handle(&submit->buffer.src);
 	} else {
-		result = frame_buf_to_task_buf(&task->buf.src,
-			&submit->buffer.src,
+		result = frame_buf_to_task_buf(ctx, &task->buf.src,
+			&submit->buffer.src, submit->info.src.secure,
 			"mml_drm_rdma");
 		if (result) {
 			mml_err("[drm]%s get src dma buf fail", __func__);
@@ -1017,8 +1043,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 	}
 
 	if (submit->info.dest[0].pq_config.en_region_pq) {
-		result = frame_buf_to_task_buf(&task->buf.seg_map,
-				      &submit->buffer.seg_map,
+		result = frame_buf_to_task_buf(ctx, &task->buf.seg_map,
+				      &submit->buffer.seg_map, submit->info.seg_map.secure,
 				      "mml_drm_rdma_seg");
 		if (result) {
 			mml_err("[drm]%s get seg map dma buf fail", __func__);
@@ -1028,8 +1054,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 
 	task->buf.dest_cnt = submit->buffer.dest_cnt;
 	for (i = 0; i < submit->buffer.dest_cnt; i++) {
-		result = frame_buf_to_task_buf(&task->buf.dest[i],
-				      &submit->buffer.dest[i],
+		result = frame_buf_to_task_buf(ctx, &task->buf.dest[i],
+				      &submit->buffer.dest[i], submit->info.dest[i].data.secure,
 				      "mml_drm_wrot");
 		if (result) {
 			mml_err("[drm]%s get dest %u dma buf fail", __func__, i);

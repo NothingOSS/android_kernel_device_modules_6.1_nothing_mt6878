@@ -660,7 +660,7 @@ static s32 wrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 	mml_trace_ex_begin("%s", __func__);
 
 	if (cfg->info.mode == MML_MODE_RACING) {
-	} else {
+	} else if (!dest_buf->dma[0].iova) {
 
 		mml_mmp(buf_map, MMPROFILE_FLAG_START,
 			((u64)task->job.jobid << 16) | comp->id, 0);

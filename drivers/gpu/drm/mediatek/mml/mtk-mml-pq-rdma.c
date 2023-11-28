@@ -501,27 +501,29 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 
 	mml_trace_ex_begin("%s sram or iova", __func__);
 
-	mml_mmp(buf_map, MMPROFILE_FLAG_START,
-		((u64)task->job.jobid << 16) | comp->id, 0);
+	if (!task->buf.seg_map.dma[0].iova) {
+		mml_mmp(buf_map, MMPROFILE_FLAG_START,
+			((u64)task->job.jobid << 16) | comp->id, 0);
 
-	/* get iova */
-	ret = mml_buf_iova_get(cfg->info.src.secure ? rdma->mmu_dev_sec : rdma->mmu_dev,
-		&task->buf.seg_map);
-	if (ret < 0)
-		mml_err("%s iova fail %d", __func__, ret);
+		/* get iova */
+		ret = mml_buf_iova_get(cfg->info.src.secure ? rdma->mmu_dev_sec : rdma->mmu_dev,
+			&task->buf.seg_map);
+		if (ret < 0)
+			mml_err("%s iova fail %d", __func__, ret);
 
-	mml_mmp(buf_map, MMPROFILE_FLAG_END,
-		((u64)task->job.jobid << 16) | comp->id,
-		(unsigned long)task->buf.seg_map.dma[0].iova);
+		mml_mmp(buf_map, MMPROFILE_FLAG_END,
+			((u64)task->job.jobid << 16) | comp->id,
+			(unsigned long)task->buf.seg_map.dma[0].iova);
 
-	mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
-		__func__, comp->id,
-		task->buf.seg_map.dma[0].iova,
-		task->buf.seg_map.size[0],
-		task->buf.seg_map.dma[1].iova,
-		task->buf.seg_map.size[1],
-		task->buf.seg_map.dma[2].iova,
-		task->buf.seg_map.size[2]);
+		mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+			__func__, comp->id,
+			task->buf.seg_map.dma[0].iova,
+			task->buf.seg_map.size[0],
+			task->buf.seg_map.dma[1].iova,
+			task->buf.seg_map.size[1],
+			task->buf.seg_map.dma[2].iova,
+			task->buf.seg_map.size[2]);
+	}
 
 	mml_trace_ex_end();
 

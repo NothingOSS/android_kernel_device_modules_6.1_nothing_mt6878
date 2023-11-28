@@ -109,6 +109,15 @@ void mml_sram_put(struct mml_dev *mml, enum mml_sram_mode mode);
 u8 mml_sram_get_racing_height(struct mml_dev *mml);
 
 /*
+ * mml_get_mmu_dev - get mmlsys mmu device
+ *
+ * @mml:	The mml driver instance
+ *
+ * Return:	The smmu or dmabuf device instance
+ */
+struct device *mml_get_mmu_dev(struct mml_dev *mml, bool secure);
+
+/*
  * mml_dl_enable - enable direct link mode or not
  *
  * @mml:	The mml driver instance
