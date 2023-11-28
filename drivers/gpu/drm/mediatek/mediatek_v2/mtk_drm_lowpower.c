@@ -2321,6 +2321,7 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 			mtk_drm_idlemgr_wb_get_fb(mtk_crtc, fmt, &dst_roi, NULL);
 			addon_config.addon_wdma_config.wdma_src_roi = src_roi;
 			addon_config.addon_wdma_config.wdma_dst_roi = dst_roi;
+			addon_config.addon_wdma_config.fb = mtk_crtc->idlemgr->wb_fb;
 			addon_config.addon_wdma_config.addr = mtk_crtc->idlemgr->wb_buffer_iova;
 			mtk_addon_connect_after(crtc, mtk_crtc->ddp_mode, addon_module,
 						&addon_config, cmdq_handle);
@@ -2450,6 +2451,7 @@ void mtk_drm_idlemgr_wb_reconfig(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt 
 
 	mtk_ddp_comp_layer_config(ovl_comp, 0, mtk_plane_state, cmdq_handle);
 
+	cmdq_pkt_write_value_addr(cmdq_handle, status_pad, MTK_DRM_IDLEMGR_BY_WB_USING, ~0);
 	if (!mtk_crtc->is_dual_pipe)
 		goto out;
 
@@ -2472,8 +2474,6 @@ void mtk_drm_idlemgr_wb_reconfig(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt 
 	mtk_plane_state->pending.format = mtk_crtc->idlemgr->wb_fb_r->format->format;
 	mtk_plane_state->comp_state.comp_id = ovl_comp->id;
 	mtk_ddp_comp_layer_config(ovl_comp, 0, mtk_plane_state, cmdq_handle);
-
-	cmdq_pkt_write_value_addr(cmdq_handle, status_pad, MTK_DRM_IDLEMGR_BY_WB_USING, ~0);
 
 	GCE_ELSE;
 	/* if the value of DISP_SLOT_IDLEMGR_BY_WB_BREAK is not 0 */

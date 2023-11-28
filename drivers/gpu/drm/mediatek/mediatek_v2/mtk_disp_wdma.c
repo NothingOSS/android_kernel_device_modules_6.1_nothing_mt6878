@@ -2362,7 +2362,7 @@ static const struct mtk_disp_wdma_data mt6985_wdma_driver_data = {
 
 static const struct mtk_disp_wdma_data mt6989_wdma_driver_data = {
 	.fifo_size_1plane = PARSE_FROM_DTS,
-	.fifo_size_uv_1plane = 29,
+	.fifo_size_uv_1plane = PARSE_FROM_DTS,
 	.fifo_size_2plane = PARSE_FROM_DTS,
 	.fifo_size_uv_2plane = PARSE_FROM_DTS,
 	.fifo_size_3plane = PARSE_FROM_DTS,

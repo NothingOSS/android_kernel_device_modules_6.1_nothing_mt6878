@@ -15948,7 +15948,8 @@ static int mtk_ddp_ovl_con_MT6989(enum mtk_ddp_comp_id cur,
 	if (next == DDP_COMPONENT_OVLSYS_DLO_ASYNC0 || next == DDP_COMPONENT_OVLSYS_DLO_ASYNC7 ||
 	    next == DDP_COMPONENT_OVLSYS_RSZ1 || next == DDP_COMPONENT_OVLSYS_RSZ2 ||
 	    next == DDP_COMPONENT_OVLSYS_WDMA0 || next == DDP_COMPONENT_OVLSYS_WDMA2 ||
-	    next == DDP_COMPONENT_MDP_RSZ0  || next == DDP_COMPONENT_MDP_RSZ1)
+	    next == DDP_COMPONENT_MDP_RSZ0  || next == DDP_COMPONENT_MDP_RSZ1 ||
+	    next == DDP_COMPONENT_OVLSYS_UFBC_WDMA0)
 		return 0;
 
 	next_is_ovl = (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL);
@@ -16281,6 +16282,10 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		/* CRTC2 - CON2 */
 		*addr = MT6989_OVL_BLEND_CROSSBAR1_MOUT_EN;
 		value = MT6989_DISP_OVL1_2L_TO_WDMA0;
+	} else if ((cur == DDP_COMPONENT_OVL2_2L &&
+		next == DDP_COMPONENT_OVLSYS_UFBC_WDMA0)) {
+		*addr = MT6989_OVL_BLEND_CROSSBAR2_MOUT_EN;
+		value = MT6989_DISP_OVL2_2L_TO_UFBC_WDMA0;
 	} else if ((cur == DDP_COMPONENT_OVL5_2L &&
 		next == DDP_COMPONENT_OVL5_2L_VIRTUAL0)) {
 		*addr = MT6989_OVL_BLEND_CROSSBAR2_MOUT_EN;
@@ -20172,7 +20177,7 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 				+ addr, value, mask);
 
 		value = mtk_ddp_mout_en_MT6989(reg_data,
-			cur, next, &addr);
+				cur, next, &addr);
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				config_regs_pa
