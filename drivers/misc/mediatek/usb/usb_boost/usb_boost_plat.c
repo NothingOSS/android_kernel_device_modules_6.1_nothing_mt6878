@@ -375,6 +375,7 @@ int audio_freq_hold(void)
 		of_device_is_compatible(np, "mediatek,mt6985-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6989-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
+		of_device_is_compatible(np, "mediatek,mt6878-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6886-usb-boost")) {
 		if (!audio_small_core)
 			device_property_read_u32(gdev, "small-core", &(cpu_freq_audio[0]));
@@ -407,8 +408,7 @@ int audio_freq_hold(void)
 	}
 
 	if (of_device_is_compatible(np, "mediatek,mt6855-usb-boost") ||
-		of_device_is_compatible(np, "mediatek,mt6789-usb-boost") ||
-		of_device_is_compatible(np, "mediatek,mt6878-usb-boost")) {
+		of_device_is_compatible(np, "mediatek,mt6789-usb-boost")) {
 		device_property_read_u32(gdev, "small-core", &(cpu_freq_audio[0]));
 		device_property_read_u32(gdev, "big-core", &(cpu_freq_audio[1]));
 
