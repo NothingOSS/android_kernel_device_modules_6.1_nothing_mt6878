@@ -1528,12 +1528,20 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 	mtk_dsi_set_LFR(dsi, NULL, NULL, 1);
 
 	/* Bypass shadow register and read shadow register */
-	if (dsi->driver_data->need_bypass_shadow)
-		mtk_dsi_mask(dsi, DSI_SHADOW_DEBUG,
-			DSI_BYPASS_SHADOW, DSI_BYPASS_SHADOW);
-	else
-		mtk_dsi_mask(dsi, 0,
-			DSI_BYPASS_SHADOW, DSI_BYPASS_SHADOW);
+	if (dsi->driver_data->need_bypass_shadow) {
+		if (dsi->driver_data->reg_shadow_ofs)
+			mtk_dsi_mask(dsi, dsi->driver_data->reg_shadow_ofs,
+				DSI_BYPASS_SHADOW, DSI_BYPASS_SHADOW);
+		else
+			mtk_dsi_mask(dsi, DSI_SHADOW_DEBUG,
+				DSI_BYPASS_SHADOW, DSI_BYPASS_SHADOW);
+	} else {
+		if (dsi->driver_data->reg_shadow_ofs)
+			mtk_dsi_mask(dsi, dsi->driver_data->reg_shadow_ofs,
+				DSI_BYPASS_SHADOW, 0);
+		else
+			mtk_dsi_mask(dsi, DSI_SHADOW_DEBUG, DSI_BYPASS_SHADOW, 0);
+	}
 
 	DDPDBG("%s-\n", __func__);
 
@@ -11006,6 +11014,7 @@ static const struct mtk_dsi_driver_data mt6983_dsi_driver_data = {
 	.reg_vm_cmd_data10_ofs = 0x218,
 	.reg_vm_cmd_data20_ofs = 0x228,
 	.reg_vm_cmd_data30_ofs = 0x238,
+	.reg_shadow_ofs = 0xc00,
 	.poll_for_idle = mtk_dsi_poll_for_idle,
 	.irq_handler = mtk_dsi_irq_status,
 	.esd_eint_compat = "mediatek, DSI_TE-eint",
@@ -11027,6 +11036,7 @@ static const struct mtk_dsi_driver_data mt6985_dsi_driver_data = {
 	.reg_vm_cmd_data10_ofs = 0x218,
 	.reg_vm_cmd_data20_ofs = 0x228,
 	.reg_vm_cmd_data30_ofs = 0x238,
+	.reg_shadow_ofs = 0xc00,
 	.poll_for_idle = mtk_dsi_poll_for_idle,
 	.irq_handler = mtk_dsi_irq_status,
 	.esd_eint_compat = "mediatek, DSI_TE-eint",
@@ -11050,6 +11060,7 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 	.reg_vm_cmd_data10_ofs = 0x218,
 	.reg_vm_cmd_data20_ofs = 0x228,
 	.reg_vm_cmd_data30_ofs = 0x238,
+	.reg_shadow_ofs = 0xc00,
 	.poll_for_idle = mtk_dsi_poll_for_idle,
 	.irq_handler = mtk_dsi_irq_status,
 	.esd_eint_compat = "mediatek, DSI_TE-eint",
@@ -11077,6 +11088,7 @@ static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {
 	.reg_vm_cmd_data10_ofs = 0x218,
 	.reg_vm_cmd_data20_ofs = 0x228,
 	.reg_vm_cmd_data30_ofs = 0x238,
+	.reg_shadow_ofs = 0xc00,
 	.poll_for_idle = mtk_dsi_poll_for_idle,
 	.irq_handler = mtk_dsi_irq_status,
 	.esd_eint_compat = "mediatek, DSI_TE-eint",
@@ -11102,6 +11114,7 @@ static const struct mtk_dsi_driver_data mt6895_dsi_driver_data = {
 	.reg_vm_cmd_data10_ofs = 0x218,
 	.reg_vm_cmd_data20_ofs = 0x228,
 	.reg_vm_cmd_data30_ofs = 0x238,
+	.reg_shadow_ofs = 0xc00,
 	.poll_for_idle = mtk_dsi_poll_for_idle,
 	.irq_handler = mtk_dsi_irq_status,
 	.esd_eint_compat = "mediatek, DSI_TE-eint",
@@ -11123,6 +11136,7 @@ static const struct mtk_dsi_driver_data mt6886_dsi_driver_data = {
 	.reg_vm_cmd_data10_ofs = 0x218,
 	.reg_vm_cmd_data20_ofs = 0x228,
 	.reg_vm_cmd_data30_ofs = 0x238,
+	.reg_shadow_ofs = 0xc00,
 	.poll_for_idle = mtk_dsi_poll_for_idle,
 	.irq_handler = mtk_dsi_irq_status,
 	.esd_eint_compat = "mediatek, DSI_TE-eint",
@@ -11208,6 +11222,7 @@ static const struct mtk_dsi_driver_data mt6879_dsi_driver_data = {
 	.reg_vm_cmd_data10_ofs = 0x218,
 	.reg_vm_cmd_data20_ofs = 0x228,
 	.reg_vm_cmd_data30_ofs = 0x238,
+	.reg_shadow_ofs = 0xc00,
 	.poll_for_idle = mtk_dsi_poll_for_idle,
 	.irq_handler = mtk_dsi_irq_status,
 	.esd_eint_compat = "mediatek, DSI_TE-eint",
@@ -11229,6 +11244,7 @@ static const struct mtk_dsi_driver_data mt6855_dsi_driver_data = {
 	.reg_vm_cmd_data10_ofs = 0x218,
 	.reg_vm_cmd_data20_ofs = 0x228,
 	.reg_vm_cmd_data30_ofs = 0x238,
+	.reg_shadow_ofs = 0xc00,
 	.poll_for_idle = mtk_dsi_poll_for_idle,
 	.irq_handler = mtk_dsi_irq_status,
 	.esd_eint_compat = "mediatek, DSI_TE-eint",
@@ -11250,6 +11266,7 @@ static const struct mtk_dsi_driver_data mt6878_dsi_driver_data = {
 	.reg_vm_cmd_data10_ofs = 0x218,
 	.reg_vm_cmd_data20_ofs = 0x228,
 	.reg_vm_cmd_data30_ofs = 0x238,
+	.reg_shadow_ofs = 0xc00,
 	.poll_for_idle = mtk_dsi_poll_for_idle,
 	.irq_handler = mtk_dsi_irq_status,
 	.esd_eint_compat = "mediatek, DSI_TE-eint",

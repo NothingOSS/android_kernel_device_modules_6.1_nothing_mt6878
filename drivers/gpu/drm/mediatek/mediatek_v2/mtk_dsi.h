@@ -46,6 +46,7 @@ struct mtk_dsi_driver_data {
 	const u32 reg_vm_cmd_data10_ofs;
 	const u32 reg_vm_cmd_data20_ofs;
 	const u32 reg_vm_cmd_data30_ofs;
+	const u32 reg_shadow_ofs;
 	s32 (*poll_for_idle)(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
 	irqreturn_t (*irq_handler)(int irq, void *dev_id);
 	char *esd_eint_compat;
