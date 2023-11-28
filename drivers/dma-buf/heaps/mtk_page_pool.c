@@ -262,7 +262,7 @@ static unsigned long mtk_dmabuf_page_pool_shrink_scan(struct shrinker *shrinker,
 static struct shrinker mtk_pool_shrinker = {
 	.count_objects = mtk_dmabuf_page_pool_shrink_count,
 	.scan_objects = mtk_dmabuf_page_pool_shrink_scan,
-	.seeks = DEFAULT_SEEKS,
+	.seeks = 16,
 	.batch = 0,
 };
 

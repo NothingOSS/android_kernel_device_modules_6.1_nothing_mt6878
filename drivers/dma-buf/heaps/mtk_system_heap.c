@@ -1168,14 +1168,25 @@ static struct dma_buf *mtk_slc_heap_allocate(struct dma_heap *heap,
 				       &mtk_slc_heap_buf_ops);
 }
 
+static long mtk_get_pool_size(struct dma_heap *heap)
+{
+	struct mtk_heap_priv_info *heap_priv;
+
+	heap_priv = heap ? dma_heap_get_drvdata(heap) : NULL;
+	if (heap_priv && !heap_priv->uncached)
+		return mtk_dmabuf_page_pool_size(heap);
+
+	return 0;
+}
+
 static const struct dma_heap_ops system_heap_ops = {
 	.allocate = system_heap_allocate,
-	//.get_pool_size = system_get_pool_size,
+	.get_pool_size = mtk_get_pool_size,
 };
 
 static const struct dma_heap_ops mtk_mm_heap_ops = {
 	.allocate = mtk_mm_heap_allocate,
-	//.get_pool_size = system_get_pool_size,
+	.get_pool_size = mtk_get_pool_size,
 };
 
 static const struct dma_heap_ops mtk_slc_heap_ops = {

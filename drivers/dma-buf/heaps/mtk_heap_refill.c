@@ -35,8 +35,8 @@ static int pool_refill_check_memory_pages = (4 * SZ_1M / PAGE_SIZE);
 static int pool_recycle_high_water = -1; //600;
 static int pool_recycle_low_water = -1; //300;
 
-static unsigned int pool_refill_high_water[NUM_ORDERS] = {100, 90, 10};
-static unsigned int pool_refill_low_water[NUM_ORDERS] = {40, 36, 4};
+static unsigned int pool_refill_high_water[NUM_ORDERS] = {100, 100, 0};
+static unsigned int pool_refill_low_water[NUM_ORDERS] = {40, 40, 0};
 
 static unsigned long total_high_wmark_pages;
 
@@ -204,6 +204,9 @@ static int mtk_pool_refill_order_high(struct mtk_dmabuf_page_pool *pool)
 	may_refill = mtk_pool_memory_may_refill(pool);
 	if (!may_refill)
 		return -1;
+
+	if (pool->order_index == 0)
+		gfp_refill = pool->gfp_mask;
 
 	tm1 = sched_clock();
 	while (!mtk_pool_above_refill_high(pool) && may_refill) {
