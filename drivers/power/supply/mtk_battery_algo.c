@@ -21,7 +21,7 @@ void set_fg_bat_tmp_c_gap(int tmp)
 
 void set_fg_time(struct mtk_battery *gm, int _time)
 {
-	struct timespec64 tmp_time_now, end_time;
+	struct timespec64 tmp_time_now, end_time = {0};
 	ktime_t ktime, time_now;
 
 	if (_time != 0 && _time > 0) {
@@ -62,7 +62,7 @@ int get_ptim_vbat(void)
 int get_ptim_i(struct mtk_battery *gm)
 {
 	struct power_supply *psy;
-	union power_supply_propval val;
+	union power_supply_propval val = {0};
 
 	psy = gm->gauge->psy;
 
@@ -158,11 +158,11 @@ struct fuelgauge_profile_struct *fg_get_profile(
 	if (ptable->temperature_tb1 == temperature)
 		return &ptable->fg_profile_temperature_1[0];
 
-	bm_debug("[%s]: no table for %d\n",
+	bm_debug("[%s]: no table for %d use temperature_0\n",
 		__func__,
 		temperature);
 
-	return NULL;
+	return &ptable->fg_profile_temperature_0[0];
 }
 
 int fg_check_temperature_order(struct mtk_battery *gm,
@@ -1305,96 +1305,99 @@ void fgr_error_calibration2(struct mtk_battery *gm, int intr_no)
 
 void fgr_int_end_flow(struct mtk_battery *gm, unsigned int intr_no)
 {
-	int curr_temp, vbat;
+	int curr_temp, vbat = 0, ret = 0;
 	char intr_name[32];
 	struct mtk_battery_algo *algo;
 
 	algo = &gm->algo;
 	switch (intr_no) {
 	case FG_INTR_0:
-		sprintf(intr_name, "FG_INTR_INIT");
+		ret = sprintf(intr_name, "FG_INTR_INIT");
 		break;
 	case FG_INTR_TIMER_UPDATE:
-		sprintf(intr_name, "FG_INTR_TIMER_UPDATE");
+		ret = sprintf(intr_name, "FG_INTR_TIMER_UPDATE");
 		break;
 	case FG_INTR_BAT_CYCLE:
-		sprintf(intr_name, "FG_INTR_BAT_CYCLE");
+		ret = sprintf(intr_name, "FG_INTR_BAT_CYCLE");
 		break;
 	case FG_INTR_CHARGER_OUT:
-		sprintf(intr_name, "FG_INTR_CHARGER_OUT");
+		ret = sprintf(intr_name, "FG_INTR_CHARGER_OUT");
 		break;
 	case FG_INTR_CHARGER_IN:
-		sprintf(intr_name, "FG_INTR_CHARGER_IN");
+		ret = sprintf(intr_name, "FG_INTR_CHARGER_IN");
 		break;
 	case FG_INTR_FG_TIME:
-		sprintf(intr_name, "FG_INTR_FG_TIME");
+		ret = sprintf(intr_name, "FG_INTR_FG_TIME");
 		break;
 	case FG_INTR_BAT_INT1_HT:
-		sprintf(intr_name, "FG_INTR_COULOMB_HT");
+		ret = sprintf(intr_name, "FG_INTR_COULOMB_HT");
 		break;
 	case FG_INTR_BAT_INT1_LT:
-		sprintf(intr_name, "FG_INTR_COULOMB_LT");
+		ret = sprintf(intr_name, "FG_INTR_COULOMB_LT");
 		break;
 	case FG_INTR_BAT_INT2_HT:
-		sprintf(intr_name, "FG_INTR_UISOC_HT");
+		ret = sprintf(intr_name, "FG_INTR_UISOC_HT");
 		break;
 	case FG_INTR_BAT_INT2_LT:
-		sprintf(intr_name, "FG_INTR_UISOC_LT");
+		ret = sprintf(intr_name, "FG_INTR_UISOC_LT");
 		break;
 	case FG_INTR_BAT_TMP_HT:
-		sprintf(intr_name, "FG_INTR_BAT_TEMP_HT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TEMP_HT");
 		break;
 	case FG_INTR_BAT_TMP_LT:
-		sprintf(intr_name, "FG_INTR_BAT_TEMP_LT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TEMP_LT");
 		break;
 	case FG_INTR_BAT_TIME_INT:
-		sprintf(intr_name, "FG_INTR_BAT_TIME_INT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TIME_INT");
 		break;
 	case FG_INTR_NAG_C_DLTV:
-		sprintf(intr_name, "FG_INTR_NAFG_VOLTAGE");
+		ret = sprintf(intr_name, "FG_INTR_NAFG_VOLTAGE");
 		break;
 	case FG_INTR_FG_ZCV:
-		sprintf(intr_name, "FG_INTR_FG_ZCV");
+		ret = sprintf(intr_name, "FG_INTR_FG_ZCV");
 		break;
 	case FG_INTR_SHUTDOWN:
-		sprintf(intr_name, "FG_INTR_SHUTDOWN");
+		ret = sprintf(intr_name, "FG_INTR_SHUTDOWN");
 		break;
 	case FG_INTR_RESET_NVRAM:
-		sprintf(intr_name, "FG_INTR_RESET_NVRAM");
+		ret = sprintf(intr_name, "FG_INTR_RESET_NVRAM");
 		break;
 	case FG_INTR_BAT_PLUGOUT:
-		sprintf(intr_name, "FG_INTR_BAT_PLUGOUT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_PLUGOUT");
 		break;
 	case FG_INTR_IAVG:
-		sprintf(intr_name, "FG_INTR_IAVG");
+		ret = sprintf(intr_name, "FG_INTR_IAVG");
 		break;
 	case FG_INTR_VBAT2_L:
-		sprintf(intr_name, "FG_INTR_VBAT2_L");
+		ret = sprintf(intr_name, "FG_INTR_VBAT2_L");
 		break;
 	case FG_INTR_VBAT2_H:
-		sprintf(intr_name, "FG_INTR_VBAT2_H");
+		ret = sprintf(intr_name, "FG_INTR_VBAT2_H");
 		break;
 	case FG_INTR_CHR_FULL:
-		sprintf(intr_name, "FG_INTR_CHR_FULL");
+		ret = sprintf(intr_name, "FG_INTR_CHR_FULL");
 		break;
 	case FG_INTR_DLPT_SD:
-		sprintf(intr_name, "FG_INTR_DLPT_SD");
+		ret = sprintf(intr_name, "FG_INTR_DLPT_SD");
 		break;
 	case FG_INTR_BAT_TMP_C_HT:
-		sprintf(intr_name, "FG_INTR_BAT_TMP_C_HT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TMP_C_HT");
 		break;
 	case FG_INTR_BAT_TMP_C_LT:
-		sprintf(intr_name, "FG_INTR_BAT_TMP_C_LT");
+		ret = sprintf(intr_name, "FG_INTR_BAT_TMP_C_LT");
 		break;
 	case FG_INTR_BAT_INT1_CHECK:
-		sprintf(intr_name, "FG_INTR_COULOMB_C");
+		ret = sprintf(intr_name, "FG_INTR_COULOMB_C");
 		break;
 	default:
-		sprintf(intr_name, "FG_INTR_UNKNOWN");
+		ret = sprintf(intr_name, "FG_INTR_UNKNOWN");
 		bm_err("[Intr_Number_to_Name] unknown intr %d\n",
 			intr_no);
 		break;
 	}
+
+	if (ret < 0)
+		bm_err("[%s] something wrong %d\n", __func__, intr_no);
 
 	algo->car = gauge_get_int_property(GAUGE_PROP_COULOMB);
 	get_hw_info();
