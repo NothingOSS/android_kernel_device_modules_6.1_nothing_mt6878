@@ -18867,14 +18867,14 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 &pio {
     codec_en_off: codec-en-off {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO8__FUNC_GPIO8>;
+			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
 			input-enable;
 			bias-pull-down;
 		};
 	};
 	codec_en_on: codec-en-on {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO8__FUNC_GPIO8>;
+			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
 			output-high;
 		};
 	};
