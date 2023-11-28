@@ -12218,13 +12218,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 &i2c5 {
 	rt6160@75 {
-		compatible = "richtek,rt6160";
+		compatible = "richtek,rt6160",
+			     "richtek,rt6160-vbb";
 		reg = <0x75>;
 		//enable-gpios = <&gpio26 2 0>;
 		regulator-name = "rt6160-buckboost-2";
 		regulator-min-microvolt = <2025000>;
 		regulator-max-microvolt = <5200000>;
 		regulator-always-on;
+		is-existed = <0>;
 
 		dbg {
 			compatible = "richtek,rt6160-dbg";
