@@ -486,6 +486,28 @@ config DRM_PANEL_BOE_BF130_DPHY_CMD_HD
 	  24-bits RGB per pixel. It provides a MIPI DSI interface
 	  to host.
 
+config DRM_PANEL_NT37707_677_FHDP_DPHY_CMD
+	tristate "NT37707 DPHY cmd mode 120HZ LTPO OLED panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for NT37707 DPHY
+	  cmd mode 120HZ LTPO OLED panel. The panel has a 1080x2640
+	  resolution and uses 30-bits RGB per pixel. It provides a
+	  MIPI DSI interface to host.
+
+config DRM_PANEL_NT37705_1056_1068_DPHY_CMD
+	tristate "NT37705 DPHY cmd mode 60HZ LTPO OLED panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for NT37705
+	  DPHY cmd mode 60HZ LTPO OLED panel. The panel has a 1056x1068
+	  resolution and uses 24-bits RGB per pixel. It provides a
+	  MIPI DSI interface to host.
+
 config DRM_PANEL_SAMSUNG_AMF680CM01_CMD_FHD
 	tristate "samsung amf680cm01 cmd fhd panel"
 	depends on OF
