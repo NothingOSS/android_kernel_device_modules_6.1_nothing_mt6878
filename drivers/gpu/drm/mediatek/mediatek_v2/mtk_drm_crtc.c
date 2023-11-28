@@ -1240,6 +1240,7 @@ static struct drm_crtc_state *
 mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 {
 	struct mtk_crtc_state *state, *old_state;
+	struct mtk_drm_private *priv = NULL;
 
 	state = kzalloc(sizeof(*state), GFP_KERNEL);
 	if (!state)
@@ -1250,6 +1251,8 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 		kfree(state);
 		return NULL;
 	}
+
+	priv = crtc->dev->dev_private;
 
 	if (crtc->state)
 		__drm_atomic_helper_crtc_duplicate_state(crtc, &state->base);
@@ -1273,8 +1276,9 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 			old_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 		state->prop_val[CRTC_PROP_PRES_FENCE_IDX] =
 			old_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
-		state->prop_val[CRTC_PROP_LYE_IDX] =
-			old_state->prop_val[CRTC_PROP_LYE_IDX];
+		if (priv->data->mmsys_id != MMSYS_MT6878)
+			state->prop_val[CRTC_PROP_LYE_IDX] =
+				old_state->prop_val[CRTC_PROP_LYE_IDX];
 		state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] =
 			old_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE];
 	}
