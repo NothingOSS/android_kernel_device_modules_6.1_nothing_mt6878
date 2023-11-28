@@ -10867,7 +10867,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"top_loading,stack_loading,iterator_loading";
 
 			node-35 = "SSPM_SWPM_GPU__DVFS",
-				"top_freq,stack_freq,vgpu,vstack,core_num";
+				"top_freq,stack_freq,vgpu,vstack,gpu_mtcmos";
 
 			node-36 = "SSPM_SWPM_GPU__URATE",
 				"alu_fma,alu_cvt,alu_sfu,tex,lsc,l2c,vary,tiler,rast";
