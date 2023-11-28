@@ -4675,6 +4675,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
 	unsigned int bw = overlap_to_bw(crtc, frame_weight, lyeblob_ids);
+	unsigned int larb_bw = 0;
 	int crtc_idx = drm_crtc_index(crtc);
 	unsigned int ovl0_2l_no_compress_num;
 	struct mtk_ddp_comp *output_comp;
@@ -4770,6 +4771,27 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	}
 
 	mtk_crtc->qos_ctx->last_hrt_req = bw;
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
+		priv->data->mmsys_id == MMSYS_MT6989) {
+
+		larb_bw = mtk_disp_get_larb_hrt_bw(mtk_crtc);
+
+		if (larb_bw > mtk_crtc->qos_ctx->last_larb_hrt_req) {
+			DDPINFO("mtk_disp_set_per_larb_hrt_bw = %d\n", larb_bw);
+			mtk_disp_set_per_larb_hrt_bw(mtk_crtc, larb_bw);
+
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_LARB_HRT),
+			       NO_PENDING_HRT, ~0);
+		} else if (larb_bw < mtk_crtc->qos_ctx->last_larb_hrt_req) {
+			DDPINFO("cmdq_pkt_write larb hrt = %d\n", larb_bw);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_LARB_HRT),
+				       larb_bw, ~0);
+		}
+		mtk_crtc->qos_ctx->last_larb_hrt_req = larb_bw;
+	}
 
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 		       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_IDX),
@@ -6817,7 +6839,7 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv =
 			mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *comp;
-	unsigned int cur_hrt_bw, hrt_idx, crtc_idx;
+	unsigned int cur_hrt_bw, cur_larb_hrt_bw, hrt_idx, crtc_idx;
 	int i, j;
 
 	crtc_idx = drm_crtc_index(crtc);
@@ -6837,6 +6859,7 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	if (crtc_idx == 0)
 		wake_up(&mtk_crtc->qos_ctx->hrt_cond_wq);
 	cur_hrt_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL);
+
 	if (cur_hrt_bw != NO_PENDING_HRT &&
 		cur_hrt_bw <= mtk_crtc->qos_ctx->last_hrt_req) {
 
@@ -6850,6 +6873,27 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 
 		*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL) =
 				NO_PENDING_HRT;
+	}
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_HRT_BY_LARB) && priv->data->mmsys_id == MMSYS_MT6989) {
+
+		cur_larb_hrt_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_CUR_LARB_HRT);
+
+		if (cur_larb_hrt_bw != NO_PENDING_HRT &&
+			cur_larb_hrt_bw <= mtk_crtc->qos_ctx->last_larb_hrt_req) {
+
+			DDPINFO("CRTC%u cur:%u last:%u, release HRT to last_larb_hrt_req:%u\n",
+				crtc_idx, cur_larb_hrt_bw, mtk_crtc->qos_ctx->last_larb_hrt_req,
+				mtk_crtc->qos_ctx->last_larb_hrt_req);
+
+				mtk_disp_set_per_larb_hrt_bw(mtk_crtc,
+						mtk_crtc->qos_ctx->last_larb_hrt_req);
+
+			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_LARB_HRT) =
+					NO_PENDING_HRT;
+		}
 	}
 }
 
@@ -11211,6 +11255,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	mtk_crtc_connect_default_path(mtk_crtc);
 
 	mtk_crtc->qos_ctx->last_hrt_req = 0;
+	mtk_crtc->qos_ctx->last_larb_hrt_req = 0;
 
 	/* 7. config ddp engine */
 	mtk_crtc_config_default_path(mtk_crtc);

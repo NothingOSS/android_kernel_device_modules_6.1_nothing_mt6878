@@ -29,6 +29,7 @@ struct mtk_ddp_comp;
 struct mtk_drm_qos_ctx {
 	unsigned int last_hrt_req;
 	unsigned int last_mmclk_req_idx;
+	unsigned int last_larb_hrt_req;
 	atomic_t last_hrt_idx;
 	atomic_t hrt_cond_sig;
 	wait_queue_head_t hrt_cond_wq;
@@ -54,4 +55,6 @@ void mtk_drm_set_mmclk_by_pixclk(struct drm_crtc *crtc, unsigned int pixclk,
 unsigned long mtk_drm_get_freq(struct drm_crtc *crtc, const char *caller);
 unsigned long mtk_drm_get_mmclk(struct drm_crtc *crtc, const char *caller);
 void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx);
+unsigned int mtk_disp_get_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc);
+int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw);
 #endif

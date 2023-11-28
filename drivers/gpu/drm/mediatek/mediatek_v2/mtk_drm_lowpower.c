@@ -2076,6 +2076,12 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_disp_set_hrt_bw(mtk_crtc,
 			mtk_crtc->qos_ctx->last_hrt_req);
 
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_HRT_BY_LARB) && priv->data->mmsys_id == MMSYS_MT6989) {
+		mtk_disp_set_per_larb_hrt_bw(mtk_crtc,
+				mtk_crtc->qos_ctx->last_larb_hrt_req);
+	}
+
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"async_wait3", 18, perf_string, true);
 	mtk_drm_idle_async_wait(crtc, 0, "conifg_async");
