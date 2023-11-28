@@ -22,6 +22,7 @@
 #include "mtk-dsp-platform-driver.h"
 #include "mtk-base-afe.h"
 #include "scp.h"
+#include "scp_helper.h"
 
 #include <linux/arm-smccc.h> /* for Kernel Native SMC API */
 #include <linux/soc/mediatek/mtk_sip_svc.h> /* for SMC ID table */
@@ -1461,6 +1462,28 @@ static int mtk_dsp_pcm_copy(struct snd_soc_component *component,
 	return ret;
 }
 
+static int get_audio_semaphore(unsigned int sema_id)
+{
+	int ret;
+
+	if (get_adsp_type() == ADSP_TYPE_RV55) {
+		ret = scp_get_semaphore_3way(sema_id);
+		return ret == SEMAPHORE_SUCCESS ? ADSP_OK : ADSP_ERROR;
+	}
+	return get_adsp_semaphore(sema_id);
+}
+
+static int release_audio_semaphore(unsigned int sema_id)
+{
+	int ret;
+
+	if (get_adsp_type() == ADSP_TYPE_RV55) {
+		ret = scp_release_semaphore_3way(sema_id);
+		return ret == SEMAPHORE_SUCCESS ? ADSP_OK : ADSP_ERROR;
+	}
+	return release_adsp_semaphore(sema_id);
+}
+
 void audio_irq_handler(int irq, void *data, int core_id)
 {
 	struct mtk_base_dsp *dsp = (struct mtk_base_dsp *)data;
@@ -1486,7 +1509,7 @@ void audio_irq_handler(int irq, void *data, int core_id)
 	}
 
 	/* using semaphore to sync ap <=> adsp */
-	if (get_adsp_semaphore(SEMA_AUDIO))
+	if (get_audio_semaphore(SEMA_AUDIO))
 		pr_info("%s get semaphore fail\n", __func__);
 
 	pdtoa = (unsigned long *)
@@ -1529,7 +1552,7 @@ void audio_irq_handler(int irq, void *data, int core_id)
 #ifdef DEBUG_VERBOSE_IRQ
 	pr_info("leave %s\n", __func__);
 #endif
-	release_adsp_semaphore(SEMA_AUDIO);
+	release_audio_semaphore(SEMA_AUDIO);
 	return;
 IRQ_ERROR:
 	pr_info("IRQ_ERROR irq[%d] data[%p] core_id[%d] dsp[%p]\n",
