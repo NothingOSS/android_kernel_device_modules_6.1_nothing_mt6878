@@ -165,6 +165,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		srcu_notifier_call_chain(&adapter->evt_nh, MTK_TYPEC_WD_STATUS,
 					 &noti->wd_status.water_detected);
 		break;
+	case TCP_NOTIFY_CC_HI:
+		srcu_notifier_call_chain(&adapter->evt_nh,
+					 MTK_TYPEC_CC_HI_STATUS, &noti->cc_hi);
+		break;
 	}
 
 	return NOTIFY_OK;
@@ -202,10 +206,10 @@ static int pd_get_status(struct adapter_device *dev, struct adapter_status *sta)
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
 	struct pd_status status = {0,};
-	int ret = MTK_ADAPTER_ERROR, active_idx = 0;
+	int ret = TCP_DPM_RET_DENIED_UNKNOWN, active_idx = 0;
 
 	if (info == NULL)
-		return ret;
+		return MTK_ADAPTER_ERROR;
 
 	mutex_lock(&info->idx_lock);
 	active_idx = info->active_idx;
@@ -224,10 +228,10 @@ static int pd_set_cap(struct adapter_device *dev, enum adapter_cap_type type,
 		      int mV, int mA)
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
-	int ret = MTK_ADAPTER_ERROR, active_idx = 0;
+	int ret = TCP_DPM_RET_DENIED_UNKNOWN, active_idx = 0;
 
 	if (info == NULL)
-		return ret;
+		return MTK_ADAPTER_ERROR;
 
 	mutex_lock(&info->idx_lock);
 	active_idx = info->active_idx;
@@ -254,7 +258,7 @@ static inline int pd_get_cap_apdo(struct mtk_pd_adapter_info *info,
 {
 	struct tcpm_power_cap_val apdo_cap;
 	uint8_t cap_idx = 0;
-	int ret = 0, i = 0;
+	int ret = TCPM_ERROR_UNKNOWN, i = 0;
 
 repeat:
 	ret = tcpm_inquire_pd_source_apdo(info->tcpc[active_idx],
@@ -295,7 +299,7 @@ static inline int pd_get_cap_pdo(struct mtk_pd_adapter_info *info,
 				 int active_idx, struct adapter_power_cap *cap)
 {
 	struct tcpm_remote_power_cap pd_cap;
-	int ret = 0, i = 0, j = 0;
+	int ret = TCPM_ERROR_UNKNOWN, i = 0, j = 0;
 
 	ret = tcpm_get_remote_power_cap(info->tcpc[active_idx], &pd_cap);
 	if (ret != TCPM_SUCCESS || pd_cap.nr == 0)
@@ -332,6 +336,7 @@ static int pd_get_cap(struct adapter_device *dev, enum adapter_cap_type type,
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
 	int ret = MTK_ADAPTER_ERROR, active_idx = 0;
+	int ret_tcp = TCP_DPM_RET_DENIED_UNKNOWN;
 	struct pd_source_cap_ext src_cap_ext;
 
 	if (info == NULL)
@@ -343,9 +348,9 @@ static int pd_get_cap(struct adapter_device *dev, enum adapter_cap_type type,
 
 	memset(cap, 0, sizeof(*cap));
 
-	ret = tcpm_dpm_pd_get_source_cap_ext(info->tcpc[active_idx],
-					     NULL, &src_cap_ext);
-	if (ret == TCP_DPM_RET_SUCCESS)
+	ret_tcp = tcpm_dpm_pd_get_source_cap_ext(info->tcpc[active_idx],
+						 NULL, &src_cap_ext);
+	if (ret_tcp == TCP_DPM_RET_SUCCESS)
 		cap->pdp = src_cap_ext.source_pdp;
 
 	if (type == MTK_PD_APDO)
@@ -362,6 +367,7 @@ static int pd_get_output(struct adapter_device *dev, int *mV, int *mA)
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
 	int ret = MTK_ADAPTER_ERROR, active_idx = 0;
+	int ret_tcp = TCP_DPM_RET_DENIED_UNKNOWN;
 	struct pd_pps_status pps_status;
 
 	if (info == NULL)
@@ -371,9 +377,9 @@ static int pd_get_output(struct adapter_device *dev, int *mV, int *mA)
 	active_idx = info->active_idx;
 	mutex_unlock(&info->idx_lock);
 
-	ret = tcpm_dpm_pd_get_pps_status(info->tcpc[active_idx], NULL,
-					 &pps_status);
-	ret = to_mtk_adapter_ret(ret);
+	ret_tcp = tcpm_dpm_pd_get_pps_status(info->tcpc[active_idx], NULL,
+					     &pps_status);
+	ret = to_mtk_adapter_ret(ret_tcp);
 	if (ret != MTK_ADAPTER_OK)
 		return ret;
 
@@ -390,6 +396,8 @@ static int pd_authentication(struct adapter_device *dev,
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
 	int ret = MTK_ADAPTER_ERROR, active_idx = 0, i = 0;
+	int ret_tcpm = TCPM_ERROR_UNKNOWN;
+	int ret_tcp = TCP_DPM_RET_DENIED_UNKNOWN;
 	struct tcpm_power_cap_val apdo_cap, selected_apdo_cap;
 	uint8_t cap_idx = 0, apdo_idx = 0;
 	struct pd_source_cap_ext src_cap_ext;
@@ -423,13 +431,13 @@ static int pd_authentication(struct adapter_device *dev,
 	}
 
 repeat:
-	ret = tcpm_inquire_pd_source_apdo(info->tcpc[active_idx],
-					  TCPM_POWER_CAP_APDO_TYPE_PPS,
-					  &cap_idx, &apdo_cap);
-	if (ret != TCPM_SUCCESS) {
+	ret_tcpm = tcpm_inquire_pd_source_apdo(info->tcpc[active_idx],
+					       TCPM_POWER_CAP_APDO_TYPE_PPS,
+					       &cap_idx, &apdo_cap);
+	if (ret_tcpm != TCPM_SUCCESS) {
 		if (apdo_idx == 0)
 			dev_notice(info->dev, "%s inquire pd apdo fail(%d)\n",
-					      __func__, ret);
+					      __func__, ret_tcpm);
 		goto stop_repeat;
 	}
 
@@ -464,14 +472,15 @@ stop_repeat:
 	data->vta_step = 20;
 	data->ita_step = 50;
 	data->ita_gap_per_vstep = 200;
-	ret = tcpm_dpm_pd_get_source_cap_ext(info->tcpc[active_idx],
-					     NULL, &src_cap_ext);
-	if (ret == TCP_DPM_RET_SUCCESS) {
+	ret_tcp = tcpm_dpm_pd_get_source_cap_ext(info->tcpc[active_idx],
+						 NULL, &src_cap_ext);
+	if (ret_tcp == TCP_DPM_RET_SUCCESS) {
 		data->pdp = src_cap_ext.source_pdp;
 		if (data->pdp > 0 && !data->pwr_lmt)
 			data->pwr_lmt = true;
 	} else {
-		dev_info(info->dev, "%s inquire pdp fail(%d)\n", __func__, ret);
+		dev_info(info->dev, "%s inquire pdp fail(%d)\n",
+				    __func__, ret_tcp);
 		if (data->pwr_lmt) {
 			for (i = 0; i < ARRAY_SIZE(apdo_pps_tbl); i++) {
 				if (apdo_pps_tbl[i].max_mv < data->vta_max)
@@ -515,11 +524,11 @@ out:
 static int pd_is_cc(struct adapter_device *dev, bool *cc)
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
-	int ret = MTK_ADAPTER_ERROR, active_idx = 0;
+	int ret = TCP_DPM_RET_DENIED_UNKNOWN, active_idx = 0;
 	struct pd_pps_status pps_status;
 
 	if (info == NULL)
-		return ret;
+		return MTK_ADAPTER_ERROR;
 
 	mutex_lock(&info->idx_lock);
 	active_idx = info->active_idx;
@@ -546,10 +555,10 @@ static int pd_enable_wdt(struct adapter_device *dev, bool en)
 static int pd_send_hardreset(struct adapter_device *dev)
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
-	int ret = MTK_ADAPTER_ERROR, active_idx = 0;
+	int ret = TCP_DPM_RET_DENIED_UNKNOWN, active_idx = 0;
 
 	if (info == NULL)
-		return ret;
+		return MTK_ADAPTER_ERROR;
 
 	mutex_lock(&info->idx_lock);
 	active_idx = info->active_idx;
@@ -578,6 +587,8 @@ static void mtk_pd_adapter_remove_helper(struct mtk_pd_adapter_info *info)
 	int i = 0, ret = 0;
 
 	mutex_destroy(&info->idx_lock);
+	if (!info->tcpc)
+		return;
 	for (i = 0; i < info->nr_port; i++) {
 		if (!info->tcpc[i])
 			return;

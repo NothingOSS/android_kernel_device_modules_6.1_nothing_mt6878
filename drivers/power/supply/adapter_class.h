@@ -58,6 +58,7 @@ enum adapter_event {
 	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
 	MTK_TYPEC_WD_STATUS,
 	MTK_TYPEC_HRESET_STATUS,
+	MTK_TYPEC_CC_HI_STATUS,
 };
 
 enum adapter_property {

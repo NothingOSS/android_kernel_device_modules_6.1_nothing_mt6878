@@ -2884,7 +2884,8 @@ static void kpoc_power_off_check(struct mtk_charger *info)
 	/* 9 = LOW_POWER_OFF_CHARGING_BOOT */
 	if (boot_mode == 8 || boot_mode == 9) {
 		vbus = get_vbus(info);
-		if (vbus >= 0 && vbus < 2500 && !mtk_is_charger_on(info) && !info->pd_reset) {
+		if (vbus >= 0 && vbus < 2500 && !mtk_is_charger_on(info) &&
+		    !info->pd_reset && info->cc_hi <= 0) {
 			chr_err("Unplug Charger/USB in KPOC mode, vbus=%d, shutdown\n", vbus);
 			while (1) {
 				if (counter >= 20000) {
@@ -3746,6 +3747,11 @@ int notify_adapter_event(struct notifier_block *notifier,
 		}
 		mtk_chgstat_notify(pinfo);
 		report_psy = boot_mode == 8 || boot_mode == 9;
+		break;
+	case MTK_TYPEC_CC_HI_STATUS:
+		chr_err("cc_hi = %d\n", *(int *)val);
+		pinfo->cc_hi = *(int *)val;
+		_wake_up_charger(pinfo);
 		break;
 	}
 	if (report_psy)

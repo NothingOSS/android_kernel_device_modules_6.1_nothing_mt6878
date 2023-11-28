@@ -383,6 +383,8 @@ struct mtk_charger {
 	bool water_detected;
 	bool record_water_detected;
 
+	int cc_hi;
+
 	bool enable_dynamic_mivr;
 
 	/* fast charging algo support indicator */

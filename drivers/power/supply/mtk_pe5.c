@@ -929,7 +929,7 @@ static int pe50_set_dvchg_charging(struct pe50_algo_info *info, bool en)
 	if (en) {
 		ret = pe50_hal_enable_hz(info->alg, CHG1, true);
 		if (ret < 0) {
-			PE50_ERR("set swchg hz fail(%d)\n", ret);
+			PE50_ERR("en swchg hz fail(%d)\n", ret);
 			return ret;
 		}
 	}
@@ -972,12 +972,12 @@ static int pe50_enable_swchg_charging(struct pe50_algo_info *info, bool en)
 	} else {
 		ret = pe50_hal_enable_hz(info->alg, CHG1, true);
 		if (ret < 0) {
-			PE50_ERR("set swchg hz fail(%d)\n", ret);
+			PE50_ERR("en swchg hz fail(%d)\n", ret);
 			return ret;
 		}
 		ret = pe50_hal_enable_charging(info->alg, CHG1, false);
 		if (ret < 0) {
-			PE50_ERR("en swchg fail(%d)\n", ret);
+			PE50_ERR("disable swchg fail(%d)\n", ret);
 			return ret;
 		}
 	}
@@ -1232,7 +1232,7 @@ static inline int pe50_start(struct pe50_algo_info *info)
 	/* disable charger */
 	ret = pe50_hal_enable_charging(info->alg, CHG1, false);
 	if (ret < 0) {
-		PE50_ERR("disable charger fail\n");
+		PE50_ERR("disable swchg fail(%d)\n", ret);
 		return ret;
 	}
 
@@ -1276,7 +1276,11 @@ static int pe50_calculate_rcable_by_swchg(struct pe50_algo_info *info)
 		return ret;
 	}
 
-	pe50_hal_enable_charging(info->alg, CHG1, true);
+	ret = pe50_hal_enable_charging(info->alg, CHG1, true);
+	if (ret < 0) {
+		PE50_ERR("en swchg fail(%d)\n", ret);
+		return ret;
+	}
 
 	ret = pe50_set_ta_cap_cv(info, 8000, 1000);
 	if (ret < 0) {
