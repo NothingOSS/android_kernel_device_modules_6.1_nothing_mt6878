@@ -312,10 +312,6 @@ static unsigned int thd_to_level(unsigned int thd, unsigned int temp_stage)
 		return -1;
 	}
 
-	pr_info("[%s] temp_id=%d thd=%d cl=%d pl=%d, ht[%d %d] lt[%d %d] new_l=%d\n",
-		__func__, temp_stage, thd, low_bat_thl_data->low_bat_thl_level, i,
-		info->ht_en, info->ht_lv, info->lt_en, info->lt_lv, level);
-
 	return level;
 }
 

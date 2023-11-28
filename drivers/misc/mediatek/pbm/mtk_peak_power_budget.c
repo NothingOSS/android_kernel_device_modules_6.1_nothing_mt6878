@@ -132,10 +132,8 @@ static void ppb_allocate_budget_manager(void)
 
 static bool ppb_func_enable_check(void)
 {
-	if (!ppb_ctrl.ppb_drv_done) {
-		pr_info("ppb_ctrl.ppb_drv_done: %d\n", ppb_ctrl.ppb_drv_done);
+	if (!ppb_ctrl.ppb_drv_done)
 		return false;
-	}
 
 	return true;
 }
