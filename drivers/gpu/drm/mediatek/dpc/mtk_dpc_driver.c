@@ -55,14 +55,6 @@ module_param(debug_irq, int, 0644);
 int debug_vidle_timeout;
 module_param(debug_vidle_timeout, int, 0644);
 
-/* TODO: move to mtk_dpc_test.c */
-#define SPM_REQ_STA_4 0x85C	/* D1: BIT30 APSRC_REQ, DDRSRC_REQ */
-#define SPM_REQ_APSRC_STATE    BIT(30)
-
-#define SPM_REQ_STA_5 0x860	/* D2: BIT0 EMI_REQ, D3: BIT4 MAINPLL_REQ, D4: MMINFRA_REQ */
-#define SPM_REQ_EMI_STATE      BIT(0)
-#define SPM_REQ_MMINFRA_STATE  BIT(1)
-
 #define DPC_DEBUG_RTFF_CNT 10
 static void __iomem *debug_rtff[DPC_DEBUG_RTFF_CNT];
 
@@ -92,6 +84,7 @@ static const char *reg_names[DPC_SYS_REGS_CNT] = {
 
 static void __iomem *dpc_base;
 static spinlock_t vlp_lock; /* power status protection*/
+static spinlock_t dpc_lock;
 static enum mtk_panel_type g_panel_type = PANEL_TYPE_COUNT;
 static unsigned int g_te_duration; //us
 
@@ -175,293 +168,293 @@ static unsigned long long g_idle_start[DPC_IDLE_ID_MAX] = {0};
 
 static struct mtk_dpc_dt_usage mt6989_disp_cmd_dt_usage[DPC_DISP_DT_CNT] = {
 	/* OVL0/OVL1/DISP0 */
-	{0, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 0 */
+	{0, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 0 */
 	{1, DPC_SP_TE,		DT_1,	DPC_DISP_VIDLE_MTCMOS},		/* ON Time */
-	{2, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MTCMOS},		/* Pre-TE */
+	{2, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS},		/* Pre-TE */
 	{3, DPC_SP_TE,		DT_3,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 1 */
 
 	/* DISP1 */
-	{4, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MTCMOS_DISP1},
+	{4, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS_DISP1},
 	{5, DPC_SP_TE,		DT_5,	DPC_DISP_VIDLE_MTCMOS_DISP1},
 	{6, DPC_SP_TE,		DT_6,	DPC_DISP_VIDLE_MTCMOS_DISP1},	/* DISP1-TE */
 	{7, DPC_SP_TE,		DT_7,	DPC_DISP_VIDLE_MTCMOS_DISP1},
 
 	/* VDISP DVFS, follow DISP1 by default, or HRT BW */
-	{8, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_VDISP_DVFS},
-	{9, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_VDISP_DVFS},
-	{10, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_VDISP_DVFS},
+	{8, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_VDISP_DVFS},
+	{9, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_VDISP_DVFS},
+	{10, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_VDISP_DVFS},
 
 	/* HRT BW */
-	{11, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_HRT_BW},		/* OFF Time 0 */
+	{11, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_HRT_BW},		/* OFF Time 0 */
 	{12, DPC_SP_TE,		DT_12,	DPC_DISP_VIDLE_HRT_BW},		/* ON Time */
 	{13, DPC_SP_TE,		DT_13,	DPC_DISP_VIDLE_HRT_BW},		/* OFF Time 1 */
 
 	/* SRT BW, follow HRT BW by default, or follow DISP1 */
-	{14, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_SRT_BW},
-	{15, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_SRT_BW},
-	{16, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_SRT_BW},
+	{14, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_SRT_BW},
+	{15, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_SRT_BW},
+	{16, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_SRT_BW},
 
 	/* MMINFRA OFF, follow DISP1 by default, or HRT BW */
-	{17, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MMINFRA_OFF},
-	{18, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MMINFRA_OFF},
-	{19, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MMINFRA_OFF},
+	{17, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MMINFRA_OFF},
+	{18, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MMINFRA_OFF},
+	{19, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MMINFRA_OFF},
 
 	/* INFRA OFF, follow DISP1 by default, or HRT BW */
-	{20, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_INFRA_OFF},
-	{21, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_INFRA_OFF},
-	{22, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_INFRA_OFF},
+	{20, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_INFRA_OFF},
+	{21, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_INFRA_OFF},
+	{22, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_INFRA_OFF},
 
 	/* MAINPLL OFF, follow DISP1 by default, or HRT BW */
-	{23, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MAINPLL_OFF},
-	{24, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MAINPLL_OFF},
-	{25, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MAINPLL_OFF},
+	{23, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MAINPLL_OFF},
+	{24, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MAINPLL_OFF},
+	{25, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MAINPLL_OFF},
 
 	/* MSYNC 2.0 */
-	{26, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MSYNC2_0},
-	{27, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MSYNC2_0},
-	{28, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MSYNC2_0},
+	{26, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MSYNC2_0},
+	{27, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MSYNC2_0},
+	{28, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MSYNC2_0},
 
 	/* RESERVED */
 	{29, DPC_SP_FRAME_DONE,	3000,	DPC_DISP_VIDLE_RESERVED},
 	{30, DPC_SP_TE,		16000,	DPC_DISP_VIDLE_RESERVED},
-	{31, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_RESERVED},
+	{31, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_RESERVED},
 };
 
 static struct mtk_dpc_dt_usage mt6989_mml_cmd_dt_usage[DPC_MML_DT_CNT] = {
 	/* MML1 */
-	{32, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_MTCMOS},		/* OFF Time 0 */
+	{32, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MTCMOS},		/* OFF Time 0 */
 	{33, DPC_SP_TE,		DT_1,	DPC_MML_VIDLE_MTCMOS},		/* ON Time */
-	{34, DPC_SP_TE,		40329,	DPC_MML_VIDLE_MTCMOS},		/* MML-TE */
+	{34, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MTCMOS},		/* MML-TE */
 	{35, DPC_SP_TE,		DT_3,	DPC_MML_VIDLE_MTCMOS},		/* OFF Time 1 */
 
 	/* VDISP DVFS, follow MML1 by default, or HRT BW */
-	{36, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_VDISP_DVFS},
-	{37, DPC_SP_TE,		40329,	DPC_MML_VIDLE_VDISP_DVFS},
-	{38, DPC_SP_TE,		40329,	DPC_MML_VIDLE_VDISP_DVFS},
+	{36, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_VDISP_DVFS},
+	{37, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_VDISP_DVFS},
+	{38, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_VDISP_DVFS},
 
 	/* HRT BW */
-	{39, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_HRT_BW},		/* OFF Time 0 */
+	{39, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_HRT_BW},		/* OFF Time 0 */
 	{40, DPC_SP_TE,		DT_12,	DPC_MML_VIDLE_HRT_BW},		/* ON Time */
 	{41, DPC_SP_TE,		DT_13,	DPC_MML_VIDLE_HRT_BW},		/* OFF Time 1 */
 
 	/* SRT BW, follow HRT BW by default, or follow MML1 */
-	{42, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_SRT_BW},
-	{43, DPC_SP_TE,		40329,	DPC_MML_VIDLE_SRT_BW},
-	{44, DPC_SP_TE,		40329,	DPC_MML_VIDLE_SRT_BW},
+	{42, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_SRT_BW},
+	{43, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_SRT_BW},
+	{44, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_SRT_BW},
 
 	/* MMINFRA OFF, follow MML1 by default, or HRT BW */
-	{45, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_MMINFRA_OFF},
-	{46, DPC_SP_TE,		40329,	DPC_MML_VIDLE_MMINFRA_OFF},
-	{47, DPC_SP_TE,		40329,	DPC_MML_VIDLE_MMINFRA_OFF},
+	{45, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MMINFRA_OFF},
+	{46, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MMINFRA_OFF},
+	{47, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MMINFRA_OFF},
 
 	/* INFRA OFF, follow MML1 by default, or HRT BW */
-	{48, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_INFRA_OFF},
-	{49, DPC_SP_TE,		40329,	DPC_MML_VIDLE_INFRA_OFF},
-	{50, DPC_SP_TE,		40329,	DPC_MML_VIDLE_INFRA_OFF},
+	{48, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_INFRA_OFF},
+	{49, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_INFRA_OFF},
+	{50, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_INFRA_OFF},
 
 	/* MAINPLL OFF, follow MML1 by default, or HRT BW */
-	{51, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_MAINPLL_OFF},
-	{52, DPC_SP_TE,		40329,	DPC_MML_VIDLE_MAINPLL_OFF},
-	{53, DPC_SP_TE,		40329,	DPC_MML_VIDLE_MAINPLL_OFF},
+	{51, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MAINPLL_OFF},
+	{52, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MAINPLL_OFF},
+	{53, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MAINPLL_OFF},
 
 	/* RESERVED */
 	{54, DPC_SP_RROT_DONE,	3000,	DPC_MML_VIDLE_RESERVED},
 	{55, DPC_SP_TE,		16000,	DPC_MML_VIDLE_RESERVED},
-	{56, DPC_SP_TE,		40329,	DPC_MML_VIDLE_RESERVED},
+	{56, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_RESERVED},
 };
 
 static struct mtk_dpc_dt_usage mt6878_disp_vdo_dt_usage[DPC_DISP_DT_CNT] = {
 	/* OVL0/OVL1/DISP0 */
-	{0, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 0 */
-	{1, DPC_SP_SOF,		40329,	DPC_DISP_VIDLE_MTCMOS},		/* ON Time */
-	{2, DPC_SP_SOF,		40329,	DPC_DISP_VIDLE_MTCMOS},		/* Pre-TE */
-	{3, DPC_SP_SOF,		40329,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 1 */
+	{0, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 0 */
+	{1, DPC_SP_SOF,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS},		/* ON Time */
+	{2, DPC_SP_SOF,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS},		/* Pre-TE */
+	{3, DPC_SP_SOF,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 1 */
 
 	/* DISP1 */
 	{4, DPC_SP_FRAME_DONE,	DT_4,	DPC_DISP_VIDLE_MTCMOS_DISP1},
 	{5, DPC_SP_SOF,		DT_5,	DPC_DISP_VIDLE_MTCMOS_DISP1},
 	{6, DPC_SP_SOF,		DT_6,	DPC_DISP_VIDLE_MTCMOS_DISP1},	/* DISP1-TE */
-	{7, DPC_SP_SOF,		40329,	DPC_DISP_VIDLE_MTCMOS_DISP1},
+	{7, DPC_SP_SOF,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS_DISP1},
 
 	/* VDISP DVFS, follow DISP1 by default, or HRT BW */
-	{8, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_VDISP_DVFS},
-	{9, DPC_SP_SOF,		40329,	DPC_DISP_VIDLE_VDISP_DVFS},
-	{10, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_VDISP_DVFS},
+	{8, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_VDISP_DVFS},
+	{9, DPC_SP_SOF,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_VDISP_DVFS},
+	{10, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_VDISP_DVFS},
 
 	/* HRT BW */
 	{11, DPC_SP_FRAME_DONE,	DT_11,	DPC_DISP_VIDLE_HRT_BW},		/* OFF Time 0 */
 	{12, DPC_SP_SOF,	DT_12,	DPC_DISP_VIDLE_HRT_BW},		/* ON Time */
-	{13, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_HRT_BW},		/* OFF Time 1 */
+	{13, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_HRT_BW},		/* OFF Time 1 */
 
 	/* SRT BW, follow HRT BW by default, or follow DISP1 */
-	{14, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_SRT_BW},
-	{15, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_SRT_BW},
-	{16, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_SRT_BW},
+	{14, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_SRT_BW},
+	{15, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_SRT_BW},
+	{16, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_SRT_BW},
 
 	/* MMINFRA OFF, follow DISP1 by default, or HRT BW */
-	{17, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MMINFRA_OFF},
-	{18, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_MMINFRA_OFF},
-	{19, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_MMINFRA_OFF},
+	{17, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MMINFRA_OFF},
+	{18, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MMINFRA_OFF},
+	{19, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MMINFRA_OFF},
 
 	/* INFRA OFF, follow DISP1 by default, or HRT BW */
-	{20, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_INFRA_OFF},
-	{21, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_INFRA_OFF},
-	{22, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_INFRA_OFF},
+	{20, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_INFRA_OFF},
+	{21, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_INFRA_OFF},
+	{22, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_INFRA_OFF},
 
 	/* MAINPLL OFF, follow DISP1 by default, or HRT BW */
-	{23, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MAINPLL_OFF},
-	{24, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_MAINPLL_OFF},
-	{25, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_MAINPLL_OFF},
+	{23, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MAINPLL_OFF},
+	{24, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MAINPLL_OFF},
+	{25, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MAINPLL_OFF},
 
 	/* MSYNC 2.0 */
-	{26, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_MSYNC2_0},
-	{27, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_MSYNC2_0},
-	{28, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_MSYNC2_0},
+	{26, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MSYNC2_0},
+	{27, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MSYNC2_0},
+	{28, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MSYNC2_0},
 
 	/* RESERVED */
 	{29, DPC_SP_FRAME_DONE,	3000,	DPC_DISP_VIDLE_RESERVED},
 	{30, DPC_SP_SOF,	16000,	DPC_DISP_VIDLE_RESERVED},
-	{31, DPC_SP_SOF,	40329,	DPC_DISP_VIDLE_RESERVED},
+	{31, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_RESERVED},
 };
 
 static struct mtk_dpc_dt_usage mt6878_mml_vdo_dt_usage[DPC_MML_DT_CNT] = {
 	/* MML1 */
 	{32, DPC_SP_RROT_DONE,	DT_4,	DPC_MML_VIDLE_MTCMOS},		/* OFF Time 0 */
 	{33, DPC_SP_SOF,	DT_1,	DPC_MML_VIDLE_MTCMOS},		/* ON Time */
-	{34, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_MTCMOS},		/* MML-TE */
-	{35, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_MTCMOS},		/* OFF Time 1 */
+	{34, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MTCMOS},		/* MML-TE */
+	{35, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MTCMOS},		/* OFF Time 1 */
 
 	/* VDISP DVFS, follow MML1 by default, or HRT BW */
-	{36, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_VDISP_DVFS},
-	{37, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_VDISP_DVFS},
-	{38, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_VDISP_DVFS},
+	{36, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_VDISP_DVFS},
+	{37, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_VDISP_DVFS},
+	{38, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_VDISP_DVFS},
 
 	/* HRT BW */
 	{39, DPC_SP_RROT_DONE,	DT_11,	DPC_MML_VIDLE_HRT_BW},		/* OFF Time 0 */
 	{40, DPC_SP_SOF,	DT_12,	DPC_MML_VIDLE_HRT_BW},		/* ON Time */
-	{41, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_HRT_BW},		/* OFF Time 1 */
+	{41, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_HRT_BW},		/* OFF Time 1 */
 
 	/* SRT BW, follow HRT BW by default, or follow MML1 */
-	{42, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_SRT_BW},
-	{43, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_SRT_BW},
-	{44, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_SRT_BW},
+	{42, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_SRT_BW},
+	{43, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_SRT_BW},
+	{44, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_SRT_BW},
 
 	/* MMINFRA OFF, follow MML1 by default, or HRT BW */
-	{45, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_MMINFRA_OFF},
-	{46, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_MMINFRA_OFF},
-	{47, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_MMINFRA_OFF},
+	{45, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MMINFRA_OFF},
+	{46, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MMINFRA_OFF},
+	{47, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MMINFRA_OFF},
 
 	/* INFRA OFF, follow MML1 by default, or HRT BW */
-	{48, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_INFRA_OFF},
-	{49, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_INFRA_OFF},
-	{50, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_INFRA_OFF},
+	{48, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_INFRA_OFF},
+	{49, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_INFRA_OFF},
+	{50, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_INFRA_OFF},
 
 	/* MAINPLL OFF, follow MML1 by default, or HRT BW */
-	{51, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_MAINPLL_OFF},
-	{52, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_MAINPLL_OFF},
-	{53, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_MAINPLL_OFF},
+	{51, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MAINPLL_OFF},
+	{52, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MAINPLL_OFF},
+	{53, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MAINPLL_OFF},
 
 	/* RESERVED */
 	{54, DPC_SP_RROT_DONE,	3000,	DPC_MML_VIDLE_RESERVED},
 	{55, DPC_SP_SOF,	16000,	DPC_MML_VIDLE_RESERVED},
-	{56, DPC_SP_SOF,	40329,	DPC_MML_VIDLE_RESERVED},
+	{56, DPC_SP_SOF,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_RESERVED},
 };
 
 static struct mtk_dpc_dt_usage mt6878_disp_cmd_dt_usage[DPC_DISP_DT_CNT] = {
 	/* OVL0/OVL1/DISP0 */
-	{0, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 0 */
+	{0, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 0 */
 	{1, DPC_SP_TE,		DT_1,	DPC_DISP_VIDLE_MTCMOS},		/* ON Time */
-	{2, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MTCMOS},		/* Pre-TE */
+	{2, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS},		/* Pre-TE */
 	{3, DPC_SP_TE,		DT_3,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 1 */
 
 	/* DISP1 */
-	{4, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MTCMOS_DISP1},
+	{4, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MTCMOS_DISP1},
 	{5, DPC_SP_TE,		DT_5,	DPC_DISP_VIDLE_MTCMOS_DISP1},
 	{6, DPC_SP_TE,		DT_6,	DPC_DISP_VIDLE_MTCMOS_DISP1},	/* DISP1-TE */
 	{7, DPC_SP_TE,		DT_7,	DPC_DISP_VIDLE_MTCMOS_DISP1},
 
 	/* VDISP DVFS, follow DISP1 by default, or HRT BW */
-	{8, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_VDISP_DVFS},
-	{9, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_VDISP_DVFS},
-	{10, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_VDISP_DVFS},
+	{8, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_VDISP_DVFS},
+	{9, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_VDISP_DVFS},
+	{10, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_VDISP_DVFS},
 
 	/* HRT BW */
-	{11, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_HRT_BW},		/* OFF Time 0 */
+	{11, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_HRT_BW},		/* OFF Time 0 */
 	{12, DPC_SP_TE,		DT_12,	DPC_DISP_VIDLE_HRT_BW},		/* ON Time */
 	{13, DPC_SP_TE,		DT_13,	DPC_DISP_VIDLE_HRT_BW},		/* OFF Time 1 */
 
 	/* SRT BW, follow HRT BW by default, or follow DISP1 */
-	{14, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_SRT_BW},
-	{15, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_SRT_BW},
-	{16, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_SRT_BW},
+	{14, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_SRT_BW},
+	{15, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_SRT_BW},
+	{16, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_SRT_BW},
 
 	/* MMINFRA OFF, follow DISP1 by default, or HRT BW */
-	{17, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MMINFRA_OFF},
-	{18, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MMINFRA_OFF},
-	{19, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MMINFRA_OFF},
+	{17, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MMINFRA_OFF},
+	{18, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MMINFRA_OFF},
+	{19, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MMINFRA_OFF},
 
 	/* INFRA OFF, follow DISP1 by default, or HRT BW */
-	{20, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_INFRA_OFF},
-	{21, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_INFRA_OFF},
-	{22, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_INFRA_OFF},
+	{20, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_INFRA_OFF},
+	{21, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_INFRA_OFF},
+	{22, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_INFRA_OFF},
 
 	/* MAINPLL OFF, follow DISP1 by default, or HRT BW */
-	{23, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MAINPLL_OFF},
-	{24, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MAINPLL_OFF},
-	{25, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MAINPLL_OFF},
+	{23, DPC_SP_FRAME_DONE,	DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MAINPLL_OFF},
+	{24, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MAINPLL_OFF},
+	{25, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MAINPLL_OFF},
 
 	/* MSYNC 2.0 */
-	{26, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MSYNC2_0},
-	{27, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MSYNC2_0},
-	{28, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_MSYNC2_0},
+	{26, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MSYNC2_0},
+	{27, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MSYNC2_0},
+	{28, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_MSYNC2_0},
 
 	/* RESERVED */
 	{29, DPC_SP_FRAME_DONE,	3000,	DPC_DISP_VIDLE_RESERVED},
 	{30, DPC_SP_TE,		16000,	DPC_DISP_VIDLE_RESERVED},
-	{31, DPC_SP_TE,		40329,	DPC_DISP_VIDLE_RESERVED},
+	{31, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_DISP_VIDLE_RESERVED},
 };
 
 static struct mtk_dpc_dt_usage mt6878_mml_cmd_dt_usage[DPC_MML_DT_CNT] = {
 	/* MML1 */
-	{32, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_MTCMOS},		/* OFF Time 0 */
+	{32, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MTCMOS},		/* OFF Time 0 */
 	{33, DPC_SP_TE,		DT_1,	DPC_MML_VIDLE_MTCMOS},		/* ON Time */
-	{34, DPC_SP_TE,		40329,	DPC_MML_VIDLE_MTCMOS},		/* MML-TE */
+	{34, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MTCMOS},		/* MML-TE */
 	{35, DPC_SP_TE,		DT_3,	DPC_MML_VIDLE_MTCMOS},		/* OFF Time 1 */
 
 	/* VDISP DVFS, follow MML1 by default, or HRT BW */
-	{36, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_VDISP_DVFS},
-	{37, DPC_SP_TE,		40329,	DPC_MML_VIDLE_VDISP_DVFS},
-	{38, DPC_SP_TE,		40329,	DPC_MML_VIDLE_VDISP_DVFS},
+	{36, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_VDISP_DVFS},
+	{37, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_VDISP_DVFS},
+	{38, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_VDISP_DVFS},
 
 	/* HRT BW */
-	{39, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_HRT_BW},		/* OFF Time 0 */
+	{39, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_HRT_BW},		/* OFF Time 0 */
 	{40, DPC_SP_TE,		DT_12,	DPC_MML_VIDLE_HRT_BW},		/* ON Time */
 	{41, DPC_SP_TE,		DT_13,	DPC_MML_VIDLE_HRT_BW},		/* OFF Time 1 */
 
 	/* SRT BW, follow HRT BW by default, or follow MML1 */
-	{42, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_SRT_BW},
-	{43, DPC_SP_TE,		40329,	DPC_MML_VIDLE_SRT_BW},
-	{44, DPC_SP_TE,		40329,	DPC_MML_VIDLE_SRT_BW},
+	{42, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_SRT_BW},
+	{43, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_SRT_BW},
+	{44, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_SRT_BW},
 
 	/* MMINFRA OFF, follow MML1 by default, or HRT BW */
-	{45, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_MMINFRA_OFF},
-	{46, DPC_SP_TE,		40329,	DPC_MML_VIDLE_MMINFRA_OFF},
-	{47, DPC_SP_TE,		40329,	DPC_MML_VIDLE_MMINFRA_OFF},
+	{45, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MMINFRA_OFF},
+	{46, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MMINFRA_OFF},
+	{47, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MMINFRA_OFF},
 
 	/* INFRA OFF, follow MML1 by default, or HRT BW */
-	{48, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_INFRA_OFF},
-	{49, DPC_SP_TE,		40329,	DPC_MML_VIDLE_INFRA_OFF},
-	{50, DPC_SP_TE,		40329,	DPC_MML_VIDLE_INFRA_OFF},
+	{48, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_INFRA_OFF},
+	{49, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_INFRA_OFF},
+	{50, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_INFRA_OFF},
 
 	/* MAINPLL OFF, follow MML1 by default, or HRT BW */
-	{51, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_MAINPLL_OFF},
-	{52, DPC_SP_TE,		40329,	DPC_MML_VIDLE_MAINPLL_OFF},
-	{53, DPC_SP_TE,		40329,	DPC_MML_VIDLE_MAINPLL_OFF},
+	{51, DPC_SP_RROT_DONE,	DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MAINPLL_OFF},
+	{52, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MAINPLL_OFF},
+	{53, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_MAINPLL_OFF},
 
 	/* RESERVED */
 	{54, DPC_SP_RROT_DONE,	3000,	DPC_MML_VIDLE_RESERVED},
 	{55, DPC_SP_TE,		16000,	DPC_MML_VIDLE_RESERVED},
-	{56, DPC_SP_TE,		40329,	DPC_MML_VIDLE_RESERVED},
+	{56, DPC_SP_TE,		DT_MAX_TIMEOUT,	DPC_MML_VIDLE_RESERVED},
 };
 
 static unsigned int mt6989_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
@@ -719,19 +712,19 @@ static unsigned int mt6989_get_sys_status(enum dpc_sys_status_id id, unsigned in
 			addr = g_priv->sys_va[SPM_BASE] + SPM_PWR_STATUS_MT6989;
 		break;
 	case SYS_STATE_MMINFRA:
-		mask = SPM_REQ_MMINFRA_STATE;
+		mask = SPM_REQ_MMINFRA_STATE_MT6989;
 		if (g_priv->sys_va[SPM_BASE])
-			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_5;
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_5_MT6989;
 		break;
 	case SYS_STATE_APSRC:
-		mask = SPM_REQ_APSRC_STATE;
+		mask = SPM_REQ_APSRC_STATE_MT6989;
 		if (g_priv->sys_va[SPM_BASE])
-			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4;
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6989;
 		break;
 	case SYS_STATE_EMI:
-		mask = SPM_REQ_EMI_STATE;
+		mask = SPM_REQ_EMI_STATE_MT6989;
 		if (g_priv->sys_va[SPM_BASE])
-			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_5;
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_5_MT6989;
 		break;
 	case SYS_STATE_HRT_BW:
 		mask = VCORE_DVFSRC_HRT_BW_MASK;
@@ -791,19 +784,19 @@ static unsigned int mt6878_get_sys_status(enum dpc_sys_status_id id, unsigned in
 			addr = g_priv->sys_va[SPM_BASE] + SPM_PWR_STATUS_MT6878;
 		break;
 	case SYS_STATE_MMINFRA:
-		mask = SPM_REQ_MMINFRA_STATE;
+		mask = SPM_REQ_INFRA_STATE_MT6878;
 		if (g_priv->sys_va[SPM_BASE])
-			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_5;
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6878;
 		break;
 	case SYS_STATE_APSRC:
-		mask = SPM_REQ_APSRC_STATE;
+		mask = SPM_REQ_APSRC_STATE_MT6878;
 		if (g_priv->sys_va[SPM_BASE])
-			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4;
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6878;
 		break;
 	case SYS_STATE_EMI:
-		mask = SPM_REQ_EMI_STATE;
+		mask = SPM_REQ_EMI_STATE_MT6878;
 		if (g_priv->sys_va[SPM_BASE])
-			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_5;
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6878;
 		break;
 	case SYS_STATE_HRT_BW:
 		mask = VCORE_DVFSRC_HRT_BW_MASK;
@@ -816,9 +809,6 @@ static unsigned int mt6878_get_sys_status(enum dpc_sys_status_id id, unsigned in
 			addr = g_priv->sys_va[VCORE_DVFSRC_DEBUG];
 		break;
 	case SYS_STATE_VLP_VOTE:
-		mask = U32_MAX;
-		if (g_priv->sys_va[VLP_BASE])
-			addr = g_priv->sys_va[VLP_BASE] + VLP_DISP_SW_VOTE_CON;
 		break;
 #ifdef ENABLE_DEVAPC_PERMISSION_OF_HFRP
 	case SYS_STATE_VDISP_DVFS:
@@ -893,7 +883,7 @@ static void mtk_dpc_update_vlp_state(unsigned int user,
 		unsigned int val, bool reset)
 {
 	static u32 vlp_state;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	//ignore vlp vote if mminfra always on
 	if (mtk_dpc_support_cap(DPC_VIDLE_MMINFRA_PLL_OFF) == 0)
@@ -946,22 +936,19 @@ static void mtk_dpc_idle_ratio_debug(enum dpc_idle_cmd cmd)
 		start = sched_clock();
 		end = start;
 		g_idle_ratio_debug = 1;
-		DPCDUMP("dpc vidle ratio check start:%llums", start / 1000000);
 		break;
 	case DPC_VIDLE_RATIO_STOP:
 		end = sched_clock();
 		g_idle_ratio_debug = 0;
-		DPCDUMP("dpc vidle ratio check end:%llums", end/ 1000000);
 		break;
 	case DPC_VIDLE_RATIO_DUMP:
 		if (start && end <= start)
 			period = sched_clock() - start;
 		else if (start)
 			period = end - start;
-		else {
-			DPCDUMP("invalid start:%llu, end:%llu", start, end);
+
+		if (period < 1000000000)
 			break;
-		}
 
 		for (id = 0; id < DPC_IDLE_ID_MAX; id++) {
 			char tmp[64] = {'\0'};
@@ -972,8 +959,10 @@ static void mtk_dpc_idle_ratio_debug(enum dpc_idle_cmd cmd)
 			if (len >= 0 && len < 64)
 				strncat(buf, tmp, (buf_len - strlen(buf) - 1));
 		}
-		DPCDUMP("dpc vidle from:%llums~%llums, period:%llums, ratio:%s",
-			start, end, period / 1000000, buf);
+		DPCDUMP("period:%llums(%llu~%llu),panel:%d,dur:%u,mode(%d,%d),ratio:%s",
+			period / 1000000, start / 1000000, end / 1000000,
+			g_panel_type, g_te_duration, atomic_read(&g_disp_mode),
+			atomic_read(&g_mml_mode), buf);
 		break;
 	default:
 		break;
@@ -1038,6 +1027,7 @@ static void mtk_update_dpc_state(unsigned int mask, bool off)
 				g_idle_start[DPC_IDLE_ID_WINDOW_DISP] = sched_clock();
 			if ((g_vidle_events & atomic_read(&g_vidle_window)) ==
 				atomic_read(&g_vidle_window) &&
+				(atomic_read(&g_vidle_window) & DPC_VIDLE_DISP_WINDOW) &&
 				!(g_vidle_events & DPC_VIDLE_WINDOW_MASK)) {
 				dpc_mmp(window, MMPROFILE_FLAG_START, mask, off);
 				g_vidle_events |= DPC_VIDLE_WINDOW_MASK;
@@ -1243,6 +1233,7 @@ static void mtk_update_dpc_state(unsigned int mask, bool off)
 				g_idle_start[DPC_IDLE_ID_WINDOW_MML] = sched_clock();
 			if ((g_vidle_events & atomic_read(&g_vidle_window)) ==
 				atomic_read(&g_vidle_window) &&
+				(atomic_read(&g_vidle_window) & DPC_VIDLE_DISP_WINDOW) &&
 				!(g_vidle_events & DPC_VIDLE_WINDOW_MASK)) {
 				dpc_mmp(window, MMPROFILE_FLAG_START, mask, off);
 				g_vidle_events |= DPC_VIDLE_WINDOW_MASK;
@@ -1348,16 +1339,30 @@ static unsigned int dpc_align_fps_duration(unsigned int duration)
 	return duration;
 }
 
+static int dpc_vidle_is_available(void)
+{
+	/*disable vidle function when VDO panel >=120hz*/
+	if (g_te_duration <= DT_TE_120 && g_panel_type == PANEL_TYPE_VDO)
+		return 0;
+
+	return 1;
+}
+
 static int dpc_dt_set_dur(u32 us)
 {
 	unsigned int duration = 0;
+	unsigned long flags = 0;
 
 	if (us == 0)
 		return -1;
 
+	if (dpc_pm_ctrl(true))
+		return -1;
+
+	spin_lock_irqsave(&dpc_lock, flags);
 	duration = dpc_align_fps_duration(us);
 	if (g_te_duration == duration)
-		return duration;
+		goto out;
 
 	dpc_mmp(dt, MMPROFILE_FLAG_START, g_te_duration, us);
 	/* update DT table affected by TE duration */
@@ -1379,9 +1384,35 @@ static int dpc_dt_set_dur(u32 us)
 	g_te_duration = duration;
 	dpc_mmp(dt, MMPROFILE_FLAG_END, duration, 0);
 
-	/*disable vidle function when VDO panel >=120hz*/
-	if (duration <= DT_TE_120 && g_panel_type == PANEL_TYPE_VDO)
-		return -1;
+	if (dpc_vidle_is_available() == 0) {
+		if (g_panel_type == PANEL_TYPE_VDO) {
+			dpc_dt_update_table(4, DT_MAX_TIMEOUT);
+			dpc_dt_update_table(11, DT_MAX_TIMEOUT);
+			dpc_dt_update_table(32, DT_MAX_TIMEOUT);
+			dpc_dt_update_table(39, DT_MAX_TIMEOUT);
+			dpc_dt_set(4, DT_MAX_TIMEOUT);
+			dpc_dt_set(11, DT_MAX_TIMEOUT);
+			dpc_dt_set(32, DT_MAX_TIMEOUT);
+			dpc_dt_set(39, DT_MAX_TIMEOUT);
+		}
+		duration = -1;
+		goto out;
+	} else if (g_panel_type == PANEL_TYPE_VDO) {
+		if (g_disp_dt_usage[4].ep == DT_MAX_TIMEOUT) {
+			dpc_dt_update_table(4, DT_4);
+			dpc_dt_update_table(11, DT_11);
+			dpc_dt_update_table(32, DT_4);
+			dpc_dt_update_table(39, DT_11);
+			dpc_dt_set(4, DT_4);
+			dpc_dt_set(11, DT_11);
+			dpc_dt_set(32, DT_4);
+			dpc_dt_set(39, DT_11);
+		}
+	}
+
+out:
+	spin_unlock_irqrestore(&dpc_lock, flags);
+	dpc_pm_ctrl(false);
 
 	return duration;
 }
@@ -1433,7 +1464,7 @@ static void dpc_irq_enable(const enum mtk_dpc_subsys subsys, bool en, bool manua
 	}
 }
 
-static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
+static void dpc_disp_group_enable_func(const enum mtk_dpc_disp_vidle group, bool en, bool dt_ctrl)
 {
 	int i, avail = 0;
 	u32 value = 0, value1 = 0;
@@ -1478,7 +1509,7 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 	}
 	dpc_mmp(disp_group, MMPROFILE_FLAG_PULSE, group, value);
 
-	if (g_disp_dt_usage == NULL)
+	if (g_disp_dt_usage == NULL || !dt_ctrl)
 		return;
 
 	if (!en) {
@@ -1496,7 +1527,7 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 	}
 }
 
-static void dpc_mml_group_enable(const enum mtk_dpc_mml_vidle group, bool en)
+static void dpc_mml_group_enable_func(const enum mtk_dpc_mml_vidle group, bool en, bool dt_ctrl)
 {
 	int i, avail = 0;
 	u32 value = 0, value1 = 0;
@@ -1534,7 +1565,7 @@ static void dpc_mml_group_enable(const enum mtk_dpc_mml_vidle group, bool en)
 	}
 	dpc_mmp(mml_group, MMPROFILE_FLAG_PULSE, group, value);
 
-	if (g_mml_dt_usage == NULL)
+	if (g_mml_dt_usage == NULL || !dt_ctrl)
 		return;
 
 	if (!en) {
@@ -1550,6 +1581,30 @@ static void dpc_mml_group_enable(const enum mtk_dpc_mml_vidle group, bool en)
 			// dpc_dt_enable(g_mml_dt_usage[i].index, true);
 		}
 	}
+}
+
+static void dpc_disp_group_pause(bool en)
+{
+	bool enable = !en;
+
+	if (enable && !dpc_vidle_is_available())
+		return;
+
+	dpc_disp_group_enable_func(DPC_DISP_VIDLE_MTCMOS, enable, false);
+	dpc_disp_group_enable_func(DPC_DISP_VIDLE_MTCMOS_DISP1, enable, false);
+	dpc_disp_group_enable_func(DPC_DISP_VIDLE_VDISP_DVFS, enable, false);
+	dpc_disp_group_enable_func(DPC_DISP_VIDLE_HRT_BW, enable, false);
+	dpc_disp_group_enable_func(DPC_DISP_VIDLE_MMINFRA_OFF, enable, false);
+}
+
+static void dpc_mml_group_pause(bool en)
+{
+	bool enable = !en;
+
+	dpc_mml_group_enable_func(DPC_MML_VIDLE_MTCMOS, enable, false);
+	dpc_mml_group_enable_func(DPC_MML_VIDLE_VDISP_DVFS, enable, false);
+	dpc_mml_group_enable_func(DPC_MML_VIDLE_HRT_BW, enable, false);
+	dpc_mml_group_enable_func(DPC_MML_VIDLE_MMINFRA_OFF, enable, false);
 }
 
 void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en)
@@ -1595,31 +1650,34 @@ void dpc_infra_force_enable(const enum mtk_dpc_subsys subsys, const bool en)
 EXPORT_SYMBOL(dpc_infra_force_enable);
 
 #define FIX_WORKAROUND_FOR_DC  (0)
-void dpc_dc_force_enable(const bool en)
+void dpc_dc_force_enable_func(const bool en, bool lock)
 {
 	static bool mml_vidle;
 	unsigned int val, mask;
+	unsigned long flags = 0;
 
 	if (g_panel_type >= PANEL_TYPE_COUNT)
 		return;
 
+	if (dpc_pm_ctrl(true))
+		return;
+
+	if (lock)
+		spin_lock_irqsave(&dpc_lock, flags);
 	//ignore mml vidle ops, since disp always on
 	if (!(atomic_read(&g_vidle_window) & DPC_VIDLE_DISP_WINDOW))
-		return;
+		goto out;
 
 	if (atomic_read(&g_mml_mode) == DPC_VIDLE_HW_AUTO_MODE) {
 		DPCDUMP("ignore mml config, mml_mode:%d", atomic_read(&g_mml_mode));
 		dpc_mmp(mml_group, MMPROFILE_FLAG_PULSE, atomic_read(&g_mml_mode), 0x5a5a0000);
-		return;
+		goto out;
 	}
 
-	if (dpc_pm_ctrl(true))
-		return;
-
-	dpc_mmp(mml_group, MMPROFILE_FLAG_START, en, atomic_read(&g_mml_mode));
 	if (en) {
 		if (atomic_read(&g_mml_mode) == DPC_VIDLE_INACTIVE_MODE) {
 			//set SW manual mode
+			dpc_mmp(mml_group, MMPROFILE_FLAG_START, en, atomic_read(&g_mml_mode));
 			atomic_set(&g_mml_mode, DPC_VIDLE_SW_MANUAL_MODE);
 
 			if (debug_runtime_ctrl) {
@@ -1665,7 +1723,8 @@ void dpc_dc_force_enable(const bool en)
 			dpc_mmp(mml_dt, MMPROFILE_FLAG_PULSE, val, 0xD733);
 
 			//enable irq
-			dpc_irq_enable(DPC_SUBSYS_MML, true, true);
+			if (debug_irq)
+				dpc_irq_enable(DPC_SUBSYS_MML, true, true);
 
 			//trigger DT33:MML1 MTCMOS on
 			writel(0x183, dpc_base + DISP_REG_DPC_MML_DT_SW_TRIG_EN);
@@ -1673,13 +1732,17 @@ void dpc_dc_force_enable(const bool en)
 			writel(0x1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(40));
 
 			//clear interrupt
-			val = readl(dpc_base + DISP_REG_DPC_DISP_INTSTA);
+			val = readl(dpc_base + DISP_REG_DPC_MML_INTSTA);
 			if (val)
-				writel(~val, dpc_base + DISP_REG_DPC_DISP_INTSTA);
+				writel(~val, dpc_base + DISP_REG_DPC_MML_INTSTA);
 
 			//enable MML1 MTCMOS auto_on_off
 			if (FIX_WORKAROUND_FOR_DC && mtk_dpc_support_group(DPC_MML_VIDLE_MTCMOS))
 				writel(BIT(0) | BIT(4), dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG);
+			dpc_mmp(mml_group, MMPROFILE_FLAG_END, en, atomic_read(&g_mml_mode));
+			/*DPCFUNC("panel:%d en:%d, window:0x%x, mml_vidle:%d",
+			 *	g_panel_type, en, atomic_read(&g_vidle_window), mml_vidle);
+			 */
 		} else if (mml_vidle) {
 			//trigger DT33:MML1 MTCMOS on
 			writel(0x183, dpc_base + DISP_REG_DPC_MML_DT_SW_TRIG_EN);
@@ -1698,12 +1761,17 @@ void dpc_dc_force_enable(const bool en)
 		mml_vidle = true;
 	}
 
-	/* DPCDUMP("panel:%d en:%d, window:0x%x, mml_vidle:%d",
-	 *	g_panel_type, en, atomic_read(&g_vidle_window), mml_vidle);
-	 */
-	dpc_mmp(mml_group, MMPROFILE_FLAG_END, en, atomic_read(&g_mml_mode));
+out:
+	if (lock)
+		spin_unlock_irqrestore(&dpc_lock, flags);
 	dpc_pm_ctrl(false);
 }
+
+void dpc_dc_force_enable(const bool en)
+{
+	dpc_dc_force_enable_func(en, true);
+}
+
 EXPORT_SYMBOL(dpc_dc_force_enable);
 
 void dpc_init_panel_type(enum mtk_panel_type type)
@@ -1747,8 +1815,8 @@ void dpc_init_panel_type(enum mtk_panel_type type)
 
 		/* VDO panel not support mtcmos/mminfra/infra */
 		g_priv->vidle_mask &= ~mask;
-		mtk_dpc_dump_caps();
 	}
+	mtk_dpc_dump_caps();
 	g_panel_type = type;
 	DPCDUMP("type:%d", g_panel_type);
 }
@@ -1757,6 +1825,7 @@ EXPORT_SYMBOL(dpc_init_panel_type);
 void dpc_enable(bool en)
 {
 	unsigned int dt_mask = 0;
+	unsigned long flags = 0;
 
 	if (g_panel_type >= PANEL_TYPE_COUNT) {
 		DPCERR("invalid panel type:%d", g_panel_type);
@@ -1771,6 +1840,7 @@ void dpc_enable(bool en)
 	if (dpc_pm_ctrl(true))
 		return;
 
+	spin_lock_irqsave(&dpc_lock, flags);
 	if (en) {
 		if (debug_runtime_ctrl) {
 			debug_mmp = 1;
@@ -1823,7 +1893,7 @@ void dpc_enable(bool en)
 			dpc_mmp(group, MMPROFILE_FLAG_PULSE, BIT(DPC_SUBSYS_MML), en);
 
 			//leave mml vidle mode
-			dpc_dc_force_enable(true);
+			dpc_dc_force_enable_func(true, false);
 			writel(0x0, dpc_base + DISP_REG_DPC_MML_DT_EN);
 			writel(0x0, dpc_base + DISP_REG_DPC_MML_DT_SW_TRIG_EN);
 
@@ -1874,9 +1944,7 @@ void dpc_enable(bool en)
 		dpc_mmp(dpc, MMPROFILE_FLAG_END, en, g_panel_type);
 	atomic_set(&g_priv->dpc_en_cnt, en ? 1 : 0);
 
-	DPCFUNC("panel:%d en(%u), dpc:%d", g_panel_type,
-		en, atomic_read(&g_priv->dpc_en_cnt));
-
+	spin_unlock_irqrestore(&dpc_lock, flags);
 	dpc_pm_ctrl(false);
 }
 EXPORT_SYMBOL(dpc_enable);
@@ -2050,11 +2118,10 @@ void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 	if (MEM_BASE)
 		writel(4 - max_level, MEM_USR_OPP(mmdvfs_user));
 
-	if (debug_mmp)
-		dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
-			(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
-			(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
-			(BIT(subsys) << 16) | max_level);
+	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
+		(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
+		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
+		(BIT(subsys) << 16) | max_level);
 
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) level(%u,%u,%u) force(%u)", subsys,
@@ -2106,11 +2173,10 @@ void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
 		DPCFUNC("subsys(%u) disp_bw(%u) mml_bw(%u) vdisp level(%u)",
 			subsys, g_priv->dvfs_bw.disp_bw, g_priv->dvfs_bw.mml_bw, max_level);
 
-	if (debug_mmp)
-		dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
-			(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
-			(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
-			(BIT(subsys) << 16) | max_level);
+	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
+		(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
+		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
+		(BIT(subsys) << 16) | max_level);
 
 	mutex_unlock(&g_priv->dvfs_bw.lock);
 
@@ -2196,28 +2262,66 @@ void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, bool fo
 }
 EXPORT_SYMBOL(dpc_dvfs_both_set);
 
-void dpc_group_enable(const u16 group, bool en)
+void dpc_group_enable_func(const u16 group, bool en, bool lock)
 {
+	unsigned long flags = 0;
+
 	if (g_panel_type >= PANEL_TYPE_COUNT && en)
 		return;
 
 	if (dpc_pm_ctrl(true))
 		return;
 
+	if (lock)
+		spin_lock_irqsave(&dpc_lock, flags);
+
 	if (group <= DPC_DISP_VIDLE_RESERVED)
-		dpc_disp_group_enable((enum mtk_dpc_disp_vidle)group, en);
+		dpc_disp_group_enable_func((enum mtk_dpc_disp_vidle)group, en, true);
 	else if (group <= DPC_MML_VIDLE_RESERVED)
-		dpc_mml_group_enable((enum mtk_dpc_mml_vidle)group, en);
+		dpc_mml_group_enable_func((enum mtk_dpc_mml_vidle)group, en, true);
 	else
 		DPCERR("group(%u) is not defined", group);
 
+	if (lock)
+		spin_unlock_irqrestore(&dpc_lock, flags);
 	dpc_pm_ctrl(false);
+}
+
+void dpc_pause(const enum mtk_dpc_subsys subsys, bool en)
+{
+	unsigned long flags = 0;
+
+	if (g_panel_type >= PANEL_TYPE_COUNT && en)
+		return;
+
+	if (dpc_pm_ctrl(true))
+		return;
+
+	spin_lock_irqsave(&dpc_lock, flags);
+
+	dpc_mmp(dpc, MMPROFILE_FLAG_PULSE, BIT(subsys), en);
+	if (subsys == DPC_SUBSYS_DISP)
+		dpc_disp_group_pause(en);
+	else if (subsys == DPC_SUBSYS_MML)
+		dpc_mml_group_pause(en);
+	else
+		DPCERR("subsys(%d) is not defined, en:%d", subsys, en);
+
+	spin_unlock_irqrestore(&dpc_lock, flags);
+	dpc_pm_ctrl(false);
+}
+EXPORT_SYMBOL(dpc_pause);
+
+void dpc_group_enable(const u16 group, bool en)
+{
+	dpc_group_enable_func(group, en, true);
 }
 EXPORT_SYMBOL(dpc_group_enable);
 
 void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 {
 	unsigned int mask = 0x0;
+	unsigned long flags = 0;
 
 	if (g_panel_type >= PANEL_TYPE_COUNT && en) {
 		DPCERR("skip en:%d invalid panel type:%d", en, g_panel_type);
@@ -2229,20 +2333,21 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 		return;
 	}
 
+	if (dpc_pm_ctrl(true))
+		return;
+
+	spin_lock_irqsave(&dpc_lock, flags);
 	if (subsys == DPC_SUBSYS_DISP && en &&
 		atomic_read(&g_disp_mode) == DPC_VIDLE_SW_MANUAL_MODE) {
 		DPCDUMP("ignore disp config, disp_mode:%d, en:%d", atomic_read(&g_disp_mode), en);
 		dpc_mmp(disp_group, MMPROFILE_FLAG_PULSE, atomic_read(&g_disp_mode), 0x5a5a);
-		return;
+		goto out;
 	} else if (subsys == DPC_SUBSYS_MML && en &&
 		atomic_read(&g_mml_mode) == DPC_VIDLE_SW_MANUAL_MODE) {
 		DPCDUMP("ignore mml config, mml_mode:%d, en:%d", atomic_read(&g_mml_mode), en);
 		dpc_mmp(mml_group, MMPROFILE_FLAG_PULSE, atomic_read(&g_mml_mode), 0x5a5a);
-		return;
+		goto out;
 	}
-
-	if (dpc_pm_ctrl(true))
-		return;
 
 	if (subsys == DPC_SUBSYS_DISP) {
 		dpc_mmp(group, MMPROFILE_FLAG_PULSE, BIT(DPC_SUBSYS_DISP), en);
@@ -2283,20 +2388,20 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 		writel(0x1f, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
 		writel(0x3ff, dpc_base + DISP_REG_DPC_DISP_DT_FOLLOW_CFG); /* all follow 11~13 */
 
-		dpc_group_enable(DPC_DISP_VIDLE_MTCMOS, en);
-		dpc_group_enable(DPC_DISP_VIDLE_MTCMOS_DISP1, en);
-		dpc_group_enable(DPC_DISP_VIDLE_VDISP_DVFS, en);
-		dpc_group_enable(DPC_DISP_VIDLE_HRT_BW, en);
-		dpc_group_enable(DPC_DISP_VIDLE_MMINFRA_OFF, en);
+		dpc_group_enable_func(DPC_DISP_VIDLE_MTCMOS, en, false);
+		dpc_group_enable_func(DPC_DISP_VIDLE_MTCMOS_DISP1, en, false);
+		dpc_group_enable_func(DPC_DISP_VIDLE_VDISP_DVFS, en, false);
+		dpc_group_enable_func(DPC_DISP_VIDLE_HRT_BW, en, false);
+		dpc_group_enable_func(DPC_DISP_VIDLE_MMINFRA_OFF, en, false);
 	} else if (subsys == DPC_SUBSYS_MML) {
 		writel(mask, dpc_base + DISP_REG_DPC_MML_MASK_CFG);
 		writel(0x3, dpc_base + DISP_REG_DPC_MML_EXT_INPUT_EN);
 		writel(0x3ff, dpc_base + DISP_REG_DPC_MML_DT_FOLLOW_CFG); /* all follow 39~41 */
 
-		dpc_group_enable(DPC_MML_VIDLE_MTCMOS, en);
-		dpc_group_enable(DPC_MML_VIDLE_VDISP_DVFS, en);
-		dpc_group_enable(DPC_MML_VIDLE_HRT_BW, en);
-		dpc_group_enable(DPC_MML_VIDLE_MMINFRA_OFF, en);
+		dpc_group_enable_func(DPC_MML_VIDLE_MTCMOS, en, false);
+		dpc_group_enable_func(DPC_MML_VIDLE_VDISP_DVFS, en, false);
+		dpc_group_enable_func(DPC_MML_VIDLE_HRT_BW, en, false);
+		dpc_group_enable_func(DPC_MML_VIDLE_MMINFRA_OFF, en, false);
 	}
 
 	if (en) {
@@ -2355,6 +2460,8 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 		dpc_mmp(mml_group, MMPROFILE_FLAG_END, mask, atomic_read(&g_mml_mode));
 	}
 
+out:
+	spin_unlock_irqrestore(&dpc_lock, flags);
 	dpc_pm_ctrl(false);
 }
 EXPORT_SYMBOL(dpc_config);
@@ -2468,10 +2575,11 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 	if (!status)
 		goto out;
 
-	dpc_mmp(disp_irq, MMPROFILE_FLAG_PULSE, 0, status);
 	writel(~status, dpc_base + DISP_REG_DPC_DISP_INTSTA);
 
 	if (likely(debug_mmp)) {
+		dpc_mmp(disp_irq, MMPROFILE_FLAG_PULSE, 0, status);
+
 		if (status & DISP_DPC_INT_DT6) {
 			dpc_mmp(prete, MMPROFILE_FLAG_PULSE, 0, DISP_DPC_INT_DT6);
 			mtk_update_dpc_state(DPC_VIDLE_BW_MASK | DPC_VIDLE_VDISP_MASK, false);
@@ -2508,7 +2616,7 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 			mtk_update_dpc_state(DPC_VIDLE_DISP1_MASK, false);
 	}
 
-	if (unlikely(debug_check_reg) &&
+	if (unlikely(debug_check_reg) && g_priv->mmsys_id == MMSYS_MT6989 &&
 		priv->sys_va[HW_VOTE_STATE] && priv->sys_va[VDISP_DVFSRC_DEBUG] &&
 		priv->sys_va[SPM_BASE] && priv->sys_va[VCORE_DVFSRC_DEBUG]) {
 		if (status & DISP_DPC_INT_DT29) {	/* should be the last off irq */
@@ -2516,9 +2624,9 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 				readl(priv->sys_va[HW_VOTE_STATE]) & BIT(6) ? 1 : 0,
 				(readl(priv->sys_va[VDISP_DVFSRC_DEBUG]) & 0x1C) >> 2,
 				readl(priv->sys_va[VCORE_DVFSRC_DEBUG]) & 0xFFFFF,
-				(readl(priv->sys_va[SPM_BASE] + SPM_REQ_STA_4) &
-						SPM_REQ_APSRC_STATE) ? 1 : 0,
-				((readl(priv->sys_va[SPM_BASE] + SPM_REQ_STA_5) &
+				(readl(priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6989) &
+						SPM_REQ_APSRC_STATE_MT6989) ? 1 : 0,
+				((readl(priv->sys_va[SPM_BASE] + SPM_REQ_STA_5_MT6989) &
 						0x13) == 0x13) ? 1 : 0);
 		}
 		if (status & DISP_DPC_INT_DT30) {	/* should be the last on irq */
@@ -2526,9 +2634,9 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 				readl(priv->sys_va[HW_VOTE_STATE]) & BIT(6) ? 1 : 0,
 				(readl(priv->sys_va[VDISP_DVFSRC_DEBUG]) & 0x1C) >> 2,
 				readl(priv->sys_va[VCORE_DVFSRC_DEBUG]) & 0xFFFFF,
-				(readl(priv->sys_va[SPM_BASE] + SPM_REQ_STA_4) &
-						SPM_REQ_APSRC_STATE) ? 1 : 0,
-				((readl(priv->sys_va[SPM_BASE] + SPM_REQ_STA_5) &
+				(readl(priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6989) &
+						SPM_REQ_APSRC_STATE_MT6989) ? 1 : 0,
+				((readl(priv->sys_va[SPM_BASE] + SPM_REQ_STA_5_MT6989) &
 						0x13) == 0x13) ? 1 : 0);
 		}
 	}
@@ -2590,10 +2698,11 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 	if (!status)
 		goto out;
 
-	dpc_mmp(mml_irq, MMPROFILE_FLAG_PULSE, 0, status);
 	writel(~status, dpc_base + DISP_REG_DPC_MML_INTSTA);
 
 	if (likely(debug_mmp)) {
+		dpc_mmp(mml_irq, MMPROFILE_FLAG_PULSE, 0, status);
+
 		if (status & MML_DPC_INT_MML1_SOF)
 			dpc_mmp(mml_sof, MMPROFILE_FLAG_PULSE, 0, MML_DPC_INT_MML1_RDONE);
 		if (status & MML_DPC_INT_MML1_RDONE)
@@ -2699,9 +2808,6 @@ static void dpc_enable_merge_irq(bool enable)
 	writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INTSTA);
 	writel(val, dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG);
 	writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INTSTA);
-	DPCDUMP("0x%lx=0x%x, 0x%lx=0x%x",
-		DISP_REG_DPC_MERGE_DISP_INT_CFG, readl(dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG),
-		DISP_REG_DPC_MERGE_MML_INT_CFG, readl(dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG));
 
 	dpc_pm_ctrl(false);
 }
@@ -2893,7 +2999,7 @@ EXPORT_SYMBOL(dpc_vidle_power_release_by_gce);
 
 int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
@@ -2916,7 +3022,7 @@ EXPORT_SYMBOL(dpc_vidle_power_keep);
 
 void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
@@ -2974,9 +3080,10 @@ static void dpc_analysis(bool detail)
 	if (dpc_pm_ctrl(true))
 		return;
 
-	DPCDUMP("========== DPC analysis, base:0x%llx ,panel:%d, window:0x%x=========",
+	DPCDUMP("========== DPC analysis, base:0x%llx ,panel:%d, window:0x%x, dur:%u=========",
 		(unsigned long long)g_priv->dpc_pa, g_panel_type,
-		atomic_read(&g_vidle_window));
+		atomic_read(&g_vidle_window), g_te_duration);
+	mtk_dpc_dump_caps();
 	DPCDUMP("DT settings: DISP_DT:0x%x,MML_DT:0x%x,DPC_EN:0x%x",
 		readl(dpc_base + DISP_REG_DPC_DISP_DT_EN),
 		readl(dpc_base + DISP_REG_DPC_MML_DT_EN),
@@ -3054,7 +3161,7 @@ out:
 
 static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
@@ -3141,7 +3248,7 @@ static void process_dbg_opt(const char *opt)
 			writel(BIT(4), dpc_base + DISP_REG_DPC_MML_DT_CFG);
 
 			dpc_config(DPC_SUBSYS_DISP, true);
-			dpc_group_enable(DPC_DISP_VIDLE_RESERVED, true);
+			dpc_group_enable_func(DPC_DISP_VIDLE_RESERVED, true, true);
 		} else {
 			dpc_config(DPC_SUBSYS_DISP, false);
 		}
@@ -3270,6 +3377,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_infra_force_enable = dpc_infra_force_enable,
 	.dpc_dc_force_enable = dpc_dc_force_enable,
 	.dpc_group_enable = dpc_group_enable,
+	.dpc_pause = dpc_pause,
 	.dpc_config = dpc_config,
 	.dpc_dt_set = dpc_dt_set_dur,
 	.dpc_mtcmos_vote = dpc_mtcmos_vote,
@@ -3351,7 +3459,6 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 			dev_name(dev), priv->vidle_mask);
 		priv->vidle_mask = 0x0;
 	}
-	mtk_dpc_dump_caps();
 
 	ret = dpc_res_init(priv);
 	if (ret) {
@@ -3401,6 +3508,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	mutex_init(&g_priv->dvfs_bw.lock);
 	spin_lock_init(&g_priv->skip_force_power_lock);
 	spin_lock_init(&vlp_lock);
+	spin_lock_init(&dpc_lock);
 	spin_lock_init(&dpc_state_lock);
 
 	mtk_vidle_register(&funcs);

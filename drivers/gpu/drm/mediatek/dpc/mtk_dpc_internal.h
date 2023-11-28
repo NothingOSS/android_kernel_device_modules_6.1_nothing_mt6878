@@ -30,16 +30,33 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define SPM_OVL1_PWR_CON 0xEA4
 #define SPM_MML1_PWR_CON 0xE94
 
+/* mt6989 private registers */
 #define SPM_PWR_STATUS_MT6989 0xf78 /* vcore[3] mml[4][5] dis[6][7] ovl[8][9] mminfra[10] */
 #define SPM_PWR_FLD_DISP_VCORE_MASK_MT6989   BIT(3)
 #define SPM_PWR_FLD_MML1_MASK_MT6989         BIT(5)
 #define SPM_PWR_FLD_DISP1_MASK_MT6989        BIT(7)
 #define SPM_PWR_FLD_MMINFRA_MASK_MT6989      BIT(10)
 
+#define SPM_REQ_STA_4_MT6989 0x85C
+#define SPM_REQ_APSRC_STATE_MT6989    BIT(30)
+
+#define SPM_REQ_STA_5_MT6989 0x860
+#define SPM_REQ_EMI_STATE_MT6989      BIT(0)
+#define SPM_REQ_MMINFRA_STATE_MT6989  BIT(1)
+#define SPM_REQ_MAINPLL_STATE_MT6989  BIT(4)
+
+/* mt6878 private registers */
 #define SPM_PWR_STATUS_MT6878 0xf40
 #define SPM_PWR_FLD_DISP_VCORE_MASK_MT6878   BIT(28)
 #define SPM_PWR_FLD_MMINFRA_MASK_MT6878      BIT(30)
 
+#define SPM_REQ_STA_4_MT6878 0x860
+#define SPM_REQ_APSRC_STATE_MT6878    BIT(23)
+#define SPM_REQ_EMI_STATE_MT6878      BIT(25)
+#define SPM_REQ_INFRA_STATE_MT6878    BIT(26)
+#define SPM_REQ_MAINPLL_STATE_MT6878  BIT(29)
+
+/* common registers*/
 #define VCORE_DVFSRC_HRT_BW_MASK      0x3FF
 #define VCORE_DVFSRC_SRT_BW_MASK      0xFFC
 

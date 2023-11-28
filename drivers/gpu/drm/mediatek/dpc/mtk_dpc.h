@@ -23,6 +23,7 @@
  *         0       4,11          12      5       1                 3         7,13
  */
 
+#define DT_MAX_TIMEOUT   40329
 #define DT_TE_30  32500
 #define DT_TE_45  21600
 #define DT_TE_60  16000
@@ -113,6 +114,7 @@ void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en);
 void dpc_infra_force_enable(const enum mtk_dpc_subsys subsys, const bool en);
 void dpc_dc_force_enable(const bool en);
 void dpc_group_enable(const u16 group, bool en);
+void dpc_pause(const enum mtk_dpc_subsys subsys, bool en);
 void dpc_config(const enum mtk_dpc_subsys subsys, bool en);
 void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
 void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
@@ -133,6 +135,7 @@ struct dpc_funcs {
 	void (*dpc_infra_force_enable)(const enum mtk_dpc_subsys subsys, const bool en);
 	void (*dpc_dc_force_enable)(const bool en);
 	void (*dpc_group_enable)(const u16 group, bool en);
+	void (*dpc_pause)(const enum mtk_dpc_subsys subsys, bool en);
 	void (*dpc_config)(const enum mtk_dpc_subsys subsys, bool en);
 	int (*dpc_dt_set)(u32 us);
 	void (*dpc_mtcmos_vote)(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);

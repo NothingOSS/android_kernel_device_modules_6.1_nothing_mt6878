@@ -10,6 +10,7 @@
 
 extern void dpc_enable(bool en);
 extern void dpc_group_enable(const u16 group, bool en);
+extern void dpc_pause(const enum mtk_dpc_subsys subsys, bool en);
 extern void dpc_config(const enum mtk_dpc_subsys subsys, bool en);
 extern void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
 extern void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);

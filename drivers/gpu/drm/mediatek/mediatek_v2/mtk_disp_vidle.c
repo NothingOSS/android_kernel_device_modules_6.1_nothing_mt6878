@@ -25,6 +25,7 @@
 #include "platform/mtk_drm_platform.h"
 
 static atomic_t g_ff_enabled = ATOMIC_INIT(0);
+static bool vidle_paused;
 
 struct mtk_disp_vidle_para mtk_disp_vidle_flag = {
 	0,	/* vidle_en */
@@ -108,62 +109,30 @@ void mtk_vidle_flag_init(void *_crtc)
 	}
 }
 
-static unsigned int mtk_vidle_enable_check(unsigned int vidle_item)
-{
-	return mtk_disp_vidle_flag.vidle_en & vidle_item;
-}
-
-static void mtk_vidle_dt_enable(unsigned int en)
-{
-	if (disp_dpc_driver.dpc_group_enable == NULL)
-		return;
-
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MTCMOS,
-		(en && mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN)));
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MTCMOS_DISP1,
-		(en && mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN)));
-
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MMINFRA_OFF,
-		(en && mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN)));
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_INFRA_OFF,
-		(en && mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN)));
-
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_VDISP_DVFS,
-		(en && mtk_vidle_enable_check(DISP_VIDLE_DVFS_DT_EN)));
-
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_HRT_BW,
-		(en && mtk_vidle_enable_check(DISP_VIDLE_QOS_DT_EN)));
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_SRT_BW,
-		(en && mtk_vidle_enable_check(DISP_VIDLE_QOS_DT_EN)));
-}
-
 void mtk_vidle_user_power_keep_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt, u16 gpr)
 {
-	if (disp_dpc_driver.dpc_vidle_power_keep_by_gce == NULL)
+	if (!mtk_disp_vidle_flag.vidle_en)
 		return;
 
-	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
-		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
+	if (disp_dpc_driver.dpc_vidle_power_keep_by_gce)
 		disp_dpc_driver.dpc_vidle_power_keep_by_gce(pkt, user, gpr);
 }
 
 void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt)
 {
-	if (disp_dpc_driver.dpc_vidle_power_release_by_gce == NULL)
+	if (!mtk_disp_vidle_flag.vidle_en)
 		return;
 
-	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
-		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
+	if (disp_dpc_driver.dpc_vidle_power_release_by_gce)
 		disp_dpc_driver.dpc_vidle_power_release_by_gce(pkt, user);
 }
 
 int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 {
-	if (disp_dpc_driver.dpc_vidle_power_keep == NULL)
+	if (!mtk_disp_vidle_flag.vidle_en)
 		return 0;
 
-	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
-		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
+	if (disp_dpc_driver.dpc_vidle_power_keep)
 		return disp_dpc_driver.dpc_vidle_power_keep(user);
 
 	return 0;
@@ -171,11 +140,10 @@ int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 
 void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
 {
-	if (disp_dpc_driver.dpc_vidle_power_release == NULL)
+	if (!mtk_disp_vidle_flag.vidle_en)
 		return;
 
-	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
-		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
+	if (disp_dpc_driver.dpc_vidle_power_release)
 		disp_dpc_driver.dpc_vidle_power_release(user);
 }
 
@@ -239,15 +207,34 @@ void mtk_vidle_get_all_flag(unsigned int *en, unsigned int *stop)
 	*stop = mtk_disp_vidle_flag.vidle_stop;
 }
 
-static void mtk_vidle_stop(void)
+static void mtk_vidle_pause(bool en)
 {
-	// mtk_vidle_power_keep();
-	mtk_vidle_dt_enable(0);
-	/* TODO: stop timestamp */
+	if (disp_dpc_driver.dpc_pause == NULL)
+		return;
+
+	if (!mtk_vidle_is_ff_enabled())
+		return;
+
+	if (en && !vidle_paused) {
+		CRTC_MMP_EVENT_START(0, pause_vidle, mtk_disp_vidle_flag.vidle_stop,
+				vidle_data.te_duration);
+		disp_dpc_driver.dpc_pause(DPC_SUBSYS_DISP, en);
+		vidle_paused = true;
+	} else if (!en && vidle_paused) {
+		disp_dpc_driver.dpc_pause(DPC_SUBSYS_DISP, en);
+		CRTC_MMP_EVENT_END(0, pause_vidle, mtk_disp_vidle_flag.vidle_stop,
+				vidle_data.te_duration);
+		vidle_paused = false;
+	}
 }
 
 void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 {
+	unsigned int origignal_flag = mtk_disp_vidle_flag.vidle_stop;
+
+	if (!mtk_disp_vidle_flag.vidle_en)
+		return;
+
 	if (stop)
 		mtk_disp_vidle_flag.vidle_stop =
 			mtk_disp_vidle_flag.vidle_stop | flag;
@@ -255,8 +242,14 @@ void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 		mtk_disp_vidle_flag.vidle_stop =
 			mtk_disp_vidle_flag.vidle_stop & ~flag;
 
+	if (origignal_flag != mtk_disp_vidle_flag.vidle_stop)
+		CRTC_MMP_MARK(0, pause_vidle, mtk_disp_vidle_flag.vidle_stop,
+				mtk_vidle_is_ff_enabled());
+
 	if (mtk_disp_vidle_flag.vidle_stop)
-		mtk_vidle_stop();
+		mtk_vidle_pause(true);
+	else
+		mtk_vidle_pause(false);
 }
 
 int mtk_set_dt_configure(unsigned int us)
@@ -295,22 +288,19 @@ int mtk_vidle_update_dt_by_period(void *_crtc, unsigned int duration)
 
 	/* update DTs affected by TE duration */
 	ret = mtk_set_dt_configure(duration);
+	vidle_data.te_duration = duration;
+
 	if (ret < 0 &&
 		!(mtk_disp_vidle_flag.vidle_stop & VIDLE_STOP_VDO_HIGH_FPS)) {
 		mtk_set_vidle_stop_flag(VIDLE_STOP_VDO_HIGH_FPS, 1);
-		CRTC_MMP_MARK((int)drm_crtc_index(crtc), vidle_stop, mtk_disp_vidle_flag.vidle_stop, duration);
 		DDPINFO("%s forbid vidle mode, duration:%uus, flag:0x%x\n",
 			__func__, duration, mtk_disp_vidle_flag.vidle_stop);
 	} else if (ret >= 0 &&
 		(mtk_disp_vidle_flag.vidle_stop & VIDLE_STOP_VDO_HIGH_FPS)) {
 		mtk_set_vidle_stop_flag(VIDLE_STOP_VDO_HIGH_FPS, 0);
-		CRTC_MMP_MARK((int)drm_crtc_index(crtc), vidle_stop, mtk_disp_vidle_flag.vidle_stop, duration);
 		DDPINFO("%s allow vidle mode, duration:%uus, flag:0x%x\n",
 			__func__, duration, mtk_disp_vidle_flag.vidle_stop);
 	}
-
-	DDPMSG("%s: update duration%u->%u\n", __func__, vidle_data.te_duration, duration);
-	vidle_data.te_duration = duration;
 
 	return duration;
 }
@@ -323,11 +313,8 @@ int mtk_vidle_update_dt_by_type(void *_crtc, enum mtk_panel_type type)
 	struct mtk_drm_private *priv = NULL;
 	int ret = 0;
 
-	if (!mtk_disp_vidle_flag.vidle_en) {
-		DDPMSG("%s, invalid vidle_en:0x%x\n", __func__,
-			mtk_disp_vidle_flag.vidle_en);
+	if (!mtk_disp_vidle_flag.vidle_en)
 		return -1;
-	}
 
 	if (_crtc == NULL) {
 		DDPMSG("%s, invalid crtc\n", __func__);
@@ -335,11 +322,8 @@ int mtk_vidle_update_dt_by_type(void *_crtc, enum mtk_panel_type type)
 	}
 
 	crtc = (struct drm_crtc *)_crtc;
-	if (drm_crtc_index(crtc) != 0) {
-		DDPMSG("%s, invalid crtc id:%d\n", __func__,
-			drm_crtc_index(crtc));
+	if (drm_crtc_index(crtc) != 0)
 		return -1;
-	}
 
 	priv = crtc->dev->dev_private;
 	if (priv == NULL) {
@@ -367,22 +351,19 @@ int mtk_vidle_update_dt_by_type(void *_crtc, enum mtk_panel_type type)
 
 	/* update DTs affected by TE duration */
 	ret = mtk_set_dt_configure(duration);
+	vidle_data.te_duration = duration;
+
 	if (ret < 0 &&
 		!(mtk_disp_vidle_flag.vidle_stop & VIDLE_STOP_VDO_HIGH_FPS)) {
 		mtk_set_vidle_stop_flag(VIDLE_STOP_VDO_HIGH_FPS, 1);
-		CRTC_MMP_MARK((int)drm_crtc_index(crtc), vidle_stop, mtk_disp_vidle_flag.vidle_stop, duration);
 		DDPINFO("%s forbid vidle mode, panel:%d, duration:%u, flag:0x%x\n",
 			__func__, type, duration, mtk_disp_vidle_flag.vidle_stop);
 	} else if (ret >= 0 &&
 		(mtk_disp_vidle_flag.vidle_stop & VIDLE_STOP_VDO_HIGH_FPS)) {
 		mtk_set_vidle_stop_flag(VIDLE_STOP_VDO_HIGH_FPS, 0);
-		CRTC_MMP_MARK((int)drm_crtc_index(crtc), vidle_stop, mtk_disp_vidle_flag.vidle_stop, duration);
 		DDPINFO("%s allow vidle mode, panel:%d, duration:%u, flag:0x%x\n",
 			__func__, type, duration, mtk_disp_vidle_flag.vidle_stop);
 	}
-
-	DDPMSG("%s: update duration%u->%u\n", __func__, vidle_data.te_duration, duration);
-	vidle_data.te_duration = duration;
 
 	return duration;
 }
@@ -401,10 +382,8 @@ void mtk_vidle_enable(bool en, void *_drm_priv)
 		return;
 
 	/* some case, like multi crtc we need to stop V-idle */
-	if (mtk_disp_vidle_flag.vidle_stop) {
-		mtk_vidle_stop();
+	if (mtk_disp_vidle_flag.vidle_stop && en)
 		return;
-	}
 
 	if (en == mtk_vidle_is_ff_enabled())
 		return;
@@ -421,7 +400,15 @@ void mtk_vidle_enable(bool en, void *_drm_priv)
 		}
 	}
 	disp_dpc_driver.dpc_enable(en);
+	if (!en && vidle_paused) {
+		CRTC_MMP_EVENT_END(0, pause_vidle,
+				mtk_disp_vidle_flag.vidle_stop, 0xFFFFFFFF);
+		vidle_paused = false;
+	}
 	/* TODO: enable timestamp */
+
+	DDPINFO("%s, en:%d, stop:0x%x, pause:%d\n", __func__, en,
+		mtk_disp_vidle_flag.vidle_stop, vidle_paused);
 }
 
 void mtk_vidle_force_enable_mml(bool en)
@@ -509,6 +496,7 @@ void mtk_vidle_register(const struct dpc_funcs *funcs)
 	disp_dpc_driver.dpc_config = funcs->dpc_config;
 	disp_dpc_driver.dpc_dt_set = funcs->dpc_dt_set;
 	disp_dpc_driver.dpc_group_enable = funcs->dpc_group_enable;
+	disp_dpc_driver.dpc_pause = funcs->dpc_pause;
 	disp_dpc_driver.dpc_vidle_power_keep = funcs->dpc_vidle_power_keep;
 	disp_dpc_driver.dpc_vidle_power_release =
 		funcs->dpc_vidle_power_release;

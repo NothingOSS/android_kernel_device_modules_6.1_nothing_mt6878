@@ -161,7 +161,7 @@ struct CRTC_MMP_Events {
 	mmp_event vblank_rec_thread;
 	mmp_event leave_vidle;
 	mmp_event enter_vidle;
-	mmp_event vidle_stop;
+	mmp_event pause_vidle;
 };
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);

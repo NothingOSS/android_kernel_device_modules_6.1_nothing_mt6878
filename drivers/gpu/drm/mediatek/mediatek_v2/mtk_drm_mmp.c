@@ -210,10 +210,6 @@ void init_crtc_mmp_event(void)
 			mmprofile_register_event(crtc_mmp_root, "ESD recovery");
 		g_CRTC_MMP_Events[i].target_time =
 			mmprofile_register_event(crtc_mmp_root, "target_time");
-		g_CRTC_MMP_Events[i].leave_idle = mmprofile_register_event(
-			crtc_mmp_root, "leave_idle");
-		g_CRTC_MMP_Events[i].enter_idle = mmprofile_register_event(
-			crtc_mmp_root, "enter_idle");
 		g_CRTC_MMP_Events[i].idle_async = mmprofile_register_event(
 			crtc_mmp_root, "idle_async");
 		g_CRTC_MMP_Events[i].idle_async_cb = mmprofile_register_event(
@@ -352,12 +348,16 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "csc_bl");
 		g_CRTC_MMP_Events[i].vblank_rec_thread = mmprofile_register_event(
 			crtc_mmp_root, "vblank_rec_thread");
+		g_CRTC_MMP_Events[i].enter_idle = mmprofile_register_event(
+			crtc_mmp_root, "enter_HS_idle");
+		g_CRTC_MMP_Events[i].leave_idle = mmprofile_register_event(
+			crtc_mmp_root, "leave_HS_idle");
 		g_CRTC_MMP_Events[i].enter_vidle = mmprofile_register_event(
-			crtc_mmp_root, "enter_Vidle");
+			crtc_mmp_root, "enter_V_idle");
 		g_CRTC_MMP_Events[i].leave_vidle = mmprofile_register_event(
-			crtc_mmp_root, "leave_Vidle");
-		g_CRTC_MMP_Events[i].vidle_stop = mmprofile_register_event(
-			crtc_mmp_root, "Vidle_stop");
+			crtc_mmp_root, "leave_V_idle");
+		g_CRTC_MMP_Events[i].pause_vidle = mmprofile_register_event(
+			crtc_mmp_root, "pause_V_idle");
 	}
 }
 void drm_mmp_init(void)
