@@ -31,6 +31,7 @@ void dpc_mmp_init(void)
 	dpc_mmp_events.dt = mmprofile_register_event(folder, "dt");
 	dpc_mmp_events.disp_dt = mmprofile_register_event(dpc_mmp_events.dt, "disp_dt");
 	dpc_mmp_events.mml_dt = mmprofile_register_event(dpc_mmp_events.dt, "mml_dt");
+	dpc_mmp_events.mmdvfs_dead = mmprofile_register_event(folder, "mmdvfs_dead");
 	dpc_mmp_events.disp_irq = mmprofile_register_event(folder, "disp_irq");
 	dpc_mmp_events.mml_irq = mmprofile_register_event(folder, "mml_irq");
 	dpc_mmp_events.prete = mmprofile_register_event(dpc_mmp_events.disp_irq, "prete");

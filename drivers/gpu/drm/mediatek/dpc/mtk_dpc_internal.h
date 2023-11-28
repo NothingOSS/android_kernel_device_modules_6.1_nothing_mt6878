@@ -345,7 +345,6 @@ struct mtk_dpc_dvfs_bw {
 	u8 bw_level;
 	u8 mml_level;
 	u8 disp_level;
-	struct mutex lock;
 };
 
 static void dpc_dt_enable(u16 dt, bool en);

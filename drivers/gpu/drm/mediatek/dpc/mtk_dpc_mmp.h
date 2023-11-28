@@ -64,6 +64,7 @@ struct dpc_mmp_events_t {
 	mmp_event vdisp_level;
 	mmp_event hrt_bw;
 	mmp_event srt_bw;
+	mmp_event mmdvfs_dead;
 };
 
 
