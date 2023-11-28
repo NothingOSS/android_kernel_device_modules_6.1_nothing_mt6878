@@ -71,7 +71,9 @@ $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG := --//build/bazel_mgk_rules:kern
 ifneq ($(filter yes no,$(COVERITY_LOCAL_SCAN)),)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=local
 else
+ifneq (,$(wildcard kernel/$(REL_ACK_DIR)/.git))
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=stamp --repo_manifest=$(abspath $(KERNEL_DIR)/fake_manifest.xml)
+endif
 endif
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_OUT := $(KERNEL_BAZEL_DIST_OUT)
