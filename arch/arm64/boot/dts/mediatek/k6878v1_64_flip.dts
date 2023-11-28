@@ -433,7 +433,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 };
 
 #include <k6878v1_64_flip/cust.dtsi>
-#include "mediatek/cust_mt6878_touch_1080x2400.dtsi"
+#include "mediatek/cust_mt6878_touch_flip.dtsi"
 #include "mediatek/cust_mt6878_camera_v4l2.dtsi"
 #include "mediatek/cust_k6878_connfem.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/
