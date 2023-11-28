@@ -2769,6 +2769,9 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 						fbt_layer_compress_ratio_tb[i].average_ratio;
 						temp_bw = temp_bw * avg_ratio;
 						do_div(temp_bw, 1000);
+						/* After BWM no need *0.7,So need to make up for it */
+						temp_bw *= 10;
+						do_div(temp_bw, 7);
 						break;
 					}
 				}
@@ -2788,6 +2791,9 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 						temp_bw = temp_bw * avg_ratio;
 						do_div(temp_bw, 1000);
 						have_get_ratio = 1;
+						/* After BWM no need *0.7,So need to make up for it */
+						temp_bw *= 10;
+						do_div(temp_bw, 7);
 						break;
 					}
 				}
@@ -2805,6 +2811,9 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 						normal_layer_compress_ratio_tb[i].average_ratio;
 						temp_bw = temp_bw * avg_ratio;
 						do_div(temp_bw, 1000);
+						/* After BWM no need *0.7,So need to make up for it */
+						temp_bw *= 10;
+						do_div(temp_bw, 7);
 						break;
 					}
 				}
