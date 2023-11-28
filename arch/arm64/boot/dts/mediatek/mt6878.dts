@@ -10360,9 +10360,6 @@
 				  <10 0x2000 0x0>, /* sensor debug */
 				  <11 0x100 0x0>, /* sensor custom writer */
 				  <12 0x100 0x0>, /* sensor custom reader */
-				  <15 0x10000 0x0>, /* aod */
-				  <17 0x8000 0x0>, /* scp chre from */
-				  <18 0x8000 0x0>, /* scp chre to */
 				  <19 0x200 0x0>,  /* low power debug */
 				  <20 0x5c0000 0x0>, /* audio common, 5.75MB */
 				  <21 0x80000 0x0>; /* usb audio offload, 512 KB */
