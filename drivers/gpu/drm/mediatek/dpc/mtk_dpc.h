@@ -71,9 +71,9 @@ enum mtk_dpc_subsys {
 	DPC_CHECK_DISP_VCORE,
 };
 
-#define MTK_DPC_OF_DISP_SUBSYS(id)  ((id) >= DPC_SUBSYS_DISP && (id) <= DPC_SUBSYS_OVL1)
-#define MTK_DPC_OF_MML_SUBSYS(id)  ((id) >= DPC_SUBSYS_MML && (id) <= DPC_SUBSYS_MML1)
-#define MTK_DPC_OF_INVALID_SUBSYS(id)  ((id) >= DPC_CHECK_DISP_VCORE || (id) < DPC_SUBSYS_DISP)
+#define MTK_DPC_OF_DISP_SUBSYS(id)  ((int)(id) >= DPC_SUBSYS_DISP && (int)(id) <= DPC_SUBSYS_OVL1)
+#define MTK_DPC_OF_MML_SUBSYS(id)  ((int)(id) >= DPC_SUBSYS_MML && (int)(id) <= DPC_SUBSYS_MML1)
+#define MTK_DPC_OF_INVALID_SUBSYS(id)  ((int)(id) >= DPC_CHECK_DISP_VCORE || (int)(id) < DPC_SUBSYS_DISP)
 
 /* NOTE: user 0 to 7 is reserved for genpd notifier enum disp_pd_id { ... } */
 enum mtk_vidle_voter_user {
