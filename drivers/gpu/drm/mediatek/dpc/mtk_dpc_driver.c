@@ -3313,12 +3313,12 @@ int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 		DPCFUNC("user %u skip force power", user);
 		return -1;
 	}
-	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 
 	if (dpc_pm_ctrl(true)) {
 		DPCFUNC("%s: user %u failed to force power", __func__, user);
 		return -1;
 	}
+	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 
 	mtk_disp_vlp_vote_by_cpu(VOTE_SET, user);
 	udelay(50);
@@ -3467,31 +3467,29 @@ out:
 
 static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
-	unsigned long flags = 0;
+	unsigned long flags;
+	u32 force_release = 0;
 
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 		g_priv->skip_force_power = true;
-		dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
-		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		if (g_priv->pd_dev) {
-			u32 force_release = 0;
-
 			while (atomic_read(&g_priv->pd_dev->power.usage_count) > 0) {
 				force_release++;
 				pm_runtime_put_sync(g_priv->pd_dev);
 			}
-
-			if (unlikely(force_release))
-				DPCFUNC("dpc_dev dpc_pm unbalanced(%u)", force_release);
 		}
+		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
+		if (unlikely(force_release))
+			DPCFUNC("dpc_dev dpc_pm unbalanced(%u)", force_release);
+		dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 		spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 		g_priv->skip_force_power = false;
-		dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
 		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
+		dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
