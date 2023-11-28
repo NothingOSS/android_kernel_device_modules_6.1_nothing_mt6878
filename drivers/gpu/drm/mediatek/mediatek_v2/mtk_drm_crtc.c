@@ -12248,8 +12248,6 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	/* 11. set CRTC SW status */
 	mtk_crtc_set_status(crtc, false);
 
-	mtk_set_dpc_dsi_clk(mtk_crtc, false);
-
 end:
 	CRTC_MMP_EVENT_END((int) crtc_id, disable,
 			mtk_crtc->enabled, 0);
