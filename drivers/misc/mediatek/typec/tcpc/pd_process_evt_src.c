@@ -296,10 +296,6 @@ static inline bool pd_process_hw_msg_vbus_present(
 	struct pd_port *pd_port, struct pd_event *pd_event)
 {
 	switch (pd_port->pe_state_curr) {
-	case PE_SRC_STARTUP:
-		pd_enable_timer(pd_port, PD_TIMER_SOURCE_START);
-		break;
-
 	case PE_SRC_TRANSITION_TO_DEFAULT:
 		pd_put_pe_event(pd_port, PD_PE_POWER_ROLE_AT_DEFAULT);
 		break;
@@ -385,8 +381,7 @@ static inline bool pd_process_timer_msg_source_start(
 {
 #if CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
 	if (pd_is_discover_cable(pd_port) &&
-		pd_port->pe_data.msg_id_tx[TCPC_TX_SOP_PRIME] == 0) {
-
+	    !pd_port->pe_data.cable_discovered_state) {
 #if CONFIG_PD_SRC_RESET_CABLE
 		if (pd_is_reset_cable(pd_port)) {
 			PE_TRANSIT_STATE(pd_port, PE_SRC_CBL_SEND_SOFT_RESET);

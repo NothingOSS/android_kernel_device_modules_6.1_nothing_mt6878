@@ -71,10 +71,6 @@ void dpm_extract_pdo_info(uint32_t pdo, struct dpm_pdo_info_t *info)
 	}
 }
 
-#ifndef MIN
-#define MIN(a, b)	((a < b) ? (a) : (b))
-#endif
-
 static inline int dpm_calc_src_cap_power_uw(
 	struct dpm_pdo_info_t *source, struct dpm_pdo_info_t *sink)
 {

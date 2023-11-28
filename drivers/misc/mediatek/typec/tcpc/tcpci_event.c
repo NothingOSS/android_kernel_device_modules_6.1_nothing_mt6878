@@ -979,6 +979,7 @@ void pd_notify_pe_idle(struct pd_port *pd_port)
 void pd_notify_pe_wait_vbus_once(struct pd_port *pd_port, int wait_evt)
 {
 	struct tcpc_device *tcpc = pd_port->tcpc;
+	bool as_sink = tcpc_typec_is_act_as_sink_role(tcpc);
 
 	mutex_lock(&tcpc->access_lock);
 	tcpc->pd_wait_vbus_once = wait_evt;
@@ -997,9 +998,11 @@ void pd_notify_pe_wait_vbus_once(struct pd_port *pd_port, int wait_evt)
 		}
 
 #if CONFIG_USB_PD_SAFE0V_TIMEOUT
-		mutex_lock(&tcpc->access_lock);
-		tcpci_enable_force_discharge(tcpc, true, 0);
-		mutex_unlock(&tcpc->access_lock);
+		if (!as_sink) {
+			mutex_lock(&tcpc->access_lock);
+			tcpci_enable_force_discharge(tcpc, true, 0);
+			mutex_unlock(&tcpc->access_lock);
+		}
 		tcpc_enable_timer(tcpc, PD_TIMER_VSAFE0V_TOUT);
 #endif	/* CONFIG_USB_PD_SAFE0V_TIMEOUT */
 

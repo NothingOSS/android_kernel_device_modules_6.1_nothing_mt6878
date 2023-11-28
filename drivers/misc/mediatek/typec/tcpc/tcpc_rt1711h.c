@@ -1223,6 +1223,7 @@ static int rt_parse_dt(struct rt1711_chip *chip, struct device *dev)
 static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 {
 	struct tcpc_desc *desc;
+	struct tcpc_device *tcpc = NULL;
 	struct device_node *np = dev->of_node;
 	u32 val, len;
 	const char *name = "default";
@@ -1284,33 +1285,33 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 
 	chip->tcpc_desc = desc;
 
-	chip->tcpc = tcpc_device_register(dev,
-			desc, &rt1711_tcpc_ops, chip);
-	if (IS_ERR_OR_NULL(chip->tcpc))
+	tcpc = tcpc_device_register(dev, desc, &rt1711_tcpc_ops, chip);
+	if (IS_ERR_OR_NULL(tcpc))
 		return -EINVAL;
+	chip->tcpc = tcpc;
 
 #if CONFIG_USB_PD_DISABLE_PE
-	chip->tcpc->disable_pe = of_property_read_bool(np, "rt-tcpc,disable-pe") ||
+	tcpc->disable_pe = of_property_read_bool(np, "rt-tcpc,disable-pe") ||
 				 of_property_read_bool(np, "rt-tcpc,disable_pe");
 #endif	/* CONFIG_USB_PD_DISABLE_PE */
 
-	chip->tcpc->tcpc_flags = TCPC_FLAGS_VCONN_SAFE5V_ONLY;
+	tcpc->tcpc_flags = TCPC_FLAGS_VCONN_SAFE5V_ONLY;
 
 #if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	if (chip->chip_id > RT1715_DID_D)
-		chip->tcpc->tcpc_flags |= TCPC_FLAGS_RETRY_CRC_DISCARD;
+		tcpc->tcpc_flags |= TCPC_FLAGS_RETRY_CRC_DISCARD;
 #endif  /* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 
 #if CONFIG_USB_PD_REV30
 	if (chip->chip_id >= RT1715_DID_D)
-		chip->tcpc->tcpc_flags |= TCPC_FLAGS_PD_REV30;
+		tcpc->tcpc_flags |= TCPC_FLAGS_PD_REV30;
 
-	if (chip->tcpc->tcpc_flags & TCPC_FLAGS_PD_REV30)
+	if (tcpc->tcpc_flags & TCPC_FLAGS_PD_REV30)
 		dev_info(dev, "PD_REV30\n");
 	else
 		dev_info(dev, "PD_REV20\n");
 #endif	/* CONFIG_USB_PD_REV30 */
-	chip->tcpc->tcpc_flags |= TCPC_FLAGS_ALERT_V10;
+	tcpc->tcpc_flags |= TCPC_FLAGS_ALERT_V10;
 
 	return 0;
 }
@@ -1441,7 +1442,6 @@ static void rt1711_i2c_remove(struct i2c_client *client)
 		rt1711_regmap_deinit(chip);
 		mutex_destroy(&chip->irq_lock);
 	}
-
 }
 
 #if CONFIG_PM

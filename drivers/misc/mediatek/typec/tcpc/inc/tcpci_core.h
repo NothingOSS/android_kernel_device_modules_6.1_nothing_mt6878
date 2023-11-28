@@ -229,7 +229,7 @@ struct tcpc_ops {
 	int (*set_water_protection)(struct tcpc_device *tcpc, bool en);
 #endif /* CONFIG_WATER_DETECTION */
 	int (*set_cc_hidet)(struct tcpc_device *tcpc, bool en);
-	bool (*get_cc_hi)(struct tcpc_device *tcpc);
+	int (*get_cc_hi)(struct tcpc_device *tcpc);
 
 	int (*set_vbus_short_cc_en)(struct tcpc_device *tcpc, bool cc1, bool cc2);
 
@@ -448,6 +448,7 @@ struct tcpc_device {
 	bool typec_otp;
 	bool typec_vbus_to_cc_en;
 	bool cc_hidet_en;
+	int cc_hi;
 };
 
 #define to_tcpc_device(obj) container_of(obj, struct tcpc_device, dev)

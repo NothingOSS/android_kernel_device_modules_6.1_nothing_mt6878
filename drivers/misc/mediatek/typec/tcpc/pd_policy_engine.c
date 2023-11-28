@@ -1173,17 +1173,17 @@ static inline bool pd_check_source_tx_ok(struct pd_port *pd_port)
 static inline bool pd_check_pd30_tx_ready(struct pd_port *pd_port)
 {
 #if CONFIG_USB_PD_PE_SINK
-	if (pd_port->pe_pd_state == PE_SNK_READY)
+	if (pd_port->pe_state_curr == PE_SNK_READY)
 		return pd_check_sink_tx_ok(pd_port);
 #endif	/* CONFIG_USB_PD_PE_SINK */
 
 #if CONFIG_USB_PD_PE_SOURCE
-	if (pd_port->pe_pd_state == PE_SRC_READY)
+	if (pd_port->pe_state_curr == PE_SRC_READY)
 		return pd_check_source_tx_ok(pd_port);
 #endif	/* CONFIG_USB_PD_PE_SOURCE */
 
 #if CONFIG_USB_PD_CUSTOM_DBGACC
-	if (pd_port->pe_pd_state == PE_DBG_READY)
+	if (pd_port->pe_state_curr == PE_DBG_READY)
 		return true;
 #endif	/* CONFIG_USB_PD_CUSTOM_DBGACC */
 
@@ -1192,7 +1192,7 @@ static inline bool pd_check_pd30_tx_ready(struct pd_port *pd_port)
 #else
 static inline bool pd_check_pd20_tx_ready(struct pd_port *pd_port)
 {
-	switch (pd_port->pe_pd_state) {
+	switch (pd_port->pe_state_curr) {
 #if CONFIG_USB_PD_PE_SINK
 	case PE_SNK_READY:
 		return true;

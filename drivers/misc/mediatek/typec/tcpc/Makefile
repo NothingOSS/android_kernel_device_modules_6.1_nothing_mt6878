@@ -1,9 +1,6 @@
 subdir-ccflags-y += -Wall -Werror -DCONFIG_RT_REGMAP
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/power/supply/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/mfd/
-ifneq ($(CONFIG_TCPC_CLASS), )
-subdir-ccflags-y += -I$(srctree)/drivers/usb/typec
-endif
 
 obj-$(CONFIG_TCPC_MT6360)		+= tcpc_mt6360.o
 obj-$(CONFIG_TCPC_MT6370)		+= tcpc_mt6370.o

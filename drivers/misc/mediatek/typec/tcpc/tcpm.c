@@ -886,12 +886,13 @@ int tcpm_dpm_pd_request(struct tcpc_device *tcpc,
 EXPORT_SYMBOL(tcpm_dpm_pd_request);
 
 int tcpm_dpm_pd_request_ex(struct tcpc_device *tcpc,
-	uint8_t pos, uint32_t max, uint32_t oper,
+	uint8_t pos, int vmin, uint32_t max, uint32_t oper,
 	const struct tcp_dpm_event_cb_data *cb_data)
 {
 	struct tcp_dpm_event tcp_event = {
 		.event_id = TCP_DPM_EVT_REQUEST_EX,
 		.tcp_dpm_data.pd_req_ex.pos = pos,
+		.tcp_dpm_data.pd_req_ex.vmin = vmin,
 		.tcp_dpm_data.pd_req_ex.max = max,
 		.tcp_dpm_data.pd_req_ex.oper = oper,
 	};

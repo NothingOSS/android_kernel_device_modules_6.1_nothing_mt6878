@@ -101,23 +101,23 @@ EXPORT_SYMBOL(tcpci_check_vbus_valid_from_ic);
 
 int tcpci_set_auto_dischg_discnt(struct tcpc_device *tcpc, bool en)
 {
-	int rv = 0;
+	int ret = 0;
 
 	if (tcpc->ops->set_auto_dischg_discnt)
-		rv = tcpc->ops->set_auto_dischg_discnt(tcpc, en);
+		ret = tcpc->ops->set_auto_dischg_discnt(tcpc, en);
 
-	return rv;
+	return ret;
 }
 EXPORT_SYMBOL(tcpci_set_auto_dischg_discnt);
 
 int tcpci_get_vbus_voltage(struct tcpc_device *tcpc, u32 *vbus)
 {
-	int rv = 0;
+	int ret = 0;
 
 	if (tcpc->ops->get_vbus_voltage)
-		rv = tcpc->ops->get_vbus_voltage(tcpc, vbus);
+		ret = tcpc->ops->get_vbus_voltage(tcpc, vbus);
 
-	return rv;
+	return ret;
 }
 EXPORT_SYMBOL(tcpci_get_vbus_voltage);
 
@@ -147,12 +147,12 @@ EXPORT_SYMBOL(tcpci_fault_status_clear);
 
 int tcpci_set_alert_mask(struct tcpc_device *tcpc, uint32_t mask)
 {
-	int rv = 0;
+	int ret = 0;
 
 	if (tcpc->ops->set_alert_mask)
-		rv = tcpc->ops->set_alert_mask(tcpc, mask);
+		ret = tcpc->ops->set_alert_mask(tcpc, mask);
 
-	return rv;
+	return ret;
 }
 EXPORT_SYMBOL(tcpci_set_alert_mask);
 
@@ -317,7 +317,7 @@ EXPORT_SYMBOL(tcpci_set_vconn);
 
 int tcpci_set_low_power_mode(struct tcpc_device *tcpc, bool en)
 {
-	int rv = 0, pull = TYPEC_CC_OPEN, i = 0;
+	int ret = 0, pull = TYPEC_CC_OPEN, i = 0;
 
 	tcpc->typec_lpm = en;
 	if (!tcpc_typec_is_cc_open_state(tcpc)) {
@@ -338,41 +338,41 @@ int tcpci_set_low_power_mode(struct tcpc_device *tcpc, bool en)
 	 * rx_buffer can't clear, try to reset protocol before disable bmc clock
 	 */
 	if (en) {
-		rv = tcpci_protocol_reset(tcpc);
+		ret = tcpci_protocol_reset(tcpc);
 		for (i = 0; i < 2; i++) {
-			rv = tcpci_alert_status_clear(tcpc,
+			ret = tcpci_alert_status_clear(tcpc,
 				TCPC_REG_ALERT_RX_ALL_MASK);
-			if (rv < 0)
+			if (ret < 0)
 				TCPC_INFO("%s:%d clear rx event fail\n",
 					  __func__, i);
 		}
 	}
 	if (tcpc->ops->set_low_power_mode)
-		rv = tcpc->ops->set_low_power_mode(tcpc, en, pull);
+		ret = tcpc->ops->set_low_power_mode(tcpc, en, pull);
 
-	return rv;
+	return ret;
 }
 EXPORT_SYMBOL(tcpci_set_low_power_mode);
 
 int tcpci_alert_vendor_defined_handler(struct tcpc_device *tcpc)
 {
-	int rv = 0;
+	int ret = 0;
 
 	if (tcpc->ops->alert_vendor_defined_handler)
-		rv = tcpc->ops->alert_vendor_defined_handler(tcpc);
+		ret = tcpc->ops->alert_vendor_defined_handler(tcpc);
 
-	return rv;
+	return ret;
 }
 EXPORT_SYMBOL(tcpci_alert_vendor_defined_handler);
 
 int tcpci_is_vsafe0v(struct tcpc_device *tcpc)
 {
-	int rv = -EOPNOTSUPP;
+	int ret = -EOPNOTSUPP;
 
 	if (tcpc->ops->is_vsafe0v)
-		rv = tcpc->ops->is_vsafe0v(tcpc);
+		ret = tcpc->ops->is_vsafe0v(tcpc);
 
-	return rv;
+	return ret;
 }
 EXPORT_SYMBOL(tcpci_is_vsafe0v);
 
@@ -429,26 +429,35 @@ EXPORT_SYMBOL(tcpci_notify_typec_otp);
 
 int tcpci_set_cc_hidet(struct tcpc_device *tcpc, bool en)
 {
-	int rv = 0;
+	int ret = 0, cc_hi = 0;
 
-	if (tcpc->ops->set_cc_hidet) {
-		rv = tcpc->ops->set_cc_hidet(tcpc, en);
-		if (rv >= 0)
-			tcpc->cc_hidet_en = en;
-	}
+	if (!tcpc->ops->set_cc_hidet)
+		goto out;
 
-	return rv;
+	ret = tcpc->ops->set_cc_hidet(tcpc, en);
+	if (ret < 0)
+		goto out;
+	tcpc->cc_hidet_en = en;
+	if (en) {
+		cc_hi = tcpc_typec_get_rp_present_flag(tcpc);
+		if (tcpc->ops->get_cc_hi)
+			cc_hi |= tcpc->ops->get_cc_hi(tcpc);
+	} else
+		cc_hi = TCPM_ERROR_UNKNOWN;
+	ret = tcpc_typec_handle_cc_hi(tcpc, cc_hi);
+out:
+	return ret;
 }
 EXPORT_SYMBOL(tcpci_set_cc_hidet);
 
 int tcpci_set_vbus_short_cc_en(struct tcpc_device *tcpc, bool cc1, bool cc2)
 {
-	int rv = 0;
+	int ret = 0;
 
 	if (tcpc->ops->set_vbus_short_cc_en)
-		rv = tcpc->ops->set_vbus_short_cc_en(tcpc, cc1, cc2);
+		ret = tcpc->ops->set_vbus_short_cc_en(tcpc, cc1, cc2);
 
-	return rv;
+	return ret;
 }
 EXPORT_SYMBOL(tcpci_set_vbus_short_cc_en);
 

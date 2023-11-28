@@ -20,7 +20,6 @@ struct tcpc_device;
 
 enum typec_attach_type {
 	TYPEC_UNATTACHED = 0,
-	TYPEC_PROTECTION,
 	TYPEC_ATTACHED_SNK,
 	TYPEC_ATTACHED_SRC,
 	TYPEC_ATTACHED_AUDIO,
@@ -34,6 +33,8 @@ enum typec_attach_type {
 
 /* CONFIG_TYPEC_CAP_NORP_SRC */
 	TYPEC_ATTACHED_NORP_SRC,		/* No Rp */
+
+	TYPEC_PROTECTION,
 };
 
 enum pd_connect_result {
@@ -301,7 +302,6 @@ struct tcp_ny_wd_status {
 
 enum tcpc_fod_status {
 	TCPC_FOD_NONE = 0,
-	TCPC_FOD_NORMAL,
 	TCPC_FOD_OV,
 	TCPC_FOD_DISCHG_FAIL,
 	TCPC_FOD_LR,
@@ -683,6 +683,7 @@ struct tcp_dpm_pd_request {
 
 struct tcp_dpm_pd_request_ex {
 	uint8_t pos;
+	int vmin;
 
 	union {
 		uint32_t max;
@@ -1002,7 +1003,7 @@ extern int tcpm_dpm_pd_source_cap(struct tcpc_device *tcpc,
 extern int tcpm_dpm_pd_request(struct tcpc_device *tcpc,
 	int mv, int ma, const struct tcp_dpm_event_cb_data *data);
 extern int tcpm_dpm_pd_request_ex(struct tcpc_device *tcpc,
-	uint8_t pos, uint32_t max, uint32_t oper,
+	uint8_t pos, int vmin, uint32_t max, uint32_t oper,
 	const struct tcp_dpm_event_cb_data *data);
 extern int tcpm_dpm_pd_bist_cm2(struct tcpc_device *tcpc,
 	const struct tcp_dpm_event_cb_data *data);
@@ -1615,7 +1616,7 @@ static inline int tcpm_dpm_pd_request(struct tcpc_device *tcpc,
 }
 
 static inline int tcpm_dpm_pd_request_ex(struct tcpc_device *tcpc,
-	uint8_t pos, uint32_t max, uint32_t oper,
+	uint8_t pos, int vmin, uint32_t max, uint32_t oper,
 	const struct tcp_dpm_event_cb_data *data)
 {
 	return TCPM_ERROR_NO_IMPLEMENT;

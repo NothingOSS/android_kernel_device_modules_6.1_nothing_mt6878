@@ -25,7 +25,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.26_MTK"
+#define TCPC_CORE_VERSION		"2.0.27_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -428,6 +428,7 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 	tcpc->typec_remote_rp_level = TYPEC_CC_VOLT_SNK_DFT;
 	tcpc->typec_polarity = false;
 	tcpc->bootmode = bootmode;
+	tcpc->cc_hi = INT_MAX;
 
 #if CONFIG_TCPC_VCONN_SUPPLY_MODE
 	tcpc->tcpc_vconn_supply = tcpc_desc->vconn_supply;
@@ -879,6 +880,14 @@ MODULE_VERSION(TCPC_CORE_VERSION);
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.27_MTK
+ * (1) Do not discharge VBUS when Attached.SNK
+ * (2) Bump the PD revision/version to R3.1 V1.6
+ * (3) Revise WD, FOD and CTD flows
+ * (4) Fix coverity issues
+ * (5) Revise CC high status
+ * (6) Fix PD compliance failures of Ellisys and MQP
+ *
  * 2.0.26_MTK
  * (1) Fix coverity issues
  * (2) PD DP Alt Mode V2.1

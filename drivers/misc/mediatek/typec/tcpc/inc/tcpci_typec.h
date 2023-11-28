@@ -19,6 +19,7 @@ extern bool tcpc_typec_is_act_as_sink_role(struct tcpc_device *tcpc);
  * 3. Policy Engine -> PR_SWAP, Error_Recovery, PE_Idle
  *****************************************************************************/
 
+extern int tcpc_typec_get_rp_present_flag(struct tcpc_device *tcpc);
 extern bool tcpc_typec_is_cc_open_state(struct tcpc_device *tcpc);
 extern int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc);
 
@@ -54,8 +55,6 @@ extern int tcpc_typec_handle_wd(struct tcpc_device **tcpcs, size_t nr, bool wd);
 
 extern int tcpc_typec_handle_fod(struct tcpc_device *tcpc,
 					enum tcpc_fod_status);
-extern bool tcpc_typec_ignore_fod(struct tcpc_device *tcpc);
-
 extern int tcpc_typec_handle_otp(struct tcpc_device *tcpc, bool otp);
 
 #if CONFIG_CABLE_TYPE_DETECTION

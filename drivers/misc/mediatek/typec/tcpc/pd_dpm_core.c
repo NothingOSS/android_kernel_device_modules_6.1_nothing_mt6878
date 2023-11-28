@@ -144,11 +144,6 @@ void pd_dpm_inform_cable_id(struct pd_port *pd_port, bool ack, bool src_startup)
 		memcpy(pe_data->cable_vdos, payload, sizeof(uint32_t) * cnt);
 		pe_data->cable_discovered_state = CABLE_DISCOVERED_ID;
 	}
-#if CONFIG_USB_PD_REV30
-	else if (!payload &&
-		 pe_data->discover_id_counter >= PD_DISCOVER_ID30_COUNT)
-		pd_sync_sop_prime_spec_revision(pd_port, PD_REV20);
-#endif	/* CONFIG_USB_PD_REV30 */
 
 	svdm_dfp_inform_cable_id(pd_port, ack, payload, cnt);
 
@@ -462,7 +457,7 @@ static inline void dpm_update_request(
 		}
 	}
 
-	pd_port->request_v_new = req_info->vmax;
+	pd_port->request_v_new = req_info->vmin;
 
 	if (req_info->type == DPM_PDO_TYPE_BAT)
 		dpm_update_request_bat(pd_port, req_info, flags);
@@ -529,25 +524,17 @@ int pd_dpm_update_tcp_request_ex(struct pd_port *pd_port,
 {
 	struct dpm_pdo_info_t source;
 	struct dpm_rdo_info_t req_info;
-	uint8_t policy = pd_port->dpm_charging_policy;
 	struct pd_port_power_caps *src_cap = &pd_port->pe_data.remote_src_cap;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
 	if (pd_req->pos > src_cap->nr)
-		return false;
-
-#if CONFIG_USB_PD_REV30_PPS_SINK
-	if ((policy & DPM_CHARGING_POLICY_MASK) >= DPM_CHARGING_POLICY_PPS) {
-		DPM_INFO("Reject tcp_rqeuest_ex if charging_policy>=pps\n");
 		return TCP_DPM_RET_DENIED_INVALID_REQUEST;
-	}
-#endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 
 	dpm_extract_pdo_info(src_cap->pdos[pd_req->pos-1], &source);
 
 	req_info.pos = pd_req->pos;
 	req_info.type = source.type;
-	req_info.vmin = source.vmin;
+	req_info.vmin = pd_req->vmin;
 	req_info.vmax = source.vmax;
 
 	if (req_info.type == DPM_PDO_TYPE_BAT) {
@@ -2065,7 +2052,7 @@ void pd_dpm_inform_revision(struct pd_port *pd_port)
 #endif /* DPM_INFO2_ENABLE */
 }
 
-static const uint32_t c_rmdo = RMDO(3, 1, 1, 4);
+static const uint32_t c_rmdo = RMDO(3, 1, 1, 6);
 
 int pd_dpm_send_revision(struct pd_port *pd_port)
 {

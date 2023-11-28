@@ -440,12 +440,12 @@ static int pd_parse_pdata(struct pd_port *pd_port)
 		val = DPM_CHARGING_POLICY_MAX_POWER_LVIC;
 		ret = of_property_read_u32(np, "pd,charging-policy", &val) ?
 		      of_property_read_u32(np, "pd,charging_policy", &val) : 0;
-		if (ret)
+		if (ret < 0)
 			pr_info("%s get charging policy fail\n", __func__);
 
 		pd_port->dpm_charging_policy = val;
 		pd_port->dpm_charging_policy_default = val;
-		pr_info("%s charging_policy = %d\n", __func__, val);
+		pr_info("%s charging_policy = 0x%02x\n", __func__, val);
 
 #if CONFIG_USB_PD_REV30_BAT_INFO
 		ret = pd_parse_pdata_bats(pd_port, np);
@@ -513,11 +513,11 @@ static void pd_core_power_flags_init(struct pd_port *pd_port)
 
 	for (i = 0; i < ARRAY_SIZE(supported_dpm_caps); i++) {
 		if (of_property_read_bool(np, supported_dpm_caps[i].prop_name) ||
-		    of_property_read_bool(np, supported_dpm_caps[i].legacy_prop_name))
-			pd_port->dpm_caps |=
-				supported_dpm_caps[i].val;
+		    of_property_read_bool(np, supported_dpm_caps[i].legacy_prop_name)) {
+			pd_port->dpm_caps |= supported_dpm_caps[i].val;
 			pr_info("dpm_caps: %s\n",
 				supported_dpm_caps[i].prop_name);
+		}
 	}
 
 	if (of_property_read_u32(np, "pr-check", &val) == 0 ||
@@ -1384,10 +1384,6 @@ int pd_update_connect_state(struct pd_port *pd_port, uint8_t state)
 /*
  * Collision Avoidance : check tx ok
  */
-
-#ifndef MIN
-#define MIN(a, b)       ((a < b) ? (a) : (b))
-#endif
 
 void pd_set_sink_tx(struct pd_port *pd_port, uint8_t cc)
 {

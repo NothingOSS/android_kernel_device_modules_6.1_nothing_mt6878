@@ -35,12 +35,13 @@ void pe_src_discovery_entry(struct pd_port *pd_port)
 
 	pd_port->pe_data.pd_connected = false;
 
-	pd_enable_timer(pd_port, PD_TIMER_SOURCE_CAPABILITY);
-
 #if CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
-	if (pd_is_discover_cable(pd_port))
+	if (pd_is_discover_cable(pd_port) &&
+	    !pd_port->pe_data.cable_discovered_state)
 		pd_enable_timer(pd_port, PD_TIMER_DISCOVER_ID);
-#endif
+#endif	/* CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID */
+
+	pd_enable_timer(pd_port, PD_TIMER_SOURCE_CAPABILITY);
 }
 
 void pe_src_send_capabilities_entry(struct pd_port *pd_port)

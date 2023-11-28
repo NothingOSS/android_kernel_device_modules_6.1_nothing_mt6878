@@ -132,7 +132,7 @@ static int tcpci_alert_tx_success(struct tcpc_device *tcpc)
 #if PD_DYNAMIC_SENDER_RESPONSE
 	tcpc->t[1] = local_clock();
 	tcpc->tx_time_diff = (tcpc->t[1] - tcpc->t[0]) / NSEC_PER_USEC;
-	pd_dbg_info("%s, diff = %d\n", __func__, tcpc->tx_time_diff);
+	pd_dbg_info("%s, diff = %llu\n", __func__, tcpc->tx_time_diff);
 #endif /* PD_DYNAMIC_SENDER_RESPONSE */
 	tx_state = tcpc->pd_transmit_state;
 	tcpc->pd_transmit_state = PD_TX_STATE_GOOD_CRC;
@@ -143,7 +143,6 @@ static int tcpci_alert_tx_success(struct tcpc_device *tcpc)
 	else
 		pd_put_event(tcpc, &evt, false);
 
-	pd_dbg_info("DBG: %s\n", __func__);
 	return 0;
 }
 
@@ -500,10 +499,11 @@ int tcpci_report_usb_port_changed(struct tcpc_device *tcpc)
 {
 	tcpci_notify_typec_state(tcpc);
 
-	if (tcpc->typec_attach_old == TYPEC_UNATTACHED)
-		tcpci_report_usb_port_attached(tcpc);
-	else if (tcpc->typec_attach_new == TYPEC_UNATTACHED)
+	if (tcpc->typec_attach_new == TYPEC_UNATTACHED ||
+	    tcpc->typec_attach_new == TYPEC_PROTECTION)
 		tcpci_report_usb_port_detached(tcpc);
+	else if (tcpc->typec_attach_old == TYPEC_UNATTACHED)
+		tcpci_report_usb_port_attached(tcpc);
 	else
 		TCPC_DBG2("TCPC Attach Again\n");
 
