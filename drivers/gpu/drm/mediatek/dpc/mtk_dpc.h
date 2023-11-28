@@ -162,6 +162,7 @@ struct dpc_funcs {
 	void (*dpc_dvfs_both_set)(const enum mtk_dpc_subsys subsys, const u8 level, bool force,
 		const u32 bw_in_mb);
 	void (*dpc_analysis)(bool detail);
+	void (*dpc_dsi_pll_set)(const u32 value);
 	void (*dpc_init_panel_type)(enum mtk_panel_type);
 };
 

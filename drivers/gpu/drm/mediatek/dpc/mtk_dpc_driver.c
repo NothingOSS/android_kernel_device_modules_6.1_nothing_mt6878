@@ -1504,6 +1504,16 @@ out:
 	return duration;
 }
 
+static void dpc_dsi_pll_set(const u32 value)
+{
+	/* if DSI_PLL_SEL is set, power ON disp1 and set DSI_CK_KEEP_EN */
+	if (value & BIT(0)) {
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 6, 1); /* will be cleared when ff enable */
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DISP1);
+		writel(BIT(5), dpc_base + DISP_REG_DPC_DISP1_MTCMOS_CFG);
+	}
+}
+
 static void dpc_irq_enable(const enum mtk_dpc_subsys subsys, bool en, bool manual)
 {
 	u32 mask = 0;
@@ -3695,6 +3705,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_dvfs_bw_set = dpc_dvfs_bw_set,
 	.dpc_dvfs_both_set = dpc_dvfs_both_set,
 	.dpc_analysis = dpc_analysis,
+	.dpc_dsi_pll_set = dpc_dsi_pll_set,
 	.dpc_init_panel_type = dpc_init_panel_type,
 };
 

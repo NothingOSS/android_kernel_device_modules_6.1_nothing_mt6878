@@ -501,6 +501,12 @@ void mtk_vidle_dpc_analysis(bool detail)
 		disp_dpc_driver.dpc_analysis(detail);
 }
 
+void mtk_vidle_dsi_pll_set(const u32 value)
+{
+	if (disp_dpc_driver.dpc_dsi_pll_set)
+		disp_dpc_driver.dpc_dsi_pll_set(value);
+}
+
 void mtk_vidle_register(const struct dpc_funcs *funcs)
 {
 	int ret = 0;
@@ -509,24 +515,7 @@ void mtk_vidle_register(const struct dpc_funcs *funcs)
 		__func__, vidle_data.panel_type, vidle_data.te_duration,
 		vidle_data.level, vidle_data.hrt_bw, vidle_data.srt_bw);
 
-	disp_dpc_driver.dpc_enable = funcs->dpc_enable;
-	disp_dpc_driver.dpc_dc_force_enable = funcs->dpc_dc_force_enable;
-	disp_dpc_driver.dpc_config = funcs->dpc_config;
-	disp_dpc_driver.dpc_dt_set = funcs->dpc_dt_set;
-	disp_dpc_driver.dpc_group_enable = funcs->dpc_group_enable;
-	disp_dpc_driver.dpc_pause = funcs->dpc_pause;
-	disp_dpc_driver.dpc_vidle_power_keep = funcs->dpc_vidle_power_keep;
-	disp_dpc_driver.dpc_vidle_power_release =
-		funcs->dpc_vidle_power_release;
-	disp_dpc_driver.dpc_vidle_power_keep_by_gce = funcs->dpc_vidle_power_keep_by_gce;
-	disp_dpc_driver.dpc_vidle_power_release_by_gce =
-		funcs->dpc_vidle_power_release_by_gce;
-	disp_dpc_driver.dpc_hrt_bw_set = funcs->dpc_hrt_bw_set;
-	disp_dpc_driver.dpc_srt_bw_set = funcs->dpc_srt_bw_set;
-	disp_dpc_driver.dpc_dvfs_set = funcs->dpc_dvfs_set;
-	disp_dpc_driver.dpc_dvfs_bw_set = funcs->dpc_dvfs_bw_set;
-	disp_dpc_driver.dpc_analysis = funcs->dpc_analysis;
-	disp_dpc_driver.dpc_init_panel_type = funcs->dpc_init_panel_type;
+	disp_dpc_driver = *funcs;
 
 	if(vidle_data.panel_type != PANEL_TYPE_COUNT) {
 		DDPINFO("%s need set panel:%d\n", __func__, vidle_data.panel_type);
