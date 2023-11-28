@@ -11383,13 +11383,15 @@
 				<0 0x1e00910c 0 0x4>, /* MBOX3 clr */
 				<0 0x10001f4c 0 0x8>, /* INFRACFG_AO ADSP_RSV */
 				<0 0x1024e3c0 0 0x3c>, /* IPIC CHN 15 */
-				<0 0x1024ec10 0 0x04>; /* IPIC SRC CLR */
+				<0 0x1024ec10 0 0x04>, /* IPIC SRC CLR */
+				<0 0x1c0016a0 0 0x04>; /* SPM SEMA_M1*/
 			reg-names = "cfg", "cfg2", "cfg_hrt",
 				"mbox0_base", "mbox0_set", "mbox0_clr",
 				"mbox1_base", "mbox1_set", "mbox1_clr",
 				"mbox2_base", "mbox2_set", "mbox2_clr",
 				"mbox3_base", "mbox3_set", "mbox3_clr",
-				"infracfg_rsv", "ipic_chn", "ipic_src_clr";
+				"infracfg_rsv", "ipic_chn", "ipic_src_clr",
+				"spm_sema_m1";
 
 			interrupts = <GIC_SPI 817 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX0 */
 				<GIC_SPI 818 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX1 */
@@ -11432,6 +11434,8 @@
 			adsp-rsv-l2sram = <0x80>;
 			adsp-rsv-xhci = <0x80000>;
 			adsp-rsv-audio = <0x5c0000>;
+			adsp-fmeter-adspplldiv = <7 1 800000>;
+			adsp-pll-sema-bits = <1>;
 		};
 
 		adsp_core0: adsp-core0@1e050000 {
