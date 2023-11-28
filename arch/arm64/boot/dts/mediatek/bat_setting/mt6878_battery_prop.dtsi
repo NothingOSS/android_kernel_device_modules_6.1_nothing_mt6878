@@ -70,6 +70,25 @@
 	multi-temp-gauge0 = <(1)>;
 	/* Multi gauge0 enable */
 	rbat-pull-up-volt = <(1840)>;
+	/*3.4v shutdown*/
+	dynamic-shutdown-cond = <(1)>;
+	pmic-min-vol1 = <(33500)>;
+	/* vboot voltage for gauge 0%*/
+	shutdown-gauge0-voltage1 = <(34000)>;
+	/* shutdown gauge 0% voltage */
+	q-max-sys-voltage1-bat0 = <(3350)>;
+	/* Pseudo1 for hide percentage */
+	q-max-sys-voltage1-bat1 = <(3350)>;
+	/* Pseudo1 for hide percentage */
+	q-max-sys-voltage1-bat2 = <(3350)>;
+	/* Pseudo1 for hide percentage */
+	q-max-sys-voltage1-bat3 = <(3350)>;
+	/* Pseudo1 for hide percentage */
+	vbat2-det1-voltage1 = <(34500)>;
+	vbat2-det1-voltage2 = <(32000)>;
+	vbat2-det1-voltage3 = <(35000)>;
+	bat-voltage-low-bound1 = <(3400)>;
+	low-tmp-bat-voltage-low-bound1 = <(3500)>;
 #include "mt6878_battery_table.dtsi"
 #include "mt6878_battery_prop_dim2_ext.dtsi"
 };
