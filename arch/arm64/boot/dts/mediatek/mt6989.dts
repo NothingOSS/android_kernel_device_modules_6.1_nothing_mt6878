@@ -11077,6 +11077,8 @@
 
 			event-dpc-prete = /bits/ 16 <CMDQ_EVENT_DPC_DT34_DONE>;
 			dpc-base = <0x1c000000>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 		};
 
 		mml_mutex0: mml-mutex0@1f801000 {
