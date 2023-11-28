@@ -1364,7 +1364,7 @@ static int mtk_dsi_set_data_rate(struct mtk_dsi *dsi)
 	DDPDBG("set mipitx's data rate: %lu Hz\n", mipi_tx_rate);
 
 	mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, data_rate);
-	if (dsi->ext->params->data_rate_khz)
+	if (dsi->ext && dsi->ext->params->data_rate_khz)
 		mtk_mipi_tx_pll_rate_khz_set_adpt(dsi->phy,
 			dsi->ext->params->data_rate_khz);
 

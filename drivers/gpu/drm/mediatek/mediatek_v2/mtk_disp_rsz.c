@@ -985,7 +985,7 @@ static int mtk_rsz_set_partial_update(struct mtk_ddp_comp *comp,
 						&comp->mtk_crtc->base, NULL, true);
 	u32 frm_in_h, frm_out_h;
 	u32 in_h = 0, out_h = 0;
-	struct rsz_tile_params th[1];
+	struct rsz_tile_params th[1] = {0};
 	u32 reg_val = 0;
 	u32 tile_idx = 0;
 	unsigned int overhead_v;
