@@ -240,6 +240,7 @@ struct lvts_data {
 	bool clock_gate_no_need;
 	bool reset_no_need;
 	bool spm_lvts;
+	int enable_runtime_log;
 };
 
 struct soc_temp_tz {

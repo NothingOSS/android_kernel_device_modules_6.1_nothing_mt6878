@@ -158,6 +158,7 @@ static int lvts_read_all_tc_temperature(struct lvts_data *lvts_data, bool in_isr
 	int max_temp = THERMAL_TEMP_INVALID, current_temp;
 	void __iomem *base;
 	struct platform_ops *ops = &lvts_data->ops;
+	struct device *dev = lvts_data->dev;
 
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		base = GET_BASE_ADDR(i);
@@ -185,6 +186,8 @@ static int lvts_read_all_tc_temperature(struct lvts_data *lvts_data, bool in_isr
 			if (!in_isr)
 				mutex_unlock(&lvts_data->sen_data_lock);
 
+			if (lvts_data->enable_runtime_log)
+				dev_info(dev, "sen_data[%d].temp=%d\n", s_index, lvts_data->sen_data[s_index].temp);
 		}
 	}
 
@@ -1491,6 +1494,28 @@ static int lvts_register_thermal_zones(struct lvts_data *lvts_data)
 	return ret;
 }
 
+static void check_runtime_log_from_dts(struct lvts_data *lvts_data,
+	struct platform_device *pdev)
+{
+	int enable_runtime_log = 0;
+	struct device_node *node = NULL;
+
+	if (pdev)
+		node = pdev->dev.of_node;
+
+	if (node) {
+		if (of_property_read_u32(node, "enable-runtime-log", &enable_runtime_log)) {
+			lvts_data->enable_runtime_log = 0;
+			return;
+		}
+		pr_info("[%s] Check enable_runtime_log(%d)\n", __func__, enable_runtime_log);
+		lvts_data->enable_runtime_log = ((enable_runtime_log == 0) ? 0 : 1);
+	} else {
+		pr_notice("[%s] can't find LVTS compatible node\n", __func__);
+		lvts_data->enable_runtime_log = 0;
+	}
+}
+
 static int lvts_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1504,6 +1529,8 @@ static int lvts_probe(struct platform_device *pdev)
 	}
 
 	lvts_data->dev = &pdev->dev;
+
+	check_runtime_log_from_dts(lvts_data, pdev);
 
 	ret = of_update_lvts_data(lvts_data, pdev);
 	if (ret)
