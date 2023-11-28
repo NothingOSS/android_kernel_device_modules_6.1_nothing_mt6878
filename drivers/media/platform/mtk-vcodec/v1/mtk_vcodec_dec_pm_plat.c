@@ -418,7 +418,10 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	struct vdec_inst *inst = (struct vdec_inst *) ctx->drv_handle;
 
-	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT) || IS_ERR_OR_NULL(inst->vsi)) {
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT) || inst == (void *) 0)
+		return;
+
+	if (IS_ERR_OR_NULL(inst) || IS_ERR_OR_NULL(inst->vsi)) {
 		mtk_v4l2_err("[VDVFS][%d] inst/vsi is err or null", ctx->id);
 		return;
 	}
