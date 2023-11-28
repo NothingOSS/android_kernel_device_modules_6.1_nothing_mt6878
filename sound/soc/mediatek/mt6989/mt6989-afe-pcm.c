@@ -4996,11 +4996,11 @@ static int mt6989_afe_pcm_copy(struct snd_pcm_substream *substream,
 	if (!component)
 		return -EINVAL;
 	afe = snd_soc_component_get_drvdata(component);
-	mt6989_set_audio_int_bus_parent(afe, CLK_TOP_MAINPLL_D4_D4);
+	/* mt6989_set_audio_int_bus_parent(afe, CLK_TOP_MAINPLL_D4_D4); */
 
 	ret = sp_copy(substream, channel, hwoff, buf, bytes);
 
-	mt6989_set_audio_int_bus_parent(afe, CLK_CLK26M);
+	/* mt6989_set_audio_int_bus_parent(afe, CLK_CLK26M); */
 
 	return ret;
 }
