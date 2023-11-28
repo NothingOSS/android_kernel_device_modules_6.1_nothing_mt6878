@@ -133,6 +133,8 @@ mgk_64_k61_device_modules = [
     "drivers/gpu/drm/panel/k6989v1_64_alpha/panel-rm692h5-alpha-cmd.ko",
     "drivers/gpu/drm/panel/k6989v1_64_flip_alpha/panel-boe-bf130-dphy-cmd-hd.ko",
     "drivers/gpu/drm/panel/k6989v1_64_flip_alpha/panel-samsung-amf680cm01-cmd-fhd.ko",
+    "drivers/gpu/drm/panel/k6878v1_64_alpha/dsi-panel-mot-csot-nt37707-667-fhdp-dphy-cmd.ko",
+    "drivers/gpu/drm/panel/k6878v1_64_alpha/dsi-panel-mot-csot-nt37705-1056x1068-dphy-cmd-cli.ko",
     "drivers/gpu/drm/panel/k6985v1_64/td2204-wqhd-amb678zy01-s6e3hc3-cmd.ko",
     "drivers/gpu/drm/panel/mediatek-cust-panel-sample.ko",
     "drivers/gpu/drm/panel/mediatek-drm-gateic.ko",
