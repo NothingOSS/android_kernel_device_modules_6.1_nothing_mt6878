@@ -14,7 +14,6 @@
 #include "mbraink_ioctl_struct_def.h"
 
 #define IOC_MAGIC	'k'
-#define MBRAINK_NETLINK 30
 
 #define MAX_BUF_SZ			1024
 
@@ -101,6 +100,24 @@
 #define RESUME_DATA		1
 #define CURRENT_DATA	2
 
+#ifndef GENL_ID_GENERATE
+#define GENL_ID_GENERATE    0
+#endif
+
+enum {
+	MBRAINK_A_UNSPEC,
+	MBRAINK_A_MSG,
+	__MBRAINK_A_MAX,
+};
+#define MBRAINK_A_MAX (__MBRAINK_A_MAX - 1)
+
+enum {
+	MBRAINK_C_UNSPEC,
+	MBRAINK_C_PID_CTRL,
+	__MBRAINK_C_MAX,
+};
+#define MBRAINK_C_MAX (__MBRAINK_C_MAX - 1)
+
 struct mbraink_data {
 #define CHRDEV_NAME     "mbraink_chrdev"
 	struct cdev mbraink_cdev;
@@ -114,7 +131,6 @@ struct mbraink_data {
 	long long last_resume_timestamp;
 	long long last_suspend_ktime;
 	struct mbraink_battery_data suspend_battery_buffer;
-	struct sock *mbraink_sock;
 	int client_pid;
 	unsigned int feature_en;
 	unsigned int pmu_en;

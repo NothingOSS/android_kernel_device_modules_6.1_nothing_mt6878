@@ -14,6 +14,8 @@
 #include <linux/kdev_t.h>
 #include <linux/mutex.h>
 #include <linux/netlink.h>
+#include <net/netlink.h>
+#include <net/genetlink.h>
 #include <linux/skbuff.h>
 #include <linux/rtc.h>
 #include <linux/sched/clock.h>
@@ -35,6 +37,7 @@ static DEFINE_MUTEX(power_lock);
 static DEFINE_MUTEX(pmu_lock);
 struct mbraink_data mbraink_priv;
 
+static int mbraink_genetlink_recv_msg(struct sk_buff *skb, struct genl_info *info);
 
 static int mbraink_open(struct inode *inode, struct file *filp)
 {
@@ -1140,72 +1143,96 @@ r_class:
 	return -EPERM;
 }
 
+static struct nla_policy mbraink_genl_policy[MBRAINK_A_MAX + 1] = {
+	[MBRAINK_A_MSG] = { .type = NLA_NUL_STRING },
+};
+
+static struct genl_ops mbraink_genl_ops[] = {
+	{
+		.cmd = MBRAINK_C_PID_CTRL,
+		.flags = 0,
+		.policy = mbraink_genl_policy,
+		.doit = mbraink_genetlink_recv_msg,
+		.dumpit = NULL,
+	},
+};
+
+static const struct genl_multicast_group mbraink_genl_mcgr[] = {
+	{ .name = "MBRAINK_MCGRP", },
+};
+
+static struct genl_family mbraink_genl_family = {
+	.id = GENL_ID_GENERATE,
+	.hdrsize = 0,
+	.name = "MBRAINK_LINK",
+	.version = 1,
+	.maxattr = MBRAINK_A_MAX,
+	.ops = mbraink_genl_ops,
+	.n_ops = ARRAY_SIZE(mbraink_genl_ops),
+	.mcgrps =  mbraink_genl_mcgr,
+};
+
 int mbraink_netlink_send_msg(const char *msg)
 {
-	struct nlmsghdr *nlhead;
-	struct sk_buff *skb_out = NULL;
-	int ret = 0, msg_size = 0;
+	struct sk_buff *skb = NULL;
+	void *msg_head = NULL;
+	int ret = -1, size = 0;
 
 	if (mbraink_priv.client_pid != -1) {
-		msg_size = strlen(msg);
-
-		/*Allocate a new netlink message: skb_out*/
-		skb_out = nlmsg_new(msg_size, GFP_ATOMIC);
-		if (!skb_out) {
-			pr_notice("Failed to allocate new skb\n");
+		size = nla_total_size(strlen(msg) + 1);
+		skb = genlmsg_new(size, GFP_ATOMIC);
+		if (!skb) {
+			pr_notice("[%s]: mbraink Failed to allocate new skb\n", __func__);
 			return -ENOMEM;
 		}
-
-		/*Add a new netlink message to an skb*/
-		nlhead = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);
-
-		NETLINK_CB(skb_out).dst_group = 0;
-
-		strncpy(nlmsg_data(nlhead), msg, msg_size);
-
-		ret = nlmsg_unicast(mbraink_priv.mbraink_sock, skb_out, mbraink_priv.client_pid);
+		msg_head = genlmsg_put(skb, mbraink_priv.client_pid, 0, &mbraink_genl_family,
+					0, MBRAINK_C_PID_CTRL);
+		if (msg_head == NULL) {
+			pr_notice("[%s] genlmsg_put fail\n", __func__);
+			nlmsg_free(skb);
+			return -EMSGSIZE;
+		}
+		ret = nla_put(skb, MBRAINK_A_MSG, strlen(msg) + 1, msg);
+		if (ret != 0) {
+			pr_notice("[%s] nla_put fail, ret=[%d]\n", __func__, ret);
+			genlmsg_cancel(skb, msg_head);
+			nlmsg_free(skb);
+			return ret;
+		}
+		genlmsg_end(skb, msg_head);
+		ret = genlmsg_unicast(&init_net, skb, mbraink_priv.client_pid);
 		if (ret < 0)
-			pr_notice("Error while sending back to user, ret = %d\n",
-					ret);
+			pr_notice("[%s] nla_put fail, ret=[%d]\n", __func__, ret);
 	}
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mbraink_netlink_send_msg);
 
-static void mbraink_netlink_recv_msg(struct sk_buff *skb)
+static int mbraink_genetlink_recv_msg(struct sk_buff *skb, struct genl_info *info)
 {
-	struct nlmsghdr *nlhead;
+	struct nlmsghdr *nlhdr = NULL;
 
-	nlhead = (struct nlmsghdr *)skb->data;
+	nlhdr = nlmsg_hdr(skb);
 
-	mbraink_priv.client_pid = nlhead->nlmsg_pid;
+	mbraink_priv.client_pid = nlhdr->nlmsg_pid;
 
-	pr_info("[MBK_INFO] %s: receive the connected client pid %d\n",
-			__func__,
-			mbraink_priv.client_pid);
+	pr_info("[%s]: mbraink receive the connected client pid %d\n",
+		__func__,
+		mbraink_priv.client_pid);
+	return 0;
 }
 
-static int mbraink_netlink_init(void)
+static int mbraink_genetlink_init(void)
 {
-	struct netlink_kernel_cfg cfg = {
-		.input = mbraink_netlink_recv_msg,
-	};
+	int ret = 0;
 
-	mbraink_priv.mbraink_sock = NULL;
 	mbraink_priv.client_pid = -1;
 
-	/*netlink_kernel_create() returns a pointer, should be checked with == NULL */
-	mbraink_priv.mbraink_sock = netlink_kernel_create(&init_net, MBRAINK_NETLINK, &cfg);
-	pr_info("[MBK_INFO] Entering: %s, protocol family = %d\n",
-			__func__,
-			MBRAINK_NETLINK);
+	ret = genl_register_family(&mbraink_genl_family);
+	if (ret != 0)
+		pr_notice("mbraink Failed to register genetlink family, ret %d\n", ret);
 
-	if (!mbraink_priv.mbraink_sock) {
-		pr_notice("Error creating socket.\n");
-		return -ENOMEM;
-	}
-
-	return 0;
+	return ret;
 }
 
 static int mbraink_init(void)
@@ -1216,9 +1243,9 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink device init failed.\n");
 
-	ret = mbraink_netlink_init();
+	ret = mbraink_genetlink_init();
 	if (ret)
-		pr_notice("mbraink netlink init failed.\n");
+		pr_notice("mbraink genetlink init failed.\n");
 
 	ret = mbraink_process_tracer_init();
 	if (ret)
@@ -1264,19 +1291,17 @@ static void mbraink_dev_exit(void)
 			MINOR(mbraink_device.devt));
 }
 
-static void mbraink_netlink_exit(void)
+static void mbraink_genetlink_exit(void)
 {
-	if (mbraink_priv.mbraink_sock)
-		netlink_kernel_release(mbraink_priv.mbraink_sock);
-
-	pr_info("[MBK_INFO] mbraink_netlink exit done.\n");
+	genl_unregister_family(&mbraink_genl_family);
+	pr_info("[%s] mbraink_genetlink exit done.\n", __func__);
 }
 
 static void mbraink_exit(void)
 {
 	mbraink_pmu_uninit();
 	mbraink_dev_exit();
-	mbraink_netlink_exit();
+	mbraink_genetlink_exit();
 	mbraink_process_tracer_exit();
 	mbraink_gpu_deinit();
 	mbraink_audio_deinit();
