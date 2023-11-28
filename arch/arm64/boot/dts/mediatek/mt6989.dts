@@ -3104,24 +3104,6 @@
 		suspend-check;
 	};
 
-	smi_pd_cam_vcore: smi-pd-cam-vcore {
-		compatible = "mediatek,smi-pd";
-		mediatek,suspend-check-dev-supply = <&smi_disp_common
-					&smi_mdp_common &smi_sysram_common>;
-		mediatek,suspend-check-port = <0x20 0xc0 0x4>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_VCORE>;
-		suspend-check;
-	};
-
-	smi_pd_cam_main: smi-pd-cam-main {
-		compatible = "mediatek,smi-pd";
-		mediatek,suspend-check-dev-supply = <&smi_disp_common
-					&smi_mdp_common &smi_sysram_common &smi_cam_vcore_sub_comm>;
-		mediatek,suspend-check-port = <0x20 0x40 0x4 0x2>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
-		suspend-check;
-	};
-
 	smi_pd_cam_suba: smi-pd-cam-suba {
 		compatible = "mediatek,smi-pd";
 		mediatek,suspend-check-dev-supply = <&smi_cam_sub_comm0 &smi_cam_sub_comm2>;
