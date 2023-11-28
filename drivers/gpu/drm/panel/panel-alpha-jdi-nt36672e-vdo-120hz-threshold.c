@@ -1697,6 +1697,7 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 	unsigned int lcm_degree;
 	int ret;
 	int probe_ret;
+	struct mtk_panel_params *ext_param = NULL;
 
 	pr_info("%s+ jdi,nt36672e,vdo,120hz,threshold\n", __func__);
 	dsi_node = of_get_parent(dev->of_node);
@@ -1804,15 +1805,23 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 	mtk_panel_tch_handle_reg(&ctx->panel);
-	ret = mtk_panel_ext_create(dev, &ext_params, &ext_funcs, &ctx->panel);
+
+	if (current_fps == 120)
+		ext_param = &ext_params_120hz;
+	else if (current_fps == 90)
+		ext_param = &ext_params_90hz;
+	else
+		ext_param = &ext_params;
+
+	ret = mtk_panel_ext_create(dev, ext_param, &ext_funcs, &ctx->panel);
 	if (ret < 0)
 		return ret;
 	probe_ret = of_property_read_u32(dev->of_node, "lcm-degree", &lcm_degree);
 	if (probe_ret < 0)
 		lcm_degree = 0;
 	else
-		ext_params.lcm_degree = lcm_degree;
-	pr_info("lcm_degree: %d\n", ext_params.lcm_degree);
+		ext_param->lcm_degree = lcm_degree;
+	pr_info("lcm_degree: %d\n", ext_param->lcm_degree);
 #endif
 	pr_info("%s- jdi,nt36672e,vdo,120hz,threshold\n", __func__);
 
