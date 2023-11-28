@@ -84,10 +84,12 @@ static int mtk_pwm_ir_tx(struct rc_dev *rcdev, unsigned int *txbuf,
 		buf_size +=
 		(int)(DIV_ROUND_CLOSEST_ULL((u64)(txbuf[i])*pwm_ir->carrier,
 		(u32)(NSEC_PER_SEC/1000))) * pwm_ir->cycle;
-		total_time += txbuf[i];
 	}
 
 	buf_size = ALIGN(buf_size, BITS_PER_BYTE * sizeof(unsigned int));
+	/* Calculate total time in us, buf_size is bit size here */
+	total_time = (int)(DIV_ROUND_UP_ULL((u64)(NSEC_PER_SEC/1000)*buf_size,
+				pwm_ir->carrier*pwm_ir->cycle));
 	buf_size = buf_size / BITS_PER_BYTE; /* byte size */
 
 	wave_vir = dma_alloc_coherent(&pwm_ir->pdev->dev, buf_size,
