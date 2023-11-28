@@ -11017,6 +11017,16 @@ static void mtk_drm_crtc_path_adjust(struct mtk_drm_private *priv, struct drm_cr
 	mtk_crtc->dual_pipe_ddp_ctx.ovl_comp_nr[DDP_FIRST_PATH] = ovl_comp_idx + 1;
 }
 
+static void mtk_set_dpc_dsi_clk(struct mtk_drm_crtc *mtk_crtc, bool enable)
+{
+	unsigned int id = drm_crtc_index(&mtk_crtc->base);
+	unsigned int value = id == 3 ? enable ? 1 : 0 : enable ? 0 : 1;
+
+	mtk_vidle_dsi_pll_set(value);
+
+	DDPMSG("crtc%d %s set %d\n", id, __func__, value);
+}
+
 void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = NULL;
@@ -11146,6 +11156,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		/* 4. prepare modules would be used in this CRTC */
 		mtk_crtc_ddp_prepare(mtk_crtc);
 	}
+
+	mtk_set_dpc_dsi_clk(mtk_crtc, true);
 
 	mtk_gce_backup_slot_init(mtk_crtc);
 
@@ -12076,6 +12088,8 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 		mtk_drm_pan_disp_set_hrt_bw(crtc, __func__);
 
+	mtk_set_dpc_dsi_clk(mtk_crtc, true);
+
 	mtk_gce_backup_slot_init(mtk_crtc);
 
 	/* 7. set vblank*/
@@ -12233,6 +12247,8 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 
 	/* 11. set CRTC SW status */
 	mtk_crtc_set_status(crtc, false);
+
+	mtk_set_dpc_dsi_clk(mtk_crtc, false);
 
 end:
 	CRTC_MMP_EVENT_END((int) crtc_id, disable,

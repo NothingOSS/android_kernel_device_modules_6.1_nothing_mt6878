@@ -82,6 +82,8 @@ void mtk_vidle_register(const struct dpc_funcs *funcs);
 void mtk_vidle_config_ff(bool en);
 void mtk_vidle_dpc_analysis(bool detail);
 void mtk_vidle_set_panel_type(enum mtk_panel_type type);
+void mtk_vidle_dsi_pll_set(const u32 value);
+
 void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp);
 
 #endif
