@@ -4495,7 +4495,8 @@ static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 
-	if (atomic_read(&aal_data->primary_data->irq_en) == 0) {
+	if (atomic_read(&aal_data->primary_data->irq_en) == 0 ||
+			atomic_read(&aal_data->primary_data->should_stop)) {
 		atomic_set(&aal_data->primary_data->eof_irq_en, 0);
 		AALIRQ_LOG("%s, skip irq\n", __func__);
 		return;
@@ -4528,8 +4529,6 @@ static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 
 	if (atomic_read(&aal_data->primary_data->force_relay) == 1 &&
 		!pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])
-		return;
-	if (atomic_read(&aal_data->primary_data->should_stop))
 		return;
 	if (atomic_read(&aal_data->primary_data->change_to_dre30) != 0x3)
 		return;
@@ -4599,12 +4598,6 @@ static irqreturn_t mtk_disp_aal_irq_handler(int irq, void *dev_id)
 
 	DRM_MMP_MARK(IRQ, irq, status0);
 	DRM_MMP_MARK(aal0, status0, status1);
-
-	if (g_aal_bypass_mode == AAL_BYPASS_SW &&
-		atomic_read(&aal->primary_data->should_stop)) {
-		ret = IRQ_HANDLED;
-		goto out;
-	}
 
 	disp_aal_on_end_of_frame(comp, status0);
 	if (mtk_crtc->is_dual_pipe && comp1)
