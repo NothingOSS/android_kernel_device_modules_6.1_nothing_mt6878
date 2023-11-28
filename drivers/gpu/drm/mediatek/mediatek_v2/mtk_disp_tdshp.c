@@ -70,6 +70,9 @@ static int mtk_disp_tdshp_write_reg(struct mtk_ddp_comp *comp,
 	if (lock)
 		mutex_lock(&primary_data->global_lock);
 
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_TDSHP_CFG, 0x2 | primary_data->relay_value, 0x3);
+
 	/* to avoid different show of dual pipe, pipe1 use pipe0's config data */
 	disp_tdshp_regs = primary_data->tdshp_regs;
 	if (disp_tdshp_regs == NULL) {
@@ -82,9 +85,6 @@ static int mtk_disp_tdshp_write_reg(struct mtk_ddp_comp *comp,
 			disp_tdshp_regs->tdshp_en, disp_tdshp_regs->tdshp_limit,
 			disp_tdshp_regs->tdshp_ylev_256, disp_tdshp_regs->tdshp_gain_high,
 			disp_tdshp_regs->tdshp_gain_mid);
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_TDSHP_CFG, 0x2 | primary_data->relay_value, 0x11);
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_00,
 		(disp_tdshp_regs->tdshp_softcoring_gain << 0 |
