@@ -526,6 +526,7 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (ret) {
 			mml_pq_comp_config_clear(task);
 			tdshp_frm->config_success = false;
+			tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
 			mml_pq_err("get ds param timeout: %d in %dms",
 				ret, TDSHP_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
@@ -534,6 +535,8 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 		result = get_tdshp_comp_config_result(task);
 		if (!result) {
+			tdshp_frm->config_success = false;
+			tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;

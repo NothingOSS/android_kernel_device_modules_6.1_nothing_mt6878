@@ -295,6 +295,8 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 		ret = mml_pq_get_comp_config_result(task, C3D_WAIT_TIMEOUT_MS);
 		if (ret) {
 			mml_pq_comp_config_clear(task);
+			c3d_frm->config_success = false;
+			c3d_relay(comp, pkt, base_pa, true, alpha);
 			mml_pq_err("get c3d param timeout: %d in %dms",
 				ret, C3D_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
@@ -303,6 +305,8 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 		result = get_c3d_comp_config_result(task);
 		if (!result) {
+			c3d_frm->config_success = false;
+			c3d_relay(comp, pkt, base_pa, true, alpha);
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;

@@ -260,6 +260,8 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (ret) {
 			mml_pq_comp_config_clear(task);
 			color_frm->config_success = false;
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + color->data->reg_table[COLOR_START], 3, U32_MAX);
 			mml_pq_err("get color param timeout: %d in %dms",
 				ret, COLOR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
@@ -268,6 +270,9 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 		result = get_color_comp_config_result(task);
 		if (!result) {
+			color_frm->config_success = false;
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + color->data->reg_table[COLOR_START], 3, U32_MAX);
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;
