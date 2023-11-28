@@ -225,56 +225,56 @@
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010000>;
 				local-timer-stop;
-				entry-latency-us = <126>;
-				exit-latency-us = <251>;
+				entry-latency-us = <25>;
+				exit-latency-us = <57>;
 				min-residency-us = <5700>;
 			};
 			cpuoff_b: cpuoff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010000>;
 				local-timer-stop;
-				entry-latency-us = <52>;
-				exit-latency-us = <129>;
+				entry-latency-us = <35>;
+				exit-latency-us = <82>;
 				min-residency-us = <1890>;
 			};
 			clusteroff_l: clusteroff-l {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
-				entry-latency-us = <143>;
-				exit-latency-us = <420>;
+				entry-latency-us = <57>;
+				exit-latency-us = <134>;
 				min-residency-us = <5700>;
 			};
 			clusteroff_b: clusteroff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
-				entry-latency-us = <46>;
-				exit-latency-us = <150>;
+				entry-latency-us = <50>;
+				exit-latency-us = <144>;
 				min-residency-us = <2460>;
 			};
 			mcusysoff_l: mcusysoff-l {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x02010007>;
 				local-timer-stop;
-				entry-latency-us = <697>;
-				exit-latency-us = <627>;
+				entry-latency-us = <863>;
+				exit-latency-us = <1237>;
 				min-residency-us = <5700>;
 			};
 			mcusysoff_b: mcusysoff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x02010007>;
 				local-timer-stop;
-				entry-latency-us = <524>;
-				exit-latency-us = <337>;
+				entry-latency-us = <648>;
+				exit-latency-us = <1172>;
 				min-residency-us = <4570>;
 			};
 			system_vcore: system-vcore {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x020100ff>;
 				local-timer-stop;
-				entry-latency-us = <940>;
-				exit-latency-us = <3500>;
+				entry-latency-us = <2400>;
+				exit-latency-us = <4800>;
 				min-residency-us = <35200>;
 			};
 			s2idle: s2idle {
