@@ -12836,6 +12836,9 @@
 			operating-points-v2 = <&opp_table_mdp>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			apu = <&apusys_rv>;
+			#size-cells = <2>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_L3_P10_DISP_FAKE0>;
 		};
 
 		mml-test {
