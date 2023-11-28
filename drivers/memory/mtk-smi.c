@@ -3879,7 +3879,7 @@ mtk_smi_common_mt6989_misc[MTK_COMMON_NR_MAX][SMI_COMMON_MISC_NR] = {
 
 static struct mtk_smi_reg_pair
 mtk_smi_common_mt6878_misc[MTK_COMMON_NR_MAX][SMI_COMMON_MISC_NR] = {
-	{{SMI_L1LEN, 0xb}, {SMI_BUS_SEL, 0x5444}, {SMI_M4U_TH, 0xe100e10},
+	{{SMI_L1LEN, 0xb}, {SMI_BUS_SEL, 0x4444}, {SMI_M4U_TH, 0xe100e10},
 	 {SMI_FIFO_TH1, 0x506090a}, {SMI_FIFO_TH2, 0x506090a}, {SMI_DCM, 0x4f1},
 	 {SMI_DUMMY, 0x1},}, /* COMM0 */
 	{}, /* COMM1 */
