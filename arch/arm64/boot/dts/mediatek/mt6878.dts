@@ -9441,6 +9441,10 @@
 				"aud-gpio-i2sin4-on",
 				"aud-gpio-i2sout4-off",
 				"aud-gpio-i2sout4-on",
+				"aud-gpio-ap-dmic-off",
+				"aud-gpio-ap-dmic-on",
+				"aud-gpio-ap-dmic1-off",
+				"aud-gpio-ap-dmic1-on",
 				"vow-dat-miso-off",
 				"vow-dat-miso-on",
 				"vow-clk-miso-off",
@@ -9461,14 +9465,18 @@
 			pinctrl-9 = <&aud_gpio_i2sin4_on>;
 			pinctrl-10 = <&aud_gpio_i2sout4_off>;
 			pinctrl-11 = <&aud_gpio_i2sout4_on>;
-			pinctrl-12 = <&vow_dat_miso_off>;
-			pinctrl-13 = <&vow_dat_miso_on>;
-			pinctrl-14 = <&vow_clk_miso_off>;
-			pinctrl-15 = <&vow_clk_miso_on>;
-			pinctrl-16 = <&vow_scp_dmic_dat_off>;
-			pinctrl-17 = <&vow_scp_dmic_dat_on>;
-			pinctrl-18 = <&vow_scp_dmic_clk_off>;
-			pinctrl-19 = <&vow_scp_dmic_clk_on>;
+			pinctrl-12 = <&aud_gpio_ap_dmic_off>;
+			pinctrl-13 = <&aud_gpio_ap_dmic_on>;
+			pinctrl-14 = <&aud_gpio_ap_dmic1_off>;
+			pinctrl-15 = <&aud_gpio_ap_dmic1_on>;
+			pinctrl-16 = <&vow_dat_miso_off>;
+			pinctrl-17 = <&vow_dat_miso_on>;
+			pinctrl-18 = <&vow_clk_miso_off>;
+			pinctrl-19 = <&vow_clk_miso_on>;
+			pinctrl-20 = <&vow_scp_dmic_dat_off>;
+			pinctrl-21 = <&vow_scp_dmic_dat_on>;
+			pinctrl-22 = <&vow_scp_dmic_clk_off>;
+			pinctrl-23 = <&vow_scp_dmic_clk_on>;
 			/* Only for ETDM in/out 4 */
 			etdm-out-ch = <2>;
 			etdm-in-ch = <2>;
@@ -12438,6 +12446,54 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	aud_gpio_i2sout4_on: aud-gpio-i2sout4-on {
 		pins-cmd1-dat {
 			pinmux = <PINMUX_GPIO44__FUNC_I2SOUT4_DATA0>;
+			input-schmitt-enable;
+			bias-disable;
+		};
+	};
+	aud_gpio_ap_dmic_off: aud-gpio-ap-dmic-off {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO2__FUNC_GPIO2>;
+			input-enable;
+			bias-pull-down;
+		};
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO3__FUNC_GPIO3>;
+			input-enable;
+			bias-pull-down;
+		};
+	};
+	aud_gpio_ap_dmic_on: aud-gpio-ap-dmic-on {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO2__FUNC_DMIC_CLK>;
+			input-schmitt-enable;
+			bias-disable;
+		};
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO3__FUNC_DMIC_DAT>;
+			input-schmitt-enable;
+			bias-disable;
+		};
+	};
+	aud_gpio_ap_dmic1_off: aud-gpio-ap-dmic1-off {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO27__FUNC_GPIO27>;
+			input-enable;
+			bias-pull-down;
+		};
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO28__FUNC_GPIO28>;
+			input-enable;
+			bias-pull-down;
+		};
+	};
+	aud_gpio_ap_dmic1_on: aud-gpio-ap-dmic1-on {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO27__FUNC_DMIC1_CLK>;
+			input-schmitt-enable;
+			bias-disable;
+		};
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO28__FUNC_DMIC1_DAT>;
 			input-schmitt-enable;
 			bias-disable;
 		};
