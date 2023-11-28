@@ -150,6 +150,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
 	pinctrl-1 = <&mtkfb_pins_lcm_dsi1_te>;
 	status = "okay";
+	idlemgr-by-wb;
 };
 
 &dsi1 {
