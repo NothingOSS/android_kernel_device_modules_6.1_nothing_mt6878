@@ -17,6 +17,7 @@
 #include "adsp_qos.h"
 #include "adsp_ipic.h"
 #include "mtk-afe-external.h"
+#include "adsp_dbg_dump.h"
 
 const struct adspsys_description mt6983_adspsys_desc = {
 	.platform_name = "mt69xx",
@@ -218,6 +219,9 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 	if (!pm_runtime_enabled(&pdev->dev))
 		pr_warn("%s(), pm_runtime_enable fail, %d\n", __func__, ret);
+
+	if (adsp_dbg_dump_init(pdev))
+		pr_info("%s(), adsp_dbg_dump_init, %d\n", __func__, ret);
 
 	/* register as syscore_device, not to be turned off when suspend */
 	dev_pm_syscore_device(&pdev->dev, true);

@@ -14,6 +14,7 @@
 #include "adsp_platform_driver.h"
 #include "adsp_reg.h"
 #include "adsp_ipic.h"
+#include "adsp_dbg_dump.h"
 
 #define WAIT_MS                     (1000)
 #define AP_AWAKE_LOCK_BIT           (0)
@@ -47,9 +48,11 @@ int adsp_pre_wake_lock(u32 cid)
 	/* wakeup */
 	if (adsp_is_ipic_support()) {
 		ret = adsp_ipic_send(NULL, false);
-		if (ret)
+		if (ret) {
+			adsp_check_adsppll_freq(ADSPPLLDIV);
 			pr_warn("%s(%d) send awake ipic, fail ret: %d\n",
 				__func__, cid, ret);
+		}
 	} else
 		adsp_mt_set_swirq(cid);
 
@@ -60,6 +63,7 @@ int adsp_pre_wake_lock(u32 cid)
 	if (retry == 0) {
 		pr_warn("%s cannot wakeup adsp, hifi_status: %x, retry: %d\n",
 			__func__, check_core_active(cid), retry);
+		adsp_check_adsppll_freq(ADSPPLLDIV);
 		adsp_pow_clk_dump();
 		return -ETIME;
 	}

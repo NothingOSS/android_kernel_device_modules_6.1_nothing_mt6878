@@ -24,6 +24,7 @@
 #include "adsp_excep.h"
 #include "adsp_mbox.h"
 #include "adsp_core.h"
+#include "adsp_dbg_dump.h"
 
 #define ADSP_MAGIC_PATTERN        (0xAD5BAD5B)
 
@@ -654,6 +655,7 @@ static int adsp_system_init(void)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static bool devapc_power_cb(void)
 {
+	adsp_check_adsppll_freq(ADSPPLLDIV);
 	return adsp_smc_send(MTK_ADSP_KERNEL_OP_QUERY_STATE, 0, 0);
 }
 
