@@ -221,6 +221,7 @@ static void sys_msg_handler(struct port_t *port, struct sk_buff *skb)
 #ifdef FEATURE_SCP_CCCI_SUPPORT
 	case CCISM_SHM_INIT_ACK:
 		/* Fall through */
+	case CCISM_SHM_INIT_DONE:
 #endif
 	case MD_SIM_TYPE:
 		/* Fall through */

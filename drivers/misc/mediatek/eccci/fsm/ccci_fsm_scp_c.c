@@ -252,7 +252,7 @@ static void ccci_scp_ipi_rx_work(struct work_struct *work)
 {
 	struct ccci_ipi_msg_in *ipi_msg_ptr = NULL;
 	struct sk_buff *skb = NULL;
-	int data, ret;
+	int ret;
 	struct ccci_fsm_ctl *ctl = fsm_get_entity();
 
 	while (!skb_queue_empty(&scp_ipi_rx_skb_list.skb_list)) {
@@ -289,8 +289,6 @@ static void ccci_scp_ipi_rx_work(struct work_struct *work)
 				ccci_port_send_msg_to_md(CCCI_SYSTEM_TX,
 				CCISM_SHM_INIT_DONE, 0, 1);
 
-				data = ccci_fsm_get_md_state_for_user();
-				ccci_scp_ipi_send(CCCI_OP_MD_STATE, &data);
 				break;
 			case SCP_CCCI_STATE_STOP:
 				if (ctl->md_state != READY) {
@@ -388,6 +386,16 @@ int fsm_ccism_init_ack_handler(int data)
 	memset_io(ccism_scp->base_ap_view_vir, 0, ccism_scp->size);
 	ccci_scp_ipi_send(CCCI_OP_SHM_INIT,
 		&ccism_scp->base_ap_view_phy);
+#endif
+	return 0;
+}
+
+/*when reciver md init done, then transmit md state to scp */
+static int fsm_ccism_init_done_handler(int data)
+{
+#ifdef FEATURE_SCP_CCCI_SUPPORT
+	data = ccci_fsm_get_md_state_for_user();
+	ccci_scp_ipi_send(CCCI_OP_MD_STATE, &data);
 #endif
 	return 0;
 }
@@ -523,6 +531,8 @@ int fsm_scp_init(struct ccci_fsm_scp *scp_ctl, struct device *dev)
 		ccci_scp_md_state_sync_work);
 	register_ccci_sys_call_back(CCISM_SHM_INIT_ACK,
 		fsm_ccism_init_ack_handler);
+	register_ccci_sys_call_back(CCISM_SHM_INIT_DONE,
+		fsm_ccism_init_done_handler);
 
 	register_ccci_sys_call_back(MD_SIM_TYPE, fsm_sim_type_handler);
 
