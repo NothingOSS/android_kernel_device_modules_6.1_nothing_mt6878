@@ -394,20 +394,29 @@ enum {
 
 static int mtk_adda_ul_src_dmic(struct mtk_base_afe *afe, int id)
 {
-	unsigned int reg;
+	unsigned int reg, reg1 = 0;
 
 	switch (id) {
 	case MT6878_DAI_ADDA:
 	case MT6878_DAI_AP_DMIC:
 		reg = AFE_ADDA_UL0_SRC_CON0;
+		reg1 = AFE_ADDA_UL0_SRC_CON1;
 		break;
 	case MT6878_DAI_ADDA_CH34:
 	case MT6878_DAI_AP_DMIC_CH34:
 		reg = AFE_ADDA_UL1_SRC_CON0;
+		reg1 = AFE_ADDA_UL1_SRC_CON1;
 		break;
 	default:
 		return -EINVAL;
 	}
+	/* choose Phase */
+	regmap_update_bits(afe->regmap, reg,
+			   UL_DMIC_PHASE_SEL_CH1_MASK_SFT,
+			   0x0 << UL_DMIC_PHASE_SEL_CH1_SFT);
+	regmap_update_bits(afe->regmap, reg,
+			   UL_DMIC_PHASE_SEL_CH2_MASK_SFT,
+			   0x4 << UL_DMIC_PHASE_SEL_CH2_SFT);
 
 	/* dmic mode, 3.25M*/
 	regmap_update_bits(afe->regmap, reg,
@@ -427,6 +436,18 @@ static int mtk_adda_ul_src_dmic(struct mtk_base_afe *afe, int id)
 	regmap_update_bits(afe->regmap, reg,
 			   UL_MODE_3P25M_CH2_CTL_MASK_SFT,
 			   0x1 << UL_MODE_3P25M_CH2_CTL_SFT);
+
+	/* ul gain:  gain = 0x7fff/positive_gain = 0x0/gain_mode = 0x10 */
+	regmap_update_bits(afe->regmap, reg1,
+			   ADDA_UL_GAIN_VALUE_MASK_SFT,
+			   0x7fff << ADDA_UL_GAIN_VALUE_SFT);
+	regmap_update_bits(afe->regmap, reg1,
+			   ADDA_UL_POSTIVEGAIN_MASK_SFT,
+			   0x0 << ADDA_UL_POSTIVEGAIN_SFT);
+	/* gain_mode = 0x10: Add 0.5 gain at CIC output */
+	regmap_update_bits(afe->regmap, reg1,
+			   GAIN_MODE_MASK_SFT,
+			   0x10 << GAIN_MODE_SFT);
 	return 0;
 }
 
@@ -532,6 +553,68 @@ static int mtk_adda_ch34_ul_event(struct snd_soc_dapm_widget *w,
 					   RG_MTKAIF1_RXIF_SYNC_WORD1_DISABLE_MASK_SFT,
 					   0x0);
 		}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int mtk_adda_ul_ap_dmic_event(struct snd_soc_dapm_widget *w,
+			     struct snd_kcontrol *kcontrol,
+			     int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_info(afe->dev, "%s(), name %s, event 0x%x\n",
+		 __func__, w->name, event);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		mt6878_afe_gpio_request(afe, true, MT6878_DAI_ADDA, 1);
+		//mtk_adda_ul_src_dmic(afe, MT6878_DAI_AP_DMIC);
+		mt6878_afe_gpio_request(afe, true, MT6878_DAI_AP_DMIC, 1);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
+		udelay(125);
+		mt6878_afe_gpio_request(afe, false, MT6878_DAI_ADDA, 1);
+		mt6878_afe_gpio_request(afe, false, MT6878_DAI_AP_DMIC, 1);
+
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int mtk_adda_ch34_ul_ap_dmic_event(struct snd_soc_dapm_widget *w,
+				  struct snd_kcontrol *kcontrol,
+				  int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6878_afe_private *afe_priv = afe->platform_priv;
+	int mtkaif_adda6_only = afe_priv->mtkaif_adda6_only;
+
+	dev_info(afe->dev,
+		 "%s(), name %s, event 0x%x, mtkaif_adda6_only %d\n",
+		 __func__, w->name, event, mtkaif_adda6_only);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		mt6878_afe_gpio_request(afe, true, MT6878_DAI_ADDA_CH34, 1);
+		//mtk_adda_ul_src_dmic(afe, MT6985_DAI_AP_DMIC_CH34);
+		mt6878_afe_gpio_request(afe, true, MT6878_DAI_AP_DMIC_CH34, 1);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
+		udelay(125);
+		mt6878_afe_gpio_request(afe, false, MT6878_DAI_ADDA_CH34, 1);
+		mt6878_afe_gpio_request(afe, false, MT6878_DAI_AP_DMIC_CH34, 1);
 		break;
 	default:
 		break;
@@ -852,6 +935,38 @@ static const struct soc_enum mt6878_adda_enum[] = {
 			    mt6878_adda_off_on_str),
 };
 
+static int mt6878_adda_ap_dmic_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6878_afe_private *afe_priv = afe->platform_priv;
+
+	ucontrol->value.integer.value[0] = afe_priv->ap_dmic;
+	return 0;
+}
+
+static int mt6878_adda_ap_dmic_set(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6878_afe_private *afe_priv = afe->platform_priv;
+	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+	int ap_dmic_on;
+
+	if (ucontrol->value.enumerated.item[0] >= e->items)
+		return -EINVAL;
+
+	ap_dmic_on = ucontrol->value.integer.value[0];
+
+	dev_info(afe->dev, "%s(), kcontrol name %s, ap_dmic_on %d\n",
+		 __func__, kcontrol->id.name, ap_dmic_on);
+
+	afe_priv->ap_dmic = ap_dmic_on;
+	return 0;
+}
+
 static int mt6878_adda_dmic_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
@@ -987,6 +1102,8 @@ static const struct snd_kcontrol_new mtk_adda_controls[] = {
 		       SND_SOC_NOPM, 0, 0x1, 0,
 		       mt6878_vow_enable_get,
 		       mt6878_vow_enable_set),
+	SOC_ENUM_EXT("AP DMIC Used", mt6878_adda_enum[0],
+		     mt6878_adda_ap_dmic_get, mt6878_adda_ap_dmic_set),
 };
 
 static const struct snd_kcontrol_new stf_ctl =
@@ -1209,16 +1326,16 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_adda_mtkaif_cfg_event,
 			      SND_SOC_DAPM_PRE_PMU),
-
 	SND_SOC_DAPM_SUPPLY_S("AP_DMIC_EN", SUPPLY_SEQ_ADDA_AP_DMIC,
 			      AFE_ADDA_UL0_SRC_CON0,
 			      UL_AP_DMIC_ON_SFT, 0,
-			      NULL, 0),
+			      mtk_adda_ul_ap_dmic_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("AP_DMIC_CH34_EN", SUPPLY_SEQ_ADDA_AP_DMIC,
 			      AFE_ADDA_UL1_SRC_CON0,
 			      UL_AP_DMIC_ON_SFT, 0,
-			      NULL, 0),
-
+			      mtk_adda_ch34_ul_ap_dmic_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("ADDA_FIFO", SUPPLY_SEQ_ADDA_FIFO,
 			      AFE_ADDA_UL0_SRC_CON1,
 			      FIFO_SOFT_RST_SFT, 1,
@@ -1877,6 +1994,14 @@ int mt6878_dai_adda_register(struct mtk_base_afe *afe)
 				  sizeof(struct mtk_afe_adda_priv), NULL);
 	if (ret)
 		return ret;
+	/* get ap mic type */
+	ret = of_property_read_u32(afe->dev->of_node, "mediatek,ap-dmic",
+				   &afe_priv->ap_dmic);
+	if (ret) {
+		dev_info(afe->dev, "%s() failed to read ap_dmic, default not support\n",
+			 __func__);
+		afe_priv->ap_dmic = 0;
+	}
 
 	/* ap dmic priv share with adda */
 	afe_priv->dai_priv[MT6878_DAI_AP_DMIC] =
