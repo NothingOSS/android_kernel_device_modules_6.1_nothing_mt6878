@@ -601,6 +601,9 @@ static void temp_handler(struct work_struct *work)
 static int lvsys_notifier_call(struct notifier_block *this,
 				unsigned long event, void *ptr)
 {
+	if (!low_bat_thl_data)
+		return NOTIFY_DONE;
+
 	event = event & ~(1 << 15);
 
 	if (event == low_bat_thl_data->lvsys_thd_volt_l)
