@@ -6370,7 +6370,7 @@
 				<&pericfg_ao_clk CLK_PERAOP_MSDC1_H>,
 				<&pericfg_ao_clk CLK_PERAOP_MSDC1_SLV_H>,
 				<&pericfg_ao_clk CLK_PERAOP_MSDC1_MST_F>;
-			clock-names = "source", "bus_clk", "source_cg", "sys_cg", "hclk", "pclk_cg", "axi_cg";
+			clock-names = "source", "bus_clk", "source_cg", "macro", "hclk", "pclk_cg", "axi_cg";
 			status = "disabled";
 		};
 
