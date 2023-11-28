@@ -841,8 +841,8 @@ static int set_sub_task(struct mml_task *task,
 		task->config->dual) {
 		get_random_bytes(&random_num, sizeof(u64));
 		mdelay((random_num % 50)+1);
-
 	}
+
 
 	mutex_lock(&sub_task->lock);
 
@@ -936,7 +936,6 @@ static int set_readback_sub_task(struct mml_pq_task *pq_task,
 		dual) {
 		get_random_bytes(&random_num, sizeof(u64));
 		mdelay((random_num % 50)+1);
-
 	}
 
 	mutex_lock(&sub_task->lock);
@@ -1002,6 +1001,7 @@ static int get_sub_task_result(struct mml_pq_task *pq_task,
 			       void (*dump_func)(void *data))
 {
 	s32 ret;
+	u64 random_num = 0;
 
 	if (unlikely(!atomic_read(&sub_task->queued)))
 		mml_pq_msg("%s already handled or not queued", __func__);
@@ -1010,7 +1010,18 @@ static int get_sub_task_result(struct mml_pq_task *pq_task,
 	ret = wait_event_timeout(sub_task->wq,
 				(!atomic_read(&sub_task->queued)) && (sub_task->result),
 				msecs_to_jiffies(timeout_ms));
-	mml_pq_msg("wait for result: %d", ret);
+
+	if (mml_pq_debug_mode & MML_PQ_STABILITY_TEST) {
+		get_random_bytes(&random_num, sizeof(u64));
+		mdelay((random_num % 50)+1);
+	}
+	if (mml_pq_debug_mode & MML_PQ_TIMEOUT_TEST) {
+		mdelay(51);
+		ret = 0;
+	}
+
+	mml_pq_msg("wait for result: %d, mml_pq_debug_mode: %d",
+		ret, mml_pq_debug_mode);
 	mutex_lock(&sub_task->lock);	/* To wait unlock of handle thread */
 	atomic_inc(&sub_task->result_ref);
 	mutex_unlock(&sub_task->lock);

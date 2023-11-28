@@ -138,6 +138,7 @@ enum mml_pq_debug_mode {
 	MML_PQ_STABILITY_TEST = 1 << 2,
 	MML_PQ_HIST_CHECK = 1 << 3,
 	MML_PQ_CURVE_CHECK = 1 << 4,
+	MML_PQ_TIMEOUT_TEST = 1 << 5,
 };
 
 enum mml_pq_vcp_engine {
