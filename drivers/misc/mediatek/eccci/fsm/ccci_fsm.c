@@ -823,7 +823,7 @@ static void *ccci_md_get_time_info(struct ccci_runtime_feature *rt_feature,
 
 
 
-int ccci_md_prepare_runtime_data(unsigned char *data, int length)
+static int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 {
 	struct ccci_modem *md = ccci_get_modem();
 	u8 i = 0;
@@ -833,8 +833,7 @@ int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 	struct ccci_smem_region *region;
 	struct ccci_smem_region *rt_data_region =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_RUNTIME_DATA);
-	char *rt_data = (char *)rt_data_region->base_ap_view_vir;
-
+	char *rt_data = NULL;
 	struct ccci_runtime_feature rt_feature;
 	/*runtime feature type */
 	struct ccci_runtime_share_memory rt_shm;
@@ -850,6 +849,11 @@ int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 	unsigned int c2k_flags = 0;
 	int adc_val = 0;
 
+	if (rt_data_region == NULL) {
+		CCCI_ERROR_LOG(0, FSM, "Error: %s rt_data_region is NULL\n", __func__);
+		return -1;
+	}
+	rt_data = (char *)rt_data_region->base_ap_view_vir;
 	CCCI_BOOTUP_LOG(0, FSM,
 		"prepare_runtime_data  AP total %u features\n",
 		MD_RUNTIME_FEATURE_ID_MAX);

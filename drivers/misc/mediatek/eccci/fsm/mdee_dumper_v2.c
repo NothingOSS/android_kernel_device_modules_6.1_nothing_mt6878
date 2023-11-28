@@ -378,16 +378,20 @@ static void mdee_info_dump_v2(struct ccci_fsm_ee *mdee)
 		 */
 		dump_flag = CCCI_AED_DUMP_EX_PKT;
 	} else if (md_dbg_dump_flag & (1 << MD_DBG_DUMP_SMEM)) {
-		CCCI_MEM_LOG_TAG(0, FSM,
-			"Dump MD exp smem_mdccci_debug_log\n");
-		ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-			mdccci_dbg->base_ap_view_vir, mdccci_dbg->size);
-		CCCI_MEM_LOG_TAG(0, FSM,
-			"Dump MD exp smem_mdss_debug_log\n");
-		ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-			mdss_dbg->base_ap_view_vir, 512);
-		ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-			(mdss_dbg->base_ap_view_vir + 6 * 1024), 2048);
+		if (mdccci_dbg != NULL) {
+			CCCI_MEM_LOG_TAG(0, FSM,
+				"Dump MD exp smem_mdccci_debug_log\n");
+			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+				mdccci_dbg->base_ap_view_vir, mdccci_dbg->size);
+		}
+		if (mdss_dbg != NULL)	{
+			CCCI_MEM_LOG_TAG(0, FSM,
+				"Dump MD exp smem_mdss_debug_log\n");
+			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+				mdss_dbg->base_ap_view_vir, 512);
+			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+				(mdss_dbg->base_ap_view_vir + 6 * 1024), 2048);
+		}
 		/*
 		 * otherwise always dump whole share memory,
 		 * as MD will fill debug log into
