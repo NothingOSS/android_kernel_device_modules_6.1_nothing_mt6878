@@ -297,6 +297,9 @@
 
 #define DSI_BUF_CON0 0x400
 #define BUF_BUF_EN BIT(0)
+#define BUF_VDE_BLOCK_URGENT BIT(3)
+#define BUF_PREURGENT_EN BIT(20)
+#define BUF_PREURGENT_MODE BIT(21)
 #define DSI_BUF_CON1 0x404
 
 #define DSI_TX_BUF_RW_TIMES 0x410
@@ -309,6 +312,7 @@
 #define DSI_BUF_ULTRA_LOW 0x430
 #define DSI_BUF_URGENT_HIGH 0x434
 #define DSI_BUF_URGENT_LOW 0x438
+#define DSI_BUF_PREURGENT_HIGH 0x43C
 
 //#define DSI_CMDQ0 0x200
 //#define DSI_CMDQ1 0x204
@@ -1917,6 +1921,8 @@ static int mtk_dsi_calculate_rw_times(struct mtk_dsi *dsi,
 	return rw_times;
 }
 
+static u32 mtk_dsi_get_line_time_ns(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc);
+
 static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 {
 	u32 mmsys_clk = 208;
@@ -1935,6 +1941,10 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	struct mtk_drm_private *priv = NULL;
 	int dli_relay_1tnp = 1;
 	int buf_con = 0;
+	u32 buf_preurgent_high;
+	struct drm_display_mode *mode;
+	u32 line_time_ns;
+	u32 prefetch_line_cnt;
 
 	if (mtk_crtc && mtk_crtc->base.dev)
 		priv = mtk_crtc->base.dev->dev_private;
@@ -2059,6 +2069,33 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	writel((urgent_lo & 0xfffff), dsi->regs + DSI_BUF_URGENT_LOW);
 	writel(rw_times, dsi->regs + DSI_TX_BUF_RW_TIMES);
 	mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_BUF_EN, BUF_BUF_EN);
+
+	if (dsi->driver_data->support_pre_urgent) {
+		mode = mtk_crtc_get_display_mode_by_comp(__func__, &mtk_crtc->base, comp, false);
+		line_time_ns = mtk_dsi_get_line_time_ns(dsi, mtk_crtc);
+		if (line_time_ns)
+			buf_preurgent_high = DIV_ROUND_UP(dsi->driver_data->urgent_hi_fifo_us * 1000,
+							line_time_ns);
+		prefetch_line_cnt = mode->vtotal - mode->vsync_start;
+		if (line_time_ns != 0 && buf_preurgent_high < prefetch_line_cnt) {
+			/* take max of the two to avoid sending urgent signal per frame */
+			buf_preurgent_high = max(buf_preurgent_high, prefetch_line_cnt - buf_preurgent_high);
+
+			if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+
+			} else {
+				mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_PREURGENT_MODE, 0);
+				writel(buf_preurgent_high, dsi->regs + DSI_BUF_PREURGENT_HIGH);
+				mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_VDE_BLOCK_URGENT, 0);
+				mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_PREURGENT_EN, BUF_PREURGENT_EN);
+			}
+		} else {
+			writel(0, dsi->regs + DSI_BUF_PREURGENT_HIGH);
+			mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_VDE_BLOCK_URGENT, 1);
+			mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_PREURGENT_EN, 0);
+			DDPPR_ERR("line_time_ns or preurgent_high calc err, disable preurgent\n");
+		}
+	}
 }
 
 static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
@@ -11274,6 +11311,7 @@ static const struct mtk_dsi_driver_data mt6878_dsi_driver_data = {
 	.need_bypass_shadow = true,
 	.need_wait_fifo = false,
 	.dsi_buffer = true,
+	.support_pre_urgent = true,
 	.vm_rgb_time_interval = true,
 	.disable_te_timeout_by_set_cnt = true,
 	.buffer_unit = 32,
