@@ -490,7 +490,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 	"HRT hrt_num:0x%x/disp_idx:%x/disp_list:%x/mod:%d/dal:%d/addon_scn:(%d, %d, %d)/bd_tb:%d/i:%d\n"
 #define _L_FMT \
 	"L%d->%d/(%d,%d,%d,%d)/(%d,%d,%d,%d)/f0x%x/ds%d/e%d/cap0x%x" \
-	"/compr%d/secure%d/frame:%u/AID:%llu\n"
+	"/compr%d/secure%d/frame:%u/force_gpu:%u/AID:%llu\n"
 
 	layer_info = kzalloc(sizeof(struct drm_mtk_layer_config),
 			GFP_KERNEL);
@@ -565,6 +565,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 				       layer_info->compress,
 				       layer_info->secure,
 				       disp_info->frame_idx[i],
+				       layer_info->wcg_force_gpu,
 				       layer_info->buffer_alloc_id);
 			}
 		}
@@ -587,11 +588,13 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 				continue;
 			}
 
-			DDPINFO("HRT D%d/M%d/LN%d/hrt:0x%x/G(%d,%d)/id%u\n", i,
+			DDPINFO("HRT D%d/M%d/LN%d/hrt:0x%x/G(%d,%d)/CM%d/id%u\n", i,
 				disp_info->disp_mode[i],
 				disp_info->layer_num[i], disp_info->hrt_num,
 				disp_info->gles_head[i],
-				disp_info->gles_tail[i], disp_info->hrt_idx);
+				disp_info->gles_tail[i],
+				disp_info->color_mode[i],
+				disp_info->hrt_idx);
 
 			for (j = 0; j < disp_info->layer_num[i]; j++) {
 				if (access_ok(&disp_info->input_config[i][j],
@@ -630,6 +633,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 					layer_info->compress,
 					layer_info->secure,
 					disp_info->frame_idx[i],
+					layer_info->wcg_force_gpu,
 					layer_info->buffer_alloc_id);
 
 			}
@@ -4146,7 +4150,7 @@ static void check_is_mml_layer(const int disp_idx,
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
 		c = &disp_info->input_config[disp_idx][i];
-		if (MTK_MML_OVL_LAYER & c->layer_caps) {
+		if ((MTK_MML_OVL_LAYER & c->layer_caps) && (!c->wcg_force_gpu)) {
 			if (i < 32)
 				mml_ovl_layers |= (1 << i);
 			else{
@@ -4177,7 +4181,7 @@ static void check_is_mml_layer(const int disp_idx,
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
 		if (disp_idx >= 0 && disp_idx < LYE_CRTC)
 			c = &disp_info->input_config[disp_idx][i];
-		if (!(MTK_MML_OVL_LAYER & c->layer_caps))
+		if (!(MTK_MML_OVL_LAYER & c->layer_caps) || c->wcg_force_gpu)
 			continue;
 
 		if (disp_idx >= 0 && disp_idx < LYE_CRTC)

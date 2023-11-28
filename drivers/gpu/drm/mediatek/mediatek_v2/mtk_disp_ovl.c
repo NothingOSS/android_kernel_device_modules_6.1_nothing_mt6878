@@ -2824,7 +2824,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			if (temp_bw <= 0)
 				temp_bw = 1;
 
-			DDPINFO("BWM:frame idx:%u alloc id:%lu key:%llu lye_idx:%u bw:%llu(%llu)\n",
+			DDPDBG_BWM("BWM:frame idx:%u alloc id:%lu key:%llu lye_idx:%u bw:%llu(%llu)\n",
 					frame_idx, alloc_id, key, idx, temp_bw, temp_bw_old);
 		}
 

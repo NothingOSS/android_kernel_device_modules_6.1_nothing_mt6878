@@ -642,6 +642,7 @@ struct drm_mtk_layer_config {
 	__u64 buffer_alloc_id;
 	__u8 compress;
 	__u8 secure;
+	__u8 wcg_force_gpu; /* drv internal use */
 };
 
 struct wb_frame_info {
@@ -669,6 +670,7 @@ struct drm_mtk_layering_info {
 	__u32 hrt_idx;
 	struct mml_frame_info *mml_cfg[LYE_CRTC];
 	struct wb_frame_info wb_cfg[LYE_CRTC];
+	int color_mode[LYE_CRTC];
 };
 
 /**
