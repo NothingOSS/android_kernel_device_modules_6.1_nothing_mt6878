@@ -25,7 +25,7 @@ static const struct mtk_node_desc node_descs_mt6878[] = {
 	DEFINE_MNODE(common0_port5,
 		MASTER_COMMON_PORT(0, 5), 0, false, 0x2, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port6,
-		MASTER_COMMON_PORT(0, 6), 0, false, 0x2, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 6), 0, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port7,
 		MASTER_COMMON_PORT(0, 7), 0, false, 0x2, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port8,
