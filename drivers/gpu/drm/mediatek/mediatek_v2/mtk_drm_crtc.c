@@ -17379,6 +17379,14 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 					MTK_DRM_OPT_PARTIAL_UPDATE))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
 		}
+		if (pipe == 3 && priv->data->mmsys_id == MMSYS_MT6878) {
+			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_IDLEMGR;
+			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_ESD_CHECK;
+			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MML;
+			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WCG;
+			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_FBDC;
+			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_EXT_LAYER;
+		}
 		if (!priv->data->not_support_csc)
 			mtk_crtc->crtc_caps.ovl_csc_bit_number = 18;
 	}

@@ -226,21 +226,9 @@ static void filter_3rd_display(struct drm_device *dev,
 
 		lc = &disp_info->input_config[i][j];
 
-		/* Rollback Resize layer to GPU */
-/*
- *		if ((lc->src_height != lc->dst_height) ||
- *		    (lc->src_width != lc->dst_width)) {
- *			mtk_rollback_layer_to_GPU(disp_info, i, j);
- *			DDPDBG("%s disp_idx:%d Rollback Resize layer to GPU i:%d, j:%d\n",
- *				__func__, disp_idx, i, j);
- *			continue;
- *		}
- */
-
-		/* Rollback YUV layer to GPU */
-		if (mtk_is_yuv(lc->src_fmt)) {
+		if (MTK_MML_OVL_LAYER & lc->layer_caps) {
 			mtk_rollback_layer_to_GPU(disp_info, i, j);
-			DDPDBG("%s disp_idx:%d Rollback YUV layer to GPU i:%d, j:%d\n",
+			DDPDBG("%s disp_idx:%d Rollback MML_OVL_LAYER to GPU i:%d, j:%d\n",
 				__func__, disp_idx, i, j);
 			continue;
 		}
