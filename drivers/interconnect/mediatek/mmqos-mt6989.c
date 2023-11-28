@@ -1125,6 +1125,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6989 = {
 	.comm_icc_path_names = comm_icc_path_names_mt6989,
 	.comm_icc_hrt_path_names = comm_icc_hrt_path_names_mt6989,
 	.max_ratio = 64,
+	.max_disp_ostdl = 25,
 	.hrt = {
 		.hrt_bw = {12808, 0, 0},
 		.hrt_total_bw = 68264, /* Todo: Use DRAMC API 8533*4(channel)*2(io width)*/

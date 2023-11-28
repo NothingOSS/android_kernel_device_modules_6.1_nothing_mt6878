@@ -140,6 +140,7 @@ struct mtk_mmqos {
 	struct notifier_block nb;
 	struct list_head comm_list;
 	u32 max_ratio;
+	u32 max_disp_ostdl;
 	bool dual_pipe_enable;
 	bool qos_bound;
 	u32 disp_virt_larbs[MMQOS_MAX_DISP_VIRT_LARB_NUM];
@@ -1184,8 +1185,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		} else {
 			src->v2_max_ostd = false;
 		}
-		if (value > mmqos->max_ratio
-			|| (src->v2_max_ostd && is_max_bw_to_max_ostdl_policy())) {
+		if (value > mmqos->max_ratio) {
 			if (value > mmqos->max_ratio)
 				dev_notice(larb_node->larb_dev,
 					"larb=%d port=%d avg_bw:%d peak_bw:%d mix_bw:%d ostd=%#x\n",
@@ -1195,6 +1195,13 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 					icc_to_MBps(src->v2_mix_bw),
 					value);
 			value = mmqos->max_ratio;
+		}
+		if (src->v2_max_ostd && is_max_bw_to_max_ostdl_policy()) {
+			if (log_level & 1 << log_bw)
+				MMQOS_DBG("larb=%d port=%d use max_disp_ostdl=%#x",
+					MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+					mmqos->max_disp_ostdl);
+			value = mmqos->max_disp_ostdl;
 		}
 #endif
 		if (mmqos_state & OSTD_ENABLE) {
@@ -1882,6 +1889,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 
 
 	mmqos->max_ratio = mmqos_desc->max_ratio;
+	mmqos->max_disp_ostdl = mmqos_desc->max_disp_ostdl;
 
 	of_property_read_u32(pdev->dev.of_node, "mmqos-state", &mmqos_state);
 	pr_notice("[mmqos] mmqos probe state: %#x\n", mmqos_state);

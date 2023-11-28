@@ -138,6 +138,7 @@ struct mtk_mmqos_desc {
 	const char * const *comm_icc_hrt_path_names;
 	const char * const *larb_icc_path_names;
 	const u32 max_ratio;
+	const u32 max_disp_ostdl;
 	const struct mmqos_hrt hrt;
 	const struct mmqos_hrt hrt_LPDDR4;
 	const u32 dual_pipe_larbs[MMQOS_MAX_DUAL_PIPE_LARB_NUM];
