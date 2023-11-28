@@ -512,6 +512,56 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 	dev_info(dev, "%s +\n", __func__);
 }
 
+
+void apu_coredump_trigger(struct mtk_apu *apu)
+{
+	unsigned long flags;
+	struct device *dev = apu->dev;
+	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
+	uint32_t val;
+
+	dev_info(dev, "%s +\n", __func__);
+
+	if ((apu->platdata->flags & F_SECURE_COREDUMP)) {
+		apusys_rv_smc_call(dev,
+			MTK_APUSYS_KERNEL_OP_APUSYS_RV_CG_GATING, 0);
+
+		apusys_rv_smc_call(dev,
+			MTK_APUSYS_KERNEL_OP_APUSYS_RV_DISABLE_WDT_ISR, 0);
+	} else {
+		val = ioread32(apu->apu_wdt);
+		if (val != 0x1) {
+			dev_info(dev, "%s: skip abnormal isr call(status = 0x%x)\n",
+				__func__, val);
+		}
+		spin_lock_irqsave(&apu->reg_lock, flags);
+		/* freeze md32 by turn off cg */
+		if (!hw_ops->cg_gating) {
+			spin_unlock_irqrestore(&apu->reg_lock, flags);
+			WARN_ON(1);
+		}
+
+		if (hw_ops->cg_gating != NULL)
+			hw_ops->cg_gating(apu);
+
+		/* disable apu wdt */
+		iowrite32(ioread32(apu->apu_wdt + 4) &
+			(~(0x1U << 31)), apu->apu_wdt + 4);
+		/* clear wdt interrupt */
+		iowrite32(0x1, apu->apu_wdt);
+		spin_unlock_irqrestore(&apu->reg_lock, flags);
+	}
+
+	disable_irq_nosync(apu->wdt_irq_number);
+	dev_info(dev, "%s: disable wdt_irq(%d)\n", __func__,
+		apu->wdt_irq_number);
+
+	dev_info(dev, "%s +\n", __func__);
+
+	schedule_work(&(apu_coredump_work.work));
+
+}
+
 static irqreturn_t apu_wdt_isr(int irq, void *private_data)
 {
 	unsigned long flags;

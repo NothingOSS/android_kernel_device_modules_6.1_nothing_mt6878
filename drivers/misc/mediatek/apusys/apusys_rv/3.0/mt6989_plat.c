@@ -671,11 +671,11 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 
 					if (apu->ce_dbg_polling_dump_mode)
 						apu_ce_start_timer_dump_reg();
-
 					if (apu->pwr_on_polling_dbg_mode)
 						queue_delayed_work(apu_workq,
-							&apu_polling_on_work,
-							msecs_to_jiffies(APU_PWRON_TIMEOUT_MS));
+						&apu_polling_on_work,
+						msecs_to_jiffies(APU_PWRON_TIMEOUT_MS));
+
 				} else {
 					mt6989_apu_pwr_wake_unlock(apu, id);
 					apu->ipi_pwr_ref_cnt[id]--;
@@ -1031,7 +1031,6 @@ static void apu_polling_on_work_func(struct work_struct *p_work)
 
 	ret = mt6989_polling_rpc_status(apu, 1, 1);
 	if (ret) {
-		apu_regdump();
 		apu->bypass_pwr_off_chk = true;
 		dev_info(dev, "%s: APU_RPC_TOP_CON = 0x%x\n",
 			__func__, ioread32(apu->apu_rpc + 0x0));
@@ -1039,7 +1038,8 @@ static void apu_polling_on_work_func(struct work_struct *p_work)
 			__func__, ioread32(apu->apu_rpc + 0x44));
 		dev_info(dev, "%s: MBOX0_RV_PWR_STA = 0x%x\n",
 			__func__, ioread32(apu->apu_mbox + MBOX_RV_PWR_STA_FLG));
-		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
+
+		apu_coredump_trigger(apu);
 	}
 }
 

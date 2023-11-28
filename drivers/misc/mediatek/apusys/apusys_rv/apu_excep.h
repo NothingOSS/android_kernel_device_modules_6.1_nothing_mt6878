@@ -65,5 +65,6 @@
 
 int apu_excep_init(struct platform_device *pdev, struct mtk_apu *apu);
 void apu_excep_remove(struct platform_device *pdev, struct mtk_apu *apu);
+void apu_coredump_trigger(struct mtk_apu *apu);
 
 #endif /* APU_EXCEP_H */
