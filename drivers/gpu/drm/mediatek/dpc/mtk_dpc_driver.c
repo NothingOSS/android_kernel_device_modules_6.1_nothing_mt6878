@@ -1506,6 +1506,9 @@ out:
 
 static void dpc_dsi_pll_set(const u32 value)
 {
+	if (mtk_dpc_support_cap(DPC_VIDLE_MTCMOS_OFF) == 0)
+		return;
+
 	/* if DSI_PLL_SEL is set, power ON disp1 and set DSI_CK_KEEP_EN */
 	if (value & BIT(0)) {
 		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 6, 1); /* will be cleared when ff enable */
