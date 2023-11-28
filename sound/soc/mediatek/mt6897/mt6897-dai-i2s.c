@@ -1434,13 +1434,14 @@ static int mtk_afe_i2s_share_connect(struct snd_soc_dapm_widget *source,
 		return 0;
 	}
 
-	dev_dbg(afe->dev, "%s(), sink %s (id %d), share %d, source %s (id %d), ret = %d\n",
-		__func__,
-		sink->name,
-		get_i2s_id_by_name(afe, sink->name),
-		i2s_priv->share_i2s_id,
-		source->name, get_i2s_id_by_name(afe, source->name),
-		(i2s_priv->share_i2s_id == get_i2s_id_by_name(afe, source->name))? 1 : 0);
+	/* dev_dbg(afe->dev, "%s(), sink %s (id %d), share %d, source %s (id %d), ret = %d\n",
+	 *	__func__,
+	 *	sink->name,
+	 *	get_i2s_id_by_name(afe, sink->name),
+	 *	i2s_priv->share_i2s_id,
+	 *	source->name, get_i2s_id_by_name(afe, source->name),
+	 *	(i2s_priv->share_i2s_id == get_i2s_id_by_name(afe, source->name))? 1 : 0);
+	 */
 
 	if (i2s_priv->share_i2s_id < 0)
 		return 0;
