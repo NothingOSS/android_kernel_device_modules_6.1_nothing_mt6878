@@ -2345,6 +2345,11 @@ void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 		return;
 	}
 
+	if (!g_priv) {
+		DPCERR("!g_priv, dpc is not ready");
+		return;
+	}
+
 	if (dpc_pm_ctrl(true))
 		return;
 
@@ -3325,6 +3330,7 @@ int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 	}
 
 	if (dpc_pm_ctrl(true)) {
+		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		DPCFUNC("%s: user %u failed to force power", __func__, user);
 		return -1;
 	}
