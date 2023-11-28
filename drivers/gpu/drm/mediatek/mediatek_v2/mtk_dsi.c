@@ -122,6 +122,7 @@
 #define TXRX_CTRL_FLD_REG_EXT_TE_EN REG_FLD_MSB_LSB(9, 9)
 #define TXRX_CTRL_FLD_REG_EXT_TE_EDGE REG_FLD_MSB_LSB(10, 10)
 #define TXRX_CTRL_FLD_REG_HSTX_CKLP_EN REG_FLD_MSB_LSB(16, 16)
+#define TXRX_CTRL_FLD_REG_EXT_TE_TIME_VM REG_FLD_MSB_LSB(23, 20)
 
 #define DSI_PSCTRL 0x1c
 #define DSI_PS_WC	REG_FLD_MSB_LSB(14, 0)
@@ -3528,6 +3529,7 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	struct mtk_drm_private *priv = (crtc && crtc->dev)
 		? crtc->dev->dev_private : NULL;
 	unsigned int crtc_idx;
+	unsigned int value = 0, mask = 0;
 
 	DDPINFO("%s +\n", __func__);
 
@@ -3627,6 +3629,12 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 		mtk_dsi_mask(dsi, DSI_TXRX_CTRL, (EXT_TE_EN | HSTX_CKLP_EN),
 							(EXT_TE_EN | HSTX_CKLP_EN));
+	else if (dsi->driver_data->disable_te_timeout_by_set_cnt) {
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, 1, TXRX_CTRL_FLD_REG_EXT_TE_TIME_VM);
+		mtk_dsi_mask(dsi, DSI_TXRX_CTRL, mask, value);
+	}
 
 	mtk_dsi_set_mode(dsi);
 	mtk_dsi_clk_hs_mode(dsi, 1);
@@ -11246,6 +11254,7 @@ static const struct mtk_dsi_driver_data mt6878_dsi_driver_data = {
 	.need_wait_fifo = false,
 	.dsi_buffer = true,
 	.vm_rgb_time_interval = true,
+	.disable_te_timeout_by_set_cnt = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
 	.urgent_lo_fifo_us = 14,

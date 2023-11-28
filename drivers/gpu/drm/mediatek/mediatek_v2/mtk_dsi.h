@@ -61,6 +61,7 @@ struct mtk_dsi_driver_data {
 	bool smi_dbg_disable;
 	bool require_phy_reset; /* reset phy before trigger DSI */
 	bool vm_rgb_time_interval; /* RGB or HBP interval */
+	bool disable_te_timeout_by_set_cnt;
 	u32 max_vfp;
 	u32 dsi0_pa;
 	u32 dsi1_pa;
