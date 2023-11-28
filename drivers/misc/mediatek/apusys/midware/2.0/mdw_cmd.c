@@ -1142,7 +1142,11 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 		if (vid_array[i] != -1 ) {
 			cbfc_en = 1;
 			vid = vid_array[i];
+		} else {
+			cbfc_en = 0;
+			vid = 0;
 		}
+
 		sc_sync_info = MDW_CMD_GEN_SYNC_INFO(vid, cbfc_en, c->subcmds[i].hse_en);
 
 		if (sc_einfo[i].was_preempted || sc_einfo[i].ret) {
