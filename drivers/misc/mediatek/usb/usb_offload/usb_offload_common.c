@@ -190,33 +190,6 @@ static int set_interface(struct usb_device *udev,
 static int set_pcm_intf(struct usb_interface *intf, int iface, int alt,
 			    int direction, struct snd_usb_substream *subs)
 {
-	struct snd_usb_audio *chip = subs->stream->chip;
-	struct snd_usb_endpoint *ep = subs->data_endpoint;
-	int altset = ep->altsetting;
-	int err, vid, pid;
-
-	vid = chip->dev->descriptor.idVendor;
-	pid = chip->dev->descriptor.idProduct;
-	USB_OFFLOAD_DBG("vid:0x%x pid:0x%x\n", vid, pid);
-
-	if ((vid == 0x20b1 && pid == 0x302e) ||
-		(vid == 0x2fc6 && pid == 0xf822)) {
-		USB_OFFLOAD_INFO("turn on/off interface again\n");
-		err = usb_set_interface(chip->dev, ep->iface, 0);
-		if (err < 0) {
-			USB_OFFLOAD_ERR("fail to set interface 0\n");
-			return err;
-		}
-
-		mdelay(10);
-
-		err = usb_set_interface(chip->dev, ep->iface, altset);
-		if (err < 0) {
-			USB_OFFLOAD_ERR("fail to set interface %d\n", altset);
-			return err;
-		}
-	}
-
 	return 0;
 }
 static int set_pcm_connection(struct usb_device *udev,
