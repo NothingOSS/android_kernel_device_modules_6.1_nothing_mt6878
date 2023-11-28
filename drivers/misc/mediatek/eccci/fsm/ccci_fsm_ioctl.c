@@ -54,6 +54,10 @@ ccci_md_get_rt_feature_by_id(u8 feature_id, u8 ap_query_md)
 	struct ccci_smem_region *rt_data_region =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_RUNTIME_DATA);
 
+	if (rt_data_region == NULL) {
+		CCCI_ERROR_LOG(0, FSM, "Error: %s rt_data_region is NULL\n", __func__);
+		return NULL;
+	}
 	if (ap_query_md) {
 		rt_feature = (struct ccci_runtime_feature *)
 		(rt_data_region->base_ap_view_vir +

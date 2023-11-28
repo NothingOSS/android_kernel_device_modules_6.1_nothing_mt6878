@@ -303,8 +303,8 @@ static void md_cd_exception(struct ccci_modem *md, enum HIF_EX_STAGE stage)
 	 */
 	switch (stage) {
 	case HIF_EX_INIT:
-		if (*((int *)(mdccci_dbg->base_ap_view_vir +
-			CCCI_SMEM_OFFSET_SEQERR)) != 0) {
+		if ((mdccci_dbg != NULL) && (*((int *)(mdccci_dbg->base_ap_view_vir +
+			CCCI_SMEM_OFFSET_SEQERR)) != 0)) {
 			CCCI_ERROR_LOG(0, FSM, "MD found wrong sequence number\n");
 		}
 		ccci_hif_md_exception(md->hif_flag, stage);
@@ -562,11 +562,17 @@ void dump_md_info_in_devapc(struct ccci_modem *md)
 
 	// MD_DBG_DUMP_SMEM
 	CCCI_MEM_LOG_TAG(0, FSM, "Dump MD EX log\n");
-	ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP, mdccci_dbg->base_ap_view_vir,
-			mdccci_dbg->size);
+	if (mdccci_dbg != NULL)
+		ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP, mdccci_dbg->base_ap_view_vir,
+				mdccci_dbg->size);
+	else
+		CCCI_MEM_LOG_TAG(0, FSM, "Error: %s mdccci_dbg is NULL\n", __func__);
 	CCCI_MEM_LOG_TAG(0, FSM, "Dump mdss_dbg log\n");
-	ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP, mdss_dbg->base_ap_view_vir,
-			mdss_dbg->size);
+	if (mdss_dbg != NULL)
+		ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP, mdss_dbg->base_ap_view_vir,
+				mdss_dbg->size);
+	else
+		CCCI_MEM_LOG_TAG(0, FSM, "Error: %s mdss_dbg is NULL\n", __func__);
 	CCCI_MEM_LOG_TAG(0, FSM, "Dump mdl2sram log\n");
 	if (md->hw_info->md_l2sram_base) {
 		md_cd_lock_modem_clock_src(1);

@@ -1986,8 +1986,12 @@ static int cldma_stop_for_ee(unsigned char hif_id)
 	struct ccci_smem_region *mdss_dbg =
 		ccci_md_get_smem_by_user_id(SMEM_USER_RAW_MDSS_DBG);
 	struct ccci_per_md *per_md_data = ccci_get_per_md_data();
-	int md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
+	int md_dbg_dump_flag = 0;
 
+	if(per_md_data != NULL)
+		md_dbg_dump_flag = per_md_data->md_dbg_dump_flag;
+	else
+		CCCI_ERROR_LOG(0, TAG, "Error: %s per_md_data is NULL\n", __func__);
 	CCCI_NORMAL_LOG(0, TAG, "%s from %ps\n",
 		__func__, __builtin_return_address(0));
 
@@ -2022,14 +2026,12 @@ static int cldma_stop_for_ee(unsigned char hif_id)
 			CCCI_MEM_LOG_TAG(0, TAG,
 				"Dump MD EX log\n");
 			if (md_dbg_dump_flag & (1 << MD_DBG_DUMP_SMEM)) {
-				ccci_util_mem_dump(
-					CCCI_DUMP_MEM_DUMP,
-					mdccci_dbg->base_ap_view_vir,
-					mdccci_dbg->size);
-				ccci_util_mem_dump(
-					CCCI_DUMP_MEM_DUMP,
-					mdss_dbg->base_ap_view_vir,
-					mdss_dbg->size);
+				if (mdccci_dbg != NULL)
+					ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+						mdccci_dbg->base_ap_view_vir, mdccci_dbg->size);
+				if (mdss_dbg != NULL)
+					ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+						mdss_dbg->base_ap_view_vir, mdss_dbg->size);
 			}
 			/* md_cd_dump_debug_register(md_ctrl); */
 			cldma_dump_register(md_ctrl);

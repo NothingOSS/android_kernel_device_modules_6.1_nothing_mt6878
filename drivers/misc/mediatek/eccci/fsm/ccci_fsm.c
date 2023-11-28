@@ -954,12 +954,15 @@ int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 			case EXCEPTION_SHARE_MEMORY:
 				region = ccci_md_get_smem_by_user_id(
 					SMEM_USER_RAW_MDCCCI_DBG);
-				rt_feature.data_len =
-				sizeof(struct ccci_runtime_share_memory);
-				rt_shm.addr = region->base_md_view_phy;
-				rt_shm.size = CCCI_EE_SMEM_TOTAL_SIZE;
-				append_runtime_feature(&rt_data,
-					&rt_feature, &rt_shm);
+				if (region) {
+					rt_feature.data_len =
+					sizeof(struct ccci_runtime_share_memory);
+					rt_shm.addr = region->base_md_view_phy;
+					rt_shm.size = CCCI_EE_SMEM_TOTAL_SIZE;
+					append_runtime_feature(&rt_data,
+						&rt_feature, &rt_shm);
+				} else
+					CCCI_ERROR_LOG(0, FSM, "Error: %s region is NULL\n", __func__);
 				break;
 			case CCIF_SHARE_MEMORY:
 				ccci_smem_region_set_runtime(
@@ -1822,10 +1825,13 @@ int ccci_fsm_recv_control_packet(struct sk_buff *skb)
 		CCCI_NORMAL_LOG(0, FSM,
 			"C2K line status %d: 0x%02x\n",
 			ccci_h->data[1], c2k_ctl_msg->option);
-		if (c2k_ctl_msg->option & 0x80)
-			per_md_data->dtr_state = 1; /*connect */
-		else
-			per_md_data->dtr_state = 0; /*disconnect */
+		if (per_md_data != NULL) {
+			if (c2k_ctl_msg->option & 0x80)
+				per_md_data->dtr_state = 1; /*connect */
+			else
+				per_md_data->dtr_state = 0; /*disconnect */
+		} else
+			CCCI_ERROR_LOG(0, FSM, "Error: %s per_md_data is NULL\n", __func__);
 		break;
 	case C2K_CCISM_SHM_INIT_ACK:
 #ifndef CCCI_KMODULE_ENABLE
