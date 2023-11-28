@@ -353,6 +353,14 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6878 = {
 		.blocking = true,
 		.emi_ratio = 700,
 	},
+	.hrt_LPDDR4 = {
+		.hrt_bw = {5566, 0, 0},
+		.hrt_total_bw = 17064, /* Use DRAMC API 4266*2(channel)*2(io width)*/
+		.md_speech_bw = { 5566, 4941},
+		.hrt_ratio = {1000, 860, 880, 880}, /* MD, CAM, DISP, MML */
+		.blocking = true,
+		.emi_ratio = 800,
+	},
 	.comm_port_hrt_types = {
 		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_NONE,
 			HRT_NONE, HRT_CAM, HRT_CAM, HRT_DISP },
