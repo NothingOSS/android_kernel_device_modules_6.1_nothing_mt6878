@@ -310,6 +310,12 @@ int mtk_offload_init_rsv_sram(int min_alloc_order)
 	mem_id = USB_OFFLOAD_MEM_SRAM_ID;
 
 	if (usb_offload_mem_buffer[mem_id].is_valid) {
+		USB_OFFLOAD_INFO("SRAM already allocated\n");
+		/* usb_offload node might be closed without disconnection */
+		if (sram_version == 0x3 && sram_pwr_on == 0) {
+			USB_OFFLOAD_INFO("SRAM power disabled. Enable for ir_backup\n");
+			mtk_offload_rsv_sram_pwr_ctrl(true);
+		}
 		ret = 0;
 		goto INIT_RSV_SRAM_DONE;
 	}
