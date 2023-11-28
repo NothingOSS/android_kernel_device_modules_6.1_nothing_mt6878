@@ -1153,8 +1153,19 @@ static int adsp_core_mem_initall(struct mtk_base_dsp *dsp, unsigned int core_id)
 static int adsp_core_mem_init(struct mtk_base_dsp *dsp)
 {
 	int ret, core_id;
+	unsigned int core_num = 0;
 
-	for (core_id = 0; core_id < get_adsp_core_total(); ++core_id) {
+	if (get_adsp_type() == ADSP_TYPE_RV55)
+		core_num = ADSP_CORE_TOTAL;
+	else
+		core_num = get_adsp_core_total();
+
+	if (core_num > ADSP_CORE_TOTAL) {
+		pr_info("%s ERROR! core num: %d\n", __func__, core_num);
+		return -1;
+	}
+
+	for (core_id = 0; core_id < core_num; ++core_id) {
 		ret = adsp_core_mem_initall(dsp, core_id);
 		if (ret)
 			pr_info("%s fail, core id: %d\n", __func__, core_id);
