@@ -1437,6 +1437,8 @@ static struct regbase rb[] = {
 	[hfrp_irq] = REGBASE_V(0x1EC32000, hfrp_irq, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[vlp_ao] = REGBASE_V(0x1C000000, vlp_ao, CLK_NULL, CLK_NULL),
 	[apmixed_ext] = REGBASE_V(0x1000C000, apmixed_ext, PD_NULL, CLK_NULL),
+	[bcrm_ifrao] = REGBASE_V(0x10022000, bcrm_ifrao, PD_NULL, CLK_NULL),
+	[ifrao_bus_dbg] = REGBASE_V(0x10023000, ifrao_bus_dbg, PD_NULL, CLK_NULL),
 	{},
 };
 
@@ -1725,6 +1727,7 @@ static struct regname rn[] = {
 	REGNAME(ven_c2, 0x0, VENCSYS_CG),
 	/* SPM register */
 	REGNAME(spm, 0xE00, MD1_PWR_CON),
+	REGNAME(spm, 0xE08, IFR_PWR_CON),
 	REGNAME(spm, 0xF70, PWR_STATUS),
 	REGNAME(spm, 0xF74, PWR_STATUS_2ND),
 	REGNAME(spm, 0xF60, MD_BUCK_ISO_CON),
@@ -1922,6 +1925,8 @@ static struct regname rn[] = {
 	REGNAME(hwv, 0x390, HW_CCF_TEE_PLL_SET),
 	REGNAME(hwv, 0x598, HW_CCF_MD_MTCMOS_SET),
 	REGNAME(hwv, 0x798, HW_CCF_GPU_MTCMOS_SET),
+	REGNAME(hwv, 0x1A0, HW_CCF_AP_B0_SET),
+	REGNAME(hwv, 0x3A0, HW_CCF_TEE_B0_SET),
 	/* HWV register */
 	REGNAME(hwv_ext, 0xf64, HWV_DATA_HISTORY_8),
 	REGNAME(hwv_ext, 0xf68, HWV_DATA_HISTORY_9),
@@ -1951,6 +1956,11 @@ static struct regname rn[] = {
 	REGNAME(hwv_ext, 0x41c, HW_CCF_MTCMOS_DONE),
 	REGNAME(hwv_ext, 0x4ac, HW_CCF_MTCMOS_FLOW_FLAG_CLR),
 	REGNAME(hwv_ext, 0x410, HW_CCF_MTCMOS_ENABLE),
+	REGNAME(hwv_ext, 0x420, HW_CCF_B0_ENABLE),
+	REGNAME(hwv_ext, 0x424, HW_CCF_B0_STATUS),
+	REGNAME(hwv_ext, 0x42c, HW_CCF_B0_DONE),
+	REGNAME(hwv_ext, 0x474, HW_CCF_B0_SET_STATUS),
+	REGNAME(hwv_ext, 0x478, HW_CCF_B0_CLR_STATUS),
 	REGNAME(hwv_ext, 0x404, HW_CCF_PLL_STATUS),
 	REGNAME(hwv_ext, 0xf18, HWV_ADDR_HISTORY_5),
 	REGNAME(hwv_ext, 0xf14, HWV_ADDR_HISTORY_4),
@@ -2228,6 +2238,13 @@ static struct regname rn[] = {
 	REGNAME(vlp_ao, 0x410, VLP_DISP_VOTE),
 	REGNAME(vlp_ao, 0x420, HFRP_VLP_CTRL),
 	REGNAME(vlp_ao, 0x91C, VLP_VOTE_DONE),
+	REGNAME(bcrm_ifrao, 0x18, VDNR_DCM_INFRA_BUS_CTRL_0),
+	REGNAME(bcrm_ifrao, 0x24, VDNR_DCM_INFRA_BUS_CTRL_3),
+	REGNAME(bcrm_ifrao, 0x28, VDNR_DCM_INFRA_BUS_CTRL_4),
+	REGNAME(ifrao_bus_dbg, 0x10, IFR_AO_BUS_DBG_BUSY1),
+	REGNAME(ifrao_bus_dbg, 0x14, IFR_AO_BUS_DBG_IDLE1),
+	REGNAME(ifrao_bus_dbg, 0x18, IFR_AO_BUS_DBG_IDLE2),
+	REGNAME(ifrao_bus_dbg, 0x1C, IFR_AO_BUS_DBG_IDLE3),
 	{},
 };
 
@@ -3014,12 +3031,11 @@ static void dump_vlp_reg(struct regmap *regmap, u32 shift)
 static enum chk_sys_id pll_dump_id[] = {
 	apmixed,
 	top,
-	hfrp,
 	hwv,
 	hwv_ext,
-	mm_hwv,
-	mm_hwv_ext,
 	vlp_ao,
+	bcrm_ifrao,
+	ifrao_bus_dbg,
 	chk_sys_num,
 };
 
