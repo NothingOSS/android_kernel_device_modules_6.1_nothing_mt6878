@@ -1940,16 +1940,16 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 				      struct mml_pq_comp_config_job *job)
 {
 	struct mml_pq_sub_task *sub_task = NULL;
-	struct mml_pq_comp_config_result *result;
-	struct mml_pq_aal_config_param *aal_param;
-	struct mml_pq_reg *aal_regs;
-	struct mml_pq_reg *hdr_regs;
-	struct mml_pq_reg *ds_regs;
-	struct mml_pq_reg *color_regs;
-	struct mml_pq_reg *c3d_regs;
-	u32 *aal_curve;
-	u32 *hdr_curve;
-	u32 *c3d_lut;
+	struct mml_pq_comp_config_result *result = NULL;
+	struct mml_pq_aal_config_param *aal_param = NULL;
+	struct mml_pq_reg *aal_regs = NULL;
+	struct mml_pq_reg *hdr_regs = NULL;
+	struct mml_pq_reg *ds_regs = NULL;
+	struct mml_pq_reg *color_regs = NULL;
+	struct mml_pq_reg *c3d_regs = NULL;
+	u32 *aal_curve = NULL;
+	u32 *hdr_curve = NULL;
+	u32 *c3d_lut = NULL;
 	s32 ret;
 
 	mml_pq_trace_ex_begin("%s", __func__);
@@ -2061,7 +2061,7 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 	if (unlikely(!ds_regs)) {
 		mml_pq_err("err: create ds_regs failed, size:%d\n",
 			result->ds_reg_cnt);
-		goto free_aal_curve;
+		goto free_hdr_curve;
 	}
 
 	ret = copy_from_user(ds_regs, result->ds_regs,
