@@ -5507,7 +5507,7 @@
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos SLAVE_LARB(39) &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "disp_hrt_qos";
-			pre-define-bw = <0xffffffff>, <4200>, <0>, <1400>;
+			pre-define-bw = <0xffffffff>, <4200>, <0>, <600>;
 			crtc-ovl-usage = <0x7>, <0x2>, <0x2>, <0x8>;
 			nvmem-cells = <&efuse_segment>;
 			nvmem-cell-names = "efuse_seg_disp_cell";

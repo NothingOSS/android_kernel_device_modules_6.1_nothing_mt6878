@@ -289,18 +289,18 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 		<1>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/
 		<1>, /*MTK_DRM_OPT_MMDVFS_SUPPORT*/
 		<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
-		<0>, /*MTK_DRM_OPT_IDLE_MGR*/
+		<1>, /*MTK_DRM_OPT_IDLE_MGR*/
 		<0>, /*MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE*/
-		<0>, /*MTK_DRM_OPT_IDLEMGR_BY_REPAINT*/
+		<1>, /*MTK_DRM_OPT_IDLEMGR_BY_REPAINT*/
 		<0>, /*MTK_DRM_OPT_IDLEMGR_ENTER_ULPS*/
 		<0>, /*MTK_DRM_OPT_IDLEMGR_KEEP_LP11*/
 		<0>, /*MTK_DRM_OPT_DYNAMIC_RDMA_GOLDEN_SETTING*/
 		<1>, /*MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ*/
 		<0>, /*MTK_DRM_OPT_IDLEMGR_ASYNC*/
 		<0>, /*MTK_DRM_OPT_MET_LOG*/
-		<0>, /*MTK_DRM_OPT_USE_PQ*/
-		<0>, /*MTK_DRM_OPT_ESD_CHECK_RECOVERY*/
-		<0>, /*MTK_DRM_OPT_ESD_CHECK_SWITCH*/
+		<1>, /*MTK_DRM_OPT_USE_PQ*/
+		<1>, /*MTK_DRM_OPT_ESD_CHECK_RECOVERY*/
+		<1>, /*MTK_DRM_OPT_ESD_CHECK_SWITCH*/
 		<1>, /*MTK_DRM_OPT_PRESENT_FENCE*/
 		<0>, /*MTK_DRM_OPT_RDMA_UNDERFLOW_AEE*/
 		<0>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
@@ -342,7 +342,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 		<0>, /*MTK_DRM_OPT_VIDLE_DSI_PLL_OFF*/
 		<0>, /*MTK_DRM_OPT_CHECK_TRIGGER_MERGE*/
 		<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
-		<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
+		<1>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 		<0>, /*MTK_DRM_OPT_GPU_CACHE*/
 		<1>, /*MTK_DRM_OPT_SPHRT*/
 		<1>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
@@ -370,24 +370,45 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	switch-fps = <120>;
 	possible-crtcs = <1>;
 	panel1@0 {
-		compatible = "jdi,nt36672e,vdo,120hz";
+		compatible = "nt37707,cmd,667,fhdp";
 		reg = <0>;
+		pm-enable-gpios = <&pio 149 0>;
+		reset-gpios = <&pio 90 0>;
+		gate-ic = <4831>;
+		swap-from-dts;
+		lane-swap-setting = <1 2 0 3 4 2>;
+		pn-swap-setting = <1 1 1 1 1 1>;
+		pinctrl-names = "default";
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+	panel2@1 {
+		compatible = "jdi,nt36672e,vdo,120hz";
+		reg = <1>;
 		pm-enable-gpios = <&pio 149 0>;
 		reset-gpios = <&pio 90 0>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
 			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out>;
+				remote-endpoint = <&dsi_out1>;
 			};
 		};
 	};
 	ports {
 		port {
 			dsi_out: endpoint {
+				remote-endpoint = <&panel_in>;
+			};
+
+			dsi_out1: endpoint@1 {
 				remote-endpoint = <&panel_in1>;
 			};
 		};
+
 	};
 };
 
@@ -402,7 +423,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	possible-crtcs = <8>;
 	//init-panel-off;
 	panel21@0 {
-		compatible = "truly,td4330,cmd";
+		compatible = "nt37705,cmd,1056-1068";
 		reg = <0>;
 		pm-enable-gpios = <&pio 149 0>;
 		reset-gpios = <&pio 154 0>;
@@ -417,10 +438,30 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 			};
 		};
 	};
+	panel22@1 {
+		compatible = "truly,td4330,cmd";
+		reg = <1>;
+		pm-enable-gpios = <&pio 149 0>;
+		reset-gpios = <&pio 154 0>;
+		gate-ic = <4831>;
+		swap-from-dts;
+		lane-swap-setting = <1 2 0 3 4 2>;
+		pn-swap-setting = <1 1 1 1 1 1>;
+		pinctrl-names = "default";
+		port {
+			panel22_in: endpoint {
+				remote-endpoint = <&dsi1_out1>;
+			};
+		};
+	};
 	ports {
 		port {
 			dsi1_out: endpoint {
 				remote-endpoint = <&panel21_in>;
+			};
+
+			dsi1_out1: endpoint@1 {
+				remote-endpoint = <&panel22_in>;
 			};
 		};
 	};
