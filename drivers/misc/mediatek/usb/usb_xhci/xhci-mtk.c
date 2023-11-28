@@ -28,7 +28,7 @@
 #include <sound/core.h>
 #include <sound/asound.h>
 
-///#include <trace/hooks/audio_usboffload.h>
+#include <trace/hooks/audio_usboffload.h>
 
 #include "usbaudio.h"
 #include "card.h"
@@ -37,6 +37,7 @@
 
 #include "xhci.h"
 #include "xhci-mtk.h"
+#include "quirks.h"
 
 /* ip_pw_ctrl0 register */
 #define CTRL0_IP_SW_RST	BIT(0)
@@ -897,7 +898,7 @@ static int xhci_mtk_probe(struct platform_device *pdev)
 		dev_info(dev, "wakeup irq %d\n", wakeup_irq);
 	}
 
-	//WARN_ON(register_trace_android_vh_audio_usb_offload_synctype(usb_offload_synctype, NULL));
+	WARN_ON(register_trace_android_vh_audio_usb_offload_connect(xhci_mtk_sound_usb_connect, NULL));
 
 	device_enable_async_suspend(dev);
 	pm_runtime_mark_last_busy(dev);
@@ -962,6 +963,8 @@ static int xhci_mtk_remove(struct platform_device *pdev)
 	regulator_bulk_disable(BULK_VREGS_NUM, mtk->supplies);
 
 	xhci_mtk_procfs_exit(mtk);
+
+	unregister_trace_android_vh_audio_usb_offload_connect(xhci_mtk_sound_usb_connect, NULL);
 
 	pm_runtime_disable(dev);
 	pm_runtime_put_noidle(dev);
