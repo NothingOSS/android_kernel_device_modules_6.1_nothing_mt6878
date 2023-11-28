@@ -3,8 +3,8 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 
-#ifndef __NT36672E_VDO_120HZ_RC_H__
-#define __NT36672E_VDO_120HZ_RC_H__
+#ifndef __NT36672E_VDO_60HZ_RC_H__
+#define __NT36672E_VDO_60HZ_RC_H__
 
 #define ROUND_CORNER_H_TOP 120
 

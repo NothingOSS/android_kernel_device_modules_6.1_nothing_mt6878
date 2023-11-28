@@ -31,9 +31,7 @@
 #include "../mediatek/mediatek_v2/mtk_log.h"
 #endif
 
-#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-#include "../mediatek/mediatek_v2/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
-#endif
+#include "../mediatek/mediatek_v2/mtk_corner_pattern/panel-nt37701a-cmd_rc.h"
 
 #include <linux/atomic.h>
 
@@ -669,15 +667,10 @@ static struct mtk_panel_params ext_params = {
 		},
 	},
 	.lp_perline_en = 0,
-#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-	.round_corner_en = 1,
+	.round_corner_en = 0,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
-	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-	.corner_pattern_tp_size_l = sizeof(top_rc_pattern_l),
-	.corner_pattern_lt_addr_l = (void *)top_rc_pattern_l,
-	.corner_pattern_tp_size_r = sizeof(top_rc_pattern_r),
-	.corner_pattern_lt_addr_r = (void *)top_rc_pattern_r,
-#endif
+	.corner_pattern_tp_size = sizeof(panel_nt37701a_cmd_top_pattern),
+	.corner_pattern_lt_addr = (void *)panel_nt37701a_cmd_top_pattern,
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -758,16 +751,10 @@ static struct mtk_panel_params ext_params_90hz = {
 		},
 	},
 	.lp_perline_en = 0,
-#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-	.round_corner_en = 1,
+	.round_corner_en = 0,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
-	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-	.corner_pattern_tp_size_l = sizeof(top_rc_pattern_l),
-	.corner_pattern_lt_addr_l = (void *)top_rc_pattern_l,
-	.corner_pattern_tp_size_r = sizeof(top_rc_pattern_r),
-	.corner_pattern_lt_addr_r = (void *)top_rc_pattern_r,
-
-#endif
+	.corner_pattern_tp_size = sizeof(panel_nt37701a_cmd_top_pattern),
+	.corner_pattern_lt_addr = (void *)panel_nt37701a_cmd_top_pattern,
 };
 
 static struct mtk_panel_params ext_params_120hz = {
@@ -848,16 +835,10 @@ static struct mtk_panel_params ext_params_120hz = {
 		},
 	},
 	.lp_perline_en = 0,
-#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-	.round_corner_en = 1,
+	.round_corner_en = 0,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
-	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-	.corner_pattern_tp_size_l = sizeof(top_rc_pattern_l),
-	.corner_pattern_lt_addr_l = (void *)top_rc_pattern_l,
-	.corner_pattern_tp_size_r = sizeof(top_rc_pattern_r),
-	.corner_pattern_lt_addr_r = (void *)top_rc_pattern_r,
-
-#endif
+	.corner_pattern_tp_size = sizeof(panel_nt37701a_cmd_top_pattern),
+	.corner_pattern_lt_addr = (void *)panel_nt37701a_cmd_top_pattern,
 };
 
 struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
@@ -1492,6 +1473,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
 	struct lcm *ctx;
 	struct device_node *backlight;
+	unsigned int value;
 	int ret;
 	unsigned int res_switch;
 
@@ -1532,6 +1514,17 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 		res_switch = 0;
 	else
 		res_switch_type = (enum RES_SWITCH_TYPE)res_switch;
+
+	value = 0;
+	ret = of_property_read_u32(dev->of_node, "rc-enable", &value);
+	if (ret < 0)
+		value = 0;
+	else {
+		ext_params.round_corner_en = value;
+		ext_params_90hz.round_corner_en = value;
+		ext_params_120hz.round_corner_en = value;
+	}
+	pr_info("%s+ round_corner_en %d\n", __func__,ext_params.round_corner_en);
 
 	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
 	if (backlight) {
