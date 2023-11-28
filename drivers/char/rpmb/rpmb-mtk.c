@@ -480,7 +480,7 @@ static int nl_rpmb_cmd_req(const struct rpmb_data *rpmbd, u8 region)
 
 	ret = wait_event_timeout(wait_rpmb,
 				 rpmb_done_flag,
-				 msecs_to_jiffies(10000));
+				 msecs_to_jiffies(5000));
 	if (ret == 0) {
 		MSG(ERR, "[%s] rpmb operation timeout.", __func__);
 		ret = -ETIMEDOUT;
@@ -2794,6 +2794,7 @@ enum rpmb_cmds {
 	RPMB_GENL_CMD_UNSPEC,
 	RPMB_GENL_CMD_REQ,  /* kernel to proxy*/
 	RPMB_GENL_CMD_RESP,      /* proxy to kernel */
+	RPMB_GENL_CMD_SET_READY, /* proxy to kernel */
 	__RPMB_GENL_CMD_MAX
 };
 
@@ -2818,7 +2819,11 @@ static struct genl_ops genl_ops[] = {
 		.cmd	= RPMB_GENL_CMD_RESP,
 		.policy = rpmb_genl_pols,
 		.doit	= rpmb_mtk_rcv_msg,
-	 },
+	},
+	{
+		.cmd	= RPMB_GENL_CMD_SET_READY,
+		.doit	= rpmb_mtk_rcv_msg,
+	},
 };
 
 /* family definition */
@@ -2832,6 +2837,7 @@ static struct genl_family rpmb_genlf = {
 };
 
 static bool rpmb_genl_inited;
+static bool rpmb_proxy_ready;
 
 static int rpmb_mtk_snd_msg(void *pbuf, u16 len)
 {
@@ -2841,6 +2847,11 @@ static int rpmb_mtk_snd_msg(void *pbuf, u16 len)
 
 	if (!rpmb_genl_inited) {
 		MSG(ERR, "%s: rpmb genl not ready\n", __func__);
+		return -EIO;
+	}
+
+	if (!rpmb_proxy_ready) {
+		MSG(ERR, "%s: rpmb proxy not ready\n", __func__);
 		return -EIO;
 	}
 
@@ -2885,6 +2896,7 @@ static int rpmb_mtk_rcv_msg(struct sk_buff *skb, struct genl_info *info)
 {
 	int ret = 0;
 	struct nlattr *attr;
+	struct genlmsghdr *genlhdr;
 	struct nl_rpmb_send_req *req = &nl_rpmb_req;
 
 	if (!info) {
@@ -2893,7 +2905,16 @@ static int rpmb_mtk_rcv_msg(struct sk_buff *skb, struct genl_info *info)
 		goto out;
 	}
 
+	genlhdr = info->genlhdr;
+
 	MSG(DBG_INFO, "%s:enter sender.portid=%d, seq=%d\n", __func__, info->snd_portid, info->snd_seq);
+
+	if (genlhdr->cmd == RPMB_GENL_CMD_SET_READY) {
+		/* RPMB proxy ready */
+		MSG(INFO, "%s: RPMB proxy ready", __func__);
+		rpmb_proxy_ready = true;
+		return 0;
+	}
 
 	if (!info->attrs) {
 		MSG(ERR, "%s: invalid attrs", __func__);
