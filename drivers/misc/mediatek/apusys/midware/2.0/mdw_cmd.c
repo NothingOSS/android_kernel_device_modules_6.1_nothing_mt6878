@@ -1105,8 +1105,8 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 	int i = 0, ret = -EINVAL;
 	uint32_t h_iptime = 0, c_iptime = 0;
 	uint32_t producer_idx = 0, consumer_idx = 0, cbfc_en = 0;
-	uint64_t predict_start_ts = 0;
-	int64_t vid_array[MDW_SUBCMD_MAX] = {0};
+	uint64_t predict_start_ts = 0, sc_sync_info = 0;
+	int8_t vid_array[MDW_SUBCMD_MAX] = {0};
 	int64_t vid = 0;
 
 	memset(vid_array, -1, sizeof(vid_array));
@@ -1143,11 +1143,11 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 			cbfc_en = 1;
 			vid = vid_array[i];
 		}
-		c->sync_info = MDW_CMD_GEN_SYNC_INFO(vid, cbfc_en, c->subcmds[i].hse_en);
+		sc_sync_info = MDW_CMD_GEN_SYNC_INFO(vid, cbfc_en, c->subcmds[i].hse_en);
 
 		if (sc_einfo[i].was_preempted || sc_einfo[i].ret) {
 			mdw_flw_debug("sc was preempted or failed, skip this iptime\n");
-			mdw_subcmd_trace(c, i, ch_tbl->h_sc_einfo[i].ip_time, MDW_CMD_SCHED);
+			mdw_subcmd_trace(c, i, ch_tbl->h_sc_einfo[i].ip_time, sc_sync_info, MDW_CMD_SCHED);
 			continue;
 		}
 
@@ -1157,7 +1157,7 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 		} else {
 			ch_tbl->h_sc_einfo[i].ip_time = c_iptime;
 		}
-		mdw_subcmd_trace(c, i, ch_tbl->h_sc_einfo[i].ip_time, MDW_CMD_SCHED);
+		mdw_subcmd_trace(c, i, ch_tbl->h_sc_einfo[i].ip_time, sc_sync_info ,MDW_CMD_SCHED);
 	}
 
 	/* calculate interval time */

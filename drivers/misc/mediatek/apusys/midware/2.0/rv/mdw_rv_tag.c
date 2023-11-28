@@ -97,7 +97,7 @@ probe_rv_mdw_cmd(void *data, uint32_t status, pid_t pid,
 }
 
 void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
-		uint32_t history_iptime, uint32_t status)
+		uint32_t history_iptime, uint64_t sync_info, uint32_t status)
 {
 
 	struct mdw_subcmd_exec_info *sc_einfo = NULL;
@@ -114,7 +114,7 @@ void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
 		sc_einfo[sc_idx].executed_core_bitmap,
 		sc_einfo[sc_idx].tcm_usage,
 		history_iptime,
-		c->sync_info);
+		sync_info);
 }
 
 /* The parameters must aligned with trace_mdw_rv_subcmd() */

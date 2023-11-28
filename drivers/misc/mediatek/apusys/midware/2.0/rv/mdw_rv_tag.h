@@ -72,7 +72,7 @@ void mdw_rv_tag_deinit(void);
 void mdw_rv_tag_show(struct seq_file *s);
 void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status);
 void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
-		uint32_t history_iptime, uint32_t status);
+		uint32_t history_iptime, uint64_t sync_info, uint32_t status);
 void mdw_cmd_deque_trace(struct mdw_cmd *c, uint32_t status);
 #else
 static inline int mdw_rv_tag_init(void)
@@ -90,7 +90,7 @@ void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status)
 {
 }
 void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
-		uint32_t history_iptime, uint32_t status);
+		uint32_t history_iptime, uint64_t sync_info, uint32_t status);
 {
 }
 void mdw_cmd_deque_trace(struct mdw_cmd *c, uint32_t status)

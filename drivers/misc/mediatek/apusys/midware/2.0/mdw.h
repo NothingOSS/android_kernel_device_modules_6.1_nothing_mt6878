@@ -442,9 +442,6 @@ struct mdw_cmd {
 	uint64_t mpriv_release_time;
 	uint64_t enter_rv_cb_time;
 	uint64_t rv_cb_time;
-
-	/* synchronization variables */
-	uint64_t sync_info;
 };
 
 struct mdw_dev_func {
