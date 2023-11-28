@@ -1152,6 +1152,9 @@ struct mtk_battery {
 	/* low bat bound */
 	int bat_voltage_low_bound;
 	int low_tmp_bat_voltage_low_bound;
+
+	int dynamic_shutdown_cond;
+	int bob_exist;
 };
 
 struct mtk_battery_sysfs_field_info {

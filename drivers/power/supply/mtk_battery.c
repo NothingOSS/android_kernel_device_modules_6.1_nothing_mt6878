@@ -1839,6 +1839,8 @@ void fg_custom_init_from_header(struct mtk_battery *gm)
 		gm->rbat.type = 47;
 		gm->rbat.rbat_pull_up_r = RBAT_PULL_UP_R;
 	}
+
+	gm->dynamic_shutdown_cond = DYNAMIC_SHUTDOWN_COND;
 }
 
 void fg_convert_prop_tolower(char *s)
@@ -2034,6 +2036,7 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 	struct mtk_battery *gm)
 {
 	struct device_node *np = dev->dev.of_node;
+	struct device_node *rt6160_np;
 	unsigned int val = 0;
 	int bat_id, multi_battery = 0, active_table = 0;
 	int i, j, ret, column = 0;
@@ -2043,6 +2046,7 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 	char node_name[128];
 	struct fuel_gauge_custom_data *fg_cust_data;
 	struct fuel_gauge_table_custom_data *fg_table_cust_data;
+	int bob_exist = 0;
 
 	bat_id = fgauge_get_profile_id(gm);
 	fg_cust_data = &gm->fg_cust_data;
@@ -2695,6 +2699,73 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 			fg_custom_parse_table(gm, np, node_name,
 				fg_table_cust_data->fg_profile[i].fg_profile, column);
 	}
+
+	fg_read_dts_val(np, "DYNAMIC_SHUTDOWN_COND",
+		&(gm->dynamic_shutdown_cond), 1);
+
+	if (gm->dynamic_shutdown_cond) {
+		rt6160_np = of_find_node_by_name(NULL, "rt6160");
+		if (rt6160_np)
+			fg_read_dts_val(rt6160_np, "is-existed", &bob_exist, 1);
+		else
+			bm_err("get rt6160 node failed\n");
+
+		if (!bob_exist) {
+			if (fg_cust_data->multi_temp_gauge0 == 0) {
+
+				if (!fg_read_dts_val(np, "PMIC_MIN_VOL1", &val, 1)) {
+					for (i = 0; i < MAX_TABLE; i++)
+						fg_table_cust_data->fg_profile[i].pmic_min_vol =
+						(int)val;
+					bm_debug("Get PMIC_MIN_VOL1: %d\n",
+						fg_table_cust_data->fg_profile[0].pmic_min_vol);
+				} else {
+					bm_err("Get PMIC_MIN_VOL1 no data\n");
+				}
+			}
+
+			fg_read_dts_val(np, "SHUTDOWN_GAUGE0_VOLTAGE1",
+				&(fg_cust_data->shutdown_gauge0_voltage), 1);
+
+			if (bat_id >= 0 && bat_id < TOTAL_BATTERY_NUMBER) {
+				ret = sprintf(node_name, "Q_MAX_SYS_VOLTAGE1_BAT%d", bat_id);
+				if (ret  >= 0)
+					fg_read_dts_val(np, node_name,
+						&(fg_cust_data->q_max_sys_voltage), UNIT_TRANS_10);
+			} else
+				bm_err(
+				"get Q_MAX_SYS_VOLTAGE1_BAT, %d no data\n",
+				bat_id);
+
+			fg_read_dts_val(np, "VBAT2_DET1_VOLTAGE1",
+				&(fg_cust_data->vbat2_det_voltage1), 1);
+			fg_read_dts_val(np, "VBAT2_DET1_VOLTAGE2",
+				&(fg_cust_data->vbat2_det_voltage2), 1);
+			fg_read_dts_val(np, "VBAT2_DET1_VOLTAGE3",
+				&(fg_cust_data->vbat2_det_voltage3), 1);
+			fg_read_dts_val(np, "BAT_VOLTAGE_LOW_BOUND1",
+				&(gm->bat_voltage_low_bound), 1);
+			fg_read_dts_val(np, "LOW_TMP_BAT_VOLTAGE_LOW_BOUND1",
+				&(gm->low_tmp_bat_voltage_low_bound), 1);
+
+			for (i = 0; i < MAX_TABLE; i++) {
+				fg_read_dts_val_by_idx(np, "g_PMIC_MIN_VOL1",
+					i*TOTAL_BATTERY_NUMBER + gm->battery_id,
+					&(fg_table_cust_data->fg_profile[i].pmic_min_vol), 1);
+				fg_read_dts_val_by_idx(np, "g_QMAX_SYS_VOL1",
+					i*TOTAL_BATTERY_NUMBER + gm->battery_id,
+					&(fg_table_cust_data->fg_profile[i].qmax_sys_vol), 1);
+			}
+		}
+		gm->bob_exist = bob_exist;
+		bm_err("bob:%d shutdown0:%d, qmax:%d, vbat: %d, %d, %d, %d, %d, table: %d, %d\n",
+			gm->bob_exist, fg_cust_data->shutdown_gauge0_voltage,
+			fg_cust_data->q_max_sys_voltage, fg_cust_data->vbat2_det_voltage1,
+			fg_cust_data->vbat2_det_voltage2, fg_cust_data->vbat2_det_voltage3,
+			gm->bat_voltage_low_bound, gm->low_tmp_bat_voltage_low_bound,
+			fg_table_cust_data->fg_profile[0].pmic_min_vol,
+			fg_table_cust_data->fg_profile[0].qmax_sys_vol);
+	}
 }
 
 #endif	/* end of CONFIG_OF */
@@ -3274,7 +3345,7 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 	gm->tbat = force_get_tbat_internal(gm);
 	fg_update_porp_control(prop_control);
 
-	bm_err("car[%d,%ld,%ld,%ld,%ld] tmp:%d soc:%d uisoc:%d vbat:%d ibat:%d baton:%d algo:%d gm3:%d %d %d %d %d %d, get_prop:%d %lld %d %d %d %lld %ld %lld, boot:%d\n",
+	bm_err("car[%d,%ld,%ld,%ld,%ld] tmp:%d soc:%d uisoc:%d vbat:%d ibat:%d baton:%d algo:%d gm3:%d %d %d %d %d %d, get_prop:%d %lld %d %d %d %lld %ld %lld, boot:%d, bob:%d,%d\n",
 		gauge_get_int_property(GAUGE_PROP_COULOMB),
 		gm->coulomb_plus.end, gm->coulomb_minus.end,
 		gm->uisoc_plus.end, gm->uisoc_minus.end,
@@ -3290,7 +3361,8 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 		prop_control->last_binder_counter, prop_control->total_fail,
 		prop_control->max_gp, prop_control->max_get_prop_time.tv_sec,
 		prop_control->max_get_prop_time.tv_nsec/1000000,
-		prop_control->last_diff_time.tv_sec, gm->bootmode);
+		prop_control->last_diff_time.tv_sec, gm->bootmode,
+		gm->dynamic_shutdown_cond, gm->bob_exist);
 
 	fg_drv_update_daemon(gm);
 	prop_control->max_get_prop_time = ktime_to_timespec64(0);
