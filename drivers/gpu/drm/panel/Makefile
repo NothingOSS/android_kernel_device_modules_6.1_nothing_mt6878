@@ -54,6 +54,10 @@ ifneq ($(wildcard $(srctree)/$(src)/k6989v1_64_flip_alpha),)
 obj-$(CONFIG_DRM_PANEL_BOE_BF130_DPHY_CMD_HD) += k6989v1_64_flip_alpha/panel-boe-bf130-dphy-cmd-hd.o
 obj-$(CONFIG_DRM_PANEL_SAMSUNG_AMF680CM01_CMD_FHD) += k6989v1_64_flip_alpha/panel-samsung-amf680cm01-cmd-fhd.o
 endif
+ifneq ($(wildcard $(srctree)/$(src)/k6878v1_64_alpha),)
+obj-$(CONFIG_DRM_PANEL_MOT_CSOT_NT37705_DPHY_CMD) += k6878v1_64_alpha/dsi-panel-mot-csot-nt37705-1056x1068-dphy-cmd-cli.o
+obj-$(CONFIG_DRM_PANEL_MOT_CSOT_NT37707_FHDP_DPHY_CMD) += k6878v1_64_alpha/dsi-panel-mot-csot-nt37707-667-fhdp-dphy-cmd.o
+endif
 
 mediatek-drm-gateic-y := mtk_drm_panel_i2c.o \
 		  mtk_drm_gateic_rt4801h.o \
