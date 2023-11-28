@@ -3166,10 +3166,19 @@ skip_phy:
 
 	/*
 	 * Because the default power setting of VSx (the upper layer of
-	 * VCCQ/VCCQ2) is HWLP, we need to prevent VCCQ/VCCQ2 from
+	 * VCCQ/VCCQ2) is HWLP, we need to prevent VSx from
 	 * entering LPM.
 	 */
-	ufs_mtk_dev_vreg_set_lpm(hba, false);
+	ufs_mtk_vsx_set_lpm(hba, false);
+
+	/* For fool-proof, we need to prevent VUFSx from entering LPM. */
+	if (hba->vreg_info.vccq)
+		regulator_set_mode((hba->vreg_info.vccq)->reg,
+				REGULATOR_MODE_NORMAL);
+
+	if (hba->vreg_info.vccq2)
+		regulator_set_mode((hba->vreg_info.vccq2)->reg,
+				REGULATOR_MODE_NORMAL);
 
 out:
 	of_node_put(phy_node);
