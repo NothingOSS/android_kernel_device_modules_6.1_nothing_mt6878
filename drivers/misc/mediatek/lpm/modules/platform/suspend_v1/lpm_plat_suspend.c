@@ -26,6 +26,8 @@
 #include <linux/cpuidle.h>
 #include <linux/pm_qos.h>
 #include <uapi/linux/sched/types.h>
+#include <linux/smp.h>
+#include <linux/cpumask.h>
 
 #include <lpm.h>
 #include <lpm_module.h>
@@ -137,6 +139,7 @@ void lpm_suspend_s2idle_reflect(int cpu,
 					const struct lpm_issuer *issuer)
 {
 	if (cpumask_weight(&s2idle_cpumask) == num_online_cpus()) {
+		int cpu = 0;
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 		/* show md sleep status */
@@ -147,6 +150,12 @@ void lpm_suspend_s2idle_reflect(int cpu,
 		pr_info("[name:spm&][%s:%d] - resume\n",
 			__func__, __LINE__);
 
+		for_each_possible_cpu(cpu) {
+			preempt_disable();
+			if (cpu != smp_processor_id() && cpu_online(cpu))
+				wake_up_if_idle(cpu);
+			preempt_enable();
+		}
 		pm_system_wakeup();
 	}
 	cpumask_clear_cpu(cpu, &s2idle_cpumask);
