@@ -1701,12 +1701,10 @@ static void mtk_oddmr_s2r_bypass(struct mtk_ddp_comp *comp,
 {
 	ODDMRFLOW_LOG("%s+\n", mtk_dump_comp_str(comp));
 
-	if (s2r_bypass) {
+	if (s2r_bypass)
 		mtk_oddmr_write(comp, 0, DISP_ODDMR_REG_SPR_COMP_EN, handle);
-		mtk_oddmr_write(comp, 1, DISP_ODDMR_TOP_S2R_BYPASS, handle);
-	} else {
+	else
 		mtk_oddmr_set_spr2rgb(comp, handle);
-	}
 }
 
 static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
