@@ -290,13 +290,6 @@ static bool is_ovl_standard(struct drm_device *dev, enum mtk_drm_dataspace ds,
 		} else
 			DDPPR_ERR("%s, panel color mode is %d, not expect?\n",
 					  __func__, panel_params->lcm_color_mode);
-		/* avoid to push MML */
-		if (ret == false) {
-			if (c->layer_caps & MTK_MML_OVL_LAYER)
-				DDPINFO("%s, remove MTK_MML_OVL_LAYER\n", __func__);
-			c->layer_caps &= ~MTK_MML_OVL_LAYER;
-		}
-
 		return ret;
 	}
 
@@ -355,6 +348,12 @@ static void filter_by_wcg(struct drm_device *dev,
 			    (is_ovl_standard(dev, c->dataspace, crtc, has_wcg_layer, c) ||
 			     mtk_has_layer_cap(c, MTK_MDP_HDR_LAYER)))
 				continue;
+			if (priv->data->not_support_csc) {
+				/* avoid to push MML */
+				if (c->layer_caps & MTK_MML_OVL_LAYER)
+					DDPINFO("%s, remove MTK_MML_OVL_LAYER\n", __func__);
+				c->layer_caps &= ~MTK_MML_OVL_LAYER;
+			}
 			DDPINFO("%s, to GPU j=%d, ds:%d, cap:0x%x\n", __func__, j, c->dataspace, c->layer_caps);
 			mtk_rollback_layer_to_GPU(disp_info, disp_idx, j);
 		}
