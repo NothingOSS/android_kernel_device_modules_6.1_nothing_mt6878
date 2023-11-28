@@ -974,7 +974,7 @@ static int mtk_mmdvfs_v3_set_force_step_ipi(const u16 pwr_idx, const s16 opp)
 	return ret;
 }
 
-int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp)
+int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp, const bool cmd)
 {
 	int *last, ret;
 
@@ -982,6 +982,9 @@ int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp)
 		MMDVFS_ERR("wrong pwr_idx:%hu opp:%hd", pwr_idx, opp);
 		return -EINVAL;
 	}
+
+	if (cmd && mmdvfs_release_step_done)
+		return 0;
 
 	if (mmdvfs_mux_version)
 		return mmdvfs_force_step_by_vcp(pwr_idx, opp);
@@ -1013,7 +1016,7 @@ static int mmdvfs_set_force_step(const char *val, const struct kernel_param *kp)
 		return -EINVAL;
 	}
 
-	ret = mtk_mmdvfs_v3_set_force_step(idx, opp);
+	ret = mtk_mmdvfs_v3_set_force_step(idx, opp, true);
 	if (ret)
 		MMDVFS_ERR("failed:%d idx:%hu opp:%hd", ret, idx, opp);
 	return ret;
@@ -1229,7 +1232,7 @@ static int mtk_mmdvfs_v3_set_vote_step_ipi(const u16 pwr_idx, const s16 opp)
 	return ret;
 }
 
-int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp)
+int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp, const bool cmd)
 {
 	int *last, ret = 0;
 
@@ -1237,6 +1240,9 @@ int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp)
 		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
 		return -EINVAL;
 	}
+
+	if (cmd && mmdvfs_release_step_done)
+		return 0;
 
 	if (mmdvfs_mux_version)
 		return mmdvfs_vote_step_by_vcp(pwr_idx, opp);
@@ -1273,7 +1279,7 @@ static int mmdvfs_set_vote_step(const char *val, const struct kernel_param *kp)
 		return -EINVAL;
 	}
 
-	ret = mtk_mmdvfs_v3_set_vote_step(idx, opp);
+	ret = mtk_mmdvfs_v3_set_vote_step(idx, opp, true);
 	if (ret)
 		MMDVFS_ERR("failed:%d idx:%hu opp:%hd", ret, idx, opp);
 	return ret;
@@ -1454,7 +1460,7 @@ static void mmdvfs_v3_release_step(bool enable_vcp)
 		if (last_vote_step[i] != -1) {
 			last = last_vote_step[i];
 			if (enable_vcp)
-				mtk_mmdvfs_v3_set_vote_step(i, -1);
+				mtk_mmdvfs_v3_set_vote_step(i, -1, false);
 			else
 				mtk_mmdvfs_v3_set_vote_step_ipi(i, -1);
 			last_vote_step[i] = last;
@@ -1463,7 +1469,7 @@ static void mmdvfs_v3_release_step(bool enable_vcp)
 		if (last_force_step[i] != -1) {
 			last = last_force_step[i];
 			if (enable_vcp)
-				mtk_mmdvfs_v3_set_force_step(i, -1);
+				mtk_mmdvfs_v3_set_force_step(i, -1, false);
 			else
 				mtk_mmdvfs_v3_set_force_step_ipi(i, -1);
 			last_force_step[i] = last;

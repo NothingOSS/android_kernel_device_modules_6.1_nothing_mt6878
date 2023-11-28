@@ -121,7 +121,7 @@ static int mmdvfs_debug_set_force_step(const char *val,
 	}
 
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
-		mtk_mmdvfs_v3_set_force_step(idx, opp);
+		mtk_mmdvfs_v3_set_force_step(idx, opp, true);
 
 	return 0;
 }
@@ -152,7 +152,7 @@ static int mmdvfs_debug_set_vote_step(const char *val,
 	}
 
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
-		mtk_mmdvfs_v3_set_vote_step(idx, opp);
+		mtk_mmdvfs_v3_set_vote_step(idx, opp, true);
 
 	return 0;
 }
@@ -389,31 +389,31 @@ static int mmdvfs_v3_debug_thread(void *data)
 	}
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VCORE))
-		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, g_mmdvfs->force_step0);
+		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, g_mmdvfs->force_step0, false);
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VMM))
-		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, g_mmdvfs->force_step0);
+		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, g_mmdvfs->force_step0, false);
 
 	if (!g_mmdvfs->release_step0)
 		goto init_done;
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VCORE))
-		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, -1);
+		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, -1, false);
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VMM))
-		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, -1);
+		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, -1, false);
 
 	if (g_mmdvfs->vote_step != 0xff)
 		for (i = 0; i < PWR_MMDVFS_NUM; i++) {
 			mtk_mmdvfs_v3_set_vote_step(
-				g_mmdvfs->vote_step >> 4 & 0xf, g_mmdvfs->vote_step & 0xf);
+				g_mmdvfs->vote_step >> 4 & 0xf, g_mmdvfs->vote_step & 0xf, false);
 			g_mmdvfs->vote_step = g_mmdvfs->vote_step >> 8;
 		}
 
 	if (g_mmdvfs->force_step != 0xff)
 		for (i = 0; i < PWR_MMDVFS_NUM; i++) {
 			mtk_mmdvfs_v3_set_force_step(
-				g_mmdvfs->force_step >> 4 & 0xf, g_mmdvfs->force_step & 0xf);
+				g_mmdvfs->force_step >> 4 & 0xf, g_mmdvfs->force_step & 0xf, false);
 			g_mmdvfs->force_step = g_mmdvfs->force_step >> 8;
 		}
 
