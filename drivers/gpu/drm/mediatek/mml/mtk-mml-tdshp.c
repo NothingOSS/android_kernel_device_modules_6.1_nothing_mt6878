@@ -52,6 +52,7 @@ enum mml_tdshp_reg_index {
 	TDSHP_SHADOW_CTRL,
 	CONTOUR_HIST_00,
 	TDSHP_STATUS_00,
+	TDHSP_C_BOOST_MAIN,
 	TDSHP_REG_MAX_COUNT
 };
 
@@ -73,7 +74,8 @@ static const u16 tdshp_reg_table_mt6983[TDSHP_REG_MAX_COUNT] = {
 	[TDSHP_REGION_PQ_PARAM] = REG_NOT_SUPPORT,
 	[TDSHP_SHADOW_CTRL] = 0x67c,
 	[CONTOUR_HIST_00] = 0x3dc,
-	[TDSHP_STATUS_00] = REG_NOT_SUPPORT
+	[TDSHP_STATUS_00] = REG_NOT_SUPPORT,
+	[TDHSP_C_BOOST_MAIN] = 0x0E0
 };
 
 static const u16 tdshp_reg_table_mt6985[TDSHP_REG_MAX_COUNT] = {
@@ -94,7 +96,8 @@ static const u16 tdshp_reg_table_mt6985[TDSHP_REG_MAX_COUNT] = {
 	[TDSHP_REGION_PQ_PARAM] = 0x680,
 	[TDSHP_SHADOW_CTRL] = 0x724,
 	[CONTOUR_HIST_00] = 0x3dc,
-	[TDSHP_STATUS_00] = 0x644
+	[TDSHP_STATUS_00] = 0x644,
+	[TDHSP_C_BOOST_MAIN] = 0x0E0
 };
 
 struct tdshp_data {
@@ -526,8 +529,21 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (ret) {
 			mml_pq_comp_config_clear(task);
 			tdshp_frm->config_success = false;
-			tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
-			mml_pq_err("get ds param timeout: %d in %dms",
+			if (dest->pq_config.en_region_pq) {
+				// DON'T relay hardware, but disable sub-module
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDSHP_00],
+					1 << 31|1 << 28, 1 << 31|1 << 28);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDHSP_C_BOOST_MAIN],
+					1 << 13, 1 << 13);
+				// enable map input, disable map output
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
+					0x5C1B0, U32_MAX);
+			} else
+				tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
+			mml_pq_err("%s:get ds param timeout: %d in %dms", __func__,
 				ret, TDSHP_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
 			goto exit;
@@ -536,7 +552,20 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		result = get_tdshp_comp_config_result(task);
 		if (!result) {
 			tdshp_frm->config_success = false;
-			tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
+			if (dest->pq_config.en_region_pq) {
+				// DON'T relay hardware, but disable sub-module
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDSHP_00],
+					1 << 31|1 << 28, 1 << 31|1 << 28);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDHSP_C_BOOST_MAIN],
+					1 << 13, 1 << 13);
+				// enable map input, disable map output
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
+					0x5C1B0, U32_MAX);
+			} else
+				tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;

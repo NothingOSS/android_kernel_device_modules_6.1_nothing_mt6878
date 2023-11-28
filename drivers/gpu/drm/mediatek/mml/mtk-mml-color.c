@@ -262,7 +262,7 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 			color_frm->config_success = false;
 			cmdq_pkt_write(pkt, NULL,
 				base_pa + color->data->reg_table[COLOR_START], 3, U32_MAX);
-			mml_pq_err("get color param timeout: %d in %dms",
+			mml_pq_err("%s: get color param timeout: %d in %dms", __func__,
 				ret, COLOR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
 			goto exit;
