@@ -2749,7 +2749,8 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			comp->id, temp_bw, vtotal, vact);
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			(crtc_idx == 0) && (priv->data->mmsys_id != MMSYS_MT6989)) {
+			(crtc_idx == 0) && (pending->prop_val[PLANE_PROP_COMPRESS]) &&
+			(priv->data->mmsys_id != MMSYS_MT6989)) {
 			uint64_t key = 0;
 			int fbt_layer_id = -1;
 			unsigned long long temp_bw_old = temp_bw;
