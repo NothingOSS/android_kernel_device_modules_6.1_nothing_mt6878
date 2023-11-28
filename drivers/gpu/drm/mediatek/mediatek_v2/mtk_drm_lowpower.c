@@ -685,7 +685,7 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc);
 
 static void mtk_drm_vidle_control(struct drm_crtc *crtc, bool enable)
 {
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_drm_private *priv = NULL;
 	static bool vidle_status;
 
 	if (crtc == NULL || crtc->dev == NULL)
