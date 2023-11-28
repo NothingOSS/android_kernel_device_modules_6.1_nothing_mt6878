@@ -154,7 +154,7 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 			swap(destw, desth);
 
-		if (crop_srcw / destw > 20 || crop_srch / desth > 255 ||
+		if (crop_srcw / destw > 20 || crop_srch / desth > 24 ||
 			destw / crop_srcw > 32 || desth / crop_srch > 32) {
 			mml_err("[drm]exceed HW limitation src %ux%u dest %ux%u",
 				crop_srcw, crop_srch, destw, desth);
