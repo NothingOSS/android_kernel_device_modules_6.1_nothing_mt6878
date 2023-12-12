@@ -37,6 +37,7 @@ static const u32 formats[] = {
 	DRM_FORMAT_P010,
 	DRM_FORMAT_NV12,
 	DRM_FORMAT_NV21,
+	DRM_FORMAT_Y410,
 };
 
 unsigned int to_crtc_plane_index(unsigned int plane_index)
@@ -85,6 +86,7 @@ int mtk_get_format_bpp(uint32_t format)
 	case DRM_FORMAT_ABGR2101010:
 	case DRM_FORMAT_RGBA1010102:
 	case DRM_FORMAT_BGRA1010102:
+	case DRM_FORMAT_Y410:
 		return 4;
 	case DRM_FORMAT_YUV422:
 	case DRM_FORMAT_YVU422:
@@ -140,6 +142,8 @@ char *mtk_get_format_name(uint32_t format)
 		return "ABGR2101010";
 	case DRM_FORMAT_ABGR16161616F:
 		return "ABGRFP16";
+	case DRM_FORMAT_Y410:
+		return "Y410";
 	}
 	return "fmt_unknown";
 }
