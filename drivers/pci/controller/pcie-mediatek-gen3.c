@@ -241,11 +241,19 @@ u32 mtk_pcie_dump_link_info(int port);
 #define SRCLKEN_SPM_REQ_STA             0x1114
 #define SRCLKEN_RC_REQ_STA		0x1130
 
+#define SRCLKEN_BASE			0x1c00d000
+#define M07_CFG				0x3c
+#define IGNORE_SETTLE_TIME		BIT(2)
+#define BBCK2_FORCE_ACK			GENMASK(4, 3)
+#define CENTRAL_CFG6			0x74
+#define PMRC7_VOTE_MASK			BIT(7)
+
 #define MTK_PCIE_MAX_PORT		2
 #define PCIE_CLKBUF_SUBSYS_ID		7
 #define PCIE_CLKBUF_XO_ID		1
-#define BBCK2_BIND			0x2c1
-#define BBCK2_UNBIND			0x2c0
+#define PMRC7_BBCK2_UNBIND		0x241
+#define PMRC7_BBCK2_BIND		0x2c0
+#define BBCK1_BBCK2_BIND		0x2c1
 
 enum mtk_pcie_suspend_link_state {
 	LINK_STATE_L12 = 0,
@@ -259,11 +267,15 @@ struct mtk_pcie_port;
  * @pre_init: Specific init data, called before linkup
  * @suspend_l12: To implement special setting in L1.2 suspend flow
  * @resume_l12: To implement special setting in L1.2 resume flow
+ * @pre_power_up: To implement special setting before power up
+ * @post_power_down: To implement special setting after power down
  */
 struct mtk_pcie_data {
 	int (*pre_init)(struct mtk_pcie_port *port);
 	int (*suspend_l12)(struct mtk_pcie_port *port);
 	int (*resume_l12)(struct mtk_pcie_port *port);
+	int (*pre_power_up)(struct mtk_pcie_port *port);
+	void (*post_power_down)(struct mtk_pcie_port *port);
 };
 
 /**
@@ -557,8 +569,6 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	if (port->pextpcfg) {
 		spin_lock_init(&port->vote_lock);
 		port->vlpcfg_base = devm_ioremap(port->dev, PCIE_VLPCFG_BASE, 0x2000);
-
-		mtk_pcie_clkbuf_control(port->dev, true);
 
 		/* Just port0 enter L12 when suspend */
 		if (port->port_num == 0) {
@@ -1171,6 +1181,12 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 	struct pinctrl *p;
 	int err;
 
+	if (port->data->pre_power_up) {
+		err = port->data->pre_power_up(port);
+		if (err)
+			return err;
+	}
+
 	/* Clear PCIe pextp sw reset bit */
 	if (port->pextpcfg && port->port_num == 0)
 		writel_relaxed(PEXTP_SW_MAC0_PHY0_BIT,
@@ -1264,7 +1280,9 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 		writel_relaxed(PEXTP_SW_MAC1_PHY1_BIT,
 			       port->pextpcfg + PEXTP_SW_RST_SET_OFFSET);
 
-	mtk_pcie_clkbuf_control(port->dev, false);
+	if (port->data->post_power_down)
+		port->data->post_power_down(port);
+
 	if (port->pextpcfg)
 		iounmap(port->pextpcfg);
 }
@@ -1919,8 +1937,6 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 			writel_relaxed(val, port->pextpcfg + PEXTP_PWRCTL_1);
 		}
 
-		mtk_pcie_clkbuf_control(dev, false);
-
 		/* srclken rc request state */
 		dev_info(port->dev, "PCIe0 Modem HW MODE BIT=%#x, PEXTP_PWRCTL_3=%#x, srclken rc state=%#x\n",
 			 readl_relaxed(port->pextpcfg + PEXTP_RSV_0),
@@ -1972,11 +1988,6 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 		return -ENODEV;
 
 	if (port->suspend_mode == LINK_STATE_L12) {
-		mtk_pcie_clkbuf_control(dev, true);
-
-		/* Wait 400us for BBCK2 switch SW Mode ready */
-		udelay(400);
-
 		if (port->port_num == 0) {
 			err = mtk_pcie_hw_control_vote(0, false, 0);
 			if (err)
@@ -2144,9 +2155,9 @@ static int mtk_pcie_suspend_l12_6985(struct mtk_pcie_port *port)
 	u32 val;
 
 	/* Binding of BBCK1 and BBCK2 */
-	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK2_BIND);
+	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK1_BBCK2_BIND);
 	if (err)
-		dev_info(port->dev, "Fail to bind BBCK2 with BBCK1\n");
+		dev_info(port->dev, "Failed to bind BBCK2 with BBCK1\n");
 
 	/* Wait 400us for BBCK2 bind ready */
 	udelay(400);
@@ -2156,6 +2167,8 @@ static int mtk_pcie_suspend_l12_6985(struct mtk_pcie_port *port)
 	val |= PCIE_BBCK2_BYPASS;
 	writel_relaxed(val, port->pextpcfg + PEXTP_RSV_0);
 
+	mtk_pcie_clkbuf_control(port->dev, false);
+
 	return 0;
 }
 
@@ -2163,18 +2176,36 @@ static int mtk_pcie_resume_l12_6985(struct mtk_pcie_port *port)
 {
 	int err;
 
-	/* Unbinding of BBCK1 and BBCK2 */
-	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK2_UNBIND);
+	mtk_pcie_clkbuf_control(port->dev, true);
+
+	/* Wait 400us for BBCK2 switch SW Mode ready */
+	udelay(400);
+
+	/* Binding of PMRC7 and BBCK2 */
+	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, PMRC7_BBCK2_BIND);
 	if (err)
-		dev_info(port->dev, "Fail to unbind BBCK2 with BBCK1\n");
+		dev_info(port->dev, "Failed to bind PMRC7 with BBCK2\n");
 
 	return 0;
 }
 
+static int mtk_pcie_pre_power_up_6985(struct mtk_pcie_port *port)
+{
+	mtk_pcie_clkbuf_control(port->dev, true);
+	return 0;
+}
+
+static void mtk_pcie_post_power_down_6985(struct mtk_pcie_port *port)
+{
+	mtk_pcie_clkbuf_control(port->dev, false);
+}
+
 static const struct mtk_pcie_data mt6985_data = {
-	.pre_init = mtk_pcie_pre_init_6985,
-	.suspend_l12 = mtk_pcie_suspend_l12_6985,
-	.resume_l12 = mtk_pcie_resume_l12_6985,
+	.pre_init		= mtk_pcie_pre_init_6985,
+	.suspend_l12		= mtk_pcie_suspend_l12_6985,
+	.resume_l12		= mtk_pcie_resume_l12_6985,
+	.pre_power_up		= mtk_pcie_pre_power_up_6985,
+	.post_power_down	= mtk_pcie_post_power_down_6985,
 };
 
 static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
@@ -2203,8 +2234,68 @@ static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
 	return 0;
 }
 
+static int mtk_pcie_pre_power_up_6989(struct mtk_pcie_port *port)
+{
+	void __iomem *srclken_base = ioremap(SRCLKEN_BASE, 0x1000);
+	u32 val;
+
+	/* Make PMRC7 out of vote */
+	val = readl_relaxed(srclken_base + CENTRAL_CFG6);
+	val |= PMRC7_VOTE_MASK;
+	writel_relaxed(val, srclken_base + CENTRAL_CFG6);
+
+	/* PMRC7 ignore settle time */
+	val = readl_relaxed(srclken_base + M07_CFG);
+	val |= IGNORE_SETTLE_TIME;
+	writel_relaxed(val, srclken_base + M07_CFG);
+
+	/* RC force req = 1 */
+	val = readl_relaxed(srclken_base + M07_CFG);
+	val |= BBCK2_FORCE_ACK;
+	writel_relaxed(val, srclken_base + M07_CFG);
+
+	/* Unbind PMRC7 with BBCK2 and bind PMRC0 with BBCK2 */
+	if (clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID,
+			   PMRC7_BBCK2_UNBIND))
+		dev_info(port->dev, "Failed to unbind PMRC7 with BBCK2\n");
+
+	udelay(400);
+	iounmap(srclken_base);
+
+	return 0;
+}
+
+static void mtk_pcie_post_power_down_6989(struct mtk_pcie_port *port)
+{
+	void __iomem *srclken_base = ioremap(SRCLKEN_BASE, 0x1000);
+	u32 val;
+
+	/* Unbind PMRC0 with BBCK2 and bind BBCK2 with PMRC7 */
+	if (clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, PMRC7_BBCK2_BIND))
+		dev_info(port->dev, "Failed to bind PMRC7 with BBCK2\n");
+
+	/* RC HW mode and clear force req = 1 */
+	val = readl_relaxed(srclken_base + M07_CFG);
+	val &= ~BBCK2_FORCE_ACK;
+	writel_relaxed(val, srclken_base + M07_CFG);
+
+	/* PMRC7 clear ignore settle time */
+	val = readl_relaxed(srclken_base + M07_CFG);
+	val &= ~IGNORE_SETTLE_TIME;
+	writel_relaxed(val, srclken_base + M07_CFG);
+
+	/* Make PMRC7 can vote for BBCK2 */
+	val = readl_relaxed(srclken_base + CENTRAL_CFG6);
+	val &= ~PMRC7_VOTE_MASK;
+	writel_relaxed(val, srclken_base + CENTRAL_CFG6);
+
+	iounmap(srclken_base);
+}
+
 static const struct mtk_pcie_data mt6989_data = {
-	.pre_init = mtk_pcie_pre_init_6989,
+	.pre_init		= mtk_pcie_pre_init_6989,
+	.pre_power_up		= mtk_pcie_pre_power_up_6989,
+	.post_power_down	= mtk_pcie_post_power_down_6989,
 };
 
 static const struct of_device_id mtk_pcie_of_match[] = {
