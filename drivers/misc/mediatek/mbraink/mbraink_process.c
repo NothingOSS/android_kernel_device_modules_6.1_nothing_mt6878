@@ -33,6 +33,7 @@
 #include <linux/mm_inline.h>
 #include <trace/hooks/binder.h>
 #include <uapi/linux/android/binder.h>
+#include <asm/page.h>
 
 #include "mbraink_process.h"
 #include "../../../../../kernel-6.1/drivers/android/binder_internal.h"
@@ -111,9 +112,13 @@ void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 			pid_count = process_memory_buffer->pid_count;
 			if (pid_count < MAX_MEM_LIST_SZ) {
 				process_memory_buffer->drv_data[pid_count].pid =
-							(unsigned short)(t->pid);
+					(unsigned short)(t->pid);
 				process_memory_buffer->drv_data[pid_count].rss =
-							get_mm_rss(t->mm);
+					get_mm_rss(t->mm) * (PAGE_SIZE / 1024);
+				process_memory_buffer->drv_data[pid_count].rswap =
+					get_mm_counter(t->mm, MM_SWAPENTS) * (PAGE_SIZE / 1024);
+				process_memory_buffer->drv_data[pid_count].rpage =
+					mm_pgtables_bytes(t->mm) / 1024;
 				process_memory_buffer->pid_count++;
 				process_memory_buffer->current_cnt++;
 			} else {
@@ -124,7 +129,6 @@ void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 			/*pr_info("kthread case ...\n");*/
 		}
 	}
-
 	read_unlock(&tasklist_lock);
 }
 
