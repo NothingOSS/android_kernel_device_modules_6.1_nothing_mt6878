@@ -54,6 +54,14 @@ void cmdq_controller_set_fp(struct cmdq_util_controller_fp *cust_cmdq_util);
 #define CMDQ_WFE_WAIT_VALUE		0x1
 #define CMDQ_EVENT_MAX			0x3FF
 
+#define CMDQ_THRD_PKT_ARR_MAX	1024
+
+enum CMDQ_PKT_ID_ARR_IDX {
+	CMDQ_PKT_ID_CNT,
+	CMDQ_PKT_BUFFER_CNT,
+	CMDQ_PKT_ID_ARR_IDX_END,
+};
+
 #define CMDQ_BUF_ADDR(buf) \
 	((dma_addr_t)(buf->iova_base ? buf->iova_base : buf->pa_base))
 
@@ -202,6 +210,7 @@ struct cmdq_pkt {
 	struct device	*share_dev;
 	size_t			create_instr_cnt;
 	bool			timeout_dump_hw_trace;
+	u32				debug_id;
 };
 
 struct cmdq_thread {
@@ -227,6 +236,8 @@ struct cmdq_thread {
 	cmdq_usage_cb usage_cb;
 	bool			skip_fast_mtcmos;
 	u64			user_cb_cost;
+	u32			pkt_id_arr[CMDQ_THRD_PKT_ARR_MAX][CMDQ_PKT_ID_ARR_IDX_END];
+	struct mutex	pkt_id_mutex;
 };
 
 extern int mtk_cmdq_log;
@@ -324,7 +335,8 @@ extern int cmdq_trace;
 		cmdq_trace_end(fmt, ##args); \
 } while (0)
 #endif
-
+struct cmdq_thread *cmdq_get_thread(u8 thread_idx, u8 hwid);
+void cmdq_dump_pkt_usage(u32 hwid, struct seq_file *seq);
 void cmdq_mbox_mtcmos_by_fast(void *cmdq_mbox, bool on);
 void cmdq_mbox_dump_fast_mtcmos(void *cmdq_mbox);
 void cmdq_mbox_dump_gce_req(struct mbox_chan *chan);

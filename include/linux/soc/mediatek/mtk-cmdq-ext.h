@@ -379,6 +379,8 @@ void cmdq_pkt_destroy(struct cmdq_pkt *pkt);
  */
 void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt);
 
+struct cmdq_pkt *cmdq_pkt_create_with_id(struct cmdq_client *client, u32 debug_id);
+
 u64 *cmdq_pkt_get_va_by_offset(struct cmdq_pkt *pkt, size_t offset);
 
 dma_addr_t cmdq_pkt_get_pa_by_offset(struct cmdq_pkt *pkt, u32 offset);

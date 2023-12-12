@@ -166,6 +166,7 @@ typedef bool (*platform_hw_trace_thread)(void *chan);
 typedef void (*platform_error_irq_debug)(void *chan);
 typedef bool (*platform_check_tf)(struct device	*dev,
 	u32 sid, u32 tbu, u32 *axids);
+typedef u32 (*platform_get_mdp_min_thread)(void);
 
 struct cmdq_util_platform_fp {
 	platform_thread_module_dispatch thread_module_dispatch;
@@ -178,6 +179,7 @@ struct cmdq_util_platform_fp {
 	platform_hw_trace_thread hw_trace_thread;
 	platform_error_irq_debug dump_error_irq_debug;
 	platform_check_tf check_tf;
+	platform_get_mdp_min_thread get_mdp_min_thread;
 };
 
 void cmdq_util_set_fp(struct cmdq_util_platform_fp *cust_cmdq_platform);
@@ -220,7 +222,9 @@ void cmdq_util_dump_smi(void);
 u8 cmdq_util_track_ctrl(void *cmdq, phys_addr_t base, bool sec);
 void cmdq_util_set_first_err_mod(void *chan, const char *mod);
 const char *cmdq_util_get_first_err_mod(void *chan);
+struct cmdq_thread *cmdq_client_get_thread(struct cmdq_client *client);
 int cmdq_proc_create(void);
+void cmdq_util_buff_track(u32 *buf_peek_arr, const uint rows, const uint cols);
 
 /* function support in platform */
 const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread);

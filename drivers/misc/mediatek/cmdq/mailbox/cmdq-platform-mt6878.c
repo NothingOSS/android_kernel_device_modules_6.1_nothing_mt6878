@@ -10,6 +10,8 @@
 #define GCE_D_PA	0x1e980000
 #define GCE_M_PA	0x1e990000
 
+#define MDP_THRD_MIN	20
+
 const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 {
 	if (gce_pa == GCE_D_PA) {
@@ -202,6 +204,11 @@ bool cmdq_check_tf(struct device *dev,
 	return false;
 }
 
+uint cmdq_get_mdp_min_thread(void)
+{
+	return MDP_THRD_MIN;
+}
+
 struct cmdq_util_platform_fp platform_fp = {
 	.thread_module_dispatch = cmdq_thread_module_dispatch,
 	.event_module_dispatch = cmdq_event_module_dispatch,
@@ -212,6 +219,7 @@ struct cmdq_util_platform_fp platform_fp = {
 	.hw_trace_thread = cmdq_mbox_hw_trace_thread,
 	.dump_error_irq_debug = cmdq_error_irq_debug,
 	.check_tf = cmdq_check_tf,
+	.get_mdp_min_thread = cmdq_get_mdp_min_thread,
 };
 
 static int __init cmdq_platform_init(void)

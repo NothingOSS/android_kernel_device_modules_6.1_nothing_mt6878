@@ -564,6 +564,37 @@ void cmdq_mbox_dump_gce_req(struct mbox_chan *chan)
 }
 EXPORT_SYMBOL(cmdq_mbox_dump_gce_req);
 
+void cmdq_dump_pkt_usage(u32 hwid, struct seq_file *seq)
+{
+	struct cmdq *cmdq;
+	uint i, j;
+
+	if(hwid >= 2 || !cmdq_dump_buf_size)
+		return;
+
+	cmdq = g_cmdq[hwid];
+
+	for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++) {
+		for (j = 0; j < CMDQ_THRD_PKT_ARR_MAX; j++) {
+			if(cmdq->thread[i].pkt_id_arr[j][CMDQ_PKT_ID_CNT] ||
+				cmdq->thread[i].pkt_id_arr[j][CMDQ_PKT_BUFFER_CNT])
+				seq_printf(seq, "hwid %d thrd:%d id:%d [%u][%u]\n", hwid, i, j,
+					cmdq->thread[i].pkt_id_arr[j][CMDQ_PKT_ID_CNT],
+					cmdq->thread[i].pkt_id_arr[j][CMDQ_PKT_BUFFER_CNT]);
+		}
+	}
+}
+EXPORT_SYMBOL(cmdq_dump_pkt_usage);
+
+struct cmdq_thread *cmdq_get_thread(u8 thread_idx, u8 hwid)
+{
+	if(hwid >= 2 && thread_idx >= ARRAY_SIZE(g_cmdq[hwid]->thread))
+		return NULL;
+
+	return &g_cmdq[hwid]->thread[thread_idx];
+}
+EXPORT_SYMBOL(cmdq_get_thread);
+
 dma_addr_t cmdq_thread_get_pc(struct cmdq_thread *thread)
 {
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
@@ -2811,6 +2842,7 @@ static int cmdq_probe(struct platform_device *pdev)
 		cmdq->fast_mtcmos = true;
 		pm_runtime_irq_safe(dev);
 	}
+	cmdq_proc_create();
 	spin_lock_init(&cmdq->fast_mtcmos_lock);
 
 	dev_notice(dev,
@@ -2892,6 +2924,7 @@ static int cmdq_probe(struct platform_device *pdev)
 		cmdq->thread[i].idx = i;
 		cmdq->mbox.chans[i].con_priv = &cmdq->thread[i];
 		cmdq->thread[i].usage_cb = NULL;
+		mutex_init(&cmdq->thread[i].pkt_id_mutex);
 		INIT_WORK(&cmdq->thread[i].timeout_work,
 			cmdq_thread_handle_timeout_work);
 	}

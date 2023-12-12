@@ -12,6 +12,9 @@
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/arm-smccc.h>
+#include <linux/proc_fs.h>
+#include "linux/seq_file.h"
+#include "linux/module.h"
 
 #include "cmdq-util.h"
 
@@ -29,6 +32,7 @@
 #define CMDQ_MBOX_NUM			2
 #define CMDQ_HW_MAX			2
 #define CMDQ_RECORD_NUM			512
+#define CMDQ_BUF_RECORD_NUM		60
 #define CMDQ_FIRST_ERR_SIZE		524288	/* 512k */
 
 #define CMDQ_CURR_IRQ_STATUS		0x10
@@ -86,6 +90,11 @@ struct cmdq_record {
 	u32 exec_end;	/* task execute time in hardware thread */
 };
 
+struct cmdq_buf_record {
+	u32	buf_peek_cnt[CMDQ_HW_MAX][CMDQ_THR_MAX_COUNT];
+	u64	nsec;
+};
+
 struct cmdq_hw_trace {
 	bool enable;
 	bool update;
@@ -107,11 +116,14 @@ struct cmdq_util {
 	const char *first_err_mod[CMDQ_HW_MAX];
 	struct cmdq_client *prebuilt_clt[CMDQ_HW_MAX];
 	struct cmdq_hw_trace hw_trace[CMDQ_HW_MAX];
+	u16 buf_record_idx;
+	struct cmdq_buf_record buf_record[CMDQ_BUF_RECORD_NUM];
 };
 static struct cmdq_util	util;
 
 static DEFINE_MUTEX(cmdq_record_mutex);
 static DEFINE_MUTEX(cmdq_dump_mutex);
+static DEFINE_MUTEX(cmdq_buf_record_mutex);
 struct cmdq_util_controller_fp controller_fp = {
 	.track_ctrl = cmdq_util_track_ctrl,
 };
@@ -212,6 +224,16 @@ u32 cmdq_util_get_hw_id(u32 pa)
 	return cmdq_platform->util_hw_id(pa);
 }
 EXPORT_SYMBOL(cmdq_util_get_hw_id);
+
+u32 cmdq_util_get_mdp_min_thrd(void)
+{
+	if (!cmdq_platform || !cmdq_platform->get_mdp_min_thread) {
+		cmdq_msg("%s cmdq_platform->get_mdp_min_thread is NULL ",
+			__func__);
+		return -EINVAL;
+	}
+	return cmdq_platform->get_mdp_min_thread();
+}
 
 u32 cmdq_util_test_get_subsys_list(u32 **regs_out)
 {
@@ -347,8 +369,6 @@ static int cmdq_util_status_print(struct seq_file *seq, void *data)
 	}
 
 	seq_puts(seq, "[cmdq] dump all thread current status\n");
-	if (cmdq_dump_buf_size)
-		cmdq_dump_buffer_size_seq(seq);
 	for (i = 0; i < util.mbox_cnt; i++)
 		cmdq_thread_dump_all_seq(util.cmdq_mbox[i], seq);
 
@@ -411,6 +431,51 @@ static int cmdq_util_record_print(struct seq_file *seq, void *data)
 	return 0;
 }
 
+static int cmdq_util_buf_record_print(struct seq_file *seq, void *data)
+{
+	struct cmdq_buf_record *buf_rec;
+	s32 i, j, arr_idx, idx;
+	u64		sec = 0;
+	unsigned long	nsec = 0;
+
+	mutex_lock(&cmdq_buf_record_mutex);
+
+	idx = util.buf_record_idx;
+	for (arr_idx = 0; arr_idx < ARRAY_SIZE(util.buf_record); arr_idx++) {
+		idx--;
+		if (idx < 0)
+			idx = ARRAY_SIZE(util.buf_record) - 1;
+		buf_rec = &util.buf_record[idx];
+
+		sec = buf_rec->nsec;
+		nsec = do_div(sec, 1000000000);
+
+		for (i = 0; i < CMDQ_HW_MAX; i++) {
+			seq_printf(seq, "[%5llu.%06lu] hwid:%d ", sec, nsec, i);
+
+			for (j = 0; j < CMDQ_THR_MAX_COUNT; j += 4) {
+				seq_printf(seq, "thr%d=[%u] thr%d=[%u] thr%d=[%u] thr%d=[%u]",
+					j, buf_rec->buf_peek_cnt[i][j],
+					j + 1, buf_rec->buf_peek_cnt[i][j + 1],
+					j + 2, buf_rec->buf_peek_cnt[i][j + 2],
+					j + 3, buf_rec->buf_peek_cnt[i][j + 3]);
+			}
+			seq_puts(seq, "\n");
+		}
+	}
+	cmdq_dump_buffer_size_seq(seq);
+
+	mutex_unlock(&cmdq_buf_record_mutex);
+
+	return 0;
+}
+
+static int cmdq_util_buffer_debug(struct seq_file *seq, void *data)
+{
+	cmdq_dump_buffer_size_seq(seq);
+	return 0;
+}
+
 static int cmdq_util_status_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, cmdq_util_status_print, inode->i_private);
@@ -428,8 +493,32 @@ static const struct proc_ops cmdq_util_status_fops = {
 	.proc_release = single_release,
 };
 
+static int cmdq_util_buffer_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cmdq_util_buffer_debug, inode->i_private);
+}
+
+static int cmdq_util_buffer_record_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cmdq_util_buf_record_print, inode->i_private);
+}
+
 static const struct proc_ops cmdq_util_record_fops = {
 	.proc_open = cmdq_util_record_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static const struct proc_ops cmdq_proc_util_buf_leak_fops = {
+	.proc_open = cmdq_util_buffer_debug_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static const struct proc_ops cmdq_proc_util_buf_record_fops = {
+	.proc_open = cmdq_util_buffer_record_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
@@ -500,6 +589,16 @@ bool cmdq_util_is_secure_client(struct cmdq_client *client)
 }
 EXPORT_SYMBOL(cmdq_util_is_secure_client);
 
+struct cmdq_thread *cmdq_client_get_thread(struct cmdq_client *client)
+{
+	if (client && client->chan)
+		return cmdq_get_thread(cmdq_mbox_chan_id(client->chan),
+			cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(
+			client->chan)));
+	else
+		return cmdq_get_thread(cmdq_util_get_mdp_min_thrd(), 0);
+}
+EXPORT_SYMBOL(cmdq_client_get_thread);
 void cmdq_util_set_mml_aid_selmode(void)
 {
 	struct arm_smccc_res res;
@@ -828,6 +927,27 @@ void cmdq_util_enable_dbg(u32 id)
 }
 EXPORT_SYMBOL(cmdq_util_enable_dbg);
 
+void cmdq_util_buff_track(u32 *buf_peek_arr, const uint rows, const uint cols)
+{
+	u32 i, j;
+	struct cmdq_buf_record *buf_record_unit;
+
+	if(rows != CMDQ_HW_MAX || cols != CMDQ_THR_MAX_COUNT)
+		return;
+
+	mutex_lock(&cmdq_buf_record_mutex);
+	buf_record_unit = &util.buf_record[util.buf_record_idx++];
+	buf_record_unit->nsec = sched_clock();
+	for(i = 0; i < rows; i++)
+		for(j = 0; j < cols; j++)
+			buf_record_unit->buf_peek_cnt[i][j] = buf_peek_arr[i * rows + j];
+
+	if (util.buf_record_idx >= CMDQ_BUF_RECORD_NUM)
+		util.buf_record_idx = 0;
+	mutex_unlock(&cmdq_buf_record_mutex);
+}
+EXPORT_SYMBOL(cmdq_util_buff_track);
+
 void cmdq_util_track(struct cmdq_pkt *pkt)
 {
 	struct cmdq_record *record;
@@ -962,13 +1082,13 @@ int cmdq_proc_create(void)
 	struct proc_dir_entry *debugDirEntry = NULL;
 	struct proc_dir_entry *entry = NULL;
 
-	if (!cmdq_proc_debug_off) {
-		debugDirEntry = proc_mkdir("mtk_cmdq_debug", NULL);
-		if (!debugDirEntry) {
-			cmdq_err("debugfs_create_dir cmdq failed");
-			return -EINVAL;
-		}
+	debugDirEntry = proc_mkdir("mtk_cmdq_debug", NULL);
+	if (!debugDirEntry) {
+		cmdq_err("debugfs_create_dir cmdq failed");
+		return -EINVAL;
+	}
 
+	if (!cmdq_proc_debug_off) {
 		entry = proc_create("cmdq-status", 0444, debugDirEntry,
 			&cmdq_util_status_fops);
 		if (!entry) {
@@ -984,6 +1104,21 @@ int cmdq_proc_create(void)
 		}
 	}
 
+	if (cmdq_dump_buf_size) {
+		entry = proc_create("cmdq_buffer_debug", 0444, debugDirEntry,
+			&cmdq_proc_util_buf_leak_fops);
+		if (!entry) {
+			cmdq_err("proc_create_file cmdq_buffer_debug failed");
+			return -ENOMEM;
+		}
+
+		entry = proc_create("cmdq_buffer_record", 0444, debugDirEntry,
+			&cmdq_proc_util_buf_record_fops);
+		if (!entry) {
+			cmdq_err("proc_create_file cmdq_buffer_record failed");
+			return -ENOMEM;
+		}
+	}
 	return 0;
 }
 EXPORT_SYMBOL(cmdq_proc_create);
