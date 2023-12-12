@@ -73,6 +73,7 @@ enum gpufreq_ipi_cmd {
  * IPI Data Structure
  **************************************************/
 struct gpufreq_ipi_data {
+	unsigned int magic;
 	enum gpufreq_ipi_cmd cmd_id;
 	unsigned int target;
 	union {

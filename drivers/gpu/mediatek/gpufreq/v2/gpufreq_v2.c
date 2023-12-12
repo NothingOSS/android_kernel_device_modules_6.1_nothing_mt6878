@@ -31,6 +31,7 @@
 #include <gpueb_ipi.h>
 #include <gpueb_reserved_mem.h>
 #include <gpueb_debug.h>
+#include <gpueb_common.h>
 #include <mtk_gpu_utility.h>
 
 #if IS_ENABLED(CONFIG_MTK_PBM)
@@ -79,6 +80,7 @@ static int g_ipi_channel;
 static unsigned int g_dual_buck;
 static unsigned int g_gpueb_support;
 static unsigned int g_gpufreq_bringup;
+static unsigned int g_ipi_magic;
 static struct gpufreq_shared_status *g_shared_status;
 static phys_addr_t g_shared_mem_pa;
 static unsigned int g_shared_mem_size;
@@ -1524,6 +1526,9 @@ static int gpufreq_ipi_to_gpueb(struct gpufreq_ipi_data data)
 		goto done;
 	}
 
+	/* apply IPI magic */
+	data.magic = g_ipi_magic;
+
 	GPUFREQ_LOGD("channel: %d send IPI command: %s (%d)",
 		g_ipi_channel, gpufreq_ipi_cmd_name[data.cmd_id], data.cmd_id);
 
@@ -1832,6 +1837,7 @@ static int gpufreq_gpueb_init(void)
 {
 	int ret = GPUFREQ_SUCCESS;
 	struct gpufreq_ipi_data send_msg = {};
+	void __iomem *gpueb_gpr_addr = NULL;
 
 	/* init ipi channel */
 	g_ipi_channel = gpueb_get_send_PIN_ID_by_name("IPI_ID_GPUFREQ");
@@ -1842,8 +1848,19 @@ static int gpufreq_gpueb_init(void)
 	}
 	mtk_ipi_register(get_gpueb_ipidev(), g_ipi_channel, NULL, NULL, (void *)&g_recv_msg);
 
+	/* init ipi magic number */
+	gpueb_gpr_addr = gpueb_get_gpr_addr(GPUEB_SRAM_GPR13);
+	g_ipi_magic = readl(gpueb_gpr_addr);
+	if (unlikely(!g_ipi_magic)) {
+		GPUFREQ_LOGE("fail to init ipi magic number");
+		ret = GPUFREQ_EINVAL;
+		goto done;
+	}
+	writel(0x0, gpueb_gpr_addr);
+
 	/* init shared status on EB side */
 	raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
+	send_msg.magic = g_ipi_magic;
 	send_msg.cmd_id = CMD_INIT_SHARED_MEM;
 	send_msg.u.shared_mem.base = g_shared_mem_pa;
 	send_msg.u.shared_mem.size = g_shared_mem_size;
