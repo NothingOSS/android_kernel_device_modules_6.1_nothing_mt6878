@@ -1479,7 +1479,7 @@ static void mtk_oddmr_unprepare(struct mtk_ddp_comp *comp)
 	atomic_dec(&oddmr_priv->oddmr_clock_ref);
 	while (atomic_read(&oddmr_priv->oddmr_clock_ref) > 0) {
 		spin_unlock_irqrestore(&g_oddmr_clock_lock, flags);
-		ODDMRFLOW_LOG("waiting for oddmr_lock, %d\n",
+		DDPINFO("waiting for oddmr_lock, %d\n",
 				atomic_read(&oddmr_priv->oddmr_clock_ref));
 		usleep_range(50, 100);
 		spin_lock_irqsave(&g_oddmr_clock_lock, flags);
@@ -5679,6 +5679,7 @@ static int mtk_oddmr_dbi_enable(struct drm_device *dev, bool en)
 static int mtk_oddmr_remap_update(void)
 {
 	int ret = 0;
+	struct mtk_drm_crtc *mtk_crtc;
 
 	ODDMRAPI_LOG("+\n");
 	if (default_comp == NULL || g_oddmr_priv == NULL) {
@@ -5686,19 +5687,28 @@ static int mtk_oddmr_remap_update(void)
 		return -1;
 	}
 
+	mtk_crtc = default_comp->mtk_crtc;
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s:%d, invalid crtc\n",
+				__func__, __LINE__);
+		return -1;
+	}
+
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
 	mtk_drm_idlemgr_kick(__func__,
-			&default_comp->mtk_crtc->base, 1);
+			&default_comp->mtk_crtc->base, 0);
 	ret = mtk_oddmr_acquire_clock();
 	if (ret == 0) {
 		mutex_lock(&g_dbi_data_lock);
-		ret = mtk_crtc_user_cmd(&default_comp->mtk_crtc->base, default_comp,
-					ODDMR_CMD_ODDMR_REMAP_CHG, NULL);
+		ret = mtk_crtc_user_cmd_impl(&default_comp->mtk_crtc->base, default_comp,
+					ODDMR_CMD_ODDMR_REMAP_CHG, NULL, false);
 		mutex_unlock(&g_dbi_data_lock);
 		mtk_oddmr_release_clock();
 	} else {
 		ODDMRFLOW_LOG("clock not on %d\n", ret);
-		return ret;
 	}
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	return ret;
 }
 
@@ -6181,6 +6191,7 @@ static void mtk_oddmr_remap_set_enable(struct mtk_ddp_comp *comp,
 static int mtk_oddmr_remap_enable(struct drm_device *dev, bool en)
 {
 	int ret = 0, enable = en;
+	struct mtk_drm_crtc *mtk_crtc;
 
 	ODDMRAPI_LOG("%d\n", enable);
 	if (default_comp == NULL || g_oddmr_priv == NULL) {
@@ -6188,23 +6199,32 @@ static int mtk_oddmr_remap_enable(struct drm_device *dev, bool en)
 		return -1;
 	}
 
+	mtk_crtc = default_comp->mtk_crtc;
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s:%d, invalid crtc\n",
+				__func__, __LINE__);
+		return -1;
+	}
+
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
 	mtk_drm_idlemgr_kick(__func__,
-			&default_comp->mtk_crtc->base, 1);
+			&default_comp->mtk_crtc->base, 0);
 	ret = mtk_oddmr_acquire_clock();
 
 	if (ret == 0) {
 		mutex_lock(&g_dbi_data_lock);
 		if(en) {
 			if (!g_oddmr_priv->dbi_data.remap_enable) {
-				ret = mtk_crtc_user_cmd(&default_comp->mtk_crtc->base, default_comp,
-					ODDMR_CMD_ODDMR_REMAP_EN, NULL);
+				ret = mtk_crtc_user_cmd_impl(&default_comp->mtk_crtc->base, default_comp,
+					ODDMR_CMD_ODDMR_REMAP_EN, NULL, false);
 				g_oddmr_priv->dbi_data.remap_enable = 1;
 			}
 		}
 		if(!en) {
 			if (g_oddmr_priv->dbi_data.remap_enable) {
-				ret = mtk_crtc_user_cmd(&default_comp->mtk_crtc->base, default_comp,
-					ODDMR_CMD_ODDMR_REMAP_OFF, NULL);
+				ret = mtk_crtc_user_cmd_impl(&default_comp->mtk_crtc->base, default_comp,
+					ODDMR_CMD_ODDMR_REMAP_OFF, NULL, false);
 				g_oddmr_priv->dbi_data.remap_enable = 0;
 			}
 		}
@@ -6216,8 +6236,8 @@ static int mtk_oddmr_remap_enable(struct drm_device *dev, bool en)
 		g_oddmr_priv->dbi_data.remap_enable = en;
 		mutex_unlock(&g_dbi_data_lock);
 		ODDMRFLOW_LOG("clock not on %d\n", ret);
-		return ret;
 	}
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	return ret;
 }
 
