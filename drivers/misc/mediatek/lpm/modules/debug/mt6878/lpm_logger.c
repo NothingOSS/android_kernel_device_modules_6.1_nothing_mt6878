@@ -514,6 +514,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 	char *local_ptr = NULL;
 	int i = 0, log_size = 0, log_type = 0;
 	unsigned int wr = WR_UNKNOWN;
+	unsigned int abort = 0;
 	const char *scenario = prefix ?: "UNKNOWN";
 
 	log_type = ((struct lpm_issuer *)data)->log_type;
@@ -747,6 +748,12 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 			PCM_TICK_TO_SEC((wakesrc->timer_out %
 				PCM_32K_TICKS_PER_SEC)
 			* 1000));
+
+		/* get suspend abort reason */
+		abort = lpm_smc_cpu_pm_lp(SUSPEND_ABORT_REASON, MT_LPM_SMC_ACT_GET, 0, 0);
+		if (abort)
+			pr_info("[name:spm&][SPM] platform abort reason = %u\n", abort);
+
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 		log_md_sleep_info();
 #endif
