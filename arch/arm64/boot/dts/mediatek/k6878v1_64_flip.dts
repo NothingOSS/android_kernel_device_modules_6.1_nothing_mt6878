@@ -303,7 +303,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 		<1>, /*MTK_DRM_OPT_ESD_CHECK_SWITCH*/
 		<1>, /*MTK_DRM_OPT_PRESENT_FENCE*/
 		<0>, /*MTK_DRM_OPT_RDMA_UNDERFLOW_AEE*/
-		<0>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
+		<1>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
 		<0>, /*MTK_DRM_OPT_ODDMR_OD_AEE*/
 		<0>, /*MTK_DRM_OPT_ODDMR_DMR_AEE*/
 		<1>, /*MTK_DRM_OPT_HRT*/
@@ -328,7 +328,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 		<0>, /*MTK_DRM_OPT_CLEAR_LAYER*/
 		<1>, /*MTK_DRM_OPT_LFR*/
 		<0>, /*MTK_DRM_OPT_SF_PF*/
-		<0>, /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
+		<1>, /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
 		<0>, /*MTK_DRM_OPT_PRIM_DUAL_PIPE*/
 		<0>, /*MTK_DRM_OPT_MSYNC2_0*/
 		<1>, /*MTK_DRM_OPT_MML_PRIMARY*/
