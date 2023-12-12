@@ -896,11 +896,11 @@ static const struct drm_display_mode performance_mode_90hz = {
 };
 
 static const struct drm_display_mode performance_mode_120hz = {
-	.clock = 372000,
+	.clock = 373785,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 102,//HFP
-	.hsync_end = 1080 + 102 + 12,//HSA
-	.htotal = 1080 + 102 + 12 + 56,//HBP
+	.hsync_start = 1080 + 108,//HFP
+	.hsync_end = 1080 + 108 + 12,//HSA
+	.htotal = 1080 + 108 + 12 + 56,//HBP
 	.vdisplay = 2400,
 	.vsync_start = 2400 + 60,//VFP
 	.vsync_end = 2400 + 60 + 10,//VSA
@@ -1143,7 +1143,7 @@ static struct mtk_panel_params ext_params_120hz = {
 		.switch_en = 1,
 		.pll_clk = 556,
 		.vfp_lp_dyn = 2528,
-		.hfp = 108,
+		.hfp = 112,
 		.vfp = 60,
 	},
 };
