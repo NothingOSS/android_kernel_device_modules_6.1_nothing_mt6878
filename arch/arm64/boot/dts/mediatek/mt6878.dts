@@ -8029,6 +8029,10 @@
 				compatible = "mediatek,apu-scp-np-recover-rpmsg";
 				mtk,rpmsg-name = "apu-scp-np-recover-rpmsg";
 			};
+			apu-ipi-ut-rpmsg {
+				compatible = "mediatek,apu-ipi-ut-rpmsg";
+				mtk,rpmsg-name = "apu-ipi-ut-rpmsg";
+			};
 		};
 
 		apusys_hw_logger: apusys-hw-logger@19024000 {
