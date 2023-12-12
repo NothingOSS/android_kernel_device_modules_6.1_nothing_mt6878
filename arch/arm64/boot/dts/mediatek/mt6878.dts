@@ -4985,6 +4985,15 @@
 			mediatek,enabled-tracer = <0 1>;
 			mediatek,at-id = <0x10 0x30>;
 
+			/*
+			 * bit20 AW_DISABLE
+			 * bit21 AR_DISABLE
+			 * bit22 W_DISABLE
+			 * bit23 B_DISABLE
+			 * bit24 R_DISABLE
+			 */
+			mediatek,axi-disable = <0x0 0x1200000>;
+
 			/* filters: disabled by default */
 			/*
 			 * mediatek,watchpoint-filter = <0x0 0x10010000 0xfffff000>;
