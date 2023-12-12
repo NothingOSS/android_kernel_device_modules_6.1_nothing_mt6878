@@ -460,8 +460,11 @@
 
 	sensor4: sensor4@10 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "imx758lite_mipi_raw";
+		sensor-names = "imx758lite_mipi_raw",
+				"gc13a2_mipi_raw";
 		reg = <0x10>;
+		reindex-match = "gc13a2_mipi_raw";
+		reindex-to = <0>;
 
 		#thermal-sensor-cells = <0>;
 
