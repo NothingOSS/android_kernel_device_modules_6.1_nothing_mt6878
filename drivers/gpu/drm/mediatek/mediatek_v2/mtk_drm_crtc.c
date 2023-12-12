@@ -5489,6 +5489,8 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	fps_src = drm_mode_vrefresh(&old_state->mode);
 	fps_dst = drm_mode_vrefresh(&crtc->state->mode);
 
+	DDPMSG("%s++ from %d to %d\n", __func__, fps_src, fps_dst);
+
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp) {
 		mtk_ddp_comp_io_cmd(output_comp, NULL, MODE_SWITCH_INDEX,
@@ -14588,11 +14590,12 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	if (cb_data == cmdq_handle)
 		is_from_dal = 1;
 
-	/* apply color matrix if crtc0 is DL */
+	/* apply color matrix if crtc0 or crtc3 is DL */
 	ccorr_config = mtk_crtc_get_color_matrix_data(crtc);
-	if (drm_crtc_index(crtc) == 0 && (!mtk_crtc_is_dc_mode(crtc)))
+	if ((drm_crtc_index(crtc) == 0 || drm_crtc_index(crtc) == 3)
+		&& (!mtk_crtc_is_dc_mode(crtc)))
 		mtk_crtc_dl_config_color_matrix(crtc, ccorr_config,
-						cmdq_handle);
+			cmdq_handle);
 
 	//discrete mdp_rdma need fill full frame
 	if (mtk_crtc->path_data->is_discrete_path) {
@@ -19649,6 +19652,57 @@ unsigned int mtk_drm_primary_display_get_debug_state(
 
 	return len;
 }
+
+unsigned int mtk_drm_secondary_display_get_debug_state(
+	struct mtk_drm_private *priv, char *stringbuf, int buf_len)
+{
+	int len = 0;
+
+	struct drm_crtc *crtc = priv->crtc[3];
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_crtc_state *mtk_state;
+	struct mtk_ddp_comp *comp;
+	char *panel_name;
+
+	if (crtc == NULL)
+		return len;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (unlikely(!comp))
+		DDPPR_ERR("%s:invalid output comp\n", __func__);
+
+	mtk_ddp_comp_io_cmd(comp, NULL, GET_PANEL_NAME,
+				    &panel_name);
+
+	len += scnprintf(stringbuf + len, buf_len - len,
+		"==========   Secondary Display Info   ==========\n");
+
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	mtk_state = to_mtk_crtc_state(crtc->state);
+
+	len += scnprintf(stringbuf + len, buf_len - len,
+			 "LCM Driver=[%s] Resolution=%ux%u, Connected:%s\n",
+			  panel_name, crtc->state->adjusted_mode.hdisplay,
+			  crtc->state->adjusted_mode.vdisplay,
+			  (mtk_drm_lcm_is_connect(mtk_crtc) ? "Y" : "N"));
+
+	len += scnprintf(stringbuf + len, buf_len - len,
+			 "FPS = %d, display mode idx = %llu, %s mode %d\n",
+			 drm_mode_vrefresh(&crtc->state->adjusted_mode),
+			 mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
+			 (mtk_crtc_is_frame_trigger_mode(crtc) ?
+			  "cmd" : "vdo"), hrt_lp_switch_get());
+
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	len += scnprintf(stringbuf + len, buf_len - len,
+		"================================================\n\n");
+
+	return len;
+}
+
 
 int MMPathTraceCrtcPlanes(struct drm_crtc *crtc,
 	char *str, int strlen, int n)

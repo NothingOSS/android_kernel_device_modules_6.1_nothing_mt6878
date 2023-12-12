@@ -566,6 +566,7 @@ static int panel_ext_powerdown(struct drm_panel *panel)
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
+	.set_aod_light_mode = lcm_setbacklight_cmdq,
 	//.init_power = panel_ext_init_power,
 	//.power_down = panel_ext_powerdown,
 	.ata_check = panel_ata_check,

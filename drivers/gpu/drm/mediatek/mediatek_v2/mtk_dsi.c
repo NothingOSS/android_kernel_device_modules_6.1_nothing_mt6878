@@ -1949,6 +1949,11 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	if (mtk_crtc && mtk_crtc->base.dev)
 		priv = mtk_crtc->base.dev->dev_private;
 
+	if (dsi->encoder.crtc == NULL) {
+		DDPPR_ERR("%s:%d dsi->encoder.crtc is NULL\n", __func__, __LINE__);
+		return;
+	}
+
 	mmsys_clk = mtk_drm_get_mmclk(&mtk_crtc->base, __func__) / 1000000;
 	if (!mmsys_clk) {
 		DDPPR_ERR("%s:%d mmclk is zero\n", __func__, __LINE__);
@@ -5372,6 +5377,11 @@ int mtk_dsi_porch_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
  */
 static void mtk_dsi_enter_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 {
+	if (dsi->encoder.crtc == NULL) {
+		DDPPR_ERR("%s:%d dsi->encoder.crtc is NULL\n", __func__, __LINE__);
+		return;
+	}
+
 	mtk_dsi_poll_for_idle(dsi, NULL);
 
 	mtk_dsi_mask(dsi, DSI_INTEN, ~0, 0);
@@ -5397,6 +5407,11 @@ static void mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 	struct mtk_panel_ext *ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
 	struct mtk_drm_crtc *mtk_crtc =	dsi->is_slave ?
 			dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
+
+	if (dsi->encoder.crtc == NULL) {
+		DDPPR_ERR("%s:%d dsi->encoder.crtc is NULL\n", __func__, __LINE__);
+		return;
+	}
 
 	ret = mtk_dsi_poweron(dsi);
 

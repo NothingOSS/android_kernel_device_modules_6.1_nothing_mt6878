@@ -1617,24 +1617,26 @@ static void mtk_atomic_mml(struct drm_device *dev,
 static void mtk_set_first_config(struct drm_device *dev,
 					struct drm_atomic_state *old_state)
 {
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc;
+	struct drm_crtc *crtc = NULL;
 	struct drm_crtc_state *new_crtc_state;
 	struct drm_connector *connector;
 	struct drm_connector_state *new_conn_state;
 	int i;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	for_each_new_connector_in_state(old_state, connector, new_conn_state, i) {
-		if (private->already_first_config == false &&
-				connector->encoder && connector->encoder->crtc) {
-			private->already_first_config = true;
-			DDPMSG("%s, set first config true\n", __func__);
+		if (connector->encoder && connector->encoder->crtc) {
+			mtk_crtc = to_mtk_crtc(connector->encoder->crtc);
+			if (mtk_crtc->already_first_config == false) {
+				mtk_crtc->already_first_config = true;
+				DDPMSG("%s, set crtc%d first config true\n",
+					__func__, drm_crtc_index(connector->encoder->crtc));
+			}
 		}
 	}
 
 	for_each_new_crtc_in_state(old_state, crtc, new_crtc_state, i) {
-		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-
+		mtk_crtc = to_mtk_crtc(crtc);
 		if (mtk_crtc->enabled && !new_crtc_state->active)
 			mtk_crtc->enabled = false;
 	}
@@ -1723,7 +1725,7 @@ static int mtk_atomic_check(struct drm_device *dev,
 		old_state = to_mtk_crtc_state(crtc->state);
 		new_state = to_mtk_crtc_state(crtc_state);
 
-		if (drm_crtc_index(crtc) == 0)
+		if (drm_crtc_index(crtc) == 0 || drm_crtc_index(crtc) == 3)
 			mtk_drm_crtc_mode_check(crtc, crtc->state, crtc_state);
 
 		if (new_state->prop_val[CRTC_PROP_LYE_IDX]) {

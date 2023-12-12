@@ -2358,7 +2358,7 @@ void mt6878_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		v = (readl(priv->config_regs + MMSYS_MISC) & (~0x3FFC0));
 		writel_relaxed(v, priv->config_regs + MMSYS_MISC);
 		/* 0xF0 secondary display */
-		v = (readl(priv->config_regs + MMSYS_MISC) | (0x3C0000));
+		v = (readl(priv->config_regs + MMSYS_MISC) | (0x140000));
 		writel_relaxed(v, priv->config_regs + MMSYS_MISC);
 
 	} else {
@@ -2373,7 +2373,7 @@ void mt6878_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 				MMSYS_MISC, 0x0, 0x3FFC0);
 		/* 0xF0 secondary display */
 		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
-				MMSYS_MISC, 0x3C0000, 0x3C0000);
+				MMSYS_MISC, 0x140000, 0x140000);
 	}
 }
 

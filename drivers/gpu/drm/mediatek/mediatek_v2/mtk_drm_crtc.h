@@ -1010,6 +1010,7 @@ struct mtk_drm_crtc {
 	bool vblank_en;
 	unsigned int hwvsync_en;
 
+	bool already_first_config;
 	atomic_t already_config;
 
 	bool layer_rec_en;
@@ -1316,6 +1317,8 @@ int mtk_drm_crtc_get_panel_original_size(struct drm_crtc *crtc, unsigned int *wi
 unsigned int mtk_drm_primary_frame_bw(struct drm_crtc *crtc);
 
 unsigned int mtk_drm_primary_display_get_debug_state(
+	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
+unsigned int mtk_drm_secondary_display_get_debug_state(
 	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
 
 bool mtk_crtc_with_trigger_loop(struct drm_crtc *crtc);

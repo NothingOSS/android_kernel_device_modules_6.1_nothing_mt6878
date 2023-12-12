@@ -1516,7 +1516,8 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 		if (idlemgr_ctx->is_idle
 			|| mtk_crtc_is_dc_mode(crtc)
 			|| mtk_crtc->sec_on
-			|| !priv->already_first_config) {
+			|| !mtk_crtc->already_first_config
+			|| !(priv->usage[crtc_id] == DISP_ENABLE)) {
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 			continue;
 		}
@@ -1861,6 +1862,7 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"dis_cmdq", 17, perf_string, false);
+
 	/* 10. CMDQ power off */
 	cmdq_mbox_disable(mtk_crtc->gce_obj.client[CLIENT_CFG]->chan);
 
@@ -1954,6 +1956,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"enable_cmdq", 1, perf_string, true);
+
 	/* 0. CMDQ power on */
 	cmdq_mbox_enable(mtk_crtc->gce_obj.client[CLIENT_CFG]->chan);
 

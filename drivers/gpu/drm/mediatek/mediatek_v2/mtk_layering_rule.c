@@ -209,7 +209,7 @@ static void filter_2nd_display(struct drm_mtk_layering_info *disp_info)
 	}
 }
 
-static void filter_3rd_display(struct drm_device *dev,
+static void filter_4th_display(struct drm_device *dev,
 	struct drm_mtk_layering_info *disp_info)
 {
 	unsigned int i = 0, j = 0;
@@ -409,7 +409,7 @@ static bool filter_by_hw_limitation(struct drm_device *dev,
 	/* Is this nessasary? */
 	filter_2nd_display(disp_info);
 
-	filter_3rd_display(dev, disp_info);
+	filter_4th_display(dev, disp_info);
 
 	return flag;
 }
