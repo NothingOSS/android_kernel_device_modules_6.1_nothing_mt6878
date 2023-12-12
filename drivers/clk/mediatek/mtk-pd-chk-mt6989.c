@@ -935,6 +935,7 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 
 static enum chk_sys_id log_dump_id[] = {
 	spm,
+	ifr_bus,
 	chk_sys_num,
 };
 
