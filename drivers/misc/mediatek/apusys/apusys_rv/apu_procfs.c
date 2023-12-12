@@ -183,6 +183,53 @@ static int ce_fw_sram_sqopen(struct inode *inode, struct file *file)
 	return single_open(file, ce_fw_sram_show, NULL);
 }
 
+static ssize_t debug_ctrl_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	char tmp[PROC_WRITE_TEMP_BUFF_SIZE] = {0};
+	int ret;
+	unsigned int input = 0;
+	struct mtk_apu *apu = (struct mtk_apu *)platform_get_drvdata(g_apu_pdev);
+
+	if (count >= PROC_WRITE_TEMP_BUFF_SIZE - 1)
+		return -ENOMEM;
+
+	ret = copy_from_user(tmp, buffer, count);
+	if (ret) {
+		dev_info(&g_apu_pdev->dev, "%s: copy_from_user failed (%d)\n", __func__, ret);
+		goto out;
+	}
+
+	tmp[count] = '\0';
+	ret = kstrtouint(tmp, PROC_WRITE_TEMP_BUFF_SIZE, &input);
+	if (ret) {
+		dev_info(&g_apu_pdev->dev, "%s: kstrtouint failed (%d)\n", __func__, ret);
+		goto out;
+	}
+
+	dev_info(&g_apu_pdev->dev, "%s: user input (0x%x)\n", __func__, input);
+
+	if (input & 0x1)
+		apu->disable_ke = true;
+	else
+		apu->disable_ke = false;
+out:
+	return count;
+}
+
+static int debug_ctrl_seq_show(struct seq_file *s, void *v)
+{
+	struct mtk_apu *apu = (struct mtk_apu *)platform_get_drvdata(g_apu_pdev);
+
+	seq_printf(s, "disable_ke: 0x%x\n", apu->disable_ke);
+	return 0;
+}
+
+static int debug_ctrl_sqopen(struct inode *inode, struct file *file)
+{
+	return single_open(file, debug_ctrl_seq_show, NULL);
+}
+
 static int debug_info_dump_seq_show(struct seq_file *s, void *v)
 {
 	struct mtk_apu *apu = NULL;
@@ -237,6 +284,14 @@ static const struct proc_ops ce_fw_sram_file_ops = {
 
 static const struct proc_ops debug_info_dump_file_ops = {
 	.proc_open		= debug_info_dump_sqopen,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release
+};
+
+static const struct proc_ops debug_ctrl_file_ops = {
+	.proc_open		= debug_ctrl_sqopen,
+	.proc_write		= debug_ctrl_write,
 	.proc_read		= seq_read,
 	.proc_lseek		= seq_lseek,
 	.proc_release	= single_release
@@ -365,6 +420,7 @@ int apu_procfs_init(struct platform_device *pdev)
 	struct proc_dir_entry *xfile_seqlog;
 	struct proc_dir_entry *regdump_seqlog;
 	struct proc_dir_entry *ce_fw_sram_seqlog;
+	struct proc_dir_entry *debug_ctrl_seqlog;
 	struct proc_dir_entry *debug_info_dump_seqlog;
 
 	struct mtk_apu *apu = (struct mtk_apu *) platform_get_drvdata(pdev);
@@ -417,6 +473,15 @@ int apu_procfs_init(struct platform_device *pdev)
 		}
 	}
 
+	debug_ctrl_seqlog = proc_create("apusys_debug_ctrl", 0444,
+		procfs_root, &debug_ctrl_file_ops);
+	ret = IS_ERR_OR_NULL(debug_ctrl_seqlog);
+	if (ret) {
+		dev_info(&pdev->dev, "(%d)failed to create apusys_rv node(apusys_debug_ctrl)\n",
+			ret);
+		goto out;
+	}
+
 	apu_regdump_init(pdev);
 
 	debug_info_dump_seqlog = proc_create("apusys_rv_debug_info_dump", 0440,
@@ -436,6 +501,7 @@ out:
 void apu_procfs_remove(struct platform_device *pdev)
 {
 	remove_proc_entry("apusys_ce_fw_sram", procfs_root);
+	remove_proc_entry("apusys_debug_ctrl", procfs_root);
 	remove_proc_entry("apusys_rv_debug_info_dump", procfs_root);
 	remove_proc_entry("apusys_regdump", procfs_root);
 	remove_proc_entry("apusys_rv_xfile", procfs_root);

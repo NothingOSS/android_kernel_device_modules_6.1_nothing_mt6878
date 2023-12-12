@@ -66,6 +66,7 @@ struct mtk_apu_hw_ops {
 #define F_FPGA_EP				BIT(12)
 #define F_ACCESS_RCX_IN_ATF		BIT(13)
 #define F_TCM_WA				BIT(14)
+#define F_EXCEPTION_KE			BIT(15)
 
 /* #define APUSYS_RV_FPGA_EP */
 
@@ -240,6 +241,8 @@ struct mtk_apu {
 	uint32_t wake_lock_ref_cnt;
 	uint32_t ipi_pwr_ref_cnt[APU_IPI_MAX];
 	uint32_t ipi_wake_lock_ref_cnt[APU_IPI_MAX];
+
+	bool disable_ke;
 };
 
 #define CONFIG_SIZE (round_up(sizeof(struct config_v1), PAGE_SIZE))

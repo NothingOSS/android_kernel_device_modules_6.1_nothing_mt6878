@@ -334,10 +334,20 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		}
 		/* since exception is triggered, so bypass power off timeout check */
 		apu->bypass_pwr_off_chk = true;
+
 		apusys_rv_exception_aee_warn(
 			apusys_assert_module_name[apu->conf_buf->ramdump_module]);
+
+		if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke) {
+			dev_info(dev, "%s: wait aee_kernel_exception to generate db\n", __func__);
+			msleep(30 * 1000);
+			panic("APUSYS_RV exception: %s\n",
+				apusys_assert_module_name[apu->conf_buf->ramdump_module]);
+		}
+
 		apu->bypass_aee = true;
 		dev_info(dev, "%s +\n", __func__);
+
 		return;
 	}
 
@@ -507,7 +517,15 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 	}
 	/* since exception is triggered, so bypass power off timeout check */
 	apu->bypass_pwr_off_chk = true;
+
 	apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
+
+	if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke) {
+		dev_info(dev, "%s: wait aee_kernel_exception to generate db\n", __func__);
+		msleep(30 * 1000);
+		panic("APUSYS_RV timeout: APUSYS_RV\n");
+	}
+
 	apu->bypass_aee = true;
 	dev_info(dev, "%s +\n", __func__);
 }

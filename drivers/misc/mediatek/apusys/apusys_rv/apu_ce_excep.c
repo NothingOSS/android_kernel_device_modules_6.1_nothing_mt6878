@@ -179,6 +179,12 @@ static void apu_ce_coredump_work_func(struct work_struct *p_work)
 
 		apusys_ce_exception_aee_warn(get_ce_job_name_by_id(exception_job_id));
 
+		if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke) {
+			dev_info(dev, "%s: wait aee_kernel_exception to generate db\n", __func__);
+			msleep(30 * 1000);
+			panic("APUSYS_CE exception: %s\n", get_ce_job_name_by_id(exception_job_id));
+		}
+
 		exception_job_id = -1;
 	}
 }
