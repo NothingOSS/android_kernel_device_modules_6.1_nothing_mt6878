@@ -85,7 +85,7 @@ static char bl_tb0[] = { 0x51, 0xff };
 #define HD_HTOTAL         (HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP)
 #define HD_FRAME_HEIGHT   (1600)
 #define HD_VFP_120        (46)
-#define HD_VFP_90         (866)
+#define HD_VFP_90         (874)
 #define HD_VFP_60         (2508)
 #define HD_VSA            (10)
 #define HD_VBP            (10)
@@ -107,7 +107,7 @@ static char bl_tb0[] = { 0x51, 0xff };
 				(HD_CLK_90_X10 / 10 + 1) : (HD_CLK_90_X10 / 10))
 #define HD_CLK_60		   (((HD_CLK_60_X10 % 10) != 0) ?             \
 				(HD_CLK_60_X10 / 10 + 1) : (HD_CLK_60_X10 / 10))
-
+#define PLL_CLK 554
 static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_NO_USE;
 static int current_fps = 120;
 
@@ -1047,7 +1047,7 @@ static const struct drm_display_mode performance_mode_10hz = {
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params = {
-	.pll_clk = 551,
+	.pll_clk = PLL_CLK,
 	.vfp_low_power = 4150,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
@@ -1106,7 +1106,7 @@ static struct mtk_panel_params ext_params = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 		},
-	.data_rate = 1102,
+	.data_rate = PLL_CLK * 2,
 	.lfr_enable = 0,
 	.lfr_minimum_fps = 60,
 	.dyn_fps = {
@@ -1122,10 +1122,10 @@ static struct mtk_panel_params ext_params = {
 	/* following MIPI hopping parameter might cause screen mess */
 	.dyn = {
 		.switch_en = 1,
-		.pll_clk = 556,
+		.pll_clk = PLL_CLK + 1,
 		.vfp_lp_dyn = 4200,
 		.hfp = 106,
-		.vfp = 2540,
+		.vfp = 2520,
 	},
 	.round_corner_en = 0,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
@@ -1134,7 +1134,7 @@ static struct mtk_panel_params ext_params = {
 };
 
 static struct mtk_panel_params ext_params_90hz = {
-	.pll_clk = 551,
+	.pll_clk = PLL_CLK,
 	.vfp_low_power = 2510,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
@@ -1193,7 +1193,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 		},
-	.data_rate = 1102,
+	.data_rate = PLL_CLK * 2,
 	.lfr_enable = 0,
 	.lfr_minimum_fps = 60,
 	.dyn_fps = {
@@ -1209,10 +1209,10 @@ static struct mtk_panel_params ext_params_90hz = {
 	/* following MIPI hopping parameter might cause screen mess */
 	.dyn = {
 		.switch_en = 1,
-		.pll_clk = 556,
+		.pll_clk = PLL_CLK + 1,
 		.vfp_lp_dyn = 2550,
 		.hfp = 106,
-		.vfp = 900,
+		.vfp = 880,
 	},
 	.round_corner_en = 0,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
@@ -1221,7 +1221,7 @@ static struct mtk_panel_params ext_params_90hz = {
 };
 
 static struct mtk_panel_params ext_params_120hz = {
-	.pll_clk = 551,
+	.pll_clk = PLL_CLK,
 	.vfp_low_power = 2510,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
@@ -1280,7 +1280,7 @@ static struct mtk_panel_params ext_params_120hz = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 		},
-	.data_rate = 1102,
+	.data_rate = PLL_CLK * 2,
 	.lfr_enable = 0,
 	.lfr_minimum_fps = 60,
 	.dyn_fps = {
@@ -1296,10 +1296,10 @@ static struct mtk_panel_params ext_params_120hz = {
 	/* following MIPI hopping parameter might cause screen mess */
 	.dyn = {
 		.switch_en = 1,
-		.pll_clk = 556,
+		.pll_clk = PLL_CLK + 1,
 		.vfp_lp_dyn = 2550,
 		.hfp = 106,
-		.vfp = 62,
+		.vfp = 50,
 	},
 	.round_corner_en = 0,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
