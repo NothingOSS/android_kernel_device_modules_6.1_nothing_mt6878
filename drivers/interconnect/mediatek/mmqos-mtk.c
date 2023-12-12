@@ -1889,7 +1889,10 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 
 
 	mmqos->max_ratio = mmqos_desc->max_ratio;
-	mmqos->max_disp_ostdl = mmqos_desc->max_disp_ostdl;
+	if (mmqos_desc->max_disp_ostdl == 0)
+		mmqos->max_disp_ostdl = mmqos_desc->max_ratio;
+	else
+		mmqos->max_disp_ostdl = mmqos_desc->max_disp_ostdl;
 
 	of_property_read_u32(pdev->dev.of_node, "mmqos-state", &mmqos_state);
 	pr_notice("[mmqos] mmqos probe state: %#x\n", mmqos_state);
