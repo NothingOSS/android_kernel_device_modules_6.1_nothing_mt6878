@@ -3836,6 +3836,9 @@ static void process_dbg_opt(const char *opt)
 		unsigned int dump_en;
 		unsigned int downSampleX, downSampleY;
 
+		DDPMSG("not support cwb function\n");
+		return;
+
 		DDPMSG("get dump\n");
 		ret = sscanf(opt, "dump_out_layer:%d,%d,%d\n", &dump_en,
 			     &downSampleX, &downSampleY);
@@ -3854,6 +3857,9 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "dump_user_buffer:", 17) == 0) {
 		int ret;
 		unsigned int dump_en;
+
+		DDPMSG("not support cwb function\n");
+		return;
 
 		DDPMSG("get dump\n");
 		ret = sscanf(opt, "dump_user_buffer:%d\n", &dump_en);
@@ -3964,6 +3970,9 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "cwb_en:", 7) == 0) {
 		unsigned int ret, enable;
 
+		DDPMSG("not support cwb function\n");
+		return;
+
 		/* this debug cmd only for crtc0 */
 		ret = sscanf(opt, "cwb_en:%d\n", &enable);
 		if (ret != 1) {
@@ -3975,6 +3984,9 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "cwb_roi:", 8) == 0) {
 		unsigned int ret, offset_x, offset_y, clip_w, clip_h;
 		struct mtk_rect rect;
+
+		DDPMSG("not support cwb function\n");
+		return;
 
 		/* this debug cmd only for crtc0 */
 		ret = sscanf(opt, "cwb_roi:%d,%d,%d,%d\n", &offset_x,
@@ -3993,6 +4005,9 @@ static void process_dbg_opt(const char *opt)
 		unsigned int ret, enable, offset_x, offset_y;
 		unsigned int clip_w, clip_h;
 		struct mtk_rect rect;
+
+		DDPMSG("not support cwb function\n");
+		return;
 
 		/* this debug cmd only for crtc0 */
 		ret = sscanf(opt, "cwb:%d,%d,%d,%d,%d\n", &enable,
@@ -4016,6 +4031,9 @@ static void process_dbg_opt(const char *opt)
 		struct mtk_cwb_info *cwb_info;
 		int width, height, size, ret;
 		int Bpp;
+
+		DDPMSG("not support cwb function\n");
+		return;
 
 		/* this debug cmd only for crtc0 */
 		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
@@ -4057,6 +4075,9 @@ static void process_dbg_opt(const char *opt)
 		struct mtk_drm_crtc *mtk_crtc;
 		struct mtk_cwb_info *cwb_info;
 
+		DDPMSG("not support cwb function\n");
+		return;
+
 		ret = sscanf(opt, "cwb_change_path:%d\n", &path);
 		if (ret != 1) {
 			DDPPR_ERR("%d error to parse cmd %s\n",
@@ -4089,6 +4110,9 @@ static void process_dbg_opt(const char *opt)
 		int ret, color;
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
+
+		DDPMSG("not support cwb function\n");
+		return;
 
 		ret = sscanf(opt, "cwb_change_color_format:%d\n", &color);
 		if (ret != 1) {
