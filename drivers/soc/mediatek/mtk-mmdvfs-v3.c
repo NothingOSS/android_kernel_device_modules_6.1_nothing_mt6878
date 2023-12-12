@@ -1746,10 +1746,8 @@ static int mtk_mmdvfs_clk_enable(const u8 clk_idx)
 
 	err = set_clkmux_memory(clk_idx, true);
 
-	if (err || is_vcp_suspending_ex()) {
-		MMDVFS_DBG("clk_idx:%hhu err:%d", clk_idx, err);
+	if (err || is_vcp_suspending_ex())
 		return 0;
-	}
 
 	mmdvfs_vcp_ipi_send(FUNC_CLKMUX_ENABLE, clk_idx, true, NULL);
 	return 0;
@@ -1764,10 +1762,8 @@ static int mtk_mmdvfs_clk_disable(const u8 clk_idx)
 
 	err = set_clkmux_memory(clk_idx, false);
 
-	if (err || is_vcp_suspending_ex()) {
-		MMDVFS_DBG("clk_idx:%hhu err:%d", clk_idx, err);
+	if (err || is_vcp_suspending_ex())
 		return 0;
-	}
 
 	mmdvfs_vcp_ipi_send(FUNC_CLKMUX_ENABLE, clk_idx, false, NULL);
 	return 0;
