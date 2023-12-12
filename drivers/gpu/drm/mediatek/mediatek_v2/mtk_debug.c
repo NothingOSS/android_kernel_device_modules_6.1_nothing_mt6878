@@ -687,6 +687,56 @@ int mtkfb_set_aod_backlight_level(unsigned int level)
 }
 EXPORT_SYMBOL(mtkfb_set_aod_backlight_level);
 
+int mtk_drm_set_conn_aod_backlight_level(unsigned int conn_id,
+	unsigned int level)
+{
+	struct drm_crtc *crtc;
+	struct drm_connector *conn;
+	struct mtk_drm_private *priv;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_dsi *mtk_dsi;
+	int ret = 0;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPPR_ERR("%s, invalid drm dev\n", __func__);
+		return -EINVAL;
+	}
+
+	priv = drm_dev->dev_private;
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPPR_ERR("%s, invalid priv\n", __func__);
+		return -EINVAL;
+	}
+
+	/* connector obj ref count add 1 after lookup */
+	conn = drm_connector_lookup(drm_dev, NULL, conn_id);
+	if (IS_ERR_OR_NULL(conn)) {
+		DDPPR_ERR("%s, invalid conn_id %u\n", __func__, conn_id);
+		return -EINVAL;
+	}
+
+	mtk_dsi = container_of(conn, struct mtk_dsi, conn);
+
+	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, __LINE__);
+	mtk_crtc = mtk_dsi->ddp_comp.mtk_crtc;
+	crtc = (mtk_crtc) ? &mtk_crtc->base : NULL;
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("%s, invalid crtc\n", __func__);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = mtk_drm_aod_setbacklight(crtc, level);
+out:
+	drm_connector_put(conn);
+	DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, __LINE__);
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_drm_set_conn_aod_backlight_level);
+
+
 void mtkfb_set_partial_roi_highlight(int en)
 {
 	partial_roi_highlight = en;
@@ -3276,6 +3326,19 @@ static void process_dbg_opt(const char *opt)
 		}
 
 		mtkfb_set_aod_backlight_level(level);
+	} else if (!strncmp(opt, "conn_aod_bl:", 12)) {
+		unsigned int level;
+		unsigned int conn_id;
+		int ret;
+
+		ret = sscanf(opt, "conn_aod_bl:%u,%u\n", &conn_id, &level);
+		if (ret != 2) {
+			DDPPR_ERR("%d error to parse cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+
+		mtk_drm_set_conn_aod_backlight_level(conn_id, level);
 	} else if (strncmp(opt, "set_partial_roi_highlight:", 26) == 0) {
 		int en;
 		int ret;

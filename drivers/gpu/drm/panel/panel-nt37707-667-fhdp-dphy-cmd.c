@@ -361,9 +361,10 @@ static int lcm_enable(struct drm_panel *panel)
 #define VSA (2)
 #define VBP (8)
 #define VACT (2640)
-#define PLL_CLOCK (220)
 
-
+#define DATA_RATE_120	(900)
+#define DATA_RATE_90	(899) //Wait DDIC Vendor fix mode switch TE abnormal issue
+#define DATA_RATE_60	(898) //Wait DDIC Vendor fix mode switch TE abnormal issue
 
 static const struct drm_display_mode switch_mode_120hz = {
 	.clock		= 373000,
@@ -450,9 +451,11 @@ static const struct drm_display_mode switch_mode_1hz = {
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params_30hz = {
 	.dyn_fps = {
-		.data_rate = 900,
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.data_rate = DATA_RATE_120,
 	},
-	.data_rate = 900,
+	.data_rate = DATA_RATE_120,
 	.lp_perline_en = 1,
 
 	.cust_esd_check = 1,
@@ -509,9 +512,11 @@ static struct mtk_panel_params ext_params_30hz = {
 
 static struct mtk_panel_params ext_params_60hz = {
 	.dyn_fps = {
-		.data_rate = 900,
+		.switch_en = 1,
+		.vact_timing_fps = 60,
+		.data_rate = DATA_RATE_60,
 	},
-	.data_rate = 900,
+	.data_rate = DATA_RATE_120,
 	.lp_perline_en = 1,
 
 	.cust_esd_check = 1,
@@ -569,9 +574,11 @@ static struct mtk_panel_params ext_params_60hz = {
 
 static struct mtk_panel_params ext_params_90hz = {
 	.dyn_fps = {
-		.data_rate = 900,
+		.switch_en = 1,
+		.vact_timing_fps = 90,
+		.data_rate = DATA_RATE_90,
 	},
-	.data_rate = 900,
+	.data_rate = DATA_RATE_120,
 	.lp_perline_en = 1,
 
 	.cust_esd_check = 1,
@@ -628,9 +635,11 @@ static struct mtk_panel_params ext_params_90hz = {
 
 static struct mtk_panel_params ext_params_120hz = {
 	.dyn_fps = {
-		.data_rate = 900,
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.data_rate = DATA_RATE_120,
 	},
-	.data_rate = 900,
+	.data_rate = DATA_RATE_120,
 	.lp_perline_en = 1,
 
 	.cust_esd_check = 1,
@@ -687,9 +696,11 @@ static struct mtk_panel_params ext_params_120hz = {
 
 static struct mtk_panel_params ext_params_24hz = {
 	.dyn_fps = {
-		.data_rate = 900,
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.data_rate = DATA_RATE_120,
 	},
-	.data_rate = 900,
+	.data_rate = DATA_RATE_120,
 	.lp_perline_en = 1,
 
 	.cust_esd_check = 1,
@@ -746,9 +757,11 @@ static struct mtk_panel_params ext_params_24hz = {
 
 static struct mtk_panel_params ext_params_10hz = {
 	.dyn_fps = {
-		.data_rate = 900,
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.data_rate = DATA_RATE_120,
 	},
-	.data_rate = 900,
+	.data_rate = DATA_RATE_120,
 	.lp_perline_en = 1,
 
 	.cust_esd_check = 1,
@@ -805,9 +818,11 @@ static struct mtk_panel_params ext_params_10hz = {
 
 static struct mtk_panel_params ext_params_1hz = {
 	.dyn_fps = {
-		.data_rate = 900,
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.data_rate = DATA_RATE_120,
 	},
-	.data_rate = 900,
+	.data_rate = DATA_RATE_120,
 	.lp_perline_en = 1,
 
 	.cust_esd_check = 1,
