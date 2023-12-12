@@ -27,6 +27,7 @@ int gpueb_get_send_PIN_offset_by_name(char *send_PIN_name);
 int gpueb_get_send_PIN_ID_by_name(char *send_PIN_name);
 int gpueb_get_recv_PIN_ID_by_name(char *recv_PIN_name);
 void *get_gpueb_ipidev(void);
+void gpueb_clr_mbox1_irq(void);
 
 #if IPI_TEST
 int gpueb_ipi_test_init(void);
