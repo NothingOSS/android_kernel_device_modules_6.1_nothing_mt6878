@@ -26,6 +26,7 @@
 #include "xhci-trace.h"
 #include "xhci-debugfs.h"
 #include "xhci-dbgcap.h"
+#include "xhci-plat.h"
 #include "quirks.h"
 
 #define DRIVER_AUTHOR "Sarah Sharp"
@@ -1679,6 +1680,11 @@ static int xhci_urb_enqueue_(struct usb_hcd *hcd, struct urb *urb, gfp_t mem_fla
 	if (xhci->devs[slot_id]->flags & VDEV_PORT_ERROR) {
 		xhci_dbg(xhci, "Can't queue urb, port error, link inactive\n");
 		return -ENODEV;
+	}
+
+	if (xhci_vendor_usb_offload_skip_urb(xhci, urb)) {
+		xhci_dbg(xhci, "skip urb for usb offload\n");
+		return -EOPNOTSUPP;
 	}
 
 	if (usb_endpoint_xfer_isoc(&urb->ep->desc))
@@ -4527,6 +4533,15 @@ int xhci_vendor_sync_dev_ctx(struct xhci_hcd *xhci, unsigned int slot_id)
 	if (ops && ops->sync_dev_ctx)
 		return ops->sync_dev_ctx(xhci, slot_id);
 	return 0;
+}
+
+bool xhci_vendor_usb_offload_skip_urb(struct xhci_hcd *xhci, struct urb *urb)
+{
+	struct xhci_vendor_ops *ops = xhci_vendor_get_ops(xhci);
+
+	if (ops && ops->usb_offload_skip_urb)
+		return ops->usb_offload_skip_urb(xhci, urb);
+	return false;
 }
 
 #ifdef CONFIG_PM

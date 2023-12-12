@@ -2276,6 +2276,7 @@ static inline struct xhci_ring *xhci_urb_to_transfer_ring(struct xhci_hcd *xhci,
  * @alloc_transfer_ring: called when remote transfer ring allocation is required
  * @free_transfer_ring: called to free vendor specific transfer ring
  * @sync_dev_ctx: called when synchronization for device context is required
+ * @usb_offload_skip_urb: skip urb control for offloading
  * @alloc_container_ctx: called when allocating vendor specific container context
  * @free_container_ctx: called to free vendor specific container context
  */
@@ -2296,6 +2297,7 @@ struct xhci_vendor_ops {
 	void (*free_transfer_ring)(struct xhci_hcd *xhci,
 			struct xhci_ring *ring, unsigned int ep_index);
 	int (*sync_dev_ctx)(struct xhci_hcd *xhci, unsigned int slot_id);
+	bool (*usb_offload_skip_urb)(struct xhci_hcd *xhci, struct urb *urb);
 	void (*alloc_container_ctx)(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx,
 				    int type, gfp_t flags);
 	void (*free_container_ctx)(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx);
@@ -2305,6 +2307,7 @@ struct xhci_vendor_ops {
 struct xhci_vendor_ops *xhci_vendor_get_ops_(struct xhci_hcd *xhci);
 
 int xhci_vendor_sync_dev_ctx(struct xhci_hcd *xhci, unsigned int slot_id);
+bool xhci_vendor_usb_offload_skip_urb(struct xhci_hcd *xhci, struct urb *urb);
 void xhci_vendor_free_transfer_ring(struct xhci_hcd *xhci,
 		struct xhci_ring *ring, unsigned int ep_index);
 bool xhci_vendor_is_usb_offload_enabled(struct xhci_hcd *xhci,
