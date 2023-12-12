@@ -582,10 +582,15 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 			ovl_partial_roi.y -= overhead_v;
 			ovl_partial_roi.height += (overhead_v * 2);
 		}
-		layer_roi.x = dst_x;
-		layer_roi.y = dst_y;
-		layer_roi.width = dst_w;
-		layer_roi.height = dst_h;
+
+		if (mtk_plane_state->pending.mml_mode == MML_MODE_DIRECT_LINK)
+			layer_roi = crtc_state->mml_dst_roi;
+		else {
+			layer_roi.x = dst_x;
+			layer_roi.y = dst_y;
+			layer_roi.width = dst_w;
+			layer_roi.height = dst_h;
+		}
 
 		if (mtk_rect_intersect(&layer_roi, &ovl_partial_roi,
 			&layer_partial_roi)) {
@@ -614,6 +619,19 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 					mtk_plane_state->pending.dst_y,
 					mtk_plane_state->pending.width,
 					mtk_plane_state->pending.height);
+
+			if (mtk_plane_state->pending.mml_mode == MML_MODE_DIRECT_LINK) {
+				mtk_plane_state->pending.dst_roi =
+						mtk_plane_state->pending.height << 16 |
+						mtk_plane_state->pending.width;
+				mtk_plane_state->pending.src_x = 0;
+				mtk_plane_state->pending.src_y = 0;
+				mtk_plane_state->pending.dst_x = 0;
+				mtk_plane_state->pending.dst_y = 0;
+				mtk_plane_state->pending.width = 0; /* for PQ_OUT_SIZE */
+				mtk_plane_state->pending.height = 0;	/* for PQ_OUT_SIZE */
+			}
+
 		} else
 			/* this layer will not be displayed */
 			mtk_plane_state->pending.enable = 0;
