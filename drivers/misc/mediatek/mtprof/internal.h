@@ -24,6 +24,8 @@ const int irq_to_ipi_type(int irq);
 void show_irq_count_info(unsigned int output);
 void irq_count_tracer_set(bool val);
 void irq_count_tracer_proc_init(struct proc_dir_entry *parent);
+void irq_mon_account_irq_time(u64 time, int irq);
+
 #define TO_FTRACE     BIT(0)
 #define TO_KERNEL_LOG BIT(1)
 #define TO_AEE        BIT(2)

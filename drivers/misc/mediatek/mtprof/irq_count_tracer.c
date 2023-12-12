@@ -168,6 +168,7 @@ struct irq_count_rec {
 struct irq_count_desc {
 	unsigned int __percpu *count;
 	struct irq_count_rec rec[REC_NUM];
+	u64 __percpu *time;
 };
 
 /* per record */
@@ -189,28 +190,60 @@ static struct irq_count_desc *irq_count_desc_lookup(int irq)
 static struct irq_count_desc *irq_count_desc_alloc(int irq)
 {
 	struct irq_count_desc *desc;
-	int err;
+	int err = 0;
 
 	desc = kzalloc(sizeof(*desc), GFP_ATOMIC);
 	if (!desc)
-		return NULL;
+		goto out;
 	desc->count = alloc_percpu_gfp(unsigned int, GFP_ATOMIC);
-	if (!desc->count) {
-		kfree(desc);
-		return NULL;
-	}
+	if (!desc->count)
+		goto out_free_desc;
+	desc->time = alloc_percpu_gfp((*desc->time), GFP_ATOMIC);
+	if (!desc->time)
+		goto out_free_count;
 	/*
 	 * This entry might be stored by concurrent irq_count_desc_alloc()
 	 * Use xa_insert() to prevent override the entry.
 	 */
 	err = xa_insert(&irqs_desc_xa, irq, desc, GFP_ATOMIC);
-	if (err) {
-		free_percpu(desc->count);
-		kfree(desc);
-		/* Try to return the entry which is present. */
-		desc =  (err == -EBUSY) ? xa_load(&irqs_desc_xa, irq) : NULL;
-	}
+	if (!err)
+		goto out;
+
+	free_percpu(desc->time);
+out_free_count:
+	free_percpu(desc->count);
+out_free_desc:
+	kfree(desc);
+
+	/* Try to return the entry if it is present. */
+	desc =  (err == -EBUSY) ? xa_load(&irqs_desc_xa, irq) : NULL;
+out:
 	return desc;
+}
+
+/* account the irq time for current cpu */
+void irq_mon_account_irq_time(u64 time, int irq)
+{
+	struct irq_count_desc *desc = irq_count_desc_lookup(irq);
+
+	desc = (desc) ? : irq_count_desc_alloc(irq);
+	if (desc)
+		__this_cpu_add(*desc->time, time);
+}
+
+static int irq_time_proc_show(struct seq_file *m, void *v)
+{
+	unsigned long index;
+	struct irq_count_desc *desc;
+	int cpu;
+
+	xa_for_each(&irqs_desc_xa, index, desc) {
+		seq_printf(m, "%u", (unsigned int)index);
+		for_each_possible_cpu(cpu)
+			seq_printf(m, " %llu", *per_cpu_ptr(desc->time, cpu));
+		seq_putc(m, '\n');
+	}
+	return 0;
 }
 
 static unsigned int irq_count_irqs_cpu(int irq, int cpu)
@@ -626,6 +659,7 @@ void irq_count_tracer_proc_init(struct proc_dir_entry *parent)
 {
 	struct proc_dir_entry *dir;
 
+	proc_create_single("irq_time", 0444, parent, irq_time_proc_show);
 	dir = proc_mkdir("irq_count_tracer", parent);
 	if (!dir)
 		return;

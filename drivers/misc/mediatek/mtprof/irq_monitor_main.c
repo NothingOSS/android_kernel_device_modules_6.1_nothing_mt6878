@@ -377,6 +377,7 @@ static void probe_irq_handler_exit(void *ignore, int irq,
 	if (!trace_stat_end(tracer))
 		return;
 	duration = stat_dur(stat);
+	irq_mon_account_irq_time(duration, irq);
 	out = check_threshold(duration, tracer);
 	if (out) {
 		char msg[MAX_MSG_LEN];
