@@ -476,6 +476,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_ets.ko",
     "drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_modem.ko",
     "drivers/misc/mediatek/usb/usb_boost/usb_boost.ko",
+    "drivers/misc/mediatek/usb/usb_logger/usb_logger.ko",
     "drivers/misc/mediatek/usb/usb_meta/usb_meta.ko",
     "drivers/misc/mediatek/usb/usb_offload/usb_offload.ko",
     "drivers/misc/mediatek/usb/usb_rndis/mtk_u_ether.ko",
