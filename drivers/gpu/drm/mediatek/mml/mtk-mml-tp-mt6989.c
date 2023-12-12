@@ -901,6 +901,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 {
 	enum topology_scenario scene = 0;
 	bool en_rsz, en_pq, can_binning = false, dual = true;
+	enum mml_color dest_fmt = cfg->info.dest[0].data.format;
 
 	if (cfg->info.mode == MML_MODE_RACING) {
 		/* always rdma to wrot for racing case */
@@ -914,7 +915,8 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	en_rsz = tp_need_resize(&cfg->info, &can_binning);
 	if (mml_force_rsz)
 		en_rsz = true;
-	en_pq = en_rsz || cfg->info.dest[0].pq_config.en;
+	en_pq = en_rsz || cfg->info.dest[0].pq_config.en ||
+		(MML_FMT_ALPHA(dest_fmt) && MML_FMT_IS_YUV(dest_fmt));
 
 	if (cfg->info.mode == MML_MODE_DDP_ADDON) {
 		/* direct-link in/out for addon case */
@@ -997,7 +999,8 @@ static s32 tp_select(struct mml_topology_cache *cache,
 		return -EPERM;
 
 	cfg->path[0] = path;
-	cfg->alpharot = cfg->info.alpha && MML_FMT_ALPHA(cfg->info.src.format);
+	cfg->alpharsz = cfg->info.alpha && MML_FMT_ALPHA(cfg->info.src.format) &&
+		(!cfg->info.dest[0].pq_config.en || cfg->info.mode == MML_MODE_DIRECT_LINK);
 
 	if (mml_dpc && !cfg->disp_vdo && !mml_dpc_disable(cfg->mml) &&
 	    !(cfg->info.dest[0].pq_config.en_ur ||
@@ -1220,6 +1223,18 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	if (unlikely(mml_path_mode))
 		return mml_path_mode;
 
+	/* for alpha support */
+	if (info->alpha) {
+		*reason = mml_query_alpha;
+		if (!MML_FMT_ALPHA(info->src.format) ||
+		    info->src.width <= 9 ||
+		    info->dest_cnt != 1 ||
+		    info->dest[0].crop.r.width <= 9 ||
+		    info->dest[0].compose.width <= 9)
+			goto not_support;
+		return MML_MODE_MML_DECOUPLE;
+	}
+
 	/* skip all racing mode check if use prefer dc */
 	if (info->mode == MML_MODE_MML_DECOUPLE ||
 		info->mode == MML_MODE_MDP_DECOUPLE) {
@@ -1246,6 +1261,9 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 
 decouple_user:
 	return info->mode;
+
+not_support:
+	return MML_MODE_NOT_SUPPORT;
 }
 
 static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 pipe)

@@ -53,7 +53,7 @@ struct wrot_tile_data {
 	enum mml_color dest_fmt;
 	u32 rotate;
 	bool flip;
-	bool alpharot;
+	bool alpha;
 	bool racing;
 	u8 racing_h;
 	bool enable_x_crop;

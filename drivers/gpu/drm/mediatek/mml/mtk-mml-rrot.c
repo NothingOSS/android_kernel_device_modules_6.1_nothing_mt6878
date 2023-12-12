@@ -205,6 +205,7 @@ static const u16 rrot_preultra_th[] = {
 
 struct rrot_data {
 	u32 tile_width;
+	bool alpha_pq_r2y;
 
 	/* threshold golden setting for racing mode */
 	struct rrot_golden golden[GOLDEN_FMT_TOTAL];
@@ -212,6 +213,7 @@ struct rrot_data {
 
 static const struct rrot_data mt6989_rrot_data = {
 	.tile_width = 4096,
+	.alpha_pq_r2y = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6989),
@@ -410,7 +412,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 	if ((cfg->info.dest_cnt == 1 ||
 	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
 		     sizeof(struct mml_crop))) &&
-	     (dest->crop.r.width != src->width || dest->crop.r.height != src->height)) {
+	    (dest->crop.r.width != src->width || dest->crop.r.height != src->height)) {
 		crop = &cfg->frame_in_crop[0];
 		/* calculate tile full size from rrot out to rsz in, with roundup sub pixel */
 		cfg->frame_tile_sz.width =
@@ -550,7 +552,8 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->full_size_y_out = cfg->frame_tile_sz.height;
 
 	if (cfg->info.dest_cnt == 1 ||
-	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop, sizeof(struct mml_crop))) {
+	    !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
+		    sizeof(struct mml_crop))) {
 		data->rdma.crop.left = cfg->frame_in_crop[0].r.left;
 		data->rdma.crop.top = cfg->frame_in_crop[0].r.top;
 		data->rdma.crop.width = cfg->frame_tile_sz.width;
@@ -570,7 +573,6 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		func->full_size_x_in, func->full_size_y_in,
 		func->full_size_x_out, func->full_size_y_out,
 		rrot_frm->crop_off_l, rrot_frm->crop_off_t);
-
 	return 0;
 }
 
@@ -715,6 +717,8 @@ static void rrot_color_fmt(struct mml_frame_config *cfg,
 		rrot_frm->hor_shift_uv = 1;
 		rrot_frm->ver_shift_uv = 1;
 		break;
+	case MML_FMT_YUVA8888:
+	case MML_FMT_AYUV8888:
 	case MML_FMT_YUVA1010102:
 	case MML_FMT_UYV1010102:
 		rrot_frm->bits_per_pixel_y = 32;
@@ -988,10 +992,10 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_file_buf *src_buf = &task->buf.src;
-	struct mml_frame_data *src = &task->config->info.src;
+	struct mml_frame_data *src = &cfg->info.src;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	struct mml_frame_dest *dest = &task->config->info.dest[0];
-	struct mml_frame_size *frame_in = &task->config->frame_in;
+	struct mml_frame_dest *dest = &cfg->info.dest[0];
+	struct mml_frame_size *frame_in = &cfg->frame_in;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 
@@ -1026,11 +1030,10 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	/* before everything start, make sure ddr enable */
 	if (ccfg->pipe == 0)
-		task->config->task_ops->ddren(task, pkt, true);
+		cfg->task_ops->ddren(task, pkt, true);
 
 	/* Enable engine */
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_EN, 0x1, 0x00000001);
-
 	/* Enable or disable shadow */
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SHADOW_CTRL,
 		((cfg->shadow ? 0 : BIT(1)) << 1) | 0x1, U32_MAX);
@@ -1053,22 +1056,6 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	rrot_color_fmt(cfg, rrot_frm);
 	rrot_config_slice(comp, cfg, src, dest, rrot_frm, pkt);
-
-	if (MML_FMT_V_SUBSAMPLE(src->format) &&
-	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
-	    !MML_FMT_BLOCK(src->format) &&
-	    !MML_FMT_HYFBC(src->format))
-		/* 420 to 422 interpolation solution */
-		filter_mode = 2;
-	else
-		/* config.enrrotCrop ? 3 : 2 */
-		/* RSZ uses YUV422, rrot could use V filter unless cropping */
-		filter_mode = 3;
-
-	if (cfg->alpharot)
-		rrot_frm->color_tran = 0;
-	else if (MML_FMT_10BIT(src->format))
-		rrot_frm->color_tran = 1;
 
 	/* Enable dither on output, not input */
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_DITHER_CON, 0x0, U32_MAX);
@@ -1114,9 +1101,38 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_GMCIF_CON, gmcif_con, U32_MAX);
 	rrot_frm->gmcif_con = gmcif_con;
 
-	if (MML_FMT_IS_RGB(src->format) && cfg->info.dest[0].pq_config.en_hdr &&
-	    cfg->info.dest_cnt == 1)
+	if (cfg->alpharot)
 		rrot_frm->color_tran = 0;
+	else if (MML_FMT_10BIT(src->format))
+		rrot_frm->color_tran = 1;
+
+	mml_msg("%s alpha_pq_r2y:%d alpha:%d src:0x%08x dst:0x%08x hdr:%d mode:%d",
+		__func__, rrot->data->alpha_pq_r2y, cfg->info.alpha,
+		src->format, dst_fmt, cfg->info.dest[0].pq_config.en_hdr, cfg->info.mode);
+	if (MML_FMT_IS_RGB(src->format) && cfg->info.dest[0].pq_config.en_hdr &&
+	    cfg->info.dest_cnt == 1) {
+		rrot_frm->color_tran = 0;
+	} else if (rrot->data->alpha_pq_r2y && cfg->alpharsz && dst_fmt == MML_FMT_YUVA8888) {
+		/* Fix alpha r2y to full BT601 when resize */
+		rrot_frm->color_tran = 1;
+		rrot_frm->matrix_sel = 0;
+	}
+
+	cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_0,
+		   (rrot_frm->matrix_sel << 23) +
+		   (rrot_frm->color_tran << 16),
+		   U32_MAX);
+
+	if (MML_FMT_V_SUBSAMPLE(src->format) &&
+	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
+	    !MML_FMT_BLOCK(src->format) &&
+	    !MML_FMT_HYFBC(src->format))
+		/* 420 to 422 interpolation solution */
+		filter_mode = 2;
+	else
+		/* config.enRROTCrop ? 3 : 2 */
+		/* RSZ uses YUV422, RROT could use V filter unless cropping */
+		filter_mode = 3;
 
 	if (MML_FMT_10BIT_LOOSE(src->format))
 		loose = 1;
@@ -1134,7 +1150,7 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		(bit_number << 18) +
 		(rrot_frm->blk_tile << 23) +
 		(0 << 24) +	/* RING_BUF_READ */
-		(cfg->alpharot << 25),
+		((cfg->alpharot || cfg->alpharsz) << 25),
 		U32_MAX);
 
 	if (rrot_frm->blk_10bit)
@@ -1305,11 +1321,6 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   src->y_stride, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SF_BKGD_SIZE_IN_BYTE,
 		   src->uv_stride, U32_MAX);
-
-	cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_0,
-		   (rrot_frm->matrix_sel << 23) +
-		   (rrot_frm->color_tran << 16),
-		   U32_MAX);
 
 	return 0;
 }

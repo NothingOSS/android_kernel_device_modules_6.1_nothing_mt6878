@@ -71,6 +71,9 @@ enum mml_color {
 	MML_FMT_ARGB8888	= MML_FMT(0, 0, 0, 0, 1, 0, 0, 32, 0, 1, 3),
 	MML_FMT_ABGR8888	= MML_FMT(0, 0, 0, 0, 1, 0, 0, 32, 0, 0, 3),
 
+	MML_FMT_YUVA8888	= MML_FMT(0, 0, 0, 0, 1, 0, 0, 32, 1, 1, 2),
+	MML_FMT_AYUV8888	= MML_FMT(0, 0, 0, 0, 1, 0, 0, 32, 1, 1, 3),
+
 	MML_FMT_UYVY		= MML_FMT(0, 0, 0, 0, 1, 1, 0, 16, 1, 0, 4),
 	MML_FMT_VYUY		= MML_FMT(0, 0, 0, 0, 1, 1, 0, 16, 1, 1, 4),
 	MML_FMT_YUYV		= MML_FMT(0, 0, 0, 0, 1, 1, 0, 16, 1, 0, 5),

@@ -713,7 +713,10 @@ struct rdma_frame_data {
 	u16 labels[RDMA_LABEL_TOTAL];
 };
 
-#define rdma_frm_data(i)	((struct rdma_frame_data *)(i->data))
+static inline struct rdma_frame_data *rdma_frm_data(struct mml_comp_config *ccfg)
+{
+	return ccfg->data;
+}
 
 static inline struct mml_comp_rdma *comp_to_rdma(struct mml_comp *comp)
 {
@@ -1022,6 +1025,8 @@ static void rdma_color_fmt(struct mml_frame_config *cfg,
 		rdma_frm->hor_shift_uv = 1;
 		rdma_frm->ver_shift_uv = 1;
 		break;
+	case MML_FMT_YUVA8888:
+	case MML_FMT_AYUV8888:
 	case MML_FMT_YUVA1010102:
 	case MML_FMT_UYV1010102:
 		rdma_frm->bits_per_pixel_y = 32;
@@ -1355,7 +1360,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	/* before everything start, make sure ddr enable */
 	if (ccfg->pipe == 0)
-		task->config->task_ops->ddren(task, pkt, true);
+		cfg->task_ops->ddren(task, pkt, true);
 
 	if (!write_sec) {
 		/* Enable engine */
@@ -1378,21 +1383,6 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	rdma_color_fmt(cfg, rdma_frm);
-
-	if (MML_FMT_V_SUBSAMPLE(src->format) &&
-	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
-	    !MML_FMT_BLOCK(src->format))
-		/* 420 to 422 interpolation solution */
-		filter_mode = 2;
-	else
-		/* config.enRDMACrop ? 3 : 2 */
-		/* RSZ uses YUV422, RDMA could use V filter unless cropping */
-		filter_mode = 3;
-
-	if (cfg->alpharot)
-		rdma_frm->color_tran = 0;
-	else if (MML_FMT_10BIT(src->format))
-		rdma_frm->color_tran = 1;
 
 	/* Enable dither on output, not input */
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_DITHER_CON, 0x0, write_sec);
@@ -1436,9 +1426,29 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   gmcif_con, write_sec);
 	rdma_frm->gmcif_con = gmcif_con;
 
+	if (cfg->alpharot)
+		rdma_frm->color_tran = 0;
+	else if (MML_FMT_10BIT(src->format))
+		rdma_frm->color_tran = 1;
+
 	if (MML_FMT_IS_RGB(src->format) && cfg->info.dest[0].pq_config.en_hdr &&
 	    cfg->info.dest_cnt == 1)
 		rdma_frm->color_tran = 0;
+
+	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_TRANSFORM_0,
+		   (rdma_frm->matrix_sel << 23) +
+		   (rdma_frm->color_tran << 16),
+		   write_sec);
+
+	if (MML_FMT_V_SUBSAMPLE(src->format) &&
+	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
+	    !MML_FMT_BLOCK(src->format))
+		/* 420 to 422 interpolation solution */
+		filter_mode = 2;
+	else
+		/* config.enRDMACrop ? 3 : 2 */
+		/* RSZ uses YUV422, RDMA could use V filter unless cropping */
+		filter_mode = 3;
 
 	if (MML_FMT_10BIT_LOOSE(src->format))
 		loose = 1;
@@ -1446,7 +1456,6 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		bit_number = 1;
 
 	in_swap = rdma_frm->swap;
-
 	if (MML_FMT_AFBC(dst_fmt) && MML_FMT_10BIT(dst_fmt)) {
 		if (rdma->data->rb_swap == 1) {
 			if (cfg->alpharot) {
@@ -1478,7 +1487,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   (bit_number << 18) +
 		   (rdma_frm->blk_tile << 23) +
 		   (0 << 24) +	/* RING_BUF_READ */
-		   (cfg->alpharot << 25),
+		   ((cfg->alpharot || cfg->alpharsz) << 25),
 		   write_sec);
 
 	if (rdma_frm->blk_10bit)
@@ -1687,11 +1696,6 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   src->y_stride, write_sec);
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_SF_BKGD_SIZE_IN_BYTE,
 		   src->uv_stride, write_sec);
-
-	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_TRANSFORM_0,
-		   (rdma_frm->matrix_sel << 23) +
-		   (rdma_frm->color_tran << 16),
-		   write_sec);
 
 	return 0;
 }

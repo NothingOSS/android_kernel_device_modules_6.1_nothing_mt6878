@@ -256,6 +256,7 @@ struct aal_data {
 	u16 cpr[MML_PIPE_CNT];
 	const u16 *reg_table;
 	bool crop;
+	bool alpha_pq_r2y;
 	u8 rb_mode;
 	bool is_linear;
 	u8 curve_ready_bit;
@@ -382,6 +383,7 @@ static const struct aal_data mt6989_aal_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6897,
 	.crop = false,
+	.alpha_pq_r2y = true,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = false,
 	.curve_ready_bit = 18,
@@ -1057,6 +1059,44 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		__func__, tile_config_param->dre_blk_width,
 		tile_config_param->dre_blk_height);
 exit:
+	mml_msg("%s alpha_pq_r2y:%d alpha:%d format:0x%08x mode:%d pq:%d dre:%d",
+		__func__, aal->data->alpha_pq_r2y, cfg->info.alpha,
+		dest->data.format, mode, dest->pq_config.en, dest->pq_config.en_dre);
+	/* Enable alpha r2y when resize but not RROT */
+	if (aal->data->alpha_pq_r2y && cfg->alpharsz && dest->data.format == MML_FMT_YUVA8888 &&
+	    mode != MML_MODE_DIRECT_LINK) {
+		u32 r2y_00, r2y_01, r2y_02, r2y_03, r2y_04, r2y_05;
+
+		/* 31-31 r2y_en,   24-16 r2y_post_add_1_s, 8-0 r2y_post_add_0_s */
+		r2y_00 = (1 << 31) | (128 << 16) | (0 << 0);
+		/* 26-16 r2y_c00_s,  8-0 r2y_post_add_2_s */
+		r2y_01 = (306 << 16) | (128 << 0);
+		/* 26-16 r2y_c02_s, 10-0 r2y_c01_s */
+		r2y_02 = (117 << 16) | (601 << 0);
+		/* 26-16 r2y_c11_s, 10-0 r2y_c10_s */
+		r2y_03 = (1701 << 16) | (1872 << 0);
+		/* 26-16 r2y_c20_s, 10-0 r2y_c12_s */
+		r2y_04 = (523 << 16) | (523 << 0);
+		/* 26-16 r2y_c22_s, 10-0 r2y_c21_s */
+		r2y_05 = (1963 << 16) | (1610 << 0);
+
+		/* relay_mode(bit 0) = 0, AAL_HIST_EN(bit 2) = 0, alpha_en(bit 8) = 1 */
+		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG], 0x102, 0x107);
+		/* dre_map_bypass(bit 4) = 1 */
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x3b4, 0x18, U32_MAX);
+		/* bilateral_flt_en(bit 1) = 0 */
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x53c, 0x0, 0x2);
+		/* y2r_en(bit 31) = 0 */
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4bc, 0x1800000, U32_MAX);
+
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4d4, r2y_00, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4d8, r2y_01, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4dc, r2y_02, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4e0, r2y_03, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4e4, r2y_04, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + 0x4e8, r2y_05, U32_MAX);
+	}
+
 	mml_pq_trace_ex_end();
 	return ret;
 }

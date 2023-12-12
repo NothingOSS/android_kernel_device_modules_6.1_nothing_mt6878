@@ -517,41 +517,42 @@ static s32 command_reuse(struct mml_task *task, u32 pipe)
 	return 0;
 }
 
-static void get_color_fmt(char *frame, size_t sz, const struct mml_frame_data *data)
+static void get_fmt_str(char *fmt, size_t sz, const struct mml_frame_data *data)
 {
-	int ret = snprintf(frame, sz, "%u%s%s%s%s%s%s%s%s",
-		MML_FMT_HW_FORMAT(data->format),
-		MML_FMT_SWAP(data->format) ? "s" : "",
-		MML_FMT_BLOCK(data->format) ? "b" : "",
-		MML_FMT_INTERLACED(data->format) ? "i" : "",
-		MML_FMT_UFO(data->format) ? "u" : "",
-		MML_FMT_10BIT_TILE(data->format) ? "t" :
-		MML_FMT_10BIT_PACKED(data->format) ? "p" :
-		MML_FMT_10BIT_LOOSE(data->format) ? "l" : "",
-		MML_FMT_10BIT_JUMP(data->format) ? "j" : "",
-		MML_FMT_AFBC(data->format) ? "c" : "",
-		MML_FMT_HYFBC(data->format) ? "h" : "");
+	enum mml_color f = data->format;
+	int ret = snprintf(fmt, sz, "%u%s%s%s%s%s%s%s%s",
+		MML_FMT_HW_FORMAT(f),
+		MML_FMT_SWAP(f) ? "s" : "",
+		MML_FMT_ALPHA(f) && MML_FMT_IS_YUV(f) ? "y" : "",
+		MML_FMT_BLOCK(f) ? "b" : "",
+		MML_FMT_INTERLACED(f) ? "i" : "",
+		MML_FMT_UFO(f) ? "u" : "",
+		MML_FMT_10BIT_TILE(f) ? "t" :
+		MML_FMT_10BIT_PACKED(f) ? "p" :
+		MML_FMT_10BIT_LOOSE(f) ? "l" : "",
+		MML_FMT_10BIT_JUMP(f) ? "j" : "",
+		MML_FMT_AFBC(f) ? "c" :
+		MML_FMT_HYFBC(f) ? "h" : "");
 
 	if (ret < 0)
-		frame[0] = 0;
+		fmt[0] = '\0';
 }
 
 static void get_frame_str(char *frame, size_t sz, const struct mml_frame_data *data)
 {
-	char color_fmt[24];
+	char fmt[24];
 	int ret;
 
-	get_color_fmt(color_fmt, sizeof(color_fmt), data);
+	get_fmt_str(fmt, sizeof(fmt), data);
 	ret = snprintf(frame, sz, "(%u, %u)[%u %u] %#010x C%s P%hu%s",
 		data->width, data->height, data->y_stride,
 		MML_FMT_AFBC(data->format) ? data->vert_stride : data->uv_stride,
-		data->format,
-		color_fmt,
+		data->format, fmt,
 		data->profile,
 		data->secure ? " sec" : "");
 
 	if (ret < 0)
-		frame[0] = 0;
+		frame[0] = '\0';
 }
 
 const char *dump_ovlid(enum mml_mode mode, enum mml_layer_id ovlsys_id)
@@ -582,10 +583,12 @@ static void dump_inout(struct mml_task *task)
 	mml_mmp(dumpinfo, MMPROFILE_FLAG_START, task->job.jobid, 0);
 
 	get_frame_str(frame, sizeof(frame), &cfg->info.src);
-	mml_log("in:%s plane:%hhu%s%s%s job:%u mode:%hhu %s%s acttime %u",
+	mml_log("in:%s plane:%hhu alpha:%s%s%s job:%u mode:%hhu %s%s acttime %u",
 		frame,
 		task->buf.src.cnt,
-		(cfg->info.alpha || cfg->alpharot) ? " alpha" : "",
+		cfg->alpharot ? "rot" :
+		cfg->alpharsz ? "rsz" :
+		cfg->info.alpha ? "ignore" : "false",
 		task->buf.src.fence ? " fence" : "",
 		task->buf.src.flush ? " flush" : "",
 		task->job.jobid,
@@ -1276,7 +1279,7 @@ static void core_dump_buf(struct mml_task *task, struct mml_frame_data *data,
 	int ret;
 
 	/* support only out0 for now, maybe support multi out later */
-	get_color_fmt(fmt, sizeof(fmt), data);
+	get_fmt_str(fmt, sizeof(fmt), data);
 	ret = snprintf(frm->name, sizeof(frm->name), "mml_%llu_%u_%s_f%s_%u_%u_%u.bin",
 		stamp, task->job.jobid, frm->prefix, fmt,
 		data->width, data->height, data->y_stride);
@@ -1387,7 +1390,7 @@ static void core_taskdone_kt_work(struct kthread_work *work)
 		char fmt[24];
 		struct mml_frame_data *data = &task->config->info.dest[0].data;
 
-		get_color_fmt(fmt, sizeof(fmt), data);
+		get_fmt_str(fmt, sizeof(fmt), data);
 		mml_dump_buf(task, data,
 			data->width + task->config->info.dest[0].compose.left,
 			data->height + task->config->info.dest[0].compose.top,
@@ -1820,7 +1823,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 		char fmt[24];
 		struct mml_frame_data *data = &task->config->info.src;
 
-		get_color_fmt(fmt, sizeof(fmt), data);
+		get_fmt_str(fmt, sizeof(fmt), data);
 		mml_dump_buf(task, data, data->width, data->height, "src", fmt,
 			&task->buf.src, MMLDUMPT_SRC,
 			mml_dump_srv_opt & DUMPOPT_SRC_ASYNC);

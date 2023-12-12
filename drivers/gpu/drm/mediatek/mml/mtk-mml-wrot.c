@@ -751,7 +751,7 @@ static s32 wrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	data->wrot.dest_fmt = dest->data.format;
 	data->wrot.rotate = wrot_frm->rotate;
 	data->wrot.flip = wrot_frm->flip;
-	data->wrot.alpharot = cfg->alpharot;
+	data->wrot.alpha = cfg->alpharot || cfg->alpharsz;
 	data->wrot.racing = cfg->info.mode == MML_MODE_RACING;
 	data->wrot.racing_h = max(mml_racing_h, MML_WROT_RACING_MAX);
 
@@ -837,6 +837,8 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	case MML_FMT_VYUY:
 	case MML_FMT_YUYV:
 	case MML_FMT_YVYU:
+	case MML_FMT_YUVA8888:
+	case MML_FMT_AYUV8888:
 	/* HW_SUPPORT_10BIT_PATH */
 	case MML_FMT_YUVA1010102:
 		/* YUV422/444, 1 plane */
@@ -1023,7 +1025,7 @@ static void wrot_calc_hw_buf_setting(const struct mml_comp_wrot *wrot,
 	} else if (dest_fmt == MML_FMT_GREY) {
 		wrot_frm->fifo_max_sz = wrot->data->tile_width * 64;
 		wrot_frm->max_line_cnt = 64;
-	} else if (cfg->alpharot) {
+	} else if (cfg->alpharot || cfg->alpharsz) {
 		wrot_frm->fifo_max_sz = wrot->data->tile_width * 16;
 		wrot_frm->max_line_cnt = 16;
 	} else {
@@ -1311,12 +1313,11 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		       (uv_xsel		<< 28) +
 		       (flip		<< 24) +
 		       (wrot_frm->rotate << 20) +
-		       (cfg->alpharot	<< 16) + /* alpha rot */
+		       ((cfg->alpharot || cfg->alpharsz) << 16) + /* alpha */
 		       (preultra_en	<< 14) + /* pre-ultra */
 		       (crop_en		<< 12) +
 		       (out_swap	<<  8) +
 		       (hw_fmt		<<  0), 0xf131510f);
-
 
 	if (unlikely(mml_wrot_bkgd_en)) {
 		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_CTRL, BIT(5), BIT(5));

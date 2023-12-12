@@ -1121,7 +1121,7 @@ enum isp_tile_message tile_wrot_back(struct tile_func_block *func,
 			}
 		}
 
-		if (data->alpharot) {
+		if (data->alpha) {
 			if (func->out_pos_xe + 1 < full_size_x_out &&
 			    func->out_pos_xe + 9 + 1 > full_size_x_out &&
 			    func->out_pos_xe != func->out_pos_xs) {
