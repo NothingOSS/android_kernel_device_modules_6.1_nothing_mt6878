@@ -5391,13 +5391,15 @@
 				<GIC_SPI 666 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 665 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 668 IRQ_TYPE_LEVEL_HIGH 0>,
-				<GIC_SPI 669 IRQ_TYPE_LEVEL_HIGH 0>;
+				<GIC_SPI 669 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 673 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names =
 				"JOB",
 				"MMU",
 				"GPU",
 				"EVENT",
-				"PWR";
+				"PWR",
+				"LOWVOLT";
 			protected-memory-allocator = <&gpu_protected_memory_allocator>;
 			operating-points-v2 = <&gpu_mali_opp>;
 			#cooling-cells = <2>;
