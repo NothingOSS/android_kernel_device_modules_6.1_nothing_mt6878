@@ -26,7 +26,6 @@
 #include "xhci-trace.h"
 #include "xhci-debugfs.h"
 #include "xhci-dbgcap.h"
-#include "xhci-plat.h"
 #include "quirks.h"
 
 #define DRIVER_AUTHOR "Sarah Sharp"
