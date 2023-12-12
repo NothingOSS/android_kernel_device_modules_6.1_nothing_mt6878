@@ -1705,15 +1705,10 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 
 			if (ulID == GED_FPSGO_UX_BQ_ID && main_head &&
 				g_max_core_num == SHADER_CORE_NUM) {
+				//Remember UX BQ to avoid target fps affected by other BQ.
 				if (target_fps > 85 && target_fps <= 120) {
 					last_ux_head = main_head;
 					g_is_ux_fps_set = 1;
-					ged_kpi_update_TargetTimeAndTargetFps(last_ux_head,
-							target_FPS&0x000000ff,
-							(target_FPS&0x00000700) >> 8,
-							(target_FPS&0xfffff100) >> 11,
-							eara_fps_margin,
-							GED_KPI_FRC_DEFAULT_MODE, -1);
 				} else {
 					last_ux_head = NULL;
 					g_is_ux_fps_set = 0;
