@@ -1332,36 +1332,25 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
-	struct boe *ctx = panel_to_boe(panel);
 
 	if (drm_mode_vrefresh(m) == 144) {
 		ext->params = &ext_params;
-		if (ctx->display_dual_swap)
-			ext->params->dual_swap = true;
 		current_fps = 144;
 	}
 #if SUPPORT_90Hz
 	else if (drm_mode_vrefresh(m) == 90) {
 		ext->params = &ext_params_90hz;
-		if (ctx->display_dual_swap)
-			ext->params->dual_swap = true;
 		current_fps = 90;
 	}
 #endif
 	else if (drm_mode_vrefresh(m) == 120) {
 		ext->params = &ext_params_120hz;
-		if (ctx->display_dual_swap)
-			ext->params->dual_swap = true;
 		current_fps = 120;
 	} else if (drm_mode_vrefresh(m) == 60) {
 		ext->params = &ext_params_60hz;
-		if (ctx->display_dual_swap)
-			ext->params->dual_swap = true;
 		current_fps = 60;
 	} else if (drm_mode_vrefresh(m) == 30) {
 		ext->params = &ext_params_30hz;
-		if (ctx->display_dual_swap)
-			ext->params->dual_swap = true;
 		current_fps = 30;
 	} else
 		ret = 1;
@@ -1545,6 +1534,15 @@ static int boe_probe(struct mipi_dsi_device *dsi)
 	ctx->display_dual_swap = of_property_read_bool(dev->of_node,
 					      "display-dual-swap");
 	pr_notice("ctx->display_dual_swap=%d\n", ctx->display_dual_swap);
+	if (ctx->display_dual_swap) {
+		ext_params.dual_swap = true;
+#if SUPPORT_90Hz
+		ext_params_90hz.dual_swap = true;
+#endif
+		ext_params_120hz.dual_swap = true;
+		ext_params_60hz.dual_swap = true;
+		ext_params_30hz.dual_swap = true;
+	}
 
 	ret = of_property_read_u32(dev->of_node, "gate-ic", &value);
 	if (ret < 0) {
