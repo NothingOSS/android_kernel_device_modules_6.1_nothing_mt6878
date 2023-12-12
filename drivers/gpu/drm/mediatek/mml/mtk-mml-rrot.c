@@ -1056,7 +1056,8 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (MML_FMT_V_SUBSAMPLE(src->format) &&
 	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
-	    !MML_FMT_BLOCK(src->format))
+	    !MML_FMT_BLOCK(src->format) &&
+	    !MML_FMT_HYFBC(src->format))
 		/* 420 to 422 interpolation solution */
 		filter_mode = 2;
 	else
