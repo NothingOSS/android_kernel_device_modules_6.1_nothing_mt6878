@@ -107,9 +107,9 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.extb_iso_offs = 0xF24,
 		.extb_iso_bits = 0x3,
 		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x0C54, 0x0C58, 0x0C50, 0x0C5C,
+			BUS_PROT(IFR_TYPE, 0x0C54, 0x0C58, 0x0C50, 0x0C5C,
 				MT6878_TOP_AXI_PROT_EN_INFRASYS_STA_1_MD),
-			BUS_PROT_IGN(IFR_TYPE, 0x0C64, 0x0C68, 0x0C60, 0x0C6C,
+			BUS_PROT(IFR_TYPE, 0x0C64, 0x0C68, 0x0C60, 0x0C6C,
 				MT6878_TOP_AXI_PROT_EN_EMISYS_STA_0_MD),
 		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_MD_OPS |
