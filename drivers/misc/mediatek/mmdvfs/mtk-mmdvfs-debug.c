@@ -246,6 +246,9 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 	for (i = 0; i < USER_NUM; i++)
 		mmdvfs_debug_dump_line(file, "user: %u opp: %u\n", i, readl(MEM_VOTE_OPP_USR(i)));
 
+	mmdvfs_debug_dump_line(file, "clkmux:%#x clkmux_done:%#x\n",
+		readl(MEM_CLKMUX_ENABLE), readl(MEM_CLKMUX_ENABLE_DONE));
+
 	/* MMDVFS_DBG_VER3.5 */
 	mmdvfs_debug_dump_line(file, "VER3.5: mux controlled by vcp:\n");
 
