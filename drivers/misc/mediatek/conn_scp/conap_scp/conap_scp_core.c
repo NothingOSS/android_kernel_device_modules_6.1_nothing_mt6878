@@ -501,8 +501,10 @@ static void conap_scp_msg_notify(uint16_t drv_type, uint16_t msg_id,
 	g_cur_msg_id = msg_id;
 	memcpy(&(g_cur_msg_recv_buf[g_cur_recv_sz]), data, this_sz);
 	g_cur_recv_sz += this_sz;
-	if (g_cur_recv_sz == total_sz)
+	if (g_cur_recv_sz == total_sz) {
+		g_cur_msg_recv_buf = NULL;
 		complete(&g_core_ctx.msg_recv_comp);
+	}
 
 }
 
