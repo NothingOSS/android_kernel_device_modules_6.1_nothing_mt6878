@@ -22,9 +22,9 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 
 	backlight {
 		led-mode = <4>;
-		max-brightness = <16384>;
+		max-brightness = <16380>;
 		min-brightness = <4>;
-		max-hw-brightness = <16384>;
+		max-hw-brightness = <16380>;
 	};
 };
 
@@ -33,9 +33,9 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 
 	backlight {
 		led-mode = <4>;
-		max-brightness = <16384>;
+		max-brightness = <16380>;
 		min-brightness = <4>;
-		max-hw-brightness = <16384>;
+		max-hw-brightness = <16380>;
 	};
 };
 
