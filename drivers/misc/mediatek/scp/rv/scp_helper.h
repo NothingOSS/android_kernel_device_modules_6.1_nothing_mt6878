@@ -111,6 +111,12 @@ enum SCP_PM_NOTIFY {
 	PM_AP_RESUME = 1,
 };
 
+/* bus tracker version */
+enum SCP_BUS_TRACKER_VER {
+	BUS_TRACKER_LEGACY = 1,
+	BUS_TRACKER_V2,
+};
+
 struct scp_bus_tracker_status {
 	u32 dbg_con;
 	u32 dbg_r[32];
@@ -141,6 +147,7 @@ struct scp_regs {
 	unsigned int cfgreg_ap_en;
 	unsigned int ipc_wa;
 	struct scp_bus_tracker_status tracker_status;
+	unsigned int tracker_version;
 };
 
 /* scp work struct definition*/

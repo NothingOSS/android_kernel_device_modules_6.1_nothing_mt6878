@@ -205,6 +205,18 @@
 #define SCP_BUS_DBG_AW_TRACK30_L	(scpreg.bus_tracker + 0x3f0)
 #define SCP_BUS_DBG_AW_TRACK31_L	(scpreg.bus_tracker + 0x3f8)
 
+/* Bus treacker v2 */
+#define SCP_BUS_DBG_AR_TRACK_LOG	(scpreg.bus_tracker + 0x200)
+#define SCP_BUS_DBG_AR_TRACK_ID		(scpreg.bus_tracker + 0x300)
+#define SCP_BUS_DBG_AR_TRACK_L		(scpreg.bus_tracker + 0x400)
+#define SCP_BUS_DBG_AR_TRACK_H		(scpreg.bus_tracker + 0x600)
+#define SCP_BUS_DBG_AW_TRACK_LOG	(scpreg.bus_tracker + 0x800)
+#define SCP_BUS_DBG_AW_TRACK_ID		(scpreg.bus_tracker + 0x900)
+#define SCP_BUS_DBG_AW_TRACK_L		(scpreg.bus_tracker + 0xa00)
+#define SCP_BUS_DBG_AW_TRACK_H		(scpreg.bus_tracker + 0xc00)
+#define IRQ_STA_AR_1ST_TIMEOUT		(1 << 8)
+#define IRQ_STA_AW_1ST_TIMEOUT		(1 << 9)
+
 /* clk reg*/
 #define SCP_A_SLEEP_DEBUG_REG		(scpreg.clkctrl + 0x0028)
 #define SCP_CLK_CTRL_L1_SRAM_PD		(scpreg.clkctrl + 0x002C)

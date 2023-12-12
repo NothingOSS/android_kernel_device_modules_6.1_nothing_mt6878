@@ -1640,6 +1640,15 @@ static int scp_reserve_memory_ioremap(struct platform_device *pdev)
 		pr_notice("@@@@ reserved: <%d  %x  %x>\n", m_idx, m_size, m_alignment);
 	}
 
+	/* get bus tracker verion */
+	ret = of_property_read_u32(pdev->dev.of_node,
+					"scp-bus-tracker-ver",
+					&scpreg.tracker_version);
+	if(ret) {
+		scpreg.tracker_version = 1;
+		pr_notice("legacy bus tracker version:%x\n",scpreg.tracker_version);
+	}
+
 	scp_mem_base_virt = (phys_addr_t)(size_t)ioremap_wc(scp_mem_base_phys,
 		scp_mem_size);
 	pr_debug("[SCP] rsrv_phy_base = 0x%llx, len:0x%llx\n",

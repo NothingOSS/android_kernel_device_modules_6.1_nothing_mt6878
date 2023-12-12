@@ -29,6 +29,7 @@
 #endif
 #include "sap.h"
 
+#define BUS_TRACKER_ENTRY_CNT	32
 #define SCP_SECURE_DUMP_MEASURE 0
 #define POLLING_RETRY 400
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM) && SCP_SECURE_DUMP_MEASURE
@@ -154,7 +155,11 @@ void scp_dump_last_regs(void)
 		c1_t1_m->lr_latch = readl(R_CORE1_T1_MON_LR_LATCH);
 		c1_t1_m->sp_latch = readl(R_CORE1_T1_MON_SP_LATCH);
 	}
-	scp_dump_bus_tracker_status();
+
+	if(scpreg.tracker_version == BUS_TRACKER_LEGACY)
+		scp_dump_bus_tracker_status();
+	else if(scpreg.tracker_version == BUS_TRACKER_V2)
+		scp_dump_bus_tracker_status_v2();
 }
 
 void scp_show_last_regs(void)
@@ -191,7 +196,31 @@ void scp_show_last_regs(void)
 		pr_notice("[SCP] c1h1_lr_latch = %08x\n", c1_t1_m->lr_latch);
 		pr_notice("[SCP] c1h1_sp_latch = %08x\n", c1_t1_m->sp_latch);
 	}
-	scp_show_bus_tracker_status();
+	if(scpreg.tracker_version == BUS_TRACKER_LEGACY)
+		scp_show_bus_tracker_status();
+}
+
+void scp_dump_bus_tracker_status_v2(void)
+{
+	uint32_t offset;
+	int i;
+
+	pr_notice("dbg_con %08x\n", readl(SCP_BUS_DBG_CON));
+	if (readl(SCP_BUS_DBG_CON) & (IRQ_STA_AR_1ST_TIMEOUT | IRQ_STA_AW_1ST_TIMEOUT)) {
+		for (i = BUS_TRACKER_ENTRY_CNT - 1; i >= 0; --i) {
+			pr_notice("Record[%02u]:\n", i);
+			offset = i * 4;
+			pr_notice("W_LOG: %08x\n", readl(SCP_BUS_DBG_AW_TRACK_LOG + offset));
+			pr_notice("W_ID: %08x\n", readl(SCP_BUS_DBG_AW_TRACK_ID + offset));
+			pr_notice("W_L: %08x\n", readl(SCP_BUS_DBG_AW_TRACK_L + offset));
+			pr_notice("W_H: %08x\n", readl(SCP_BUS_DBG_AW_TRACK_H + offset));
+			pr_notice("R_LOG: %08x\n", readl(SCP_BUS_DBG_AR_TRACK_LOG + offset));
+			pr_notice("R_ID: %08x\n", readl(SCP_BUS_DBG_AR_TRACK_ID + offset));
+			pr_notice("R_L: %08x\n", readl(SCP_BUS_DBG_AR_TRACK_L + offset));
+			pr_notice("R_H: %08x\n", readl(SCP_BUS_DBG_AR_TRACK_H + offset));
+
+		}
+	}
 }
 
 void scp_dump_bus_tracker_status(void)

@@ -34,6 +34,7 @@ struct scp_status_reg {
 
 extern void scp_dump_last_regs(void);
 extern void scp_dump_bus_tracker_status(void);
+extern void scp_dump_bus_tracker_status_v2(void);
 extern void scp_show_last_regs(void);
 extern void scp_show_bus_tracker_status(void);
 extern void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id);
