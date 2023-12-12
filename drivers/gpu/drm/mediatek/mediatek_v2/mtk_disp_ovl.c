@@ -2432,9 +2432,18 @@ static void _ovl_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 				       DISP_REG_OVL_PQ_OUT_SIZE, src_size, ~0);
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
 				       DISP_REG_OVL_SRC_SIZE(lye_idx), pending->dst_roi, ~0);
-		} else
+			if (state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
+				comp->mtk_crtc->rpo_params.ovl_layer_width = pending->dst_roi & 0xFFFF ;
+				comp->mtk_crtc->rpo_params.ovl_layer_height = (pending->dst_roi >> 16) & 0xFFFF;
+			}
+		} else {
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
 				       DISP_REG_OVL_SRC_SIZE(lye_idx), src_size, ~0);
+			if (state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
+				comp->mtk_crtc->rpo_params.ovl_layer_width = src_size & 0xFFFF ;
+				comp->mtk_crtc->rpo_params.ovl_layer_height = (src_size >> 16) & 0xFFFF;
+			}
+		}
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_CLIP(lye_idx), clip,
@@ -3111,6 +3120,10 @@ static bool compr_l_config_PVRIC_V3_1(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_SRC_SIZE(lye_idx),
 			       lx_src_size, ~0);
+		if (state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
+			comp->mtk_crtc->rpo_params.ovl_layer_width = lx_src_size & 0xFFFF ;
+			comp->mtk_crtc->rpo_params.ovl_layer_height = (lx_src_size >> 16) & 0xFFFF;
+		}
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_CLIP(lye_idx),
 			       lx_clip, ~0);
@@ -3421,10 +3434,19 @@ bool compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 				       DISP_REG_OVL_PQ_OUT_SIZE, lx_src_size, ~0);
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
 				       DISP_REG_OVL_SRC_SIZE(lye_idx), pending->dst_roi, ~0);
-		} else
+			if (state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
+				comp->mtk_crtc->rpo_params.ovl_layer_width = pending->dst_roi & 0xFFFF ;
+				comp->mtk_crtc->rpo_params.ovl_layer_height = (pending->dst_roi >> 16) & 0xFFFF;
+			}
+		} else {
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				       comp->regs_pa + DISP_REG_OVL_SRC_SIZE(lye_idx), lx_src_size,
 				       ~0);
+			if (state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
+				comp->mtk_crtc->rpo_params.ovl_layer_width = lx_src_size & 0xFFFF ;
+				comp->mtk_crtc->rpo_params.ovl_layer_height = (lx_src_size >> 16) & 0xFFFF;
+			}
+		}
 
 		if (ovl->ovl_dis == false && enable == 1 && compress == 1 &&
 			((lx_src_size&0xffff) * (lx_src_size>>16) == 0)) {

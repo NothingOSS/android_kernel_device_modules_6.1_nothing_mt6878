@@ -8471,6 +8471,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 	bool adjust_pixclk = ((mtk_crtc->is_dual_pipe && dsc_params->enable) ||
 		(mtk_crtc->dli_relay_1tnp));
 	unsigned int crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 	DDPINFO("%s: crtc:%d overhead is_support:%d, width L:%d R:%d\n", __func__,
@@ -8491,6 +8492,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 	if (!en) {
 		mtk_drm_set_mmclk_by_pixclk(&mtk_crtc->base, pixclk,
 					__func__);
+		CRTC_MMP_MARK((int) crtc_idx, set_mmclk, 0, pixclk);
 		return;
 	}
 	//for FPS change,update dsi->ext
@@ -8724,9 +8726,48 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			pixclk /= 1000;
 		}
 
+		/* DISP MMCLK with RPO will multiply rpo ratio */
+		/* mmclk = (pixel_number / (OVL_ROI_width * layer_height)) * original disp mmclk */
+		/* pixel_number = (after_rsz_width + input_crop_width + OVL_BG_width) * */
+		/* (after_rsz_width + input_crop_height) */
+		if (priv && priv->need_rpo_ratio_for_mmclk &&
+			mtk_crtc->rpo_params.need_rpo_en) {
+			int ratio = 0;
+			int hdisplay = 0;
+			/* tile size 32 x 8 , left and right crop worst */
+			int hcrop_worst = 31 + 31;
+			/* tile size 32 x 8 , half block mode, top and bottom crop worst */
+			int vcrop_worst = 3 + 3;
+
+			hdisplay = mtk_dsi_get_virtual_width(dsi, &mtk_crtc->base);
+
+			CRTC_MMP_EVENT_START((int) crtc_idx, set_mmclk, 0, hdisplay);
+			CRTC_MMP_MARK((int) crtc_idx, set_mmclk,
+				mtk_crtc->rpo_params.ovl_layer_width,
+				mtk_crtc->rpo_params.ovl_layer_height);
+			CRTC_MMP_MARK((int) crtc_idx, set_mmclk,
+				mtk_crtc->rpo_params.rsz_in_layer_width,
+				mtk_crtc->rpo_params.rsz_in_layer_height);
+			CRTC_MMP_MARK((int) crtc_idx, set_mmclk,
+				mtk_crtc->rpo_params.rsz_out_layer_width,
+				mtk_crtc->rpo_params.rsz_out_layer_height);
+
+			ratio = ((mtk_crtc->rpo_params.rsz_out_layer_width + hcrop_worst +
+				hdisplay - mtk_crtc->rpo_params.rsz_out_layer_width) *
+				(mtk_crtc->rpo_params.rsz_out_layer_height + vcrop_worst) * 100) /
+				(hdisplay * mtk_crtc->rpo_params.rsz_out_layer_height);
+
+			pixclk = pixclk * ratio / 100;
+			CRTC_MMP_EVENT_END((int) crtc_idx, set_mmclk, ratio, pixclk);
+
+		} else {
+			CRTC_MMP_MARK((int) crtc_idx, set_mmclk, 0, pixclk);
+		}
+
 		DDPMSG("%s, %d, crtc:%d, data_rate=%d, mmclk=%u pixclk_min=%d, dual=%u\n", __func__,
 				__LINE__, crtc_idx, data_rate,
 				pixclk, pixclk_min, mtk_crtc->is_dual_pipe);
+
 		mtk_drm_set_mmclk_by_pixclk(&mtk_crtc->base, pixclk, __func__);
 	}
 }

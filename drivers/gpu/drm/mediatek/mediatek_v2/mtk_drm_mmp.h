@@ -113,6 +113,7 @@ struct CRTC_MMP_Events {
 	mmp_event check_trigger;
 	mmp_event kick_trigger;
 	mmp_event atomic_commit;
+	mmp_event set_mmclk;
 	mmp_event user_cmd_cb;
 	mmp_event bl_cb;
 	mmp_event clk_change;

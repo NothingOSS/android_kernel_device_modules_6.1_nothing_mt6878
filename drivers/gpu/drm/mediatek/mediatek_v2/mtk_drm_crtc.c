@@ -7945,6 +7945,19 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	else
 		DDPINFO("crtc%d is disabled so skip update hrt qos\n", id);
 
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RPO) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMDVFS_SUPPORT) &&
+		((id == 0) || (id == 3)) && (!mtk_crtc->rpo_params.need_rpo_en) &&
+		(!atomic_read(&mtk_crtc->force_high_step)) && priv->need_rpo_ratio_for_mmclk &&
+		mtk_crtc->rpo_params.rpo_status_changed && mtk_crtc->enabled) {
+		struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+		int en = 1;
+
+		mtk_crtc->rpo_params.rpo_status_changed = false;
+		if (output_comp)
+			mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE, &en);
+	}
+
 	if (mtk_crtc->pending_needs_vblank) {
 		mtk_drm_crtc_finish_page_flip(mtk_crtc);
 		mtk_crtc->pending_needs_vblank = false;
@@ -15944,6 +15957,23 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	if (mtk_crtc_state->lye_state.need_repaint) {
 		drm_trigger_repaint(DRM_REPAINT_FOR_SWITCH_DECOUPLE_MIRROR, crtc->dev);
 		CRTC_MMP_MARK(0, mml_dbg, cb_data->hrt_idx, MMP_MML_REPAINT);
+	}
+
+	if (mtk_crtc_state->lye_state.rpo_lye)
+		mtk_crtc->rpo_params.need_rpo_en = true;
+	else
+		mtk_crtc->rpo_params.need_rpo_en = false;
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RPO) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMDVFS_SUPPORT) &&
+		(!atomic_read(&mtk_crtc->force_high_step)) && ((index == 0) || (index == 3)) &&
+		mtk_crtc->rpo_params.need_rpo_en && mtk_crtc->enabled && priv->need_rpo_ratio_for_mmclk) {
+		struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+		int en = 1;
+
+		mtk_crtc->rpo_params.rpo_status_changed = true;
+		if (output_comp)
+			mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE, &en);
 	}
 
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)

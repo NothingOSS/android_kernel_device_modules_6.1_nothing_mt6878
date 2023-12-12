@@ -905,6 +905,17 @@ struct mtk_vblank_config_node {
 	struct list_head link;
 };
 
+struct mtk_disp_rpo {
+	bool need_rpo_en;
+	bool rpo_status_changed;
+	unsigned int ovl_layer_width;
+	unsigned int ovl_layer_height;
+	unsigned int rsz_in_layer_width;
+	unsigned int rsz_in_layer_height;
+	unsigned int rsz_out_layer_width;
+	unsigned int rsz_out_layer_height;
+};
+
 /**
  * struct mtk_drm_crtc - MediaTek specific crtc structure.
  * @base: crtc object.
@@ -962,6 +973,7 @@ struct mtk_drm_crtc {
 	const struct mtk_crtc_path_data *path_data;
 	struct mtk_crtc_ddp_ctx dual_pipe_ddp_ctx;
 	bool is_dual_pipe;
+	struct mtk_disp_rpo rpo_params;
 
 	struct mtk_drm_idlemgr *idlemgr;
 	wait_queue_head_t crtc_status_wq;

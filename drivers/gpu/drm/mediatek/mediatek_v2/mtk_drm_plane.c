@@ -560,6 +560,15 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 							   crtc_state->rsz_dst_roi.height << 16;
 			mtk_plane_state->pending.offset = crtc_state->rsz_dst_roi.x |
 							  crtc_state->rsz_dst_roi.y << 16;
+			mtk_crtc->rpo_params.rsz_in_layer_width = crtc_state->rsz_src_roi.width;
+			mtk_crtc->rpo_params.rsz_in_layer_height = crtc_state->rsz_src_roi.height;
+			mtk_crtc->rpo_params.rsz_out_layer_width = crtc_state->rsz_dst_roi.width;
+			mtk_crtc->rpo_params.rsz_out_layer_height = crtc_state->rsz_dst_roi.height;
+			DDPINFO("%s: rsz_in(%d,%d) ==> out(%d,%d)\n", __func__,
+					mtk_crtc->rpo_params.rsz_in_layer_width,
+					mtk_crtc->rpo_params.rsz_in_layer_height,
+					mtk_crtc->rpo_params.rsz_out_layer_width,
+					mtk_crtc->rpo_params.rsz_out_layer_height);
 		} else
 			mtk_plane_state->pending.offset = dst_x | dst_y << 16;
 	}

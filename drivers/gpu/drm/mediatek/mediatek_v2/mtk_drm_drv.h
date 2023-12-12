@@ -227,6 +227,7 @@ struct mtk_drm_private {
 
 	/* for rpo caps info */
 	unsigned int rsz_in_max[2];
+	bool need_rpo_ratio_for_mmclk;
 
 	struct icc_path *hrt_bw_request, *hrt_by_larb, *dp_hrt_by_larb;
 
