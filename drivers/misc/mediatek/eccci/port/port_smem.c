@@ -272,17 +272,23 @@ int port_smem_rx_poll(struct port_t *port, unsigned int user_data)
 		smem_port->last_poll_time[idx + 2] = local_clock();
 	}
 #endif
-	ret = wait_event_interruptible(smem_port->rx_wq,
-		smem_port->wakeup & user_data);
+	/* read smem_port->wakeup maybe hit data race.
+	 * use data_race to bypass
+	 */
+	ret = wait_event_interruptible(smem_port->rx_wq, data_race(smem_port->wakeup) & user_data);
+	if (ret) {
+		CCCI_ERROR_LOG(0, TAG, "%s fail wait by signal wakeup\n",
+			__func__);
+		ret = -EINTR;
+	}
+
 	spin_lock_irqsave(&smem_port->write_lock, flags);
 	smem_port->wakeup &= ~user_data;
 	CCCI_DEBUG_LOG(0, TAG,
-		"after wait event, wakeup=%x\n", smem_port->wakeup);
+		"after wait event, wakeup=0x%x\n", smem_port->wakeup);
 	spin_unlock_irqrestore(&smem_port->write_lock, flags);
 
-	if (ret == -ERESTARTSYS)
-		ret = -EINTR;
-	else {
+	if (!ret) {
 		md_state = ccci_fsm_get_md_state();
 		if (md_state == WAITING_TO_STOP) {
 			CCCI_REPEAT_LOG(0, TAG,
