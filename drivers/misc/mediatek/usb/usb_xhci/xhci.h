@@ -1952,8 +1952,6 @@ struct xhci_hcd {
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
 
-	struct xhci_vendor_ops *vendor_ops;
-
 	/* platform-specific data -- must come last */
 	unsigned long		priv[] __aligned(sizeof(s64));
 };

@@ -4537,7 +4537,7 @@ int xhci_vendor_sync_dev_ctx(struct xhci_hcd *xhci, unsigned int slot_id)
 
 bool xhci_vendor_usb_offload_skip_urb(struct xhci_hcd *xhci, struct urb *urb)
 {
-	struct xhci_vendor_ops *ops = xhci_vendor_get_ops(xhci);
+	struct xhci_vendor_ops *ops = xhci_vendor_get_ops_(xhci);
 
 	if (ops && ops->usb_offload_skip_urb)
 		return ops->usb_offload_skip_urb(xhci, urb);
