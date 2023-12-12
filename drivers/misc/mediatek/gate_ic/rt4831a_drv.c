@@ -13,7 +13,6 @@
 #include <linux/string.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
-#include <linux/of_device.h>
 
 #include "gate_i2c.h"
 
@@ -63,15 +62,11 @@
 static const struct of_device_id _gate_ic_i2c_of_match[] = {
 	{
 		.compatible = "mediatek,gate-ic-i2c",
-	},
-	{
-		.compatible = "mediatek,gate-ic-i2c0",
-	},
-	{},
+	 },
+	{}
 };
 
 static struct i2c_client *_gate_ic_i2c_client;
-static struct i2c_client *_gate_ic_i2c_client_0;
 
 struct gate_ic_client {
 	struct i2c_client *i2c_client;
@@ -82,35 +77,30 @@ struct gate_ic_client {
 	atomic_t backlight_status;
 };
 
-static int i2c_double;
-
 /*****************************************************************************
  * Driver Functions
  *****************************************************************************/
-static void _gate_ic_backlight_enable(enum led_i2c_type i2c_type)
+static void _gate_ic_backlight_enable(void)
 {
 	/*BL enable*/
 	struct gate_ic_client *gate_client = i2c_get_clientdata(_gate_ic_i2c_client);
 
-	if (i2c_type == 0)
-		gate_client = i2c_get_clientdata(_gate_ic_i2c_client_0);
-
 	pr_info("%s+\n", __func__);
 
 	if (gate_client->pwm_enable) {
-		_gate_ic_i2c_write_bytes(BACKLIGHT_CONFIG_1, 0x6B, i2c_type);
+		_gate_ic_i2c_write_bytes(BACKLIGHT_CONFIG_1, 0x6B);
 	} else {
-		_gate_ic_i2c_write_bytes(BACKLIGHT_CONFIG_1, 0x68, i2c_type);
+		_gate_ic_i2c_write_bytes(BACKLIGHT_CONFIG_1, 0x68);
 		if (!atomic_read(&gate_client->backlight_status))
 			_gate_ic_backlight_set(0);
 	}
 
-	_gate_ic_i2c_write_bytes(BACKLIGHT_CONFIG_2, 0x9D, i2c_type);
-	_gate_ic_i2c_write_bytes(BACKLIGHT_OPTION_1, 0x06, i2c_type);
-	_gate_ic_i2c_write_bytes(BACKLIGHT_OPTION_2, 0xB7, i2c_type);
+	_gate_ic_i2c_write_bytes(BACKLIGHT_CONFIG_2, 0x9D);
+	_gate_ic_i2c_write_bytes(BACKLIGHT_OPTION_1, 0x06);
+	_gate_ic_i2c_write_bytes(BACKLIGHT_OPTION_2, 0xB7);
 	/*bias enable*/
-	_gate_ic_i2c_write_bytes(BACKLIGHT_ENABLE, 0x15, i2c_type);
-	_gate_ic_i2c_write_bytes(BACKLIGHT_SMOOTH, 0x03, i2c_type);
+	_gate_ic_i2c_write_bytes(BACKLIGHT_ENABLE, 0x15);
+	_gate_ic_i2c_write_bytes(BACKLIGHT_SMOOTH, 0x03);
 }
 
 #ifdef LEDS_BRIGHTNESS_CHANGED
@@ -145,14 +135,13 @@ static struct notifier_block leds_init_notifier = {
  * Extern Area
  *****************************************************************************/
 
-int _gate_ic_i2c_type_backlight_set(unsigned int hw_level, enum led_i2c_type i2c_type)
+int _gate_ic_backlight_set(unsigned int hw_level)
 {
 	int level_l, level_h;
 	struct i2c_client *client = _gate_ic_i2c_client;
 	char cmd_buf[3] = { 0x00, 0x00, 0x00 };
 	int ret = 0;
 
-	pr_debug("leds %s i2c_type: %d hw_level: %d\n", __func__, i2c_type, hw_level);
 	level_h = (hw_level >> BRIGHTNESS_HIGN_OFFSET) & BRIGHTNESS_HIGN_MASK;
 	level_l = (hw_level >> BRIGHTNESS_LOW_OFFSET) & BRIGHTNESS_LOW_MASK;
 
@@ -160,24 +149,10 @@ int _gate_ic_i2c_type_backlight_set(unsigned int hw_level, enum led_i2c_type i2c
 	cmd_buf[1] = level_l;
 	cmd_buf[2] = level_h;
 
-	if (i2c_type == 0)
-		client = _gate_ic_i2c_client_0;
-
 	ret = i2c_master_send(client, cmd_buf, 3);
 	if (ret < 0)
 		pr_info("ERROR %d!! i2c write data fail 0x%0x, 0x%0x, 0x%0x !!\n",
 				ret, cmd_buf[0], cmd_buf[1], cmd_buf[2]);
-	return ret;
-}
-
-int _gate_ic_backlight_set(unsigned int hw_level)
-{
-	int ret = 0;
-
-	pr_debug("leds %s hw_level: %d i2c_double: %d\n", __func__, hw_level, i2c_double);
-	ret |= _gate_ic_i2c_type_backlight_set(hw_level, LED_I2C_6);
-	if(i2c_double)
-		ret |= _gate_ic_i2c_type_backlight_set(hw_level, LED_I2C_0);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(_gate_ic_backlight_set);
@@ -207,15 +182,11 @@ int _gate_ic_i2c_read_bytes(unsigned char addr, unsigned char *returnData)
 }
 EXPORT_SYMBOL_GPL(_gate_ic_i2c_read_bytes);
 
-int _gate_ic_i2c_write_bytes(unsigned char addr, unsigned char value,
-							enum led_i2c_type i2c_type)
+int _gate_ic_i2c_write_bytes(unsigned char addr, unsigned char value)
 {
 	int ret = 0;
 	struct i2c_client *client = _gate_ic_i2c_client;
 	char write_data[2] = { 0 };
-
-	if (i2c_type == 0)
-		client = _gate_ic_i2c_client_0;
 
 	if (client == NULL) {
 		pr_info("ERROR!! _gate_ic_i2c_client is null\n");
@@ -233,12 +204,9 @@ int _gate_ic_i2c_write_bytes(unsigned char addr, unsigned char value,
 }
 EXPORT_SYMBOL_GPL(_gate_ic_i2c_write_bytes);
 
-void _i2c_Power_on(enum led_i2c_type i2c_type)
+void _gate_ic_Power_on(void)
 {
 	struct gate_ic_client *gate_client = i2c_get_clientdata(_gate_ic_i2c_client);
-
-	if (i2c_type == 0)
-		gate_client = i2c_get_clientdata(_gate_ic_i2c_client_0);
 
 	pr_info("%s+: status = (%d, %d)\n", __func__,
 		atomic_read(&gate_client->gate_ic_power_status),
@@ -258,16 +226,14 @@ void _i2c_Power_on(enum led_i2c_type i2c_type)
 		devm_gpiod_put(gate_client->dev, gate_client->pinctrl);
 
 		atomic_set(&gate_client->gate_ic_power_status, 1);
-		_gate_ic_backlight_enable(i2c_type);
+		_gate_ic_backlight_enable();
 	}
 }
+EXPORT_SYMBOL_GPL(_gate_ic_Power_on);
 
-void _i2c_Power_off(enum led_i2c_type i2c_type)
+void _gate_ic_Power_off(void)
 {
 	struct gate_ic_client *gate_client = i2c_get_clientdata(_gate_ic_i2c_client);
-
-	if (i2c_type == 0)
-		gate_client = i2c_get_clientdata(_gate_ic_i2c_client_0);
 
 	pr_info("%s+: status = (%d, %d)\n", __func__,
 		atomic_read(&gate_client->gate_ic_power_status),
@@ -290,19 +256,6 @@ void _i2c_Power_off(enum led_i2c_type i2c_type)
 		atomic_set(&gate_client->gate_ic_power_status, 0);
 	}
 }
-
-void _gate_ic_Power_on(void)
-{
-	_i2c_Power_on(LED_I2C_0);
-	_i2c_Power_on(LED_I2C_6);
-}
-EXPORT_SYMBOL_GPL(_gate_ic_Power_on);
-
-void _gate_ic_Power_off(void)
-{
-	_i2c_Power_on(LED_I2C_0);
-	_i2c_Power_on(LED_I2C_6);
-}
 EXPORT_SYMBOL_GPL(_gate_ic_Power_off);
 
 void _gate_ic_i2c_panel_bias_enable(unsigned int power_status)
@@ -310,19 +263,19 @@ void _gate_ic_i2c_panel_bias_enable(unsigned int power_status)
 	pr_info("%s+\n", __func__);
 
 	if (power_status) {
-		_gate_ic_i2c_write_bytes(DISPLAY_BIAS_CONFIGURATION_2, 0x11, LED_I2C_6);
-		_gate_ic_i2c_write_bytes(DISPLAY_BIAS_CONFIGURATION_3, 0x00, LED_I2C_6);
+		_gate_ic_i2c_write_bytes(DISPLAY_BIAS_CONFIGURATION_2, 0x11);
+		_gate_ic_i2c_write_bytes(DISPLAY_BIAS_CONFIGURATION_3, 0x00);
 		/* set bias to 5.4v */
-		_gate_ic_i2c_write_bytes(LCM_BIAS, 0x24, LED_I2C_6);
-		_gate_ic_i2c_write_bytes(VPOS_BIAS, 0x1c, LED_I2C_6);
-		_gate_ic_i2c_write_bytes(VNEG_BIAS, 0x1c, LED_I2C_6);
+		_gate_ic_i2c_write_bytes(LCM_BIAS, 0x24);
+		_gate_ic_i2c_write_bytes(VPOS_BIAS, 0x1c);
+		_gate_ic_i2c_write_bytes(VNEG_BIAS, 0x1c);
 		/* set dsv FPWM mode */
-		_gate_ic_i2c_write_bytes(0xF0, 0x69, LED_I2C_6);
-		_gate_ic_i2c_write_bytes(0xB1, 0x6c, LED_I2C_6);
+		_gate_ic_i2c_write_bytes(0xF0, 0x69);
+		_gate_ic_i2c_write_bytes(0xB1, 0x6c);
 		/* bias enable */
-		_gate_ic_i2c_write_bytes(DISPLAY_BIAS_CONFIGURATION_1, 0x9e, LED_I2C_6);
+		_gate_ic_i2c_write_bytes(DISPLAY_BIAS_CONFIGURATION_1, 0x9e);
 	} else {
-		_gate_ic_i2c_write_bytes(DISPLAY_BIAS_CONFIGURATION_1, 0x18, LED_I2C_6);
+		_gate_ic_i2c_write_bytes(DISPLAY_BIAS_CONFIGURATION_1, 0x18);
 	}
 }
 EXPORT_SYMBOL_GPL(_gate_ic_i2c_panel_bias_enable);
@@ -338,7 +291,6 @@ static int _gate_ic_i2c_probe(struct i2c_client *client,
 	struct device *dev = &client->dev;
 	int status;
 	int pwm_enable;
-	const struct of_device_id *match;
 
 	pr_info("%s+: client name=%s addr=0x%x\n",
 		__func__, client->name, client->addr);
@@ -359,23 +311,7 @@ static int _gate_ic_i2c_probe(struct i2c_client *client,
 	}
 	devm_gpiod_put(gate_client->dev, gate_client->pinctrl);
 	i2c_set_clientdata(client, gate_client);
-
-	match = of_match_device(_gate_ic_i2c_of_match, &client->dev);
-	if (!match) {
-		pr_info("leds gate no match found for compatible property\n");
-		return -ENOMEM;
-	}
-	pr_info("leds %s: compatible = %s\n", __func__, match->compatible);
-
-	if (match == &_gate_ic_i2c_of_match[0])
-		_gate_ic_i2c_client = client;
-	else if (match == &_gate_ic_i2c_of_match[1]) {
-		_gate_ic_i2c_client_0 = client;
-		i2c_double = 1;
-		pr_info("leds %s i2c_double = %d\n", __func__, i2c_double);
-	} else {
-		return -ENOMEM;
-	}
+	_gate_ic_i2c_client = client;
 	atomic_set(&gate_client->gate_ic_power_status, 1);
 	atomic_set(&gate_client->gate_ic_power_status, 1);
 
@@ -408,8 +344,6 @@ static void _gate_ic_i2c_remove(struct i2c_client *client)
 	kfree(gate_client);
 	gate_client = NULL;
 	_gate_ic_i2c_client = NULL;
-	_gate_ic_i2c_client_0 = NULL;
-	i2c_double = 0;
 	i2c_unregister_device(client);
 #ifdef LEDS_BRIGHTNESS_CHANGED
 	mtk_leds_unregister_notifier(&leds_init_notifier);
