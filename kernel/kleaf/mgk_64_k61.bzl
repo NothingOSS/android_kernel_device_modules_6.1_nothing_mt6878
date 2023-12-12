@@ -57,6 +57,7 @@ mgk_64_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtk_input/FT3518U:ft3518u",
     "//vendor/mediatek/kernel_modules/mtk_input/GT9886:gt9886",
     "//vendor/mediatek/kernel_modules/mtk_input/GT9916:gt9916",
+    "//vendor/mediatek/kernel_modules/mtk_input/GOODIX_TS_V1315:goodix_ts_v1315",
     "//vendor/mediatek/kernel_modules/mtk_input/NT36672C:nt36672c",
     "//vendor/mediatek/kernel_modules/mtk_input/ST61Y:st61y",
     "//vendor/mediatek/kernel_modules/mtk_input/fingerprint/goodix/5.10:gf_spi",
