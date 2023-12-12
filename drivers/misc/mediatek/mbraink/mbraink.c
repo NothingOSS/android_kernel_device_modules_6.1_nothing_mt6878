@@ -392,6 +392,7 @@ static long mbraink_ioctl(struct file *filp,
 		struct mbraink_process_memory_data process_memory_buffer;
 
 		pid_t pid = 1;
+		unsigned int current_cnt = 0;
 
 		if (copy_from_user(&process_memory_buffer,
 					(struct mbraink_process_memory_data *)arg,
@@ -407,8 +408,9 @@ static long mbraink_ioctl(struct file *filp,
 			return -EINVAL;
 		}
 		pid = process_memory_buffer.pid;
+		current_cnt = process_memory_buffer.current_cnt;
 
-		mbraink_get_process_memory_info(pid, &process_memory_buffer);
+		mbraink_get_process_memory_info(pid, current_cnt, &process_memory_buffer);
 
 		if (copy_to_user((struct mbraink_process_memory_data *)arg,
 					&process_memory_buffer,

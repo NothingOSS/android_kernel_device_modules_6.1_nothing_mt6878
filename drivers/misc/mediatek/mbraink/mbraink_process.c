@@ -90,26 +90,32 @@ static int unregister_trace_android_vh_do_exit(void *t, void *p)
 }
 #endif
 
-void mbraink_get_process_memory_info(pid_t current_pid,
+void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 				struct mbraink_process_memory_data *process_memory_buffer)
 {
 	struct task_struct *t = NULL;
 	unsigned short pid_count = 0;
+	unsigned int current_count = 0;
 
 	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
 	process_memory_buffer->pid = 0;
+	process_memory_buffer->current_cnt = cnt;
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
-		if (t->pid < current_pid)
-			continue;
-
 		if (t->mm) {
+			if (current_count < cnt) {
+				++current_count;
+				continue;
+			}
 			pid_count = process_memory_buffer->pid_count;
-			if (pid_count < MAX_STRUCT_SZ) {
-				process_memory_buffer->drv_data[pid_count] =
+			if (pid_count < MAX_MEM_LIST_SZ) {
+				process_memory_buffer->drv_data[pid_count].pid =
 							(unsigned short)(t->pid);
+				process_memory_buffer->drv_data[pid_count].rss =
+							get_mm_rss(t->mm);
 				process_memory_buffer->pid_count++;
+				process_memory_buffer->current_cnt++;
 			} else {
 				process_memory_buffer->pid = (unsigned short)(t->pid);
 				break;
@@ -118,6 +124,7 @@ void mbraink_get_process_memory_info(pid_t current_pid,
 			/*pr_info("kthread case ...\n");*/
 		}
 	}
+
 	read_unlock(&tasklist_lock);
 }
 
@@ -733,7 +740,7 @@ static void mbraink_trace_android_vh_binder_trans(void *data,
 					n = snprintf(netlink_buf,
 								NETLINK_EVENT_MESSAGE_SIZE, "%s ",
 								NETLINK_EVENT_SYSBINDER);
-					if(n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
+					if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
 						break;
 					pos += n;
 				}

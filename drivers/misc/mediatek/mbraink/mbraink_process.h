@@ -52,7 +52,7 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 void mbraink_processname_to_pid(unsigned short monitor_process_count,
 				const struct mbraink_monitor_processlist *processname_inputlist,
 				bool is_binder);
-void mbraink_get_process_memory_info(pid_t current_pid,
+void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 			struct mbraink_process_memory_data *process_memory_buffer);
 int mbraink_process_tracer_init(void);
 void mbraink_process_tracer_exit(void);
