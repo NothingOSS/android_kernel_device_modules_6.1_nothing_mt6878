@@ -1596,13 +1596,6 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		sb_backlight = level;
 
 	if (!(mtk_crtc->enabled)) {
-		/* If secondary display is OPENING status, store bl to DDIC current_bl */
-		if (priv && (priv->data->mmsys_id == MMSYS_MT6878) && (index == 3)) {
-			DDPMSG("%s crtc%d is opening, only store bl to DDIC current_bl\n",
-				__func__, index);
-			if (comp && comp->funcs && comp->funcs->io_cmd)
-				comp->funcs->io_cmd(comp, NULL, DSI_SET_BL, &level);
-		}
 		DDPMSG("%s Sleep State set backlight stop --crtc%d not enable\n", __func__, index);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
 		if (lock)

@@ -440,15 +440,6 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 		return 0;
 	}
 
-	if (!ctx->enabled) {
-		/* If CRTC is OPENING, only backup backlight level */
-		pr_info("Only backup backlight changed from %u to %u\n",
-			ctx->current_bl, level);
-		ctx->current_bl = level;
-		atomic_set(&current_backlight, level);
-		return 0;
-	}
-
 	if (!(ctx->current_bl && level))
 		pr_info("backlight changed from %u to %u\n", ctx->current_bl, level);
 	else
