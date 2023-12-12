@@ -5760,6 +5760,7 @@ static const struct mtk_mmsys_driver_data mt6878_mmsys_driver_data = {
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
 	.need_seg_id = true,
+	.need_rpo_ratio_for_mmclk = true,
 	.not_support_csc = true,
 	.pf_ts_type = IRQ_CMDQ_CB,
 };
@@ -7547,25 +7548,6 @@ static void mtk_drm_init_dummy_table(struct mtk_drm_private *priv)
 	}
 }
 
-static int mtk_drm_get_dts_params(struct drm_device *drm_dev)
-{
-	struct device *dev = drm_dev->dev;
-	struct mtk_drm_private *priv = drm_dev->dev_private;
-	int ret = -ENODEV;
-
-	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RPO) &&
-			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMDVFS_SUPPORT)) {
-		if (of_property_read_bool(dev->of_node, "need-rpo-ratio-for-mmclk")) {
-			priv->need_rpo_ratio_for_mmclk = true;
-			DDPMSG("%s:need rpo ratio for mmclk : %s\n", __func__,
-				priv->need_rpo_ratio_for_mmclk ? "true" : "false");
-			ret = 0;
-		}
-	}
-
-	return ret;
-}
-
 static int mtk_drm_init_emi_eff_table(struct drm_device *drm_dev)
 {
 	struct device *dev = drm_dev->dev;
@@ -7812,8 +7794,6 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 		(private->data->mmsys_id == MMSYS_MT6989) ||
 		(private->data->mmsys_id == MMSYS_MT6878))
 		mtk_drm_init_emi_eff_table(drm);
-
-	mtk_drm_get_dts_params(drm);
 
 	mtk_drm_first_enable(drm);
 

@@ -8730,7 +8730,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 		/* mmclk = (pixel_number / (OVL_ROI_width * layer_height)) * original disp mmclk */
 		/* pixel_number = (after_rsz_width + input_crop_width + OVL_BG_width) * */
 		/* (after_rsz_width + input_crop_height) */
-		if (priv && priv->need_rpo_ratio_for_mmclk &&
+		if (priv && priv->data->need_rpo_ratio_for_mmclk &&
 			mtk_crtc->rpo_params.need_rpo_en) {
 			int ratio = 0;
 			int hdisplay = 0;
