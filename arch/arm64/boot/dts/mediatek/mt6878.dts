@@ -4225,6 +4225,8 @@
 			mediatek,pwm4-bclk-sw-ctrl-offset = <6>;
 			/* 4. pwm version */
 			mediatek,pwm-version = <0x3>;
+			/* 5. pwm clk all on off */
+			mediatek,pwm-clk-all-on-off;
 
 			pwmsrcclk = <&pericfg_ao_clk>;
 		};
