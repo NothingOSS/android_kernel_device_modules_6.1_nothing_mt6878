@@ -4219,10 +4219,10 @@
 			/* 2. pwm bclk sw ctrl offset */
 			mediatek,pwm-bclk-sw-ctrl-offset = <4>;
 			/* 3. pwm_x bclk sw ctrl offset */
-			mediatek,pwm1-bclk-sw-ctrl-offset = <12>;
-			mediatek,pwm2-bclk-sw-ctrl-offset = <10>;
-			mediatek,pwm3-bclk-sw-ctrl-offset = <8>;
-			mediatek,pwm4-bclk-sw-ctrl-offset = <6>;
+			mediatek,pwm1-bclk-sw-ctrl-offset = <6>;
+			mediatek,pwm2-bclk-sw-ctrl-offset = <8>;
+			mediatek,pwm3-bclk-sw-ctrl-offset = <10>;
+			mediatek,pwm4-bclk-sw-ctrl-offset = <12>;
 			/* 4. pwm version */
 			mediatek,pwm-version = <0x3>;
 			/* 5. pwm clk all on off */
