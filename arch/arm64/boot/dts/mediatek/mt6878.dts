@@ -10459,6 +10459,10 @@
 		small-core = <1250000>;
 	};
 
+	usb_logger: usb-logger {
+		compatible = "mediatek,usb-logger";
+	};
+
 	low-battery-throttling {
 		compatible = "mediatek,low_battery_throttling";
 
