@@ -114,6 +114,7 @@ extern bool append_by_event;
 extern bool hw_trace_built_in[2];
 extern int cmdq_dump_buf_size;
 extern int error_irq_bug_on;
+extern int cmdq_proc_debug_off;
 
 #define CMDQ_REG_SHIFT_ADDR(addr) (((addr) + gce_mminfra) >> gce_shift_bit)
 #define CMDQ_REG_REVERT_ADDR(addr) (((addr) << gce_shift_bit) - gce_mminfra)

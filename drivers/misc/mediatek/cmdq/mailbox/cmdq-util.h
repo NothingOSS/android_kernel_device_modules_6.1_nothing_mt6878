@@ -220,6 +220,7 @@ void cmdq_util_dump_smi(void);
 u8 cmdq_util_track_ctrl(void *cmdq, phys_addr_t base, bool sec);
 void cmdq_util_set_first_err_mod(void *chan, const char *mod);
 const char *cmdq_util_get_first_err_mod(void *chan);
+int cmdq_proc_create(void);
 
 /* function support in platform */
 const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread);

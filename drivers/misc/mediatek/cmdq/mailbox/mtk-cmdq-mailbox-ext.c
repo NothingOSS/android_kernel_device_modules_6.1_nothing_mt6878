@@ -170,6 +170,10 @@ int error_irq_bug_on;
 EXPORT_SYMBOL(error_irq_bug_on);
 module_param(error_irq_bug_on, int, 0644);
 
+int cmdq_proc_debug_off;
+EXPORT_SYMBOL(cmdq_proc_debug_off);
+module_param(cmdq_proc_debug_off, int, 0644);
+
 struct cmdq_hw_trace_bit {
 	uint8_t enable : 1;
 	uint8_t dump : 1;
@@ -2794,8 +2798,14 @@ static int cmdq_probe(struct platform_device *pdev)
 	of_property_read_u32(dev->of_node, "cmdq-dump-buf-size", &cmdq_dump_buf_size);
 	of_property_read_u32(dev->of_node, "error-irq-bug-on", &error_irq_bug_on);
 	of_property_read_u32(dev->of_node, "cmdq-pwr-log", &cmdq_pwr_log);
+	of_property_read_u32(dev->of_node, "cmdq-proc-debug-off", &cmdq_proc_debug_off);
 
-	cmdq_msg("dump_buf_size %d error irq %d", cmdq_dump_buf_size, error_irq_bug_on);
+	cmdq_proc_create();
+
+	cmdq_msg("dump_buf_size %d error irq %d cmdq_proc_debug_off:%d",
+		cmdq_dump_buf_size,
+		error_irq_bug_on,
+		cmdq_proc_debug_off);
 
 	if (of_property_read_bool(dev->of_node, "gce-fast-mtcmos")) {
 		cmdq->fast_mtcmos = true;

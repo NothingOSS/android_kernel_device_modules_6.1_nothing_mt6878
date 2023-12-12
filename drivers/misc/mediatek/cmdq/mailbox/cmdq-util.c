@@ -6,6 +6,7 @@
 #include <linux/kernel.h>
 #include <linux/io.h>
 #include <linux/debugfs.h>
+#include <linux/proc_fs.h>
 #include <linux/dma-mapping.h>
 #include <linux/sched/clock.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
@@ -420,20 +421,18 @@ static int cmdq_util_record_open(struct inode *inode, struct file *file)
 	return single_open(file, cmdq_util_record_print, inode->i_private);
 }
 
-static const struct file_operations cmdq_util_status_fops = {
-	.owner = THIS_MODULE,
-	.open = cmdq_util_status_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
+static const struct proc_ops cmdq_util_status_fops = {
+	.proc_open = cmdq_util_status_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
 };
 
-static const struct file_operations cmdq_util_record_fops = {
-	.owner = THIS_MODULE,
-	.open = cmdq_util_record_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
+static const struct proc_ops cmdq_util_record_fops = {
+	.proc_open = cmdq_util_record_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
 };
 
 static int cmdq_util_log_feature_get(void *data, u64 *val)
@@ -958,6 +957,37 @@ const char *cmdq_util_get_first_err_mod(void *chan)
 }
 EXPORT_SYMBOL(cmdq_util_get_first_err_mod);
 
+int cmdq_proc_create(void)
+{
+	struct proc_dir_entry *debugDirEntry = NULL;
+	struct proc_dir_entry *entry = NULL;
+
+	if (!cmdq_proc_debug_off) {
+		debugDirEntry = proc_mkdir("mtk_cmdq_debug", NULL);
+		if (!debugDirEntry) {
+			cmdq_err("debugfs_create_dir cmdq failed");
+			return -EINVAL;
+		}
+
+		entry = proc_create("cmdq-status", 0444, debugDirEntry,
+			&cmdq_util_status_fops);
+		if (!entry) {
+			cmdq_err("proc_create_file cmdq-status failed");
+			return -ENOMEM;
+		}
+
+		entry = proc_create("cmdq-record", 0444, debugDirEntry,
+			&cmdq_util_record_fops);
+		if (!entry) {
+			cmdq_err("proc_create_file cmdq-record failed");
+			return -ENOMEM;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(cmdq_proc_create);
+
 int cmdq_util_init(void)
 {
 	struct dentry	*dir;
@@ -985,22 +1015,6 @@ int cmdq_util_init(void)
 		}
 	} else
 		exists = true;
-
-	util.fs.status = debugfs_create_file(
-		"cmdq-status", 0444, dir, &util, &cmdq_util_status_fops);
-	if (IS_ERR(util.fs.status)) {
-		cmdq_err("debugfs_create_file cmdq-status failed:%ld",
-			PTR_ERR(util.fs.status));
-		return PTR_ERR(util.fs.status);
-	}
-
-	util.fs.record = debugfs_create_file(
-		"cmdq-record", 0444, dir, &util, &cmdq_util_record_fops);
-	if (IS_ERR(util.fs.record)) {
-		cmdq_err("debugfs_create_file cmdq-record failed:%ld",
-			PTR_ERR(util.fs.record));
-		return PTR_ERR(util.fs.record);
-	}
 
 	util.fs.log_feature = debugfs_create_file("cmdq-log-feature",
 		0444, dir, &util, &cmdq_util_log_feature_fops);
