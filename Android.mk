@@ -73,6 +73,7 @@ $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=local
 else
 ifneq (,$(wildcard kernel/$(REL_ACK_DIR)/.git))
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=stamp --repo_manifest=$(abspath $(KERNEL_DIR)/fake_manifest.xml)
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_EXPORT_ENV += SOURCE_DATE_EPOCH=0
 endif
 endif
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
