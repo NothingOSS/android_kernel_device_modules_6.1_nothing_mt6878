@@ -1257,7 +1257,9 @@ int cmdq_core_print_status_seq(struct seq_file *m, void *v)
 		}
 
 		client = cmdq_clients[(u32)handle->thread];
+		cmdq_mbox_enable(client->chan);
 		cmdq_task_get_thread_irq(client->chan, &irq);
+		cmdq_mbox_disable(client->chan);
 
 		seq_printf(m,
 			"Scenario:%d Priority:%d Flag:0x%llx va end:0x%p IRQ:0x%x\n",
@@ -2512,7 +2514,9 @@ static void cmdq_core_parse_handle_error(const struct cmdqRecStruct *handle,
 
 	/* fill output parameter */
 	*moduleName = module ? module : "CMDQ";
+	cmdq_mbox_enable(client->chan);
 	cmdq_task_get_thread_irq(client->chan, flag);
+	cmdq_mbox_disable(client->chan);
 	if (pc_va)
 		*pc_va = cmdq_core_get_pc_va(curr_pc, handle);
 }
