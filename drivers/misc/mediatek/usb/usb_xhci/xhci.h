@@ -2308,6 +2308,11 @@ struct xhci_vendor_ops {
 				    int type, gfp_t flags);
 	void (*free_container_ctx)(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx);
 	bool (*is_streaming)(struct xhci_hcd *xhci);
+
+	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_RESERVE(2);
+	ANDROID_KABI_RESERVE(3);
+	ANDROID_KABI_RESERVE(4);
 };
 
 struct xhci_vendor_ops *xhci_vendor_get_ops_(struct xhci_hcd *xhci);
