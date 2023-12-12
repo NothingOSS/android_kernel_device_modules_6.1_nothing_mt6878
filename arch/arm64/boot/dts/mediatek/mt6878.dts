@@ -5018,7 +5018,7 @@
 			interrupts = <GIC_SPI 238 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 259 IRQ_TYPE_LEVEL_HIGH 0>; /* rxq1 irq: 163 259 291 */
 			mediatek,dpmaif-ver = <3>;
-			mediatek,dpmaif-cap = <0x0000000c>;
+			mediatek,dpmaif-cap = <0x00000004>;
 			mediatek,plat-info = <6878>;
 			clocks = <&infra_ao_reg_clk CLK_IFRAO_DPMAIF_MAIN>,
 				<&infra_ao_reg_clk CLK_IFRAO_CLDMA_BCLK>,
