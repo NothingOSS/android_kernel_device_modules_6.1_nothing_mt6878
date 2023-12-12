@@ -439,6 +439,7 @@ struct rdma_data {
 	u32 tile_width;
 	u32 sram_size;
 	u8 rb_swap;	/* version for rb channel swap behavior */
+	bool alpha_rsz_crop;
 	bool write_sec_reg;
 	bool tile_reset;
 
@@ -604,6 +605,7 @@ static const struct rdma_data mt6989_rdma_data = {
 	.tile_width = 3520,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.rb_swap = 1,
+	.alpha_rsz_crop = true,
 	.tile_reset = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -723,10 +725,29 @@ static inline struct mml_comp_rdma *comp_to_rdma(struct mml_comp *comp)
 	return container_of(comp, struct mml_comp_rdma, comp);
 }
 
-static s32 rdma_config_read(struct mml_comp *comp, struct mml_task *task,
-			    struct mml_comp_config *ccfg)
+static s32 rdma_prepare(struct mml_comp *comp, struct mml_task *task,
+			struct mml_comp_config *ccfg)
 {
+	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
+	struct mml_frame_config *cfg = task->config;
+
 	ccfg->data = kzalloc(sizeof(struct rdma_frame_data), GFP_KERNEL);
+	if (!ccfg->data)
+		return -ENOMEM;
+
+	/* align crop size and set to frame config */
+	if (rdma->data->alpha_rsz_crop && cfg->info.alpha) {
+		if (cfg->info.src.width & 1)
+			mml_err("[rdma] invalid alpha width %u", cfg->info.src.width);
+		if (cfg->info.dest_cnt == 1 ||
+		    !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
+			    sizeof(struct mml_crop))) {
+			u32 in_crop_w = cfg->frame_tile_sz.width;
+
+			in_crop_w += cfg->info.dest[0].crop.r.left & 1;
+			cfg->frame_tile_sz.width = round_up(in_crop_w, 2);
+		}
+	}
 	return 0;
 }
 
@@ -867,11 +888,17 @@ static s32 rdma_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->full_size_y_out = cfg->frame_tile_sz.height;
 
 	if (cfg->info.dest_cnt == 1 ||
-	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop, sizeof(struct mml_crop))) {
+	    !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
+		    sizeof(struct mml_crop))) {
 		struct mml_frame_dest *dest = &cfg->info.dest[0];
 		struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 
 		data->rdma.crop = dest->crop.r;
+		if (rdma->data->alpha_rsz_crop && cfg->info.alpha) {
+			data->rdma.crop.left &= ~1;
+			data->rdma.crop.width = cfg->frame_tile_sz.width;
+			func->out_const_x = 2;
+		}
 		rdma_frm->crop_off_l = data->rdma.crop.left;
 		rdma_frm->crop_off_t = data->rdma.crop.top;
 	} else {
@@ -2168,7 +2195,7 @@ static s32 rdma_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 }
 
 static const struct mml_comp_config_ops rdma_cfg_ops = {
-	.prepare = rdma_config_read,
+	.prepare = rdma_prepare,
 	.buf_map = rdma_buf_map,
 	.buf_prepare = rdma_buf_prepare,
 	.buf_unprepare = rdma_buf_unprepare,

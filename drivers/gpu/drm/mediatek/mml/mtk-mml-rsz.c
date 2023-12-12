@@ -98,6 +98,7 @@ struct rsz_data {
 	u8 px_per_tick;
 	bool aal_crop;
 	bool wrot_pending;
+	bool alpha_rsz_crop;
 };
 
 static const struct rsz_data mt6893_rsz_data = {
@@ -156,6 +157,7 @@ static const struct rsz_data mt6989_rsz_data = {
 	.px_per_tick = 2,
 	.aal_crop = true,
 	.wrot_pending = true,
+	.alpha_rsz_crop = true,
 };
 
 static const struct rsz_data mt6989_rsz2_data = {
@@ -164,6 +166,7 @@ static const struct rsz_data mt6989_rsz2_data = {
 	.px_per_tick = 2,
 	.aal_crop = true,
 	.wrot_pending = true,
+	.alpha_rsz_crop = true,
 };
 
 static const struct rsz_data mt6878_rsz_data = {
@@ -380,11 +383,14 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	if ((cfg->info.dest_cnt == 1 ||
 	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
-	     sizeof(struct mml_crop))) &&
+		     sizeof(struct mml_crop))) &&
 	    (crop->r.width != frame_in->width || crop->r.height != frame_in->height)) {
 		func->full_size_x_in = cfg->frame_tile_sz.width;
 		func->full_size_y_in = cfg->frame_tile_sz.height;
 		data->rsz.crop.r.left -= crop->r.left;
+		if (rsz->data->alpha_rsz_crop && cfg->info.alpha &&
+		    cfg->info.mode != MML_MODE_DIRECT_LINK)
+			data->rsz.crop.r.left += crop->r.left & 1;
 		data->rsz.crop.r.top -= crop->r.top;
 	} else {
 		func->full_size_x_in = frame_in->width;
