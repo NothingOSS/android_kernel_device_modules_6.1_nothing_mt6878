@@ -677,19 +677,194 @@ static void mt6681_set_hwgain(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_AFE_GAIN7_CON0_0, 0xa0);
 }
 #endif
+
+static void mt6681_set_sdm_fifo(struct mt6681_priv *priv, bool enable, bool force)
+{
+	if (enable) {
+		if (priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK) {
+			/* todo :HPSPK Setting */
+			dev_dbg(priv->dev, "%s(), HP_MUX_HPSPK\n", __func__);
+		}
+		if (priv->hp_hifi_mode && force == true) {
+			/*
+			 * Step 14:
+			 * DEM 544scm path setting
+			 * [0] 0: HIFI DAC using Scrambler
+			 * 1: HIFI DAC using Rotate PWM
+			 */
+			regmap_update_bits(
+				priv->regmap, MT6681_AFUNC_AUD_CON0_L,
+				ENABLE_PWM_MASK_SFT, 0x0 << ENABLE_PWM_SFT);
+			/*
+			 * Step 15:
+			 * DEM 544scm path setting
+			 * [6:4] 544scm fifo wptr
+			 * [3] 0: Disable scrambler PA
+			 * 1: Enable scrambler PA
+			 * [0] clk on
+			 */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON19_H,
+					   CCI_AUDIO_FIFO_WPTR_544_MASK_SFT,
+					   0x5 << CCI_AUDIO_FIFO_WPTR_544_SFT);
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON19_H,
+					   CCI_SCRAMBLER_CG_EN_544_MASK_SFT,
+					   0x0 << CCI_SCRAMBLER_CG_EN_544_SFT);
+			regmap_update_bits(
+				priv->regmap, MT6681_AFUNC_AUD_CON19_H,
+				CCI_SPLT_SCRMB_CLK_ON_544_MASK_SFT,
+				0x1 << CCI_SPLT_SCRMB_CLK_ON_544_SFT);
+			/*
+			 * Step 16:
+			 * DEM 544scm path setting
+			 * [7] scram on
+			 * [5] zero padding disable
+			 */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON19_L,
+					   CCI_SPLT_SCRMB_ON_544_MASK_SFT,
+					   0x1 << CCI_SPLT_SCRMB_ON_544_SFT);
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON19_L,
+					   CCI_ZERO_PAD_DISABLE_544_MASK_SFT,
+					   0x1 << CCI_ZERO_PAD_DISABLE_544_SFT);
+			/*
+			 * Step 17:
+			 * DEM 544scm path setting
+			 * [6:4] scrambler large/small/tiny enable
+			 * [0] 0: no round
+			 * 1: round
+			 */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON20_H,
+					   SCRAMBLER_EN_HIFI_544_MASK_SFT,
+					   0x7 << SCRAMBLER_EN_HIFI_544_SFT);
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON20_H,
+					   R_SPLITTER_TRUNC_RND_544_MASK_SFT,
+					   0x0 << R_SPLITTER_TRUNC_RND_544_SFT);
+			/*
+			 * Step 18:
+			 * DEM 544scm path setting
+			 * [6] 0: aud_dac_ana reset by global rstb
+			 * 1: aud_dac_ana reset by global rstb and
+			 * cci_acd_func_rstb
+			 * [3] 0: Disable
+			 * 1: Enable
+			 * [1] 0: Power down for 544 scrambler ana 6.5M
+			 * 1: Power on
+			 * [0] 0: Reset
+			 * 1: Released
+			 */
+			regmap_update_bits(
+				priv->regmap, MT6681_AFUNC_AUD_CON20_L,
+				CCI_AUD_DAC_ANA_RSTB_SEL_544_MASK_SFT,
+				0x1 << CCI_AUD_DAC_ANA_RSTB_SEL_544_SFT);
+			regmap_update_bits(
+				priv->regmap, MT6681_AFUNC_AUD_CON20_L,
+				CCI_AUDIO_FIFO_ENABLE_544_MASK_SFT,
+				0x1 << CCI_AUDIO_FIFO_ENABLE_544_SFT);
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON20_L,
+					   CCI_AFIFO_CLK_PWDB_544_MASK_SFT,
+					   0x1 << CCI_AFIFO_CLK_PWDB_544_SFT);
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON20_L,
+					   CCI_ACD_FUNC_RSTB_544_MASK_SFT,
+					   0x1 << CCI_ACD_FUNC_RSTB_544_SFT);
+		} else {
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON2_L,
+				     0x6);
+			/* scrambler clock on enable */
+			// regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_H,
+			// 0xcb);
+			/* scrambler clock on enable */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_L,
+				     0xa0);
+			/* scrambler enable */
+			// regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON2_H,
+			// 0x70);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON2_L,
+				     0xb);
+
+			/* 2ND DL sdm audio fifo clock power on */
+			// TFregmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L,0x40);
+
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L,
+				     0x42);
+			/* 2ND DL scrambler clock on enable */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H,
+				     0xd1);
+
+			/* 2ND DL scrambler clock on enable */
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON9_L,
+					   CCI_SPLT_SCRMB_ON_2ND_MASK_SFT,
+					   0x1 << CCI_SPLT_SCRMB_ON_2ND_SFT);
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON9_L,
+					   CCI_ZERO_PAD_DISABLE_2ND_MASK_SFT,
+					   0x1 << CCI_ZERO_PAD_DISABLE_2ND_SFT);
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFUNC_AUD_CON9_L,
+					   CCI_SCRAMBLER_EN_2ND_MASK_SFT,
+					   0x1 << CCI_SCRAMBLER_EN_2ND_SFT);
+			/* 2ND DL sdm power on2ND DL sdm power on */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_H,
+				     0x00);
+
+			// TF regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x43);
+
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L,
+				     0x4b);
+			/* restore hifi setting */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_H,
+				     0xd0);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_L,
+				     0x20);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_H,
+				     0x0);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_L,
+				     0x40);
+		}
+	} else {
+		if (priv->hp_hifi_mode && force == true) {
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_H, 0xd0);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_L, 0x20);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_H, 0x0);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_L, 0x40);
+		} else {
+			/* scrambler disable */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_L, 0x20);
+			/* scrambler clock on disable */
+			// regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_H, 0xca);
+			/* sdm audio fifo clock power off */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON2_L, 0x9);
+			/* 2ND DL scrambler disable */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_L, 0x20);
+			/* 2ND DL scrambler clock on disable */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H, 0xd8);
+			/* 2ND DL sdm power off */
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x40);
+			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_H, 0x00);
+		}
+	}
+}
+
 /* Digital Part */
-static void mt6681_set_dl_src(struct mt6681_priv *priv, bool enable)
+static void mt6681_set_dl_src(struct mt6681_priv *priv, bool enable, bool force)
 {
 	unsigned int rate;
 
-	dev_info(priv->dev, "%s() enable = %d\n", __func__, enable);
+	dev_info(priv->dev, "%s() enable = %d (%d)\n", __func__, enable, false);
 	if (priv->dl_rate[0] != 0)
 		rate = mt6681_dlsrc_rate_transform(priv->dl_rate[0]);
 	else
 		rate = MT6681_DLSRC_48000HZ;
 
 	if (enable) {
-		if (priv->hp_hifi_mode) {
+		if (priv->hp_hifi_mode && force == true) {
 			/* Step1: Choose DL FS and DL enable and DL gain enable */
 			regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0_H,
 					   AFE_DL_INPUT_MODE_CTL_MASK_SFT,
@@ -722,6 +897,15 @@ static void mt6681_set_dl_src(struct mt6681_priv *priv, bool enable)
 			regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0,
 					   AFE_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
 					   0x1 << AFE_DL_SRC_ON_TMP_CTL_PRE_SFT);
+		} else {
+#ifdef ALIGN_SWING
+			regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0,
+					   AFE_DL_GAIN_ON_CTL_PRE_MASK_SFT,
+					   0x0 << AFE_DL_GAIN_ON_CTL_PRE_SFT);
+#endif
+			regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0,
+					   AFE_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
+					   0x0 << AFE_DL_SRC_ON_TMP_CTL_PRE_SFT);
 		}
 		/* MTKAIFV4 */
 		if (priv->dl_rate[0] != 0)
@@ -747,7 +931,7 @@ static void mt6681_set_dl_src(struct mt6681_priv *priv, bool enable)
 				   MT6681_MTKAIFV4_RXIF_INPUT_MODE_MASK_SFT,
 				   rate << MT6681_MTKAIFV4_RXIF_INPUT_MODE_SFT);
 	} else {
-		if (priv->hp_hifi_mode) {
+		if (priv->hp_hifi_mode && force == true) {
 #ifdef ALIGN_SWING
 			regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0,
 					   AFE_DL_GAIN_ON_CTL_PRE_MASK_SFT,
@@ -763,11 +947,11 @@ static void mt6681_set_dl_src(struct mt6681_priv *priv, bool enable)
 		}
 	}
 }
-static void mt6681_set_2nd_dl_src(struct mt6681_priv *priv, bool enable)
+static void mt6681_set_2nd_dl_src(struct mt6681_priv *priv, bool enable, bool force)
 {
 	unsigned int rate;
 
-	dev_info(priv->dev, "%s() enable = %d\n", __func__, enable);
+	dev_info(priv->dev, "%s() enable = %d (%d)\n", __func__, enable, force);
 
 	if (priv->dl_rate[0] != 0)
 		rate = mt6681_dlsrc_rate_transform(priv->dl_rate[0]);
@@ -776,7 +960,7 @@ static void mt6681_set_2nd_dl_src(struct mt6681_priv *priv, bool enable)
 
 	/* 2ND DL */
 	if (enable) {
-		if (priv->hp_hifi_mode == 0) {
+		if (priv->hp_hifi_mode == 0 || force == true) {
 			/* Step1: Choose DL FS and DL enable and DL gain enable
 			 */
 			regmap_update_bits(
@@ -842,7 +1026,7 @@ static void mt6681_set_2nd_dl_src(struct mt6681_priv *priv, bool enable)
 				rate << MT6681_ADDA6_MTKAIFV4_RXIF_INPUT_MODE_SFT);
 		}
 	} else {
-		if (priv->hp_hifi_mode == 0) {
+		if (priv->hp_hifi_mode == 0 || force == true) {
 #ifdef ALIGN_SWING
 			regmap_update_bits(priv->regmap,
 					   MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
@@ -4904,6 +5088,73 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		if (priv->hp_hifi_mode) {
+			mt6681_set_sdm_fifo(priv, true, false);
+			mt6681_set_dl_src(priv, true, false);
+			mt6681_set_2nd_dl_src(priv, true, true);
+			/*
+			 * Step :
+			 * Disable Ch1/2 NLE
+			 * bit3: use ZCD mode
+			 * bit2: use LO mode
+			 * bit1: use HS mode
+			 * bit0: use HP mode
+			 */
+			regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+					   RG_ZCD_LO_HS_HP_SEL_MASK_SFT,
+					   0x0 << RG_ZCD_LO_HS_HP_SEL_SFT);
+			/* Step : Toggle class-H dynamic RGs */
+			regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+					   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
+					   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
+			/* Step : Select preview data source based from
+			 * 0: HPpath or
+			 * 1: HSLO path
+			 */
+			regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+					   RG_CLH_DYN_LOAD_MASK_SFT,
+					   0x1 << RG_CLH_DYN_LOAD_SFT);
+			/* Step : Set Lch Again MIN (for HS ZCD min=0, max=18)
+			 */
+			regmap_update_bits(
+					   priv->regmap,
+					   MT6681_AFE_HSLO_NLE_GAIN_ADJ_LCH_CFG0,
+					   RG_HSLO_NLE_AG_MAX_LCH_MASK_SFT,
+					   0x7 << RG_HSLO_NLE_AG_MAX_LCH_SFT);
+			regmap_update_bits(
+					   priv->regmap,
+					   MT6681_AFE_HSLO_NLE_GAIN_ADJ_RCH_CFG0,
+					   RG_HSLO_NLE_AG_MAX_RCH_MASK_SFT,
+					   0x7 << RG_HSLO_NLE_AG_MAX_RCH_SFT);
+			/*
+			 * Step :
+			 * [7] Set IL-charging path to single path in bypass
+			 * mode or
+			 * class-AB state
+			 * [6:0] Set PVDDref = 1.85V in bypass mode or class-AB
+			 * state
+			 */
+			regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xf8);
+			/*
+			 * Step :
+			 * Turn on class-H HSLO-path FIFO
+			 * If HP, turn on HP-path FIFO -> Set BYPASS to 0 and ON
+			 * to 1
+			 * If HSLO, turn off HP-path FIFO -> Set BYPASS to 1 and
+			 * ON to 0
+			 */
+			regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0,0xa);
+			regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0x3d);
+			/*
+			 * Step :
+			 * DACSW NVREG enable 2 feedforward paths in parallel
+			 * 0: Only 1 FF path (ULP)
+			 * 1: Enable 2 FF paths in parallel
+			 */
+			regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON65,
+					   RG_NVREG_DACSW_FF_PLUS_VAUDP18_MASK_SFT,
+					   0x0 << RG_NVREG_DACSW_FF_PLUS_VAUDP18_SFT);
+		}
 		/* 3:hwgain1/2 swap & bypass HWgain1/2 */
 		regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x31);
 		regmap_write(priv->regmap, MT6681_AFE_STF_CON1, 0x30);
@@ -5048,6 +5299,14 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON54,
 				   RG_AUDIBIASPWRDN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDIBIASPWRDN_VAUDP18_SFT);
+		if (priv->hp_hifi_mode) {
+			mt6681_set_dl_src(priv, false, false);
+			mt6681_set_2nd_dl_src(priv, false, true);
+			mt6681_set_sdm_fifo(priv, false, false);
+			regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_GAIN_ADJ_LCH_CFG0, 0x0);
+			regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_GAIN_ADJ_RCH_CFG0, 0x0);
+			regmap_write(priv->regmap, MT6681_AFE_CLH_HSLO_FIFO_CON0, 0xa);
+		}
 		break;
 	default:
 		break;
@@ -6983,175 +7242,10 @@ static int mt_sdm_fifo_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		if (priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK) {
-			/* todo :HPSPK Setting */
-			dev_dbg(priv->dev, "%s(), HP_MUX_HPSPK\n", __func__);
-		}
-		if (priv->hp_hifi_mode) {
-			/*
-			 * Step 14:
-			 * DEM 544scm path setting
-			 * [0] 0: HIFI DAC using Scrambler
-			 * 1: HIFI DAC using Rotate PWM
-			 */
-			regmap_update_bits(
-				priv->regmap, MT6681_AFUNC_AUD_CON0_L,
-				ENABLE_PWM_MASK_SFT, 0x0 << ENABLE_PWM_SFT);
-			/*
-			 * Step 15:
-			 * DEM 544scm path setting
-			 * [6:4] 544scm fifo wptr
-			 * [3] 0: Disable scrambler PA
-			 * 1: Enable scrambler PA
-			 * [0] clk on
-			 */
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON19_H,
-					   CCI_AUDIO_FIFO_WPTR_544_MASK_SFT,
-					   0x5 << CCI_AUDIO_FIFO_WPTR_544_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON19_H,
-					   CCI_SCRAMBLER_CG_EN_544_MASK_SFT,
-					   0x0 << CCI_SCRAMBLER_CG_EN_544_SFT);
-			regmap_update_bits(
-				priv->regmap, MT6681_AFUNC_AUD_CON19_H,
-				CCI_SPLT_SCRMB_CLK_ON_544_MASK_SFT,
-				0x1 << CCI_SPLT_SCRMB_CLK_ON_544_SFT);
-			/*
-			 * Step 16:
-			 * DEM 544scm path setting
-			 * [7] scram on
-			 * [5] zero padding disable
-			 */
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON19_L,
-					   CCI_SPLT_SCRMB_ON_544_MASK_SFT,
-					   0x1 << CCI_SPLT_SCRMB_ON_544_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON19_L,
-					   CCI_ZERO_PAD_DISABLE_544_MASK_SFT,
-					   0x1 << CCI_ZERO_PAD_DISABLE_544_SFT);
-			/*
-			 * Step 17:
-			 * DEM 544scm path setting
-			 * [6:4] scrambler large/small/tiny enable
-			 * [0] 0: no round
-			 * 1: round
-			 */
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON20_H,
-					   SCRAMBLER_EN_HIFI_544_MASK_SFT,
-					   0x7 << SCRAMBLER_EN_HIFI_544_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON20_H,
-					   R_SPLITTER_TRUNC_RND_544_MASK_SFT,
-					   0x0 << R_SPLITTER_TRUNC_RND_544_SFT);
-			/*
-			 * Step 18:
-			 * DEM 544scm path setting
-			 * [6] 0: aud_dac_ana reset by global rstb
-			 * 1: aud_dac_ana reset by global rstb and
-			 * cci_acd_func_rstb
-			 * [3] 0: Disable
-			 * 1: Enable
-			 * [1] 0: Power down for 544 scrambler ana 6.5M
-			 * 1: Power on
-			 * [0] 0: Reset
-			 * 1: Released
-			 */
-			regmap_update_bits(
-				priv->regmap, MT6681_AFUNC_AUD_CON20_L,
-				CCI_AUD_DAC_ANA_RSTB_SEL_544_MASK_SFT,
-				0x1 << CCI_AUD_DAC_ANA_RSTB_SEL_544_SFT);
-			regmap_update_bits(
-				priv->regmap, MT6681_AFUNC_AUD_CON20_L,
-				CCI_AUDIO_FIFO_ENABLE_544_MASK_SFT,
-				0x1 << CCI_AUDIO_FIFO_ENABLE_544_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON20_L,
-					   CCI_AFIFO_CLK_PWDB_544_MASK_SFT,
-					   0x1 << CCI_AFIFO_CLK_PWDB_544_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON20_L,
-					   CCI_ACD_FUNC_RSTB_544_MASK_SFT,
-					   0x1 << CCI_ACD_FUNC_RSTB_544_SFT);
-		} else {
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON2_L,
-				     0x6);
-			/* scrambler clock on enable */
-			// regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_H,
-			// 0xcb);
-			/* scrambler clock on enable */
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_L,
-				     0xa0);
-			/* scrambler enable */
-			// regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON2_H,
-			// 0x70);
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON2_L,
-				     0xb);
-
-			/* 2ND DL sdm audio fifo clock power on */
-			// TFregmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L,0x40);
-
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L,
-				     0x42);
-			/* 2ND DL scrambler clock on enable */
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H,
-				     0xd1);
-
-			/* 2ND DL scrambler clock on enable */
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON9_L,
-					   CCI_SPLT_SCRMB_ON_2ND_MASK_SFT,
-					   0x1 << CCI_SPLT_SCRMB_ON_2ND_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON9_L,
-					   CCI_ZERO_PAD_DISABLE_2ND_MASK_SFT,
-					   0x1 << CCI_ZERO_PAD_DISABLE_2ND_SFT);
-			regmap_update_bits(priv->regmap,
-					   MT6681_AFUNC_AUD_CON9_L,
-					   CCI_SCRAMBLER_EN_2ND_MASK_SFT,
-					   0x1 << CCI_SCRAMBLER_EN_2ND_SFT);
-			/* 2ND DL sdm power on2ND DL sdm power on */
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_H,
-				     0x00);
-
-			// TF regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x43);
-
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L,
-				     0x4b);
-			/* restore hifi setting */
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_H,
-				     0xd0);
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_L,
-				     0x20);
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_H,
-				     0x0);
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_L,
-				     0x40);
-		}
+		mt6681_set_sdm_fifo(priv, true, true);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		if (priv->hp_hifi_mode) {
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_H, 0xd0);
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_L, 0x20);
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_H, 0x0);
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_L, 0x40);
-		} else {
-			/* scrambler disable */
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_L, 0x20);
-			/* scrambler clock on disable */
-			// regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_H, 0xca);
-			/* sdm audio fifo clock power off */
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON2_L, 0x9);
-			/* 2ND DL scrambler disable */
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_L, 0x20);
-			/* 2ND DL scrambler clock on disable */
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON9_H, 0xd8);
-			/* 2ND DL sdm power off */
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_L, 0x40);
-			regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON11_H, 0x00);
-		}
+		mt6681_set_sdm_fifo(priv, false, true);
 		break;
 	default:
 		break;
@@ -12764,10 +12858,10 @@ static int mt_dl_src_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		mt6681_set_dl_src(priv, true);
+		mt6681_set_dl_src(priv, true, true);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		mt6681_set_dl_src(priv, false);
+		mt6681_set_dl_src(priv, false, true);
 		break;
 	default:
 		break;
@@ -12782,10 +12876,10 @@ static int mt_2nd_dl_src_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		mt6681_set_2nd_dl_src(priv, true);
+		mt6681_set_2nd_dl_src(priv, true, false);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		mt6681_set_2nd_dl_src(priv, false);
+		mt6681_set_2nd_dl_src(priv, false, false);
 		break;
 	default:
 		break;
@@ -14261,7 +14355,7 @@ static void start_trim_hardware(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_TOP_CKTST_CON0, 0xc);
 	mt6681_set_playback_gpio(priv);
 	mt6681_set_dcxo(priv, true);
-	mt6681_set_dl_src(priv, true);
+	mt6681_set_dl_src(priv, true, true);
 
 	/* Step 1: Top Specific digital Write Protection Key */
 	/* Step 2: Top Specific digital Write Protection Key_H */
@@ -15825,7 +15919,7 @@ static void stop_trim_hardware(struct mt6681_priv *priv)
 	/* Step 202: Enable CLKSQ. (0): off, (1): on. */
 	mt6681_set_clksq(priv, false);
 
-	mt6681_set_dl_src(priv, false);
+	mt6681_set_dl_src(priv, false, true);
 
 	/* XO_AUDIO_EN_M Disable */
 	mt6681_set_dcxo(priv, false);
