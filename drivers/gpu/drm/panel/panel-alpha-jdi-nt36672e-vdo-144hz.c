@@ -20,6 +20,7 @@
 
 #include <linux/module.h>
 #include <linux/of_platform.h>
+#include <linux/of_graph.h>
 #include <linux/platform_device.h>
 
 #define CONFIG_MTK_PANEL_EXT
@@ -27,6 +28,10 @@
 #include "../mediatek/mediatek_v2/mtk_panel_ext.h"
 #include "../mediatek/mediatek_v2/mtk_drm_graphics_base.h"
 #endif
+
+#include "../../../misc/mediatek/gate_ic/gate_i2c.h"
+#include "../mediatek/mediatek_v2/mtk_corner_pattern/panel-alpha-jdi-nt36672e-vdo-120hz.h"
+
 /* enable this to check panel self -bist pattern */
 /* #define PANEL_BIST_PATTERN */
 /****************TPS65132***********/
@@ -36,14 +41,81 @@
 
 static char bl_tb0[] = { 0x51, 0xff };
 
+/*LCM_DEGREE default value*/
+#define PROBE_FROM_DTS 0
+
 //TO DO: You have to do that remove macro BYPASSI2C and solve build error
 //otherwise voltage will be unstable
 #define BYPASSI2C
+
+#define FHD_FRAME_WIDTH    (1080)
+#define FHD_HFP            (106)
+#define FHD_HSA            (12)
+#define FHD_HBP            (64)
+#define FHD_HTOTAL         (FHD_FRAME_WIDTH + FHD_HFP + FHD_HSA + FHD_HBP)
+#define FHD_FRAME_HEIGHT   (2400)
+#define FHD_VFP_144        (56)
+#define FHD_VFP_90         (1540)
+#define FHD_VFP_60         (3500)
+#define FHD_VSA            (10)
+#define FHD_VBP            (10)
+#define FHD_VTOTAL_144     (FHD_FRAME_HEIGHT + FHD_VFP_144 + FHD_VSA + FHD_VBP)
+#define FHD_VTOTAL_90      (FHD_FRAME_HEIGHT + FHD_VFP_90 + FHD_VSA + FHD_VBP)
+#define FHD_VTOTAL_60      (FHD_FRAME_HEIGHT + FHD_VFP_60 + FHD_VSA + FHD_VBP)
+#define FHD_FRAME_TOTAL_144 (FHD_VTOTAL_144 * FHD_HTOTAL)
+#define FHD_FRAME_TOTAL_90  (FHD_VTOTAL_90 * FHD_HTOTAL)
+#define FHD_FRAME_TOTAL_60  (FHD_VTOTAL_60 * FHD_HTOTAL)
+#define FHD_VREFRESH_144   (144)
+#define FHD_VREFRESH_90    (90)
+#define FHD_VREFRESH_60    (60)
+#define FHD_CLK_144_X10    ((FHD_FRAME_TOTAL_144 * FHD_VREFRESH_144) / 100)
+#define FHD_CLK_90_X10     ((FHD_FRAME_TOTAL_90 * FHD_VREFRESH_90) / 100)
+#define FHD_CLK_60_X10     ((FHD_FRAME_TOTAL_60 * FHD_VREFRESH_60) / 100)
+#define FHD_CLK_144		   (((FHD_CLK_144_X10 % 10) != 0) ?             \
+			(FHD_CLK_144_X10 / 10 + 1) : (FHD_CLK_144_X10 / 10))
+#define FHD_CLK_90		   (((FHD_CLK_90_X10 % 10) != 0) ?             \
+				(FHD_CLK_90_X10 / 10 + 1) : (FHD_CLK_90_X10 / 10))
+#define FHD_CLK_60		   (((FHD_CLK_60_X10 % 10) != 0) ?             \
+				(FHD_CLK_60_X10 / 10 + 1) : (FHD_CLK_60_X10 / 10))
+
+#define HD_FRAME_WIDTH    (720)
+#define HD_HFP            (106)
+#define HD_HSA            (12)
+#define HD_HBP            (64)
+#define HD_HTOTAL         (HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP)
+#define HD_FRAME_HEIGHT   (1600)
+#define HD_VFP_144        (56)
+#define HD_VFP_90         (1540)
+#define HD_VFP_60         (3500)
+#define HD_VSA            (10)
+#define HD_VBP            (10)
+#define HD_VTOTAL_144     (HD_FRAME_HEIGHT + HD_VFP_144 + HD_VSA + HD_VBP)
+#define HD_VTOTAL_90      (HD_FRAME_HEIGHT + HD_VFP_90 + HD_VSA + HD_VBP)
+#define HD_VTOTAL_60      (HD_FRAME_HEIGHT + HD_VFP_60 + HD_VSA + HD_VBP)
+#define HD_FRAME_TOTAL_144 (HD_VTOTAL_144 * HD_HTOTAL)
+#define HD_FRAME_TOTAL_90  (HD_VTOTAL_90 * HD_HTOTAL)
+#define HD_FRAME_TOTAL_60  (HD_VTOTAL_60 * HD_HTOTAL)
+#define HD_VREFRESH_144   (144)
+#define HD_VREFRESH_90    (90)
+#define HD_VREFRESH_60    (60)
+#define HD_CLK_144_X10    ((HD_FRAME_TOTAL_144 * HD_VREFRESH_144) / 100)
+#define HD_CLK_90_X10     ((HD_FRAME_TOTAL_90 * HD_VREFRESH_90) / 100)
+#define HD_CLK_60_X10     ((HD_FRAME_TOTAL_60 * HD_VREFRESH_60) / 100)
+#define HD_CLK_144		   (((HD_CLK_144_X10 % 10) != 0) ?             \
+			(HD_CLK_144_X10 / 10 + 1) : (HD_CLK_144_X10 / 10))
+#define HD_CLK_90		   (((HD_CLK_90_X10 % 10) != 0) ?             \
+				(HD_CLK_90_X10 / 10 + 1) : (HD_CLK_90_X10 / 10))
+#define HD_CLK_60		   (((HD_CLK_60_X10 % 10) != 0) ?             \
+				(HD_CLK_60_X10 / 10 + 1) : (HD_CLK_60_X10 / 10))
+#define PLL_CLK 683
+static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_NO_USE;
+static int current_fps = 144;
 
 #ifndef BYPASSI2C
 /* i2c control start */
 #define LCM_I2C_ID_NAME "I2C_LCD_BIAS"
 static struct i2c_client *_lcm_i2c_client;
+
 
 /*****************************************************************************
  * Function Prototype
@@ -150,6 +222,8 @@ module_exit(_lcm_i2c_exit);
 /***********************************/
 #endif
 
+static int fake_mode;
+
 struct jdi {
 	struct device *dev;
 	struct drm_panel panel;
@@ -159,6 +233,9 @@ struct jdi {
 	struct gpio_desc *bias_neg;
 	bool prepared;
 	bool enabled;
+
+	unsigned int gate_ic;
+	unsigned int lcm_degree;
 
 	int error;
 };
@@ -258,23 +335,26 @@ static void jdi_panel_init(struct jdi *ctx)
 	jdi_dcs_write_seq_static(ctx, 0XC2, 0X1B, 0XA0);
 	jdi_dcs_write_seq_static(ctx, 0XE9, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0XFF, 0X20);
+
 	//REGR 0XFE,0X20
 	jdi_dcs_write_seq_static(ctx, 0XFB, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0X01, 0X66);
 	jdi_dcs_write_seq_static(ctx, 0X06, 0X40);
 	jdi_dcs_write_seq_static(ctx, 0X07, 0X38);
-	jdi_dcs_write_seq_static(ctx, 0X18, 0X77);
+	jdi_dcs_write_seq_static(ctx, 0X18, 0X66);
+	jdi_dcs_write_seq_static(ctx, 0X1B, 0X01);
+	jdi_dcs_write_seq_static(ctx, 0X2F, 0X83);
 	jdi_dcs_write_seq_static(ctx, 0X69, 0X91);
 	jdi_dcs_write_seq_static(ctx, 0X95, 0XD1);
 	jdi_dcs_write_seq_static(ctx, 0X96, 0XD1);
 	jdi_dcs_write_seq_static(ctx, 0XF2, 0X65);
-	jdi_dcs_write_seq_static(ctx, 0XF3, 0X74);
+	jdi_dcs_write_seq_static(ctx, 0XF3, 0X64);
 	jdi_dcs_write_seq_static(ctx, 0XF4, 0X65);
-	jdi_dcs_write_seq_static(ctx, 0XF5, 0X74);
+	jdi_dcs_write_seq_static(ctx, 0XF5, 0X64);
 	jdi_dcs_write_seq_static(ctx, 0XF6, 0X65);
-	jdi_dcs_write_seq_static(ctx, 0XF7, 0X74);
+	jdi_dcs_write_seq_static(ctx, 0XF7, 0X64);
 	jdi_dcs_write_seq_static(ctx, 0XF8, 0X65);
-	jdi_dcs_write_seq_static(ctx, 0XF9, 0X74);
+	jdi_dcs_write_seq_static(ctx, 0XF9, 0X64);
 
 	jdi_dcs_write_seq_static(ctx, 0x89, 0x15);//VCOM
 	jdi_dcs_write_seq_static(ctx, 0x8A, 0x15);//VCOM
@@ -283,6 +363,68 @@ static void jdi_panel_init(struct jdi *ctx)
 	jdi_dcs_write_seq_static(ctx, 0x8F, 0x15);//VCOM
 	jdi_dcs_write_seq_static(ctx, 0x91, 0x15);//VCOM
 
+	jdi_dcs_write_seq_static(ctx, 0XFF, 0X23);
+	jdi_dcs_write_seq_static(ctx, 0XFB, 0X01);
+	jdi_dcs_write_seq_static(ctx, 0X00, 0X80);
+	jdi_dcs_write_seq_static(ctx, 0x04, 0x05);
+	jdi_dcs_write_seq_static(ctx, 0x05, 0x2d);
+	jdi_dcs_write_seq_static(ctx, 0x06, 0x01);
+	jdi_dcs_write_seq_static(ctx, 0x07, 0x00);
+	jdi_dcs_write_seq_static(ctx, 0x08, 0x01);
+	jdi_dcs_write_seq_static(ctx, 0x09, 0x00);
+	jdi_dcs_write_seq_static(ctx, 0x11, 0x01);
+	jdi_dcs_write_seq_static(ctx, 0x12, 0x95);
+	jdi_dcs_write_seq_static(ctx, 0x15, 0x68);
+	jdi_dcs_write_seq_static(ctx, 0x16, 0x0B);
+	jdi_dcs_write_seq_static(ctx, 0xA0, 0x00);
+	jdi_dcs_write_seq_static(ctx, 0x30, 0xFF);
+	jdi_dcs_write_seq_static(ctx, 0x31, 0xF0);
+	jdi_dcs_write_seq_static(ctx, 0x32, 0xEB);
+	jdi_dcs_write_seq_static(ctx, 0x33, 0xE5);
+	jdi_dcs_write_seq_static(ctx, 0x34, 0xDD);
+	jdi_dcs_write_seq_static(ctx, 0x35, 0xDA);
+	jdi_dcs_write_seq_static(ctx, 0x36, 0xD5);
+	jdi_dcs_write_seq_static(ctx, 0x37, 0xD0);
+	jdi_dcs_write_seq_static(ctx, 0x38, 0xCE);
+	jdi_dcs_write_seq_static(ctx, 0x39, 0xCD);
+	jdi_dcs_write_seq_static(ctx, 0x3A, 0xCD);
+	jdi_dcs_write_seq_static(ctx, 0x3B, 0xCD);
+	jdi_dcs_write_seq_static(ctx, 0x3D, 0xCB);
+	jdi_dcs_write_seq_static(ctx, 0x3F, 0xCB);
+	jdi_dcs_write_seq_static(ctx, 0x40, 0xC6);
+	jdi_dcs_write_seq_static(ctx, 0x41, 0xBF);
+	jdi_dcs_write_seq_static(ctx, 0x45, 0xFF);
+	jdi_dcs_write_seq_static(ctx, 0x46, 0xF0);
+	jdi_dcs_write_seq_static(ctx, 0x47, 0xE8);
+	jdi_dcs_write_seq_static(ctx, 0x48, 0xCE);
+	jdi_dcs_write_seq_static(ctx, 0x49, 0xBC);
+	jdi_dcs_write_seq_static(ctx, 0x4A, 0xB8);
+	jdi_dcs_write_seq_static(ctx, 0x4B, 0xB5);
+	jdi_dcs_write_seq_static(ctx, 0x4C, 0xB0);
+	jdi_dcs_write_seq_static(ctx, 0x4D, 0xA8);
+	jdi_dcs_write_seq_static(ctx, 0x4E, 0xA0);
+	jdi_dcs_write_seq_static(ctx, 0x4F, 0x9B);
+	jdi_dcs_write_seq_static(ctx, 0x50, 0x98);
+	jdi_dcs_write_seq_static(ctx, 0x51, 0x98);
+	jdi_dcs_write_seq_static(ctx, 0x52, 0x88);
+	jdi_dcs_write_seq_static(ctx, 0x53, 0x80);
+	jdi_dcs_write_seq_static(ctx, 0x54, 0x7F);
+	jdi_dcs_write_seq_static(ctx, 0x58, 0xFF);
+	jdi_dcs_write_seq_static(ctx, 0x59, 0xF6);
+	jdi_dcs_write_seq_static(ctx, 0x5A, 0xED);
+	jdi_dcs_write_seq_static(ctx, 0x5B, 0xE6);
+	jdi_dcs_write_seq_static(ctx, 0x5C, 0xDF);
+	jdi_dcs_write_seq_static(ctx, 0x5D, 0xD8);
+	jdi_dcs_write_seq_static(ctx, 0x5E, 0xD3);
+	jdi_dcs_write_seq_static(ctx, 0x5F, 0xCE);
+	jdi_dcs_write_seq_static(ctx, 0x60, 0xC9);
+	jdi_dcs_write_seq_static(ctx, 0x61, 0xC4);
+	jdi_dcs_write_seq_static(ctx, 0x62, 0xC1);
+	jdi_dcs_write_seq_static(ctx, 0x63, 0xBE);
+	jdi_dcs_write_seq_static(ctx, 0x64, 0xBB);
+	jdi_dcs_write_seq_static(ctx, 0x65, 0xB8);
+	jdi_dcs_write_seq_static(ctx, 0x66, 0xB6);
+	jdi_dcs_write_seq_static(ctx, 0x67, 0xB5);
 	jdi_dcs_write_seq_static(ctx, 0XFF, 0X24);
 	//REGR 0XFE,0X24
 	jdi_dcs_write_seq_static(ctx, 0XFB, 0X01);
@@ -315,14 +457,15 @@ static void jdi_panel_init(struct jdi *ctx)
 	jdi_dcs_write_seq_static(ctx, 0X34, 0X10);
 	jdi_dcs_write_seq_static(ctx, 0X35, 0X1F);
 	jdi_dcs_write_seq_static(ctx, 0X36, 0X1F);
-	jdi_dcs_write_seq_static(ctx, 0X4D, 0X1B);
-	jdi_dcs_write_seq_static(ctx, 0X4E, 0X4B);
-	jdi_dcs_write_seq_static(ctx, 0X4F, 0X4B);
-	jdi_dcs_write_seq_static(ctx, 0X53, 0X4B);
+	jdi_dcs_write_seq_static(ctx, 0X37, 0X20);
+	jdi_dcs_write_seq_static(ctx, 0X4D, 0X19);
+	jdi_dcs_write_seq_static(ctx, 0X4E, 0X45);
+	jdi_dcs_write_seq_static(ctx, 0X4F, 0X45);
+	jdi_dcs_write_seq_static(ctx, 0X53, 0X45);
 	jdi_dcs_write_seq_static(ctx, 0X71, 0X30);
 	jdi_dcs_write_seq_static(ctx, 0X79, 0X11);
 	jdi_dcs_write_seq_static(ctx, 0X7A, 0X82);
-	jdi_dcs_write_seq_static(ctx, 0X7B, 0X96);
+	jdi_dcs_write_seq_static(ctx, 0X7B, 0X94);
 	jdi_dcs_write_seq_static(ctx, 0X7D, 0X04);
 	jdi_dcs_write_seq_static(ctx, 0X80, 0X04);
 	jdi_dcs_write_seq_static(ctx, 0X81, 0X04);
@@ -338,8 +481,8 @@ static void jdi_panel_init(struct jdi *ctx)
 	jdi_dcs_write_seq_static(ctx, 0X95, 0X00);
 	jdi_dcs_write_seq_static(ctx, 0X9C, 0XF4);
 	jdi_dcs_write_seq_static(ctx, 0X9D, 0X01);
-	jdi_dcs_write_seq_static(ctx, 0XA0, 0X16);
-	jdi_dcs_write_seq_static(ctx, 0XA2, 0X16);
+	jdi_dcs_write_seq_static(ctx, 0XA0, 0X14);
+	jdi_dcs_write_seq_static(ctx, 0XA2, 0X14);
 	jdi_dcs_write_seq_static(ctx, 0XA3, 0X02);
 	jdi_dcs_write_seq_static(ctx, 0XA4, 0X04);
 	jdi_dcs_write_seq_static(ctx, 0XA5, 0X04);
@@ -364,7 +507,7 @@ static void jdi_panel_init(struct jdi *ctx)
 	jdi_dcs_write_seq_static(ctx, 0X73, 0X4A);
 	jdi_dcs_write_seq_static(ctx, 0X74, 0XD0);
 	jdi_dcs_write_seq_static(ctx, 0X77, 0X62);
-	jdi_dcs_write_seq_static(ctx, 0X79, 0X81);
+	jdi_dcs_write_seq_static(ctx, 0X79, 0X7F);
 	jdi_dcs_write_seq_static(ctx, 0X7D, 0X40);
 	jdi_dcs_write_seq_static(ctx, 0X7E, 0X1D);
 	jdi_dcs_write_seq_static(ctx, 0X7F, 0X00);
@@ -381,11 +524,12 @@ static void jdi_panel_init(struct jdi *ctx)
 	jdi_dcs_write_seq_static(ctx, 0XFB, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0X15, 0X04);
 	jdi_dcs_write_seq_static(ctx, 0X81, 0X16);
-	jdi_dcs_write_seq_static(ctx, 0X83, 0X03);
+	jdi_dcs_write_seq_static(ctx, 0X83, 0X02);
 	jdi_dcs_write_seq_static(ctx, 0X84, 0X03);
 	jdi_dcs_write_seq_static(ctx, 0X85, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0X86, 0X03);
 	jdi_dcs_write_seq_static(ctx, 0X87, 0X01);
+	jdi_dcs_write_seq_static(ctx, 0X88, 0X00);
 	jdi_dcs_write_seq_static(ctx, 0X8A, 0X1A);
 	jdi_dcs_write_seq_static(ctx, 0X8B, 0X11);
 	jdi_dcs_write_seq_static(ctx, 0X8C, 0X24);
@@ -404,9 +548,9 @@ static void jdi_panel_init(struct jdi *ctx)
 	jdi_dcs_write_seq_static(ctx, 0XFB, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0X01, 0X60);
 	jdi_dcs_write_seq_static(ctx, 0X20, 0X81);
-	jdi_dcs_write_seq_static(ctx, 0X21, 0XEA);
+	jdi_dcs_write_seq_static(ctx, 0X21, 0XE7);
 	jdi_dcs_write_seq_static(ctx, 0X25, 0X82);
-	jdi_dcs_write_seq_static(ctx, 0X26, 0X3F);
+	jdi_dcs_write_seq_static(ctx, 0X26, 0X1F);
 	jdi_dcs_write_seq_static(ctx, 0X6E, 0X00);
 	jdi_dcs_write_seq_static(ctx, 0X6F, 0X00);
 	jdi_dcs_write_seq_static(ctx, 0X70, 0X00);
@@ -427,111 +571,106 @@ static void jdi_panel_init(struct jdi *ctx)
 	jdi_dcs_write_seq_static(ctx, 0XA7, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0XB6, 0X40);
 	jdi_dcs_write_seq_static(ctx, 0XE3, 0X02);
-	jdi_dcs_write_seq_static(ctx, 0XE4, 0XE0);
+	jdi_dcs_write_seq_static(ctx, 0XE4, 0XDA);
 	jdi_dcs_write_seq_static(ctx, 0XE5, 0X01);
-	jdi_dcs_write_seq_static(ctx, 0XE6, 0X33);
+	jdi_dcs_write_seq_static(ctx, 0XE6, 0X6D);
 	jdi_dcs_write_seq_static(ctx, 0XE9, 0X03);
-	jdi_dcs_write_seq_static(ctx, 0XEA, 0X5E);
+	jdi_dcs_write_seq_static(ctx, 0XEA, 0X2F);
 	jdi_dcs_write_seq_static(ctx, 0XEB, 0X01);
-	jdi_dcs_write_seq_static(ctx, 0XEC, 0X67);
+	jdi_dcs_write_seq_static(ctx, 0XEC, 0X98);
 
 	jdi_dcs_write_seq_static(ctx, 0XFF, 0X2A);
 	//REGR 0XFE,0X2A
 	jdi_dcs_write_seq_static(ctx, 0XFB, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0X00, 0X91);
 	jdi_dcs_write_seq_static(ctx, 0X03, 0X20);
-	jdi_dcs_write_seq_static(ctx, 0X04, 0X73);
-	jdi_dcs_write_seq_static(ctx, 0X07, 0X64);
-	jdi_dcs_write_seq_static(ctx, 0X0A, 0X60);
-	jdi_dcs_write_seq_static(ctx, 0X0C, 0X06);
+	jdi_dcs_write_seq_static(ctx, 0X07, 0X52);
+	jdi_dcs_write_seq_static(ctx, 0X0A, 0X70);
 	jdi_dcs_write_seq_static(ctx, 0X0D, 0X40);
 	jdi_dcs_write_seq_static(ctx, 0X0E, 0X02);
-	jdi_dcs_write_seq_static(ctx, 0X0F, 0X01);
-	jdi_dcs_write_seq_static(ctx, 0X11, 0X58);
+	jdi_dcs_write_seq_static(ctx, 0X11, 0XF0);
 	jdi_dcs_write_seq_static(ctx, 0X15, 0X0E);
-	jdi_dcs_write_seq_static(ctx, 0X16, 0X79);
-	jdi_dcs_write_seq_static(ctx, 0X19, 0X0D);
-	jdi_dcs_write_seq_static(ctx, 0X1A, 0XF2);
+	jdi_dcs_write_seq_static(ctx, 0X16, 0XB6);
+	jdi_dcs_write_seq_static(ctx, 0X19, 0X0E);
+	jdi_dcs_write_seq_static(ctx, 0X1A, 0X8A);
 	jdi_dcs_write_seq_static(ctx, 0X1B, 0X14);
 	jdi_dcs_write_seq_static(ctx, 0X1D, 0X36);
-	jdi_dcs_write_seq_static(ctx, 0X1E, 0X55);
-	jdi_dcs_write_seq_static(ctx, 0X1F, 0X55);
-	jdi_dcs_write_seq_static(ctx, 0X20, 0X55);
-	jdi_dcs_write_seq_static(ctx, 0X28, 0X0A);
-	jdi_dcs_write_seq_static(ctx, 0X29, 0X0B);
-	jdi_dcs_write_seq_static(ctx, 0X2A, 0X4B);
-	jdi_dcs_write_seq_static(ctx, 0X2B, 0X05);
-	jdi_dcs_write_seq_static(ctx, 0X2D, 0X08);
-	jdi_dcs_write_seq_static(ctx, 0X2F, 0X01);
-	jdi_dcs_write_seq_static(ctx, 0X30, 0X47);
-	jdi_dcs_write_seq_static(ctx, 0X31, 0X23);
-	jdi_dcs_write_seq_static(ctx, 0X33, 0X25);
-	jdi_dcs_write_seq_static(ctx, 0X34, 0XFF);
-	jdi_dcs_write_seq_static(ctx, 0X35, 0X2C);
-	jdi_dcs_write_seq_static(ctx, 0X36, 0X75);
-	jdi_dcs_write_seq_static(ctx, 0X37, 0XFB);
-	jdi_dcs_write_seq_static(ctx, 0X38, 0X2E);
-	jdi_dcs_write_seq_static(ctx, 0X39, 0X73);
-	jdi_dcs_write_seq_static(ctx, 0X3A, 0X47);
+	jdi_dcs_write_seq_static(ctx, 0X1E, 0X4F);
+	jdi_dcs_write_seq_static(ctx, 0X1F, 0X4F);
+	jdi_dcs_write_seq_static(ctx, 0X20, 0X4F);
+	jdi_dcs_write_seq_static(ctx, 0X28, 0XEC);
+	jdi_dcs_write_seq_static(ctx, 0X29, 0X0C);
+	jdi_dcs_write_seq_static(ctx, 0X2A, 0X05);
+	jdi_dcs_write_seq_static(ctx, 0X2D, 0X06);
+	jdi_dcs_write_seq_static(ctx, 0X2F, 0X02);
+	jdi_dcs_write_seq_static(ctx, 0X30, 0X4A);
+	jdi_dcs_write_seq_static(ctx, 0X33, 0X0E);
+	jdi_dcs_write_seq_static(ctx, 0X34, 0XEE);
+	jdi_dcs_write_seq_static(ctx, 0X35, 0X30);
+	jdi_dcs_write_seq_static(ctx, 0X36, 0X06);
+	jdi_dcs_write_seq_static(ctx, 0X37, 0XE9);
+	jdi_dcs_write_seq_static(ctx, 0X38, 0X34);
+	jdi_dcs_write_seq_static(ctx, 0X39, 0X02);
+	jdi_dcs_write_seq_static(ctx, 0X3A, 0X4A);
 	jdi_dcs_write_seq_static(ctx, 0X46, 0X40);
 	jdi_dcs_write_seq_static(ctx, 0X47, 0X02);
 	jdi_dcs_write_seq_static(ctx, 0X4A, 0XF0);
 	jdi_dcs_write_seq_static(ctx, 0X4E, 0X0E);
-	jdi_dcs_write_seq_static(ctx, 0X4F, 0X8B);
+	jdi_dcs_write_seq_static(ctx, 0X4F, 0X9B);
 	jdi_dcs_write_seq_static(ctx, 0X52, 0X0E);
-	jdi_dcs_write_seq_static(ctx, 0X53, 0X04);
+	jdi_dcs_write_seq_static(ctx, 0X53, 0X6F);
 	jdi_dcs_write_seq_static(ctx, 0X54, 0X14);
 	jdi_dcs_write_seq_static(ctx, 0X56, 0X36);
-	jdi_dcs_write_seq_static(ctx, 0X57, 0X80);
-	jdi_dcs_write_seq_static(ctx, 0X58, 0X80);
-	jdi_dcs_write_seq_static(ctx, 0X59, 0X80);
+	jdi_dcs_write_seq_static(ctx, 0X57, 0X7E);
+	jdi_dcs_write_seq_static(ctx, 0X58, 0X7E);
+	jdi_dcs_write_seq_static(ctx, 0X59, 0X7E);
 	jdi_dcs_write_seq_static(ctx, 0X60, 0X80);
-	jdi_dcs_write_seq_static(ctx, 0X61, 0X0A);
+	jdi_dcs_write_seq_static(ctx, 0X61, 0XC7);
 	jdi_dcs_write_seq_static(ctx, 0X62, 0X03);
-	jdi_dcs_write_seq_static(ctx, 0X63, 0XED);
+	jdi_dcs_write_seq_static(ctx, 0X63, 0XF3);
+	jdi_dcs_write_seq_static(ctx, 0X64, 0X03);
 	jdi_dcs_write_seq_static(ctx, 0X65, 0X05);
 	jdi_dcs_write_seq_static(ctx, 0X66, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0X67, 0X04);
-	jdi_dcs_write_seq_static(ctx, 0X68, 0X4D);
-	jdi_dcs_write_seq_static(ctx, 0X6A, 0X0A);
+	jdi_dcs_write_seq_static(ctx, 0X68, 0X8A);
+	jdi_dcs_write_seq_static(ctx, 0X6A, 0X0F);
 	jdi_dcs_write_seq_static(ctx, 0X6B, 0XC9);
-	jdi_dcs_write_seq_static(ctx, 0X6C, 0X1F);
+	jdi_dcs_write_seq_static(ctx, 0X6C, 0X20);
 	jdi_dcs_write_seq_static(ctx, 0X6D, 0XE3);
 	jdi_dcs_write_seq_static(ctx, 0X6E, 0XC6);
-	jdi_dcs_write_seq_static(ctx, 0X6F, 0X20);
-	jdi_dcs_write_seq_static(ctx, 0X70, 0XE2);
+	jdi_dcs_write_seq_static(ctx, 0X6F, 0X22);
+	jdi_dcs_write_seq_static(ctx, 0X70, 0XE1);
 	jdi_dcs_write_seq_static(ctx, 0X71, 0X04);
-	jdi_dcs_write_seq_static(ctx, 0X7A, 0X04);
+	jdi_dcs_write_seq_static(ctx, 0X7A, 0X07);
 	jdi_dcs_write_seq_static(ctx, 0X7B, 0X40);
-	jdi_dcs_write_seq_static(ctx, 0X7C, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0X7D, 0X01);
-	jdi_dcs_write_seq_static(ctx, 0X7F, 0XE0);
+	jdi_dcs_write_seq_static(ctx, 0X7F, 0X2C);
 	jdi_dcs_write_seq_static(ctx, 0X83, 0X0F);
-	jdi_dcs_write_seq_static(ctx, 0X84, 0XC5);
-	jdi_dcs_write_seq_static(ctx, 0X87, 0X0F);
-	jdi_dcs_write_seq_static(ctx, 0X88, 0X42);
+	jdi_dcs_write_seq_static(ctx, 0X84, 0X12);
+	jdi_dcs_write_seq_static(ctx, 0X87, 0X0E);
+	jdi_dcs_write_seq_static(ctx, 0X88, 0XE6);
 	jdi_dcs_write_seq_static(ctx, 0X89, 0X14);
 	jdi_dcs_write_seq_static(ctx, 0X8B, 0X36);
-	jdi_dcs_write_seq_static(ctx, 0X8C, 0X33);
-	jdi_dcs_write_seq_static(ctx, 0X8D, 0X33);
-	jdi_dcs_write_seq_static(ctx, 0X8E, 0X33);
+	jdi_dcs_write_seq_static(ctx, 0X8C, 0X3A);
+	jdi_dcs_write_seq_static(ctx, 0X8D, 0X3C);
+	jdi_dcs_write_seq_static(ctx, 0X8E, 0X3A);
 	jdi_dcs_write_seq_static(ctx, 0X95, 0X80);
 	jdi_dcs_write_seq_static(ctx, 0X96, 0XFD);
-	jdi_dcs_write_seq_static(ctx, 0X97, 0X19);
-	jdi_dcs_write_seq_static(ctx, 0X98, 0X4A);
-	jdi_dcs_write_seq_static(ctx, 0X99, 0X07);
-	jdi_dcs_write_seq_static(ctx, 0X9A, 0X0B);
-	jdi_dcs_write_seq_static(ctx, 0X9B, 0X03);
-	jdi_dcs_write_seq_static(ctx, 0X9C, 0X8B);
-	jdi_dcs_write_seq_static(ctx, 0X9D, 0XFF);
-	jdi_dcs_write_seq_static(ctx, 0X9F, 0X8B);
+	jdi_dcs_write_seq_static(ctx, 0X97, 0X14);
+	jdi_dcs_write_seq_static(ctx, 0X98, 0X32);
+	jdi_dcs_write_seq_static(ctx, 0X99, 0X01);
+	jdi_dcs_write_seq_static(ctx, 0X9A, 0X08);
+	jdi_dcs_write_seq_static(ctx, 0X9B, 0X02);
+	jdi_dcs_write_seq_static(ctx, 0X9C, 0X4C);
+	jdi_dcs_write_seq_static(ctx, 0X9D, 0XB1);
+	jdi_dcs_write_seq_static(ctx, 0X9F, 0X75);
 	jdi_dcs_write_seq_static(ctx, 0XA0, 0XFF);
-	jdi_dcs_write_seq_static(ctx, 0XA2, 0X4E);
-	jdi_dcs_write_seq_static(ctx, 0XA3, 0X01);
-	jdi_dcs_write_seq_static(ctx, 0XA4, 0XF8);
-	jdi_dcs_write_seq_static(ctx, 0XA5, 0X52);
-	jdi_dcs_write_seq_static(ctx, 0XA6, 0XFD);
-	jdi_dcs_write_seq_static(ctx, 0XA7, 0X4B);
+	jdi_dcs_write_seq_static(ctx, 0XA2, 0X42);
+	jdi_dcs_write_seq_static(ctx, 0XA3, 0X6F);
+	jdi_dcs_write_seq_static(ctx, 0XA4, 0XF9);
+	jdi_dcs_write_seq_static(ctx, 0XA5, 0X47);
+	jdi_dcs_write_seq_static(ctx, 0XA6, 0X6A);
+	jdi_dcs_write_seq_static(ctx, 0XA7, 0X4C);
 
 	jdi_dcs_write_seq_static(ctx, 0XFF, 0X2C);
 	//REGR 0XFE,0X2C
@@ -551,22 +690,23 @@ static void jdi_panel_init(struct jdi *ctx)
 	jdi_dcs_write_seq_static(ctx, 0X2A, 0X03);
 	jdi_dcs_write_seq_static(ctx, 0X4D, 0X16);
 	jdi_dcs_write_seq_static(ctx, 0X4E, 0X03);
+	jdi_dcs_write_seq_static(ctx, 0X4F, 0X2E);
 	jdi_dcs_write_seq_static(ctx, 0X53, 0X02);
 	jdi_dcs_write_seq_static(ctx, 0X54, 0X02);
 	jdi_dcs_write_seq_static(ctx, 0X55, 0X02);
-	jdi_dcs_write_seq_static(ctx, 0X56, 0X0B);
-	jdi_dcs_write_seq_static(ctx, 0X58, 0X0B);
-	jdi_dcs_write_seq_static(ctx, 0X59, 0X0B);
-	jdi_dcs_write_seq_static(ctx, 0X61, 0X19);
-	jdi_dcs_write_seq_static(ctx, 0X62, 0X19);
-	jdi_dcs_write_seq_static(ctx, 0X6A, 0X10);
-	jdi_dcs_write_seq_static(ctx, 0X6B, 0X2A);
-	jdi_dcs_write_seq_static(ctx, 0X6C, 0X2A);
-	jdi_dcs_write_seq_static(ctx, 0X6D, 0X2A);
+	jdi_dcs_write_seq_static(ctx, 0X56, 0X0E);
+	jdi_dcs_write_seq_static(ctx, 0X58, 0X0E);
+	jdi_dcs_write_seq_static(ctx, 0X59, 0X0E);
+	jdi_dcs_write_seq_static(ctx, 0X61, 0X1F);
+	jdi_dcs_write_seq_static(ctx, 0X62, 0X1F);
+	jdi_dcs_write_seq_static(ctx, 0X6A, 0X14);
+	jdi_dcs_write_seq_static(ctx, 0X6B, 0X34);
+	jdi_dcs_write_seq_static(ctx, 0X6C, 0X34);
+	jdi_dcs_write_seq_static(ctx, 0X6D, 0X34);
 	jdi_dcs_write_seq_static(ctx, 0X7E, 0X03);
-	jdi_dcs_write_seq_static(ctx, 0X9D, 0X0B);
-	jdi_dcs_write_seq_static(ctx, 0X9E, 0X04);
-
+	jdi_dcs_write_seq_static(ctx, 0X9D, 0X0F);
+	jdi_dcs_write_seq_static(ctx, 0X9E, 0X03);
+	jdi_dcs_write_seq_static(ctx, 0X9F, 0X00);
 
 	jdi_dcs_write_seq_static(ctx, 0XFF, 0X20);
 	jdi_dcs_write_seq_static(ctx, 0XFB, 0X01);
@@ -621,6 +761,11 @@ static void jdi_panel_init(struct jdi *ctx)
 		0x1B, 0x03, 0x41, 0x03, 0x54, 0x03, 0x66);
 	jdi_dcs_write_seq_static(ctx, 0XBB, 0x03, 0x6E, 0x03, 0x82, 0x03, 0x98, 0x03, 0xAC, 0x03,
 		0xD0, 0x03, 0xD8, 0x00, 0x00);
+	jdi_dcs_write_seq_static(ctx, 0XFF, 0X2B);
+	jdi_dcs_write_seq_static(ctx, 0XFB, 0X01);
+	jdi_dcs_write_seq_static(ctx, 0XB7, 0X06);
+	jdi_dcs_write_seq_static(ctx, 0XB8, 0X03);
+	jdi_dcs_write_seq_static(ctx, 0XC0, 0X03);
 
 	jdi_dcs_write_seq_static(ctx, 0XFF, 0XE0);
 	//REGR 0XFE,0XE0
@@ -631,7 +776,8 @@ static void jdi_panel_init(struct jdi *ctx)
 	//REGR 0XFE,0XF0
 	jdi_dcs_write_seq_static(ctx, 0XFB, 0X01);
 	jdi_dcs_write_seq_static(ctx, 0X5A, 0X00);
-	jdi_dcs_write_seq_static(ctx, 0X9F, 0X12);
+	jdi_dcs_write_seq_static(ctx, 0X1C, 0X01);
+	jdi_dcs_write_seq_static(ctx, 0X33, 0X01);
 
 	jdi_dcs_write_seq_static(ctx, 0XFF, 0XD0);
 	//REGR 0XFE,0XD0
@@ -686,26 +832,31 @@ static int jdi_unprepare(struct drm_panel *panel)
 	if (!ctx->prepared)
 		return 0;
 
-	jdi_dcs_write_seq_static(ctx, MIPI_DCS_ENTER_SLEEP_MODE);
 	jdi_dcs_write_seq_static(ctx, MIPI_DCS_SET_DISPLAY_OFF);
-	msleep(200);
-	/*
-	 * ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
-	 * gpiod_set_value(ctx->reset_gpio, 0);
-	 * devm_gpiod_put(ctx->dev, ctx->reset_gpio);
-	 */
-	ctx->bias_neg =
-		devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
-	gpiod_set_value(ctx->bias_neg, 0);
-	devm_gpiod_put(ctx->dev, ctx->bias_neg);
+	msleep(50);
+	jdi_dcs_write_seq_static(ctx, MIPI_DCS_ENTER_SLEEP_MODE);
+	msleep(150);
 
-	usleep_range(2000, 2001);
+	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
+	gpiod_set_value(ctx->reset_gpio, 0);
+	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
-	ctx->bias_pos =
-		devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
-	gpiod_set_value(ctx->bias_pos, 0);
-	devm_gpiod_put(ctx->dev, ctx->bias_pos);
+	if (ctx->gate_ic == 0) {
+		ctx->bias_neg =
+			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_neg, 0);
+		devm_gpiod_put(ctx->dev, ctx->bias_neg);
 
+		usleep_range(2000, 2001);
+
+		ctx->bias_pos =
+			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_pos, 0);
+		devm_gpiod_put(ctx->dev, ctx->bias_pos);
+	} else if (ctx->gate_ic == 4831) {
+		_gate_ic_i2c_panel_bias_enable(0);
+		_gate_ic_Power_off();
+	}
 	ctx->error = 0;
 	ctx->prepared = false;
 
@@ -730,16 +881,21 @@ static int jdi_prepare(struct drm_panel *panel)
 	gpiod_set_value(ctx->reset_gpio, 1);
 	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 	// end
-	ctx->bias_pos =
-		devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
-	gpiod_set_value(ctx->bias_pos, 1);
-	devm_gpiod_put(ctx->dev, ctx->bias_pos);
+	if (ctx->gate_ic == 0) {
+		ctx->bias_pos =
+			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_pos, 1);
+		devm_gpiod_put(ctx->dev, ctx->bias_pos);
 
-	usleep_range(2000, 2001);
-	ctx->bias_neg =
-		devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
-	gpiod_set_value(ctx->bias_neg, 1);
-	devm_gpiod_put(ctx->dev, ctx->bias_neg);
+		usleep_range(2000, 2001);
+		ctx->bias_neg =
+			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_neg, 1);
+		devm_gpiod_put(ctx->dev, ctx->bias_neg);
+	} else if (ctx->gate_ic == 4831) {
+		_gate_ic_Power_on();
+		_gate_ic_i2c_panel_bias_enable(1);
+	}
 #ifndef BYPASSI2C
 	_lcm_i2c_write_bytes(0x0, 0xf);
 	_lcm_i2c_write_bytes(0x1, 0xf);
@@ -782,50 +938,124 @@ static int jdi_enable(struct drm_panel *panel)
 }
 
 static const struct drm_display_mode default_mode = {
-	.clock = 444787,
+	.clock = FHD_CLK_60,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 76,//HFP
-	.hsync_end = 1080 + 76 + 12,//HSA
-	.htotal = 1080 + 76 + 12 + 80,//HBP
+	.hsync_start = 1080 + FHD_HFP,//HFP
+	.hsync_end = 1080 + FHD_HFP + FHD_HSA,//HSA
+	.htotal = 1080 + FHD_HFP + FHD_HSA + FHD_HBP,//HBP
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 3520,//VFP
-	.vsync_end = 2400 + 3520 + 10,//VSA
-	.vtotal = 2400 + 3520 + 10 + 10,//VBP
+	.vsync_start = 2400 + FHD_VFP_60,//VFP
+	.vsync_end = 2400 + FHD_VFP_60 + FHD_VSA,//VSA
+	.vtotal = 2400 + FHD_VFP_60 + FHD_VSA + FHD_VBP,//VBP
 };
 
 static const struct drm_display_mode performance_mode_90hz = {
-	.clock = 444787,
+	.clock = FHD_CLK_90,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 76,//HFP
-	.hsync_end = 1080 + 76 + 12,//HSA
-	.htotal = 1080 + 76 + 12 + 80,//HBP
+	.hsync_start = 1080 + FHD_HFP,//HFP
+	.hsync_end = 1080 + FHD_HFP + FHD_HSA,//HSA
+	.htotal = 1080 + FHD_HFP + FHD_HSA + FHD_HBP,//HBP
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 1540,//VFP
-	.vsync_end = 2400 + 1540 + 10,//VSA
-	.vtotal = 2400 + 1540 + 10 + 10,//VBP
+	.vsync_start = 2400 + FHD_VFP_90,//VFP
+	.vsync_end = 2400 + FHD_VFP_90 + FHD_VSA,//VSA
+	.vtotal = 2400 + FHD_VFP_90 + FHD_VSA + FHD_VBP,//VBP
 };
 
 static const struct drm_display_mode performance_mode_144hz = {
-	.clock = 444607,
+	.clock = FHD_CLK_144,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 76,//HFP
-	.hsync_end = 1080 + 76 + 12,//HSA
-	.htotal = 1080 + 76 + 12 + 80,//HBP
+	.hsync_start = 1080 + FHD_HFP,//HFP
+	.hsync_end = 1080 + FHD_HFP + FHD_HSA,//HSA
+	.htotal = 1080 + FHD_HFP + FHD_HSA + FHD_HBP,//HBP
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 54,//VFP
-	.vsync_end = 2400 + 54 + 10,//VSA
-	.vtotal = 2400 + 54 + 10 + 10,//VBP
+	.vsync_start = 2400 + FHD_VFP_144,//VFP
+	.vsync_end = 2400 + FHD_VFP_144 + FHD_VSA,//VSA
+	.vtotal = 2400 + FHD_VFP_144 + FHD_VSA + FHD_VBP,//VBP
+};
+
+static const struct drm_display_mode hd_mode_60 = {
+	.clock = HD_CLK_60,
+	.hdisplay = HD_FRAME_WIDTH,
+	.hsync_start = HD_FRAME_WIDTH + HD_HFP,
+	.hsync_end = HD_FRAME_WIDTH + HD_HFP + HD_HSA,
+	.htotal = HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP,
+	.vdisplay = HD_FRAME_HEIGHT,
+	.vsync_start = HD_FRAME_HEIGHT + HD_VFP_60,
+	.vsync_end = HD_FRAME_HEIGHT + HD_VFP_60 + HD_VSA,
+	.vtotal = HD_FRAME_HEIGHT + HD_VFP_60 + HD_VSA + HD_VBP,
+};
+
+static const struct drm_display_mode hd_mode_90 = {
+	.clock = HD_CLK_90,
+	.hdisplay = HD_FRAME_WIDTH,
+	.hsync_start = HD_FRAME_WIDTH + HD_HFP,
+	.hsync_end = HD_FRAME_WIDTH + HD_HFP + HD_HSA,
+	.htotal = HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP,
+	.vdisplay = HD_FRAME_HEIGHT,
+	.vsync_start = HD_FRAME_HEIGHT + HD_VFP_90,
+	.vsync_end = HD_FRAME_HEIGHT + HD_VFP_90 + HD_VSA,
+	.vtotal = HD_FRAME_HEIGHT + HD_VFP_90 + HD_VSA + HD_VBP,
+};
+
+static const struct drm_display_mode hd_mode_144 = {
+	.clock = HD_CLK_144,
+	.hdisplay = HD_FRAME_WIDTH,
+	.hsync_start = HD_FRAME_WIDTH + HD_HFP,
+	.hsync_end = HD_FRAME_WIDTH + HD_HFP + HD_HSA,
+	.htotal = HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP,
+	.vdisplay = HD_FRAME_HEIGHT,
+	.vsync_start = HD_FRAME_HEIGHT + HD_VFP_144,
+	.vsync_end = HD_FRAME_HEIGHT + HD_VFP_144 + HD_VSA,
+	.vtotal = HD_FRAME_HEIGHT + HD_VFP_144 + HD_VSA + HD_VBP,
+};
+
+static const struct drm_display_mode performance_mode_30hz = {
+	.clock = 80280,
+	.hdisplay = 1080,
+	.hsync_start = 1080 + FHD_HFP,//HFP
+	.hsync_end = 1080 + FHD_HFP + FHD_HSA,//HSA
+	.htotal = 1080 + FHD_HFP + FHD_HSA + FHD_HBP,//HBP
+	.vdisplay = 2400,
+	.vsync_start = 2400 + 2510,//VFP
+	.vsync_end = 2400 + 2510 + FHD_VSA,//VSA
+	.vtotal = 2400 + 2510 + FHD_VSA + FHD_VBP,//VBP
+};
+
+static const struct drm_display_mode performance_mode_24hz = {
+	.clock = 32104,
+	.hdisplay = 1080,
+	.hsync_start = 1080 + FHD_HFP,//HFP
+	.hsync_end = 1080 + FHD_HFP + FHD_HSA,//HSA
+	.htotal = 1080 + FHD_HFP + FHD_HSA + FHD_HBP,//HBP
+	.vdisplay = 2400,
+	.vsync_start = 2400 + 48,//VFP
+	.vsync_end = 2400 + 48 + FHD_VSA,//VSA
+	.vtotal = 2400 + 48 + FHD_VSA + FHD_VBP,//VBP
+};
+
+static const struct drm_display_mode performance_mode_10hz = {
+	.clock = 26760,
+	.hdisplay = 1080,
+	.hsync_start = 1080 + FHD_HFP,//HFP
+	.hsync_end = 1080 + FHD_HFP + FHD_HSA,//HSA
+	.htotal = 1080 + FHD_HFP + FHD_HSA + FHD_HBP,//HBP
+	.vdisplay = 2400,
+	.vsync_start = 2400 + 2510,//VFP
+	.vsync_end = 2400 + 2510 + FHD_VSA,//VSA
+	.vtotal = 2400 + 2510 + FHD_VSA + FHD_VBP,//VBP
 };
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params = {
-	.pll_clk = 674,
-	.vfp_low_power = 5500,
-	.cust_esd_check = 0,
+	.pll_clk = PLL_CLK,
+	.vfp_low_power = 4150,
+	.cust_esd_check = 1,
 	.esd_check_enable = 1,
+	.lcm_degree = PROBE_FROM_DTS,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
 	},
+	.ssc_enable = 1,
 	.lane_swap_en = 1,
 	.lane_swap[0][MIPITX_PHY_LANE_0] = MIPITX_PHY_LANE_0,
 	.lane_swap[0][MIPITX_PHY_LANE_1] = MIPITX_PHY_LANE_1,
@@ -840,6 +1070,7 @@ static struct mtk_panel_params ext_params = {
 	.lane_swap[1][MIPITX_PHY_LANE_CK] = MIPITX_PHY_LANE_CK,
 	.lane_swap[1][MIPITX_PHY_LANE_RX] = MIPITX_PHY_LANE_0,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
+	.dsc_param_load_mode = 0, //0: default flow; 1: key param only; 2: full control
 	.dsc_params = {
 		.enable = 1,
 		.ver = 17,
@@ -875,12 +1106,12 @@ static struct mtk_panel_params ext_params = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 		},
-	.data_rate = 1348,
+	.data_rate = PLL_CLK*2,
 	.lfr_enable = 0,
 	.lfr_minimum_fps = 60,
 	.dyn_fps = {
 		.switch_en = 0,
-		.vact_timing_fps = 120,
+		.vact_timing_fps = 144,
 		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x25} },
 		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
 		.dfps_cmd_table[2] = {0, 2, {0x18, 0x21} },
@@ -890,22 +1121,28 @@ static struct mtk_panel_params ext_params = {
 	},
 	/* following MIPI hopping parameter might cause screen mess */
 	.dyn = {
-		.switch_en = 0,
-		.pll_clk = 428,
-		.vfp_lp_dyn = 4178,
-		.hfp = 396,
-		.vfp = 2528,
+		.switch_en = 1,
+		.pll_clk = PLL_CLK+5,
+		.vfp_lp_dyn = 4200,
+		.hfp = 106,
+		.vfp = 3540,
 	},
+	.round_corner_en = 0,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_tp_size = sizeof(nt36672e_vdo_120hz_top_pattern),
+	.corner_pattern_lt_addr = (void *)nt36672e_vdo_120hz_top_pattern,
 };
 
 static struct mtk_panel_params ext_params_90hz = {
-	.pll_clk = 674,
-	.vfp_low_power = 3520,
-	.cust_esd_check = 0,
+	.pll_clk = PLL_CLK,
+	.vfp_low_power = 2510,
+	.cust_esd_check = 1,
 	.esd_check_enable = 1,
+	.lcm_degree = PROBE_FROM_DTS,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
 	},
+	.ssc_enable = 1,
 	.lane_swap_en = 1,
 	.lane_swap[0][MIPITX_PHY_LANE_0] = MIPITX_PHY_LANE_0,
 	.lane_swap[0][MIPITX_PHY_LANE_1] = MIPITX_PHY_LANE_1,
@@ -920,6 +1157,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.lane_swap[1][MIPITX_PHY_LANE_CK] = MIPITX_PHY_LANE_CK,
 	.lane_swap[1][MIPITX_PHY_LANE_RX] = MIPITX_PHY_LANE_0,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
+	.dsc_param_load_mode = 0, //0: default flow; 1: key param only; 2: full control
 	.dsc_params = {
 		.enable = 1,
 		.ver = 17,
@@ -933,7 +1171,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		.bit_per_pixel = 128,
 		.pic_height = 2400,
 		.pic_width = 1080,
-		.slice_height = 8,
+		.slice_height = 8,//20
 		.slice_width = 540,
 		.chunk_size = 540,
 		.xmit_delay = 170,
@@ -955,12 +1193,12 @@ static struct mtk_panel_params ext_params_90hz = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 		},
-	.data_rate = 1348,
+	.data_rate = PLL_CLK*2,
 	.lfr_enable = 0,
 	.lfr_minimum_fps = 60,
 	.dyn_fps = {
 		.switch_en = 0,
-		.vact_timing_fps = 120,
+		.vact_timing_fps = 144,
 		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x25} },
 		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
 		.dfps_cmd_table[2] = {0, 2, {0x18, 0x20} },
@@ -970,22 +1208,28 @@ static struct mtk_panel_params ext_params_90hz = {
 	},
 	/* following MIPI hopping parameter might cause screen mess */
 	.dyn = {
-		.switch_en = 0,
-		.pll_clk = 428,
-		.vfp_lp_dyn = 2528,
-		.hfp = 396,
-		.vfp = 879,
+		.switch_en = 1,
+		.pll_clk = PLL_CLK+5,
+		.vfp_lp_dyn = 2550,
+		.hfp = 106,
+		.vfp = 1565,
 	},
+	.round_corner_en = 0,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_tp_size = sizeof(nt36672e_vdo_120hz_top_pattern),
+	.corner_pattern_lt_addr = (void *)nt36672e_vdo_120hz_top_pattern,
 };
 
 static struct mtk_panel_params ext_params_144hz = {
-	.pll_clk = 674,
-	.vfp_low_power = 3520,
-	.cust_esd_check = 0,
+	.pll_clk = PLL_CLK,
+	.vfp_low_power = 2510,
+	.cust_esd_check = 1,
 	.esd_check_enable = 1,
+	.lcm_degree = PROBE_FROM_DTS,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
 	},
+	.ssc_enable = 1,
 	.lane_swap_en = 1,
 	.lane_swap[0][MIPITX_PHY_LANE_0] = MIPITX_PHY_LANE_0,
 	.lane_swap[0][MIPITX_PHY_LANE_1] = MIPITX_PHY_LANE_1,
@@ -1000,6 +1244,7 @@ static struct mtk_panel_params ext_params_144hz = {
 	.lane_swap[1][MIPITX_PHY_LANE_CK] = MIPITX_PHY_LANE_CK,
 	.lane_swap[1][MIPITX_PHY_LANE_RX] = MIPITX_PHY_LANE_0,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
+	.dsc_param_load_mode = 0, //0: default flow; 1: key param only; 2: full control
 	.dsc_params = {
 		.enable = 1,
 		.ver = 17,
@@ -1035,12 +1280,12 @@ static struct mtk_panel_params ext_params_144hz = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 		},
-	.data_rate = 1348,
+	.data_rate = PLL_CLK*2,
 	.lfr_enable = 0,
 	.lfr_minimum_fps = 60,
 	.dyn_fps = {
 		.switch_en = 0,
-		.vact_timing_fps = 120,
+		.vact_timing_fps = 144,
 		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x25} },
 		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
 		.dfps_cmd_table[2] = {0, 2, {0x18, 0x22} },
@@ -1050,12 +1295,16 @@ static struct mtk_panel_params ext_params_144hz = {
 	},
 	/* following MIPI hopping parameter might cause screen mess */
 	.dyn = {
-		.switch_en = 0,
-		.pll_clk = 428,
-		.vfp_lp_dyn = 2528,
-		.hfp = 396,
-		.vfp = 54,
+		.switch_en = 1,
+		.pll_clk = PLL_CLK+5,
+		.vfp_lp_dyn = 2550,
+		.hfp = 106,
+		.vfp = 76,
 	},
+	.round_corner_en = 0,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_tp_size = sizeof(nt36672e_vdo_120hz_top_pattern),
+	.corner_pattern_lt_addr = (void *)nt36672e_vdo_120hz_top_pattern,
 };
 
 static int panel_ata_check(struct drm_panel *panel)
@@ -1080,7 +1329,7 @@ static int jdi_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	return 0;
 }
 
-struct drm_display_mode *get_mode_by_id_hfp(struct drm_connector *connector,
+struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
 	unsigned int mode)
 {
 	struct drm_display_mode *m;
@@ -1093,35 +1342,89 @@ struct drm_display_mode *get_mode_by_id_hfp(struct drm_connector *connector,
 	}
 	return NULL;
 }
+
 static int mtk_panel_ext_param_set(struct drm_panel *panel,
 			struct drm_connector *connector, unsigned int mode)
 {
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 	int dst_fps = 0;
-	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
+	struct drm_display_mode *m = get_mode_by_id(connector, mode);
 
 	dst_fps = m ? drm_mode_vrefresh(m) : -EINVAL;
 
-	if (dst_fps == 60)
+	if (dst_fps == 60) {
+		ext_params.skip_vblank = 0;
 		ext->params = &ext_params;
-	else if (dst_fps == 90)
+	} else if (dst_fps == 90)
 		ext->params = &ext_params_90hz;
-	else if (dst_fps == 144)
+	else if (dst_fps == 144) {
+		ext_params_144hz.skip_vblank = 0;
 		ext->params = &ext_params_144hz;
-	else {
+	} else if (dst_fps == 30) {
+		ext_params.skip_vblank = 2;
+		ext->params = &ext_params;
+	} else if (dst_fps == 24) {
+		ext_params_144hz.skip_vblank = 5;
+		ext->params = &ext_params_144hz;
+	} else if (dst_fps == 10) {
+		ext_params.skip_vblank = 6;
+		ext->params = &ext_params;
+	} else {
 		pr_err("%s, dst_fps %d\n", __func__, dst_fps);
 		ret = -EINVAL;
 	}
 
+	if (!ret)
+		current_fps = drm_mode_vrefresh(m);
+
 	return ret;
+}
+
+static int mtk_panel_ext_param_get(struct drm_panel *panel,
+	struct drm_connector *connector,
+	struct mtk_panel_params **ext_param,
+	unsigned int mode)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, mode);
+
+	if (drm_mode_vrefresh(m) == 144)
+		*ext_param = &ext_params_144hz;
+	else if (drm_mode_vrefresh(m) == 90)
+		*ext_param = &ext_params_90hz;
+	else if (drm_mode_vrefresh(m) == 60)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == 30)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == 24)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == 10)
+		*ext_param = &ext_params;
+	else
+		ret = 1;
+
+	if (!ret)
+		current_fps = drm_mode_vrefresh(m);
+
+	return ret;
+}
+
+enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
+{
+	pr_info("res_switch_type: %d\n", res_switch_type);
+	return res_switch_type;
+}
+
+#define REAL_MODE_NUM           (3)
+int mtk_scaling_mode_mapping(int mode_idx)
+{
+	return (mode_idx % REAL_MODE_NUM);
 }
 
 static void mode_switch_to_144(struct drm_panel *panel)
 {
 	struct jdi *ctx = panel_to_jdi(panel);
-
-	pr_info("%s\n", __func__);
 
 	jdi_dcs_write_seq_static(ctx, 0xFF, 0x25);
 	jdi_dcs_write_seq_static(ctx, 0xFB, 0x01);
@@ -1136,8 +1439,6 @@ static void mode_switch_to_90(struct drm_panel *panel)
 {
 	struct jdi *ctx = panel_to_jdi(panel);
 
-	pr_info("%s\n", __func__);
-
 	jdi_dcs_write_seq_static(ctx, 0xFF, 0x25);
 	jdi_dcs_write_seq_static(ctx, 0xFB, 0x01);
 	jdi_dcs_write_seq_static(ctx, 0x18, 0x20);//90hz
@@ -1149,8 +1450,6 @@ static void mode_switch_to_90(struct drm_panel *panel)
 static void mode_switch_to_60(struct drm_panel *panel)
 {
 	struct jdi *ctx = panel_to_jdi(panel);
-
-	pr_info("%s\n", __func__);
 
 	jdi_dcs_write_seq_static(ctx, 0xFF, 0x25);
 	jdi_dcs_write_seq_static(ctx, 0xFB, 0x01);
@@ -1165,17 +1464,17 @@ static int mode_switch(struct drm_panel *panel,
 {
 	int ret = 0;
 	int dst_fps = 0;
-	struct drm_display_mode *m = get_mode_by_id_hfp(connector, dst_mode);
+	struct drm_display_mode *m = get_mode_by_id(connector, dst_mode);
 
 	pr_info("%s cur_mode = %d dst_mode %d\n", __func__, cur_mode, dst_mode);
 
 	dst_fps = m ? drm_mode_vrefresh(m) : -EINVAL;
 
-	if (dst_fps  == 60) { /* 60 switch to 120 */
+	if (dst_fps == 60) { /* switch to 60 */
 		mode_switch_to_60(panel);
-	} else if (dst_fps == 90) { /* 1200 switch to 60 */
+	} else if (dst_fps == 90) { /* switch to 90 */
 		mode_switch_to_90(panel);
-	} else if (dst_fps == 144) { /* 1200 switch to 60 */
+	} else if (dst_fps == 144) { /* switch to 144 */
 		mode_switch_to_144(panel);
 	} else {
 		pr_err("%s, dst_fps %d\n", __func__, dst_fps);
@@ -1197,12 +1496,26 @@ static int panel_ext_reset(struct drm_panel *panel, int on)
 	return 0;
 }
 
+static int mtk_set_value(int value)
+{
+	if (value == 1)
+		fake_mode = 1;
+	else
+		fake_mode = 0;
+
+	return 0;
+}
+
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = jdi_setbacklight_cmdq,
 	.ext_param_set = mtk_panel_ext_param_set,
+	.ext_param_get = mtk_panel_ext_param_get,
 	.mode_switch = mode_switch,
 	.ata_check = panel_ata_check,
+	.set_value = mtk_set_value,
+	.get_res_switch_type = mtk_get_res_switch_type,
+	.scaling_mode_mapping = mtk_scaling_mode_mapping,
 };
 #endif
 
@@ -1242,12 +1555,18 @@ static int jdi_get_modes(struct drm_panel *panel,
 	struct drm_display_mode *mode;
 	struct drm_display_mode *mode2;
 	struct drm_display_mode *mode3;
+	struct drm_display_mode *mode4;
+	struct drm_display_mode *mode5;
+	struct drm_display_mode *mode6;
+	struct drm_display_mode *mode7;
+	struct drm_display_mode *mode8;
+	struct drm_display_mode *mode9;
 
-	mode = drm_mode_duplicate(connector->dev, &default_mode);
+	mode = drm_mode_duplicate(connector->dev, &performance_mode_144hz);
 	if (!mode) {
 		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
-			 default_mode.hdisplay, default_mode.vdisplay,
-			 drm_mode_vrefresh(&default_mode));
+			 performance_mode_144hz.hdisplay, performance_mode_144hz.vdisplay,
+			 drm_mode_vrefresh(&performance_mode_144hz));
 		return -ENOMEM;
 	}
 
@@ -1267,17 +1586,91 @@ static int jdi_get_modes(struct drm_panel *panel,
 	mode2->type = DRM_MODE_TYPE_DRIVER;
 	drm_mode_probed_add(connector, mode2);
 
-	mode3 = drm_mode_duplicate(connector->dev, &performance_mode_144hz);
+	mode3 = drm_mode_duplicate(connector->dev, &default_mode);
 	if (!mode3) {
 		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
-			 performance_mode_144hz.hdisplay, performance_mode_144hz.vdisplay,
-			 drm_mode_vrefresh(&performance_mode_144hz));
+			 default_mode.hdisplay, default_mode.vdisplay,
+			 drm_mode_vrefresh(&default_mode));
 		return -ENOMEM;
 	}
 
 	drm_mode_set_name(mode3);
 	mode3->type = DRM_MODE_TYPE_DRIVER;
 	drm_mode_probed_add(connector, mode3);
+
+	if (fake_mode == 1) {
+		mode4 = drm_mode_duplicate(connector->dev, &performance_mode_30hz);
+		if (!mode4) {
+			dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+				 performance_mode_30hz.hdisplay, performance_mode_30hz.vdisplay,
+				 drm_mode_vrefresh(&performance_mode_30hz));
+			return -ENOMEM;
+		}
+
+		drm_mode_set_name(mode4);
+		mode4->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode4);
+
+		mode5 = drm_mode_duplicate(connector->dev, &performance_mode_24hz);
+		if (!mode5) {
+			dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+				 performance_mode_24hz.hdisplay, performance_mode_24hz.vdisplay,
+				 drm_mode_vrefresh(&performance_mode_24hz));
+			return -ENOMEM;
+		}
+
+		drm_mode_set_name(mode5);
+		mode5->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode5);
+
+		mode6 = drm_mode_duplicate(connector->dev, &performance_mode_10hz);
+		if (!mode6) {
+			dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+				 performance_mode_10hz.hdisplay, performance_mode_10hz.vdisplay,
+				 drm_mode_vrefresh(&performance_mode_10hz));
+			return -ENOMEM;
+		}
+
+		drm_mode_set_name(mode6);
+		mode6->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode6);
+	}
+
+	mode7 = drm_mode_duplicate(connector->dev, &hd_mode_60);
+	if (!mode7) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 hd_mode_60.hdisplay, hd_mode_60.vdisplay,
+			 drm_mode_vrefresh(&hd_mode_60));
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(mode7);
+	mode7->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode7);
+
+	mode8 = drm_mode_duplicate(connector->dev, &hd_mode_90);
+	if (!mode8) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 hd_mode_90.hdisplay, hd_mode_90.vdisplay,
+			 drm_mode_vrefresh(&hd_mode_90));
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(mode8);
+	mode8->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode8);
+
+	mode9 = drm_mode_duplicate(connector->dev, &hd_mode_144);
+	if (!mode9) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 hd_mode_144.hdisplay, hd_mode_144.vdisplay,
+			 drm_mode_vrefresh(&hd_mode_144));
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(mode9);
+	mode9->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode9);
 
 	connector->display_info.width_mm = 70;
 	connector->display_info.height_mm = 152;
@@ -1296,11 +1689,34 @@ static const struct drm_panel_funcs jdi_drm_funcs = {
 static int jdi_probe(struct mipi_dsi_device *dsi)
 {
 	struct device *dev = &dsi->dev;
+	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
 	struct jdi *ctx;
 	struct device_node *backlight;
+	unsigned int res_switch;
+	unsigned int value;
+	unsigned int lcm_degree;
 	int ret;
+	int probe_ret;
+	struct mtk_panel_params *ext_param = NULL;
 
-	pr_info("%s+\n", __func__);
+	pr_info("%s+ jdi,nt36672e,vdo,144hz,threshold\n", __func__);
+	dsi_node = of_get_parent(dev->of_node);
+	if (dsi_node) {
+		endpoint = of_graph_get_next_endpoint(dsi_node, NULL);
+		if (endpoint) {
+			remote_node = of_graph_get_remote_port_parent(endpoint);
+			if (!remote_node) {
+				pr_info("No panel connected,skip probe lcm\n");
+				return -ENODEV;
+			}
+			pr_info("device node name:%s\n", remote_node->name);
+		}
+	}
+	if (remote_node != dev->of_node) {
+		pr_info("%s+ skip probe due to not current lcm\n", __func__);
+		return -ENODEV;
+	}
+
 	ctx = devm_kzalloc(dev, sizeof(struct jdi), GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
@@ -1313,6 +1729,29 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
 			MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_NO_EOT_PACKET |
 			MIPI_DSI_CLOCK_NON_CONTINUOUS;
+
+	ret = of_property_read_u32(dev->of_node, "res-switch", &res_switch);
+	if (ret < 0)
+		res_switch = 0;
+	else
+		res_switch_type = (enum RES_SWITCH_TYPE)res_switch;
+
+	ret = of_property_read_u32(dev->of_node, "gate-ic", &value);
+	if (ret < 0)
+		value = 0;
+	else
+		ctx->gate_ic = value;
+
+	value = 0;
+	ret = of_property_read_u32(dev->of_node, "rc-enable", &value);
+	if (ret < 0)
+		value = 0;
+	else {
+		ext_params.round_corner_en = value;
+		ext_params_90hz.round_corner_en = value;
+		ext_params_144hz.round_corner_en = value;
+	}
+	pr_info("%s+ round_corner_en %d\n", __func__,ext_params.round_corner_en);
 
 	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
 	if (backlight) {
@@ -1330,23 +1769,32 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 		return PTR_ERR(ctx->reset_gpio);
 	}
 	devm_gpiod_put(dev, ctx->reset_gpio);
-	ctx->bias_pos = devm_gpiod_get_index(dev, "bias", 0, GPIOD_OUT_HIGH);
-	if (IS_ERR(ctx->bias_pos)) {
-		dev_info(dev, "cannot get bias-gpios 0 %ld\n",
-			 PTR_ERR(ctx->bias_pos));
-		return PTR_ERR(ctx->bias_pos);
-	}
-	devm_gpiod_put(dev, ctx->bias_pos);
+	if (ctx->gate_ic == 0) {
+		ctx->bias_pos = devm_gpiod_get_index(dev, "bias", 0, GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->bias_pos)) {
+			dev_info(dev, "cannot get bias-gpios 0 %ld\n",
+				 PTR_ERR(ctx->bias_pos));
+			return PTR_ERR(ctx->bias_pos);
+		}
+		devm_gpiod_put(dev, ctx->bias_pos);
 
-	ctx->bias_neg = devm_gpiod_get_index(dev, "bias", 1, GPIOD_OUT_HIGH);
-	if (IS_ERR(ctx->bias_neg)) {
-		dev_info(dev, "cannot get bias-gpios 1 %ld\n",
-			 PTR_ERR(ctx->bias_neg));
-		return PTR_ERR(ctx->bias_neg);
+		ctx->bias_neg = devm_gpiod_get_index(dev, "bias", 1, GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->bias_neg)) {
+			dev_info(dev, "cannot get bias-gpios 1 %ld\n",
+				 PTR_ERR(ctx->bias_neg));
+			return PTR_ERR(ctx->bias_neg);
+		}
+		devm_gpiod_put(dev, ctx->bias_neg);
 	}
-	devm_gpiod_put(dev, ctx->bias_neg);
 	ctx->prepared = true;
 	ctx->enabled = true;
+
+	if (of_property_read_bool(dsi_node, "init-panel-off")) {
+		ctx->prepared = false;
+		ctx->enabled = false;
+		pr_info("nt36672e,144hz dsi_node:%s set prepared = enabled = false\n",
+					dsi_node->full_name);
+	}
 	drm_panel_init(&ctx->panel, dev, &jdi_drm_funcs, DRM_MODE_CONNECTOR_DSI);
 
 	drm_panel_add(&ctx->panel);
@@ -1357,13 +1805,25 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 	mtk_panel_tch_handle_reg(&ctx->panel);
-	ret = mtk_panel_ext_create(dev, &ext_params, &ext_funcs, &ctx->panel);
+
+	if (current_fps == 144)
+		ext_param = &ext_params_144hz;
+	else if (current_fps == 90)
+		ext_param = &ext_params_90hz;
+	else
+		ext_param = &ext_params;
+
+	ret = mtk_panel_ext_create(dev, ext_param, &ext_funcs, &ctx->panel);
 	if (ret < 0)
 		return ret;
-
+	probe_ret = of_property_read_u32(dev->of_node, "lcm-degree", &lcm_degree);
+	if (probe_ret < 0)
+		lcm_degree = 0;
+	else
+		ext_param->lcm_degree = lcm_degree;
+	pr_info("lcm_degree: %d\n", ext_param->lcm_degree);
 #endif
-
-	pr_info("%s- jdi,nt36672e,vdo,144hz\n", __func__);
+	pr_info("%s- jdi,nt36672e,vdo,144hz,threshold\n", __func__);
 
 	return ret;
 }
@@ -1386,7 +1846,7 @@ static void jdi_remove(struct mipi_dsi_device *dsi)
 
 static const struct of_device_id jdi_of_match[] = {
 	{
-		.compatible = "jdi,nt36672e,vdo,144hz",
+	    .compatible = "jdi,nt36672e,vdo,144hz",
 	},
 	{}
 };
@@ -1408,3 +1868,4 @@ module_mipi_dsi_driver(jdi_driver);
 MODULE_AUTHOR("shaohua deng <shaohua.deng@mediatek.com>");
 MODULE_DESCRIPTION("JDI NT36672E VDO 144HZ AMOLED Panel Driver");
 MODULE_LICENSE("GPL v2");
+
