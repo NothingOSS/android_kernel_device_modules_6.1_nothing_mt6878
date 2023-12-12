@@ -22,23 +22,29 @@
 		status = "ok";
 		compatible = "goodix,brl-d";
 		reg = <0x0>;
-		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend", "stylus_clk_active", "stylus_clk_suspend";
-		pinctrl-0 = <&ctp_gt9916_int_active &ctp_gt9916_reset_active>;
-		pinctrl-1 = <&ctp_gt9916_int_suspend &ctp_gt9916_reset_suspend>;
 		spi-max-frequency = <15000000>;  /* 4800000,9600000,15000000,19200000 */
-		goodix,reset-gpio = <&pio 81 0x0>;
-		goodix,irq-gpio = <&pio 8 0x2002>;
-		goodix,avdd-gpio = <&pio 29 0x0>;
-		goodix,iovdd-gpio = <&pio 151 0x0>;
-		gt9916,power-voltage = <2800000>;
-		goodix,irq-flags = <0x2002>; /* 1:trigger rising, 2:trigger falling;*/
+
 		goodix,panel-max-id = <10>;
 		goodix,panel-max-x = <17280>;
 		goodix,panel-max-y = <42240>;
 		goodix,panel-max-w = <256>;
 		goodix,panel-max-p = <256>;
-		gt9916,firmware-name = "gt9916_firmware_6878v01_alpha.bin";
-		gt9916,config-name = "gt9916_cfg_6878v01_alpha.bin";
+		goodix,reset-gpio = <&pio 81 0x0>;
+		goodix,irq-gpio = <&pio 8 0x2002>;
+		goodix,irq-flags = <0x2002>; /* 1:trigger rising, 2:trigger falling;*/
+		goodix,avdd-gpio = <&pio 29 0x0>;
+		goodix,iovdd-gpio = <&pio 151 0x0>;
+		goodix,firmware-name = "gt9916_glory_firmware_6878v01_alpha.bin";
+		goodix,config-name = "gt9916_glory_cfg_6878v01_alpha.bin";
+		gt9916,power-voltage = <2800000>;
+		gt9916,firmware-name = "gt9916_glory_firmware_6878v01_alpha.bin";
+		gt9916,config-name = "gt9916_glory_cfg_6878v01_alpha.bin";
+
+		pinctrl-names = "default", "sleep", "pmx_ts_release";
+		pinctrl-0 = <&ctp_gt9916_pins_default &ctp_gt9916_int_active
+				&ctp_gt9916_reset_active &ctp_gt9916_spi_mode>;
+		pinctrl-1 = <&ctp_gt9916_int_suspend &ctp_gt9916_reset_suspend>;
+		pinctrl-2 = <&ctp_gt9916_gpio_release>;
 	};
 };
 
@@ -46,39 +52,36 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	pinctrl-names = "default", "gt9896s_int_active",
-		"gt9896s_reset_active", "gt9896s_int_suspend",
-		"gt9896s_reset_suspend", "gt9896s_spi_mode";
-	pinctrl-0 = <&ctp_gt9615_pins_default>;
-	pinctrl-1 = <&ctp_gt9615_int_active>;
-	pinctrl-2 = <&ctp_gt9615_reset_active>;
-	pinctrl-3 = <&ctp_gt9615_int_suspend>;
-	pinctrl-4 = <&ctp_gt9615_reset_suspend>;
-	pinctrl-5 = <&ctp_gt9615_spi_mode>;
 
 	gdx-cli@0 {
 		status = "ok";
 		compatible = "goodix,marseille";
-		reg = <0>;
+		reg = <0x0>;
 		spi-max-frequency = <15000000>;
 
-		goodix,reset-gpio = <&pio 110 0x0>;
-		goodix,irq-gpio = <&pio 111 0x2002>;
-		goodix,irq-flags = <0x2002>; /* 1:trigger rising, 2:trigger falling;*/
 		goodix,panel-max-x = <16896>;
 		goodix,panel-max-y = <17056>;
 		goodix,panel-max-w = <256>;
+		goodix,reset-gpio = <&pio 110 0x0>;
+		goodix,irq-gpio = <&pio 111 0x2002>;
+		goodix,irq-flags = <0x2002>; /* 1:trigger rising, 2:trigger falling;*/
 		goodix,iovdd-gpio = <&pio 78 0x0>;
 		goodix,avdd-name = "avdd";
 		avdd-supply = <&mt6369_vtp>;
-		goodix,firmware-name = "gt9615_glory_firmware_6878v01.bin";
-		goodix,config-name = "gt9615_glory_cfg_group_6878v01.bin";
+		goodix,firmware-name = "gt9615_glory_firmware_6878v01_alpha.bin";
+		goodix,config-name = "gt9615_glory_cfg_6878v01_alpha.bin";
 
-		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
-		pinctrl-0 = <&ctp_gt9615_int_active &ctp_gt9615_reset_active>;
+		pinctrl-names = "default", "sleep", "pmx_ts_release";
+		pinctrl-0 = <&ctp_gt9615_pins_default &ctp_gt9615_int_active
+				&ctp_gt9615_reset_active &ctp_gt9615_spi_mode>;
 		pinctrl-1 = <&ctp_gt9615_int_suspend &ctp_gt9615_reset_suspend>;
 		pinctrl-2 = <&ctp_gt9615_gpio_release>;
 	};
+};
+
+&mt6369_vtp {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
 };
 
 &pio {
