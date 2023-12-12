@@ -193,6 +193,7 @@ struct mtk_ccu {
 	bool poweron;
 	bool disirq;
 	bool bWaitCond;
+	bool compact_ipc;
 	int g_LogBufIdx;
 	int log_level;
 	int log_taglevel;

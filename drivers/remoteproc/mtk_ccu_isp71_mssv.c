@@ -41,6 +41,7 @@
 #include "mtk_ccu_isp7sp_mssv_dmem_b.h"
 #include "mtk_ccu_isp7sp_mssv_ddr.h"
 #include "mtk_ccu_isp7sp_mssv_ddr_b.h"
+#include "mtk_ccu_isp7spl_mssv_pmem.h"
 
 #define CCU_SET_MMQOS
 #define MTK_CCU_MB_RX_TIMEOUT_SPEC    1000  /* 10ms */
@@ -538,7 +539,10 @@ static int mtk_ccu_run(struct mtk_ccu *ccu)
 	arm_smccc_smc(MTK_SIP_KERNEL_CCU_CONTROL, (u32) CCU_SMC_REQ_RUN, 0, 0, 0, 0, 0, 0, &res);
 #endif
 #else  /* !defined(SECURE_CCU) */
-	writel(CCU_DMA_DOMAIN, ccu->ccu_base + 0x8038); /* EXCH_INFO06 */
+	if (ccu->compact_ipc)
+		writel(CCU_DMA_DOMAIN, ccu->ccu_base + 0x8098); /* EXCH_INFO30 */
+	else
+		writel(CCU_DMA_DOMAIN, ccu->ccu_base + 0x8038); /* EXCH_INFO06 */
 #ifdef CONFIG_ARM64
 	arm_smccc_smc(MTK_SIP_KERNEL_CCU_CONTROL, (u64) CCU_SMC_REQ_DMA_DOMAIN, 0, 0, 0, 0, 0, 0, &res);
 #endif
@@ -997,10 +1001,20 @@ static int mtk_ccu_load(struct rproc *rproc, const struct firmware *fw)
 				ccu_isp7sp_dmem_b, sizeof(ccu_isp7sp_dmem_b),
 				ccu_isp7sp_ddr_b, sizeof(ccu_isp7sp_ddr_b));
 		else
-			ret = ccu_load_binary(rproc, i,
-				ccu_isp7sp_pmem, sizeof(ccu_isp7sp_pmem),
-				ccu_isp7sp_dmem, sizeof(ccu_isp7sp_dmem),
-				ccu_isp7sp_ddr, sizeof(ccu_isp7sp_ddr));
+			switch (ccu->ccu_version) {
+			case CCU_VER_ISP7SP:
+				ret = ccu_load_binary(rproc, i,
+					ccu_isp7sp_pmem, sizeof(ccu_isp7sp_pmem),
+					ccu_isp7sp_dmem, sizeof(ccu_isp7sp_dmem),
+					ccu_isp7sp_ddr, sizeof(ccu_isp7sp_ddr));
+				break;
+			case CCU_VER_ISP7SPL:
+				ret = ccu_load_binary(rproc, i,
+					ccu_isp7spl_pmem, sizeof(ccu_isp7spl_pmem),
+					ccu_isp7sp_dmem, sizeof(ccu_isp7sp_dmem),
+					ccu_isp7sp_ddr, sizeof(ccu_isp7sp_ddr));
+				break;
+			}
 
 		if (ret) {
 			i = ccu->ccu_cores;
@@ -1228,7 +1242,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	ccu->clock_num = 0;
 	if (ccu->ccu_version == CCU_VER_ISP7SPL)
 		ccu->clock_name = ccu_clk_name_isp7spl;
-	if (ccu->ccu_version == CCU_VER_ISP7SP)
+	else if (ccu->ccu_version == CCU_VER_ISP7SP)
 		ccu->clock_name = ccu_clk_name_isp7sp;
 	else if (ccu->ccu_version == CCU_VER_ISP7S)
 		ccu->clock_name = ccu_clk_name_isp7s;
@@ -1400,6 +1414,9 @@ static int mtk_ccu_read_platform_info_from_dt(struct device_node
 
 	ret = of_property_read_u32(node, "ccu-cores", reg);
 	ccu->ccu_cores = (ret < 0) ? 1 : reg[0];
+
+	ret = of_property_read_u32(node, "compact-ipc", reg);
+	ccu->compact_ipc = (ret < 0) ? false : (reg[0] != 0);
 
 	return 0;
 }
