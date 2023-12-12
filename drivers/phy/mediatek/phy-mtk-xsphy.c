@@ -114,6 +114,8 @@
 
 #define XSP_USBPHYA_RESERVEA	((SSUSB_SIFSLV_U2PHY_COM) + 0x034)
 #define P2ARA_RG_TERM_CAL		GENMASK(11, 8)
+#define P2ARA_RG_TERM_CAL_MASK          (0xf)
+#define P2ARA_RG_TERM_CAL_OFET		(8)
 
 #define XSP_USBPHYA_RESERVEA1   ((SSUSB_SIFSLV_U2PHY_COM) + 0x038)
 #define P2ARA_RG_TX_CHIRPK           BIT(8)
@@ -253,6 +255,7 @@
 #define DISCTH_STR "discth"
 #define RX_SQTH_STR "rx_sqth"
 #define INTR_OFS_STR "intr_ofs"
+#define TERM_OFS_STR "term_ofs"
 #define SIB_STR	"sib"
 #define LOOPBACK_STR "loopback_test"
 #define TX_LCTXCM1_STR "tx_lctxcm1"
@@ -319,6 +322,9 @@ struct xsphy_instance {
 	int efuse_tx_imp;
 	int efuse_rx_imp;
 	int intr_ofs;
+	int term_ofs;
+	int host_intr_ofs;
+	int host_term_ofs;
 	int pll_fbksel;
 	int pll_posdiv;
 	/* u2 eye diagram */
@@ -327,6 +333,7 @@ struct xsphy_instance {
 	int eye_term;
 	int discth;
 	int rx_sqth;
+	int host_rx_sqth;
 	int rev6;
 	/* u2 eye diagram for host */
 	int eye_src_host;
@@ -707,7 +714,6 @@ static const struct proc_ops proc_tx_lctxcp1_fops = {
 	.proc_release = single_release,
 };
 
-
 static int u3_phy_procfs_init(struct mtk_xsphy *xsphy,
 			struct xsphy_instance *inst)
 {
@@ -1047,13 +1053,17 @@ static ssize_t proc_rx_sqth_write(struct file *file,
 	u32 val;
 
 	memset(buf, 0x00, sizeof(buf));
-	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+	if (count > sizeof(buf) - 1)
+		return -EINVAL;
+
+	if (copy_from_user(&buf, ubuf, count))
 		return -EFAULT;
 
 	if (kstrtouint(buf, 2, &val))
 		return -EINVAL;
 
 	inst->rx_sqth = val;
+	inst->host_rx_sqth = val;
 
 	mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_SQTH, val);
 
@@ -1081,8 +1091,12 @@ static int proc_intr_ofs_show(struct seq_file *s, void *unused)
 
 	cover_val_to_str(tmp, 6, str);
 
-	seq_printf(s, "%s = %d\n", INTR_OFS_STR, inst->intr_ofs);
-	seq_printf(s, "%s = %s\n", "intr_val", str);
+	seq_printf(s, "%s = %d\n", INTR_OFS_STR,
+		(inst->intr_ofs == -(P2AR_RG_INTR_CAL_MASK + 1)? 0 : inst->intr_ofs));
+	seq_printf(s, "%s = %d\n", "host_intr_ofs",
+		(inst->host_intr_ofs == -(P2AR_RG_INTR_CAL_MASK + 1)? 0 : inst->host_intr_ofs));
+	seq_printf(s, "%s = %d\n", "efuse_intr", inst->efuse_intr);
+	seq_printf(s, "%s = %s (%d)\n", "RG intr val", str, tmp);
 
 	return 0;
 }
@@ -1099,19 +1113,30 @@ static ssize_t proc_intr_ofs_write(struct file *file,
 	struct xsphy_instance *inst = s->private;
 	void __iomem *pbase = inst->port_base;
 	char buf[20];
-	u32 val;
+	int val, new_val;
 
 	memset(buf, 0x00, sizeof(buf));
-	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
-		return -EFAULT;
-
-	if (kstrtouint(buf, 2, &val))
+	if (count > sizeof(buf) - 1)
 		return -EINVAL;
 
-	inst->intr_ofs = val;
+	if (copy_from_user(&buf, ubuf, count))
+		return -EFAULT;
 
-	mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL,
-		inst->efuse_intr + val);
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	new_val = inst->efuse_intr + val;
+
+	if (new_val < 0 || new_val > P2AR_RG_INTR_CAL_MASK) {
+		dev_err(&inst->phy->dev, "efuse_intr(%d) +/- intr_ofs (%d) out of range.\n",
+			inst->efuse_intr, val);
+		return -EINVAL;
+	}
+
+	mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL, new_val);
+
+	inst->intr_ofs = val;
+	inst->host_intr_ofs = val;
 
 	return count;
 }
@@ -1119,6 +1144,77 @@ static ssize_t proc_intr_ofs_write(struct file *file,
 static const struct proc_ops proc_intr_ofs_fops = {
 	.proc_open = proc_intr_ofs_open,
 	.proc_write = proc_intr_ofs_write,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static int proc_term_ofs_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+	void __iomem *pbase = inst->port_base;
+	u32 tmp;
+	char str[16];
+
+	tmp = readl(pbase + XSP_USBPHYA_RESERVEA);
+	tmp >>= P2ARA_RG_TERM_CAL_OFET;
+	tmp &= P2ARA_RG_TERM_CAL_MASK;
+
+	cover_val_to_str(tmp, 4, str);
+
+	seq_printf(s, "%s = %d\n", TERM_OFS_STR,
+		(inst->term_ofs == -(P2ARA_RG_TERM_CAL_MASK + 1)? 0 : inst->term_ofs));
+	seq_printf(s, "%s = %d\n", "host_term_ofs",
+		(inst->host_term_ofs == -(P2ARA_RG_TERM_CAL_MASK + 1)? 0 : inst->host_term_ofs));
+	seq_printf(s, "%s = %d\n", "efuse_term_cal", inst->efuse_term_cal);
+	seq_printf(s, "%s = %s (%d)\n", "RG term val", str, tmp);
+
+	return 0;
+}
+
+static int proc_term_ofs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_term_ofs_show, pde_data(inode));
+}
+
+static ssize_t proc_term_ofs_write(struct file *file,
+	const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file *s = file->private_data;
+	struct xsphy_instance *inst = s->private;
+	void __iomem *pbase = inst->port_base;
+	char buf[20];
+	int val, new_val;
+
+	memset(buf, 0x00, sizeof(buf));
+	if (count > sizeof(buf) - 1)
+		return -EINVAL;
+
+	if (copy_from_user(&buf, ubuf, count))
+		return -EFAULT;
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	new_val = inst->efuse_term_cal + val;
+
+	if (new_val < 0 || new_val > P2ARA_RG_TERM_CAL_MASK) {
+		dev_err(&inst->phy->dev, "efuse_term_cal(%d) +/- term_ofs (%d) out of range.\n",
+			inst->efuse_term_cal, val);
+		return -EINVAL;
+	}
+
+	mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVEA, P2ARA_RG_TERM_CAL, new_val);
+
+	inst->term_ofs = val;
+	inst->host_term_ofs = val;
+
+	return count;
+}
+
+static const struct proc_ops proc_term_ofs_fops = {
+	.proc_open = proc_term_ofs_open,
+	.proc_write = proc_term_ofs_write,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
@@ -1190,6 +1286,14 @@ static int u2_phy_procfs_init(struct mtk_xsphy *xsphy,
 			phy_root, &proc_intr_ofs_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", INTR_OFS_STR);
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	file = proc_create_data(TERM_OFS_STR, 0644,
+			phy_root, &proc_term_ofs_fops, inst);
+	if (!file) {
+		dev_info(dev, "failed to creat proc file: %s\n", TERM_OFS_STR);
 		ret = -ENOMEM;
 		goto err1;
 	}
@@ -1414,11 +1518,18 @@ static void u2_phy_instance_init(struct mtk_xsphy *xsphy,
 	void __iomem *pbase = inst->port_base;
 	u32 tmp;
 
-	/* read u2 intr default value from register */
-	if (!inst->efuse_intr) {
+	/* read u2 intr default value from register if dts/efuse no proper config */
+	if (inst->efuse_intr == -EINVAL) {
 		tmp = readl(pbase + XSP_USBPHYA_RESERVE);
 		tmp >>= P2AR_RG_INTR_CAL_OFET;
 		inst->efuse_intr = tmp & P2AR_RG_INTR_CAL_MASK;
+	}
+
+	/* read u2 term_cal default value from register if dts/efuse no proper config */
+	if (inst->efuse_term_cal == -EINVAL) {
+		tmp = readl(pbase + XSP_USBPHYA_RESERVEA);
+		tmp >>= P2ARA_RG_TERM_CAL_OFET;
+		inst->efuse_term_cal = tmp & P2ARA_RG_TERM_CAL_MASK;
 	}
 
 	/* DP/DM BC1.1 path Disable */
@@ -1676,6 +1787,7 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 				struct xsphy_instance *inst)
 {
 	struct device *dev = &inst->phy->dev;
+	const char *ofs_str;
 
 	switch (inst->type) {
 	case PHY_TYPE_USB2:
@@ -1700,12 +1812,24 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		if (device_property_read_u32(dev, "mediatek,rx-sqth",
 					 &inst->rx_sqth) || inst->rx_sqth < 0)
 			inst->rx_sqth = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,host-rx-sqth",
+					 &inst->host_rx_sqth) || inst->host_rx_sqth < 0)
+			inst->host_rx_sqth = -EINVAL;
 		if (device_property_read_u32(dev, "mediatek,rev6",
 					 &inst->rev6) || inst->rev6 < 0)
 			inst->rev6 = -EINVAL;
-		if (device_property_read_u32(dev, "mediatek,intr-ofs",
-					 &inst->intr_ofs) || inst->intr_ofs < 0)
-			inst->intr_ofs = -EINVAL;
+		if (device_property_read_string(dev, "mediatek,intr-ofs",
+					 &ofs_str) || kstrtoint(ofs_str, 10, &inst->intr_ofs) < 0)
+			inst->intr_ofs = -(P2AR_RG_INTR_CAL_MASK + 1);
+		if (device_property_read_string(dev, "mediatek,host-intr-ofs",
+					 &ofs_str) || kstrtoint(ofs_str, 10, &inst->host_intr_ofs) < 0)
+			inst->host_intr_ofs = -(P2AR_RG_INTR_CAL_MASK + 1);
+		if (device_property_read_string(dev, "mediatek,term-ofs",
+					 &ofs_str) || kstrtoint(ofs_str, 10, &inst->term_ofs) < 0)
+			inst->term_ofs = -(P2ARA_RG_TERM_CAL_MASK + 1);
+		if (device_property_read_string(dev, "mediatek,host-term-ofs",
+					 &ofs_str) || kstrtoint(ofs_str, 10, &inst->host_term_ofs) < 0)
+			inst->host_term_ofs = -(P2ARA_RG_TERM_CAL_MASK + 1);
 		if (device_property_read_u32(dev, "mediatek,pll-fbksel",
 				 &inst->pll_fbksel) || inst->pll_fbksel < 0)
 			inst->pll_fbksel = -EINVAL;
@@ -1727,14 +1851,17 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		if (!device_property_read_u32_array(dev, "mediatek,lpm-parameter",
 			inst->lpm_para, PHY_PLL_PARA_CNT))
 			inst->lpm_quirk = true;
-		dev_dbg(dev, "intr:%d, term_cal %d, src:%d, vrt:%d, term:%d\n",
-			inst->efuse_intr, inst->efuse_term_cal, inst->eye_src,
-			inst->eye_vrt, inst->eye_term);
+		dev_dbg(dev, "intr:%d, intr_ofs:%d, host_intr_ofs:%d\n",
+			inst->efuse_intr, inst->intr_ofs, inst->host_intr_ofs);
+		dev_dbg(dev, "term_cal:%d, term_ofs:%d, host_term_ofs:%d\n",
+			inst->efuse_term_cal, inst->term_ofs, inst->host_term_ofs);
+		dev_dbg(dev, "src:%d, vrt:%d, term:%d\n",
+			inst->eye_src, inst->eye_vrt, inst->eye_term);
 		dev_dbg(dev, "src_host:%d, vrt_host:%d, term_host:%d\n",
 			inst->eye_src_host, inst->eye_vrt_host,
 			inst->eye_term_host);
-		dev_dbg(dev, "discth:%d, rx_sqth:%d, rev6:%d, rev6_host:%d\n",
-			inst->discth, inst->rx_sqth, inst->rev6,
+		dev_dbg(dev, "discth:%d, rx_sqth:%d, host_rx_sqth:%d, rev6:%d, rev6_host:%d\n",
+			inst->discth, inst->rx_sqth, inst->host_rx_sqth, inst->rev6,
 			inst->rev6_host);
 		break;
 	case PHY_TYPE_USB3:
@@ -1773,15 +1900,28 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 			     struct xsphy_instance *inst)
 {
 	void __iomem *pbase = inst->port_base;
-	int intr_ofs = inst->intr_ofs > 0 ? inst->intr_ofs : 0;
 
-	if (inst->efuse_intr != -EINVAL)
-		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL,
-				     inst->efuse_intr + intr_ofs);
+	if (inst->efuse_intr != -EINVAL) {
+		int intr_val = inst->efuse_intr + inst->intr_ofs;
 
-	if (inst->efuse_term_cal != -EINVAL)
-		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVEA, P2ARA_RG_TERM_CAL,
-				     inst->efuse_term_cal);
+		if (inst->intr_ofs < -P2AR_RG_INTR_CAL_MASK ||
+			inst->intr_ofs > P2AR_RG_INTR_CAL_MASK ||
+			intr_val < 0 || intr_val > P2AR_RG_INTR_CAL_MASK )
+			intr_val = inst->efuse_intr;
+
+		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL, intr_val);
+	}
+
+	if (inst->efuse_term_cal != -EINVAL) {
+		int term_val = inst->efuse_term_cal + inst->term_ofs;
+
+		if (inst->term_ofs < -P2ARA_RG_TERM_CAL_MASK ||
+			inst->term_ofs > P2ARA_RG_TERM_CAL_MASK ||
+			term_val < 0 || term_val > P2ARA_RG_TERM_CAL_MASK)
+			term_val = inst->efuse_term_cal;
+
+		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVEA, P2ARA_RG_TERM_CAL, term_val);
+	}
 
 	if (inst->eye_src != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCTRL,
@@ -1821,6 +1961,32 @@ static void u2_phy_host_props_set(struct mtk_xsphy *xsphy,
 			     struct xsphy_instance *inst)
 {
 	void __iomem *pbase = inst->port_base;
+
+	if (inst->efuse_intr != -EINVAL) {
+		int host_intr_val = inst->efuse_intr + inst->host_intr_ofs;
+
+		if (inst->host_intr_ofs < -P2AR_RG_INTR_CAL_MASK ||
+			inst->host_intr_ofs > P2AR_RG_INTR_CAL_MASK ||
+			host_intr_val < 0 || host_intr_val > P2AR_RG_INTR_CAL_MASK )
+			host_intr_val = inst->efuse_intr;
+
+		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVE, P2AR_RG_INTR_CAL, host_intr_val);
+	}
+
+	if (inst->efuse_term_cal != -EINVAL) {
+		int host_term_val = inst->efuse_term_cal + inst->host_term_ofs;
+
+		if (inst->host_term_ofs < -P2ARA_RG_TERM_CAL_MASK ||
+			inst->host_term_ofs > P2ARA_RG_TERM_CAL_MASK ||
+			host_term_val < 0 || host_term_val > P2ARA_RG_TERM_CAL_MASK)
+			host_term_val = inst->efuse_term_cal;
+
+		mtk_phy_update_field(pbase + XSP_USBPHYA_RESERVEA, P2ARA_RG_TERM_CAL, host_term_val);
+	}
+
+	if (inst->host_rx_sqth != -EINVAL)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_SQTH,
+				    inst->host_rx_sqth);
 
 	if (inst->eye_src_host != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR5, P2A5_RG_HSTX_SRCTRL,
@@ -1904,9 +2070,11 @@ static int mtk_phy_init(struct phy *phy)
 		dev_info(xsphy->dev, "host src:%d vrt:%d term:%d rev6:%d\n",
 			inst->eye_src_host, inst->eye_vrt_host,
 			inst->eye_term_host, inst->rev6_host);
-		dev_info(xsphy->dev, "u2_intr:%d intr_ofs:%d term_cal:%d discth:%d\n",
-			inst->efuse_intr, inst->intr_ofs, inst->efuse_term_cal, inst->discth);
-		dev_info(xsphy->dev, "rx_sqth:%d\n", inst->rx_sqth);
+		dev_info(xsphy->dev, "u2_intr:%d intr_ofs:%d host_intr_ofs:%d discth:%d\n",
+			inst->efuse_intr, inst->intr_ofs, inst->host_intr_ofs, inst->discth);
+		dev_info(xsphy->dev, "term_cal:%d term_ofs:%d host_term_ofs:%d\n",
+			inst->efuse_term_cal, inst->term_ofs, inst->host_term_ofs);
+		dev_info(xsphy->dev, "rx_sqth:%d host_rx_sqth:%d\n", inst->rx_sqth, inst->host_rx_sqth);
 		dev_info(xsphy->dev, "pll_fbksel:%d, pll_posdiv: %d\n",
 			inst->pll_fbksel, inst->pll_posdiv);
 		break;
