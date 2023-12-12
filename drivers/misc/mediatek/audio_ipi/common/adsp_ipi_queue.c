@@ -1079,7 +1079,7 @@ static int audio_ipi_send_msg_to_scp(struct dsp_msg_t *p_dsp_msg,
 		      (enum scp_audio_ipi_id)p_dsp_msg->ipi_id,
 		      (void *)p_dsp_msg->buf,
 		      p_dsp_msg->len,
-		      0, /* avoid busy waiting */
+		      1, /* wait until sent or timeout */
 		      (enum scp_core_id)core_id);
 
 	if (ret == SCP_IPI_DONE)
