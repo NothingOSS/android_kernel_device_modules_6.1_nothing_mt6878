@@ -835,11 +835,11 @@ static int boe_enable(struct drm_panel *panel)
 }
 
 static const struct drm_display_mode default_mode = {
-	.clock = 886190,
+	.clock = 886486,
 	.hdisplay = 2944,
-	.hsync_start = 2944 + 24,
-	.hsync_end = 2944 + 24 + 10,
-	.htotal = 2944 + 24 + 10 + 24,
+	.hsync_start = 2944 + 25,
+	.hsync_end = 2944 + 25 + 10,
+	.htotal = 2944 + 25 + 10 + 24,
 	.vdisplay = 1840,
 	.vsync_start = 1840 + 26,
 	.vsync_end = 1840 + 26 + 2,
@@ -848,11 +848,11 @@ static const struct drm_display_mode default_mode = {
 
 #if SUPPORT_90Hz
 static const struct drm_display_mode performance_mode_90hz = {
-	.clock = 886190,
+	.clock = 886486,
 	.hdisplay = 2944,
-	.hsync_start = 2944 + 24,
-	.hsync_end = 2944 + 24 + 10,
-	.htotal = 2944 + 24 + 10 + 24,
+	.hsync_start = 2944 + 25,
+	.hsync_end = 2944 + 25 + 10,
+	.htotal = 2944 + 25 + 10 + 24,
 	.vdisplay = 1840,
 	.vsync_start = 1840 + 1256,
 	.vsync_end = 1840 + 1256 + 2,
@@ -969,7 +969,7 @@ static struct mtk_panel_params ext_params = {
 	.dyn = {
 		.switch_en = 1,
 		.vfp = 26,
-		.hfp = 24,
+		.hfp = 25,
 		.hbp = 24,
 	},
 };
@@ -1047,7 +1047,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.dyn = {
 		.switch_en = 1,
 		.vfp = 1256,
-		.hfp = 24,
+		.hfp = 25,
 		.hbp = 24,
 	},
 };
