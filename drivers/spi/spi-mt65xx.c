@@ -1271,6 +1271,8 @@ static int mtk_spi_transfer_wait(struct spi_mem *mem,
 	if (!wait_for_completion_timeout(&mdata->spimem_done,
 					 msecs_to_jiffies(ms))) {
 		dev_err(mdata->dev, "spi-mem transfer timeout\n");
+		/* after timeout reset spi controller */
+		mtk_spi_reset(mdata);
 		return -ETIMEDOUT;
 	}
 
