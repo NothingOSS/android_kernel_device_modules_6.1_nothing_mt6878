@@ -23,6 +23,7 @@
 
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 #include <ged_gpufreq_v2.h>
+#include <gpufreq_v2.h>
 #else
 #include <ged_gpufreq_v1.h>
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
@@ -87,6 +88,11 @@
 
 /* for dcs reference frame count */
 #define t_gpu_w_store_count 100
+
+#define GED_FPSGO_UX_BQ_ID 5566
+#define SHADER_CORE_NUM 2
+
+static int g_max_core_num;
 
 struct GED_KPI_HEAD {
 	int pid;
@@ -321,6 +327,8 @@ module_param(is_GED_KPI_enabled, uint, 0644);
  */
 struct GED_KPI_HEAD *main_head;
 struct GED_KPI_HEAD *prev_main_head;
+struct GED_KPI_HEAD *last_ux_head;
+static bool g_is_ux_fps_set;
 static int is_loading_based;
 static bool g_is_multiproducer;
 unsigned int force_loading_based_enable;
@@ -857,6 +865,9 @@ static GED_BOOL ged_kpi_update_same_pid_target_fps_fcn(unsigned long ulID,
 	void *pvoid, void *pvParam)
 {
 	struct GED_KPI_HEAD *psHead = (struct GED_KPI_HEAD *) pvoid;
+	/* Skip UX BQ */
+	if (last_ux_head && g_is_ux_fps_set && g_max_core_num == SHADER_CORE_NUM)
+		return GED_TRUE;
 
 	if (psHead && g_latest_fps_pid) {
 		if (ulID != g_latest_fps_bq && psHead->pid == g_latest_fps_pid)
@@ -1689,6 +1700,26 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			ged_hashtable_find(gs_hashtable, (unsigned long)ulID);
 
 		if (!psHead) {
+			/* Set target fps for UX BQ */
+			int target_fps = target_FPS & 0x000000ff;
+
+			if (ulID == GED_FPSGO_UX_BQ_ID && main_head &&
+				g_max_core_num == SHADER_CORE_NUM) {
+				if (target_fps > 85 && target_fps <= 120) {
+					last_ux_head = main_head;
+					g_is_ux_fps_set = 1;
+					ged_kpi_update_TargetTimeAndTargetFps(last_ux_head,
+							target_FPS&0x000000ff,
+							(target_FPS&0x00000700) >> 8,
+							(target_FPS&0xfffff100) >> 11,
+							eara_fps_margin,
+							GED_KPI_FRC_DEFAULT_MODE, -1);
+				} else {
+					last_ux_head = NULL;
+					g_is_ux_fps_set = 0;
+				}
+			}
+
 			GED_LOGD("@%s: no such renderer for BQ_ID: %llu", __func__, ulID);
 			break;
 		}
@@ -2274,6 +2305,7 @@ GED_ERROR ged_kpi_system_init(void)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(ged_dfrc_fps_limit_cb);
 #endif
+	g_max_core_num = gpufreq_get_core_num();
 
 	dvfs_prefence_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_prefence");
 	if (unlikely(!dvfs_prefence_node))
