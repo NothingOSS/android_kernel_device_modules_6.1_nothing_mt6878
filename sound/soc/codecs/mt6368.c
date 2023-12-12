@@ -2073,7 +2073,8 @@ static int mt_vow_aud_lpw_event(struct snd_soc_dapm_widget *w,
 					   0x3 << RG_AUDRADC1STSTAGEIDDTEST_SFT);
 		} else {
 			/* handset single mic (R)*/
-			if (priv->vow_single_mic_select == MIC_INDEX_THIRD) {
+			if (priv->vow_single_mic_select == MIC_INDEX_REF ||
+			    priv->vow_single_mic_select == MIC_INDEX_THIRD) {
 				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON8,
 						   0x0039, 0x0039);
 				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON8,
@@ -2082,20 +2083,20 @@ static int mt_vow_aud_lpw_event(struct snd_soc_dapm_widget *w,
 				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON9,
 						   RG_AUDRADC1STSTAGEIDDTEST_MASK_SFT,
 						   0x3 << RG_AUDRADC1STSTAGEIDDTEST_SFT);
-				/* handset single mic (L) or headset mic mode*/
-				} else if (priv->vow_single_mic_select == MIC_INDEX_MAIN ||
-					   priv->vow_single_mic_select == MIC_INDEX_HEADSET) {
-					regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON6,
-							   0x0039, 0x0039);
-					regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON6,
-							   RG_AUDADC1STSTAGELPEN_MASK_SFT,
-							   0x0 << RG_AUDADC1STSTAGELPEN_SFT);
-					regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON7,
-							   RG_AUDADC1STSTAGEIDDTEST_MASK_SFT,
-							   0x3 << RG_AUDADC1STSTAGEIDDTEST_SFT);
-				} else
-					dev_info(priv->dev, "%s(), unsupport mic index %d.\n",
-						 __func__, priv->vow_single_mic_select);
+			/* handset single mic (L) or headset mic mode*/
+			} else if (priv->vow_single_mic_select == MIC_INDEX_MAIN ||
+				   priv->vow_single_mic_select == MIC_INDEX_HEADSET) {
+				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON6,
+						   0x0039, 0x0039);
+				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON6,
+						   RG_AUDADC1STSTAGELPEN_MASK_SFT,
+						   0x0 << RG_AUDADC1STSTAGELPEN_SFT);
+				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON7,
+						   RG_AUDADC1STSTAGEIDDTEST_MASK_SFT,
+						   0x3 << RG_AUDADC1STSTAGEIDDTEST_SFT);
+			} else
+				dev_info(priv->dev, "%s(), unsupport mic index %d.\n",
+					 __func__, priv->vow_single_mic_select);
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
@@ -2133,7 +2134,8 @@ static int mt_vow_aud_lpw_event(struct snd_soc_dapm_widget *w,
 					   0x0039, 0x0000);
 		} else {
 			/* handset mic R or L */
-			if (priv->vow_single_mic_select == MIC_INDEX_THIRD) {
+			if (priv->vow_single_mic_select == MIC_INDEX_REF ||
+			    priv->vow_single_mic_select == MIC_INDEX_THIRD) {
 				regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON9,
 						   RG_AUDRADC1STSTAGEIDDTEST_MASK_SFT,
 						   0x0 << RG_AUDRADC1STSTAGEIDDTEST_SFT);
