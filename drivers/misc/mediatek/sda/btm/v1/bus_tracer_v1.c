@@ -63,6 +63,10 @@ static int start(struct bus_tracer_plt *plt)
 					&ret) == 0)
 			plt->tracer[i].at_id = ret;
 
+		if (of_property_read_u32_index(node, "mediatek,axi-disable", i,
+					&ret) == 0)
+			plt->tracer[i].axi_disable = ret;
+
 		plt->tracer[i].base = of_iomap(node, 4+i);
 		plt->tracer[i].recording = 0;
 	}
@@ -227,6 +231,7 @@ static int enable(struct bus_tracer_plt *plt, unsigned char force_enable,
 		/* enable tracer */
 		if (plt->tracer[i].enabled) {
 			ret = readl(plt->tracer[i].base + BUS_TRACE_CON);
+			ret |= plt->tracer[i].axi_disable;
 			writel(ret|BUS_TRACE_EN|WDT_RST_EN|SW_RST_B,
 				plt->tracer[i].base + BUS_TRACE_CON);
 			plt->tracer[i].recording = 1;

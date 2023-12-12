@@ -85,6 +85,7 @@ struct tracer {
 	unsigned char enabled;
 	unsigned char recording;
 	unsigned char at_id;
+	unsigned int axi_disable;
 	struct bus_tracer_filter filter;
 };
 
