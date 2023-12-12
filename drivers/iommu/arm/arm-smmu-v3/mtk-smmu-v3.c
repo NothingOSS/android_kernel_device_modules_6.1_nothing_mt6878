@@ -862,6 +862,8 @@ static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 	ret = smmu_init_wpcfg(smmu);
 
 	smmu_mpam_register(smmu);
+	if (data->plat_data->smmu_type == GPU_SMMU)
+		smmu->features |= ARM_SMMU_FEAT_DIS_EVTQ;
 
 	return ret;
 }

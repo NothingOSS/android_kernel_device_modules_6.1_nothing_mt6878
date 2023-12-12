@@ -3598,6 +3598,10 @@ static int arm_smmu_setup_irqs(struct arm_smmu_device *smmu)
 		dev_err(smmu->dev, "failed to disable irqs\n");
 		return ret;
 	}
+	if (smmu->features & ARM_SMMU_FEAT_DIS_EVTQ) {
+		dev_info(smmu->dev, "%s disable irqs\n", __func__);
+		return 0;
+	}
 
 	irq = smmu->combined_irq;
 	if (irq) {
@@ -3709,8 +3713,8 @@ static int arm_smmu_device_reset(struct arm_smmu_device *smmu, bool bypass)
 	writeq_relaxed(smmu->evtq.q.q_base, smmu->base + ARM_SMMU_EVTQ_BASE);
 	writel_relaxed(smmu->evtq.q.llq.prod, smmu->page1 + ARM_SMMU_EVTQ_PROD);
 	writel_relaxed(smmu->evtq.q.llq.cons, smmu->page1 + ARM_SMMU_EVTQ_CONS);
-
-	enables |= CR0_EVTQEN;
+	if (!(smmu->features & ARM_SMMU_FEAT_DIS_EVTQ))
+		enables |= CR0_EVTQEN;
 	ret = arm_smmu_write_reg_sync(smmu, enables, ARM_SMMU_CR0,
 				      ARM_SMMU_CR0ACK);
 	if (ret) {
