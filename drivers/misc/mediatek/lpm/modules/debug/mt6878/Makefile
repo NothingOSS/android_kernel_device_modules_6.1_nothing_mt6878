@@ -25,4 +25,5 @@ obj-$(CONFIG_MTK_LOW_POWER_MODULE) += ${BUILD_LPM_DBG_MODUDLE_NAME}.o
 ${BUILD_LPM_DBG_MODUDLE_NAME}-objs += lpm_logger.o
 ifeq ($(CONFIG_MTK_SYS_RES_DBG_SUPPORT),m)
 ${BUILD_LPM_DBG_MODUDLE_NAME}-objs += lpm_sys_res_plat.o
+${BUILD_LPM_DBG_MODUDLE_NAME}-objs += lpm_sys_res_mbrain_plat.o
 endif

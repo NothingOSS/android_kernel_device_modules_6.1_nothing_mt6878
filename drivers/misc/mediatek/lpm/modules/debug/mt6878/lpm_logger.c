@@ -32,6 +32,8 @@
 #if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
 #include <lpm_sys_res.h>
 #include <lpm_sys_res_plat.h>
+#include <lpm_sys_res_mbrain_dbg.h>
+#include <lpm_sys_res_mbrain_plat.h>
 #endif
 
 #define PCM_32K_TICKS_PER_SEC		(32768)
@@ -794,6 +796,8 @@ static int __init mt6878_dbg_device_initcall(void)
 	ret = lpm_sys_res_plat_init();
 	if(ret)
 		pr_info("[name:spm&][SPM] Failed to init sys_res plat\n");
+
+	lpm_sys_res_mbrain_plat_init();
 #endif
 	return 0;
 }
@@ -828,6 +832,7 @@ void __exit mt6878_dbg_exit(void)
 	lpm_trace_event_deinit();
 #if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
 	lpm_sys_res_plat_deinit();
+	lpm_sys_res_mbrain_plat_deinit();
 #endif
 }
 
