@@ -1965,18 +1965,6 @@
 	#define MT6989_PQ_FAST_PATH15              15
 	#define MT6989_PQ_FAST_PATH19              19
 
-#define MT6989_DISPSYS_ULTRA_SEL_0 0x44
-	#define MT6989_ULTRA_SEL_RDMA 1
-	#define MT6989_ULTRA_SEL_DSI0 2
-	#define MT6989_ULTRA_SEL_DSI1 3
-	#define MT6989_ULTRA_SEL_DSI2 4
-	#define MT6989_ULTRA_SEL_DP 5
-
-	#define DISP_MDP_RDMA0_STASH_GPREULTRA_SEL	(MT6989_ULTRA_SEL_DSI1 << 20)
-	#define DISP_MDP_RDMA0_STASH_GULTRA_SEL		(MT6989_ULTRA_SEL_DSI1 << 16)
-	#define DISP_MDP_RDMA0_GPREULTRA_SEL		(MT6989_ULTRA_SEL_DSI1 << 12)
-	#define DISP_MDP_RDMA0_GULTRA_SEL		(MT6989_ULTRA_SEL_DSI1 << 8)
-
 #define MT6989_DISPSYS_BYPASS_MUX_SHADOW 0xC30
 
 #define MT6989_PANEL_COMP_OUT_CROSSBAR0_MOUT_EN 0xF38
@@ -19694,19 +19682,6 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 		if (value >= 0)
 			writel_relaxed(value, config_regs + addr);
 
-		if (mtk_crtc->path_data->is_discrete_path &&
-			next == DDP_COMPONENT_DSI1) {
-			config_regs = mtk_crtc->config_regs;
-			addr = MT6989_DISPSYS_ULTRA_SEL_0;
-			reg = DISP_MDP_RDMA0_STASH_GPREULTRA_SEL |
-				DISP_MDP_RDMA0_STASH_GULTRA_SEL |
-				DISP_MDP_RDMA0_GPREULTRA_SEL |
-				DISP_MDP_RDMA0_GULTRA_SEL;
-
-			reg = readl_relaxed(config_regs +
-				addr) | reg;
-			writel_relaxed(reg, config_regs + addr);
-		}
 		break;
 
 	case MMSYS_MT6897:

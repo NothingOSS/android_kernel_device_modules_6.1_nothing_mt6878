@@ -136,6 +136,18 @@
 #define MT6879_FLD_OVL0_2L_RDMA_ULTRA_SEL         REG_FLD_MSB_LSB(9, 6)
 #define MT6879_FLD_OVL0_2L_NWCG_RDMA_ULTRA_SEL    REG_FLD_MSB_LSB(17, 14)
 
+#define MT6989_DISPSYS_ULTRA_SEL_0 0x44
+	#define MT6989_ULTRA_SEL_RDMA 1
+	#define MT6989_ULTRA_SEL_DSI0 2
+	#define MT6989_ULTRA_SEL_DSI1 3
+	#define MT6989_ULTRA_SEL_DSI2 4
+	#define MT6989_ULTRA_SEL_DP 5
+
+	#define DISP_MDP_RDMA0_STASH_GPREULTRA_SEL	(MT6989_ULTRA_SEL_DSI1 << 20)
+	#define DISP_MDP_RDMA0_STASH_GULTRA_SEL		(MT6989_ULTRA_SEL_DSI1 << 16)
+	#define DISP_MDP_RDMA0_GPREULTRA_SEL		(MT6989_ULTRA_SEL_DSI1 << 12)
+	#define DISP_MDP_RDMA0_GULTRA_SEL		(MT6989_ULTRA_SEL_DSI1 << 8)
+
 #define MTK_DDP_COMP_USER "DISP"
 #define CONFIG_MTK_IOMMU_MISC_DBG_DETAIL
 
@@ -2548,6 +2560,35 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			}
 		}
 		return;
+	} else if (id == DDP_COMPONENT_MDP_RDMA0) {
+		unsigned int addr, value, tmp = 0;
+
+		addr = MT6989_DISPSYS_ULTRA_SEL_0;
+		value = DISP_MDP_RDMA0_STASH_GPREULTRA_SEL |
+			DISP_MDP_RDMA0_STASH_GULTRA_SEL |
+			DISP_MDP_RDMA0_GPREULTRA_SEL |
+			DISP_MDP_RDMA0_GULTRA_SEL;
+
+		if (handle == NULL) {
+			if (en) {
+				tmp = (readl(priv->config_regs + addr));
+				tmp |= value;
+				writel_relaxed(tmp, priv->config_regs + addr);
+			} else {
+				tmp = (readl(priv->config_regs + addr));
+				tmp = (tmp & ~(value));
+				writel_relaxed(tmp, priv->config_regs + addr);
+			}
+		} else {
+			if (en) {
+				cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+						addr, value, value);
+			} else {
+				cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+						addr, 0, value);
+			}
+		}
+
 	} else
 		return;
 
