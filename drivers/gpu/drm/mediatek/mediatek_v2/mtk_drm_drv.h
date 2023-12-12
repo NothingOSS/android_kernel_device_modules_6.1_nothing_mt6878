@@ -251,6 +251,8 @@ struct mtk_drm_private {
 	struct mml_drm_ctx *mml_ctx;
 	atomic_t need_recover;
 
+	struct mutex cmdq_prepare_instr_lock;
+
 	unsigned int seg_id;
 };
 

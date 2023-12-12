@@ -10928,6 +10928,13 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 			return;
 		}
 
+		if (priv->data->mmsys_id == MMSYS_MT6878 &&
+			!(mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_IDLEMGR_ASYNC))) {
+			mutex_lock(&priv->cmdq_prepare_instr_lock);
+			DDPINFO("%s crtc:%d +\n", __func__, drm_crtc_index(crtc));
+		}
+
 		mtk_crtc_exec_atf_prebuilt_instr(mtk_crtc, handle);
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC)) {
@@ -10935,6 +10942,10 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 		} else {
 			cmdq_pkt_flush(handle);
 			cmdq_pkt_destroy(handle);
+			if (priv->data->mmsys_id == MMSYS_MT6878) {
+				DDPINFO("%s crtc:%d -\n", __func__, drm_crtc_index(crtc));
+				mutex_unlock(&priv->cmdq_prepare_instr_lock);
+			}
 		}
 	}
 	if (priv->data->mmsys_id == MMSYS_MT6989)
