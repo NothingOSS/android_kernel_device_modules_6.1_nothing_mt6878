@@ -77,7 +77,7 @@ void xhci_segment_free_(struct xhci_hcd *xhci, struct xhci_segment *seg)
 }
 EXPORT_SYMBOL_GPL(xhci_segment_free_);
 
-static void xhci_free_segments_for_ring(struct xhci_hcd *xhci,
+void xhci_free_segments_for_ring(struct xhci_hcd *xhci,
 				struct xhci_segment *first)
 {
 	struct xhci_segment *seg;
