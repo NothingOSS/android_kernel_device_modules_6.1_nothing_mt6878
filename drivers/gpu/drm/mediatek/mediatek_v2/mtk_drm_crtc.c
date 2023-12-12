@@ -1564,7 +1564,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct pq_common_data *pq_data = NULL;
-	struct cmdq_pkt *cmdq_handle;
+	struct cmdq_pkt *cmdq_handle = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *oddmr_comp;
 	struct mtk_cmdq_cb_data *cb_data;
@@ -1584,7 +1584,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 
 
 	if(mtk_crtc == NULL || crtc->state == NULL){
-		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
+		DDPMSG("%s mtk_crtc or crtc->state is NULL\n", __func__);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
 		if (lock)
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -1596,7 +1596,14 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		sb_backlight = level;
 
 	if (!(mtk_crtc->enabled)) {
-		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
+		/* If secondary display is OPENING status, store bl to DDIC current_bl */
+		if (priv && (priv->data->mmsys_id == MMSYS_MT6878) && (index == 3)) {
+			DDPMSG("%s crtc%d is opening, only store bl to DDIC current_bl\n",
+				__func__, index);
+			if (comp && comp->funcs && comp->funcs->io_cmd)
+				comp->funcs->io_cmd(comp, NULL, DSI_SET_BL, &level);
+		}
+		DDPMSG("%s Sleep State set backlight stop --crtc%d not enable\n", __func__, index);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
 		if (lock)
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -1604,7 +1611,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	}
 
 	if (!comp) {
-		DDPINFO("%s no output comp\n", __func__);
+		DDPMSG("%s no output comp\n", __func__);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
 		if (lock)
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -7899,6 +7906,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			if (priv && priv->usage[i] == DISP_OPENING &&
 					((old_mtk_state->pending_usage_list >> i) & 0x1))
 				priv->usage[i] = DISP_ENABLE;
+				DDPINFO("%s priv->usage[%d] = %d\n", __func__, i, priv->usage[i]);
 		}
 	}
 	mtk_crtc_release_input_layer_fence(crtc, session_id);
