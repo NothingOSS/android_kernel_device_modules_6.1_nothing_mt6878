@@ -5480,8 +5480,6 @@ static void *get_vow_coeff_by_name(struct mt6368_priv *priv,
 		return &(priv->reg_afe_vow_periodic);
 	else if (strcmp(name, "Audio_Vow_SINGLE_MIC_Select") == 0)
 		return &(priv->vow_single_mic_select);
-	else if (strcmp(name, "Audio_VOW_Periodic_Param") == 0)
-		return (void *) &(priv->vow_periodic_param);
 	else
 		return NULL;
 }
@@ -5525,35 +5523,6 @@ static int audio_vow_cfg_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int audio_vow_periodic_parm_set(struct snd_kcontrol *kcontrol,
-				       const unsigned int __user *data,
-				       unsigned int size)
-{
-	int ret = 0;
-	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
-	struct mt6368_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	struct mt6368_vow_periodic_on_off_data *vow_param_cfg;
-
-	dev_info(priv->dev, "%s(), size = %d\n", __func__, size);
-	if (size > sizeof(struct mt6368_vow_periodic_on_off_data))
-		return -EINVAL;
-	vow_param_cfg = (struct mt6368_vow_periodic_on_off_data *)
-			get_vow_coeff_by_name(priv, kcontrol->id.name);
-	if (!vow_param_cfg) {
-		dev_err(priv->dev, "%s(), vow_param_cfg == NULL\n", __func__);
-		return -EINVAL;
-	}
-	if (copy_from_user(vow_param_cfg, data,
-			   sizeof(struct mt6368_vow_periodic_on_off_data))) {
-		dev_info(priv->dev, "%s(),Fail copy to user Ptr:%p,r_sz:%zu\n",
-			 __func__,
-			 data,
-			 sizeof(struct mt6368_vow_periodic_on_off_data));
-		ret = -EFAULT;
-	}
-	return ret;
-}
-
 static const struct snd_kcontrol_new mt6368_snd_vow_controls[] = {
 	SOC_SINGLE_EXT("Audio VOWCFG0 Data",
 		       SND_SOC_NOPM, 0, 0x80000, 0,
@@ -5579,9 +5548,6 @@ static const struct snd_kcontrol_new mt6368_snd_vow_controls[] = {
 	SOC_SINGLE_EXT("Audio_Vow_SINGLE_MIC_Select",
 		       SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_vow_cfg_get, audio_vow_cfg_set),
-	SND_SOC_BYTES_TLV("Audio_VOW_Periodic_Param",
-			  sizeof(struct mt6368_vow_periodic_on_off_data),
-			  NULL, audio_vow_periodic_parm_set),
 };
 
 /* misc control */
