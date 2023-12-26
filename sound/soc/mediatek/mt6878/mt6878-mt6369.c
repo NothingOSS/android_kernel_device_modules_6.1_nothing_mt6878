@@ -109,6 +109,9 @@ static int mt6878_compress_info_get(struct snd_kcontrol *kcontrol,
 	struct snd_device *snd_dev;
 	struct snd_compr *compr;
 	int ret = 0, i = 0;
+	bool found_type = false;
+	bool found_name = false;
+	bool found_dir = false;
 
 	snd_card = card->snd_card;
 
@@ -116,8 +119,10 @@ static int mt6878_compress_info_get(struct snd_kcontrol *kcontrol,
 
 	list_for_each_entry(snd_dev, &snd_card->devices, list) {
 		if ((unsigned int)snd_dev->type == (unsigned int)SNDRV_DEV_COMPRESS) {
+			found_type = true;
 			compr = snd_dev->device_data;
 			if (compr->device == compr_info.device) {
+				found_dir = true;
 				pr_debug("%s() compr->direction %s\n",
 					 __func__,
 					 (compr->direction) ? "Capture" : "Playback");
@@ -125,10 +130,14 @@ static int mt6878_compress_info_get(struct snd_kcontrol *kcontrol,
 			}
 			for_each_card_prelinks(card, i, dai_link) {
 				if (i == compr_info.device) {
-					pr_debug("device = %d, dai_link->name: %s\n",
-						 i, dai_link->stream_name);
-					strscpy(compr_info.id, dai_link->stream_name,
-						sizeof(compr_info.id));
+					if (dai_link->stream_name != NULL) {
+						found_name = true;
+						pr_debug("device = %d, dai_link->name: %s\n",
+							 i, dai_link->stream_name);
+						strscpy(compr_info.id, dai_link->stream_name,
+							sizeof(compr_info.id));
+					} else
+						pr_info("compress_info_get fail\n");
 					break;
 				}
 			}
@@ -137,6 +146,11 @@ static int mt6878_compress_info_get(struct snd_kcontrol *kcontrol,
 	}
 	if (copy_to_user(data, &compr_info, sizeof(struct mt6878_compress_info))) {
 		pr_info("%s(), copy_to_user fail", __func__);
+		ret = -EFAULT;
+	}
+	if (found_type == false || found_name == false || found_dir == false) {
+		pr_info("%s(), Not found! type %d, name %d or dir %d",
+			__func__, found_type, found_name, found_dir);
 		ret = -EFAULT;
 	}
 	return ret;
