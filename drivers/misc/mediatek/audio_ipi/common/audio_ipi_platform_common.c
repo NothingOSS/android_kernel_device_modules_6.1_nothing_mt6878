@@ -302,11 +302,11 @@ int get_reserve_mem_size(const uint32_t dsp_id,
 
 	switch (dsp_id) {
 	case AUDIO_OPENDSP_USE_CM4_A:
-	case AUDIO_OPENDSP_USE_RV_A:
 		*mem_id = AUDIO_IPI_MEM_ID;
 		*size = (uint32_t)scp_get_reserve_mem_size(*mem_id);
 		ret = 0;
 		break;
+	case AUDIO_OPENDSP_USE_RV_A:
 	case AUDIO_OPENDSP_USE_HIFI3_A:
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 		*mem_id = ADSP_A_IPI_DMA_MEM_ID;
@@ -337,9 +337,9 @@ void *get_reserve_mem_virt(const uint32_t dsp_id, const uint32_t mem_id)
 
 	switch (dsp_id) {
 	case AUDIO_OPENDSP_USE_CM4_A:
-	case AUDIO_OPENDSP_USE_RV_A:
 		addr_mem_virt = (void *)scp_get_reserve_mem_virt(mem_id);
 		break;
+	case AUDIO_OPENDSP_USE_RV_A:
 	case AUDIO_OPENDSP_USE_HIFI3_A:
 	case AUDIO_OPENDSP_USE_HIFI3_B:
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
@@ -362,9 +362,9 @@ phys_addr_t get_reserve_mem_phys(const uint32_t dsp_id, const uint32_t mem_id)
 
 	switch (dsp_id) {
 	case AUDIO_OPENDSP_USE_CM4_A:
-	case AUDIO_OPENDSP_USE_RV_A:
 		addr_mem_phys = scp_get_reserve_mem_phys(mem_id);
 		break;
+	case AUDIO_OPENDSP_USE_RV_A:
 	case AUDIO_OPENDSP_USE_HIFI3_A:
 	case AUDIO_OPENDSP_USE_HIFI3_B:
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)

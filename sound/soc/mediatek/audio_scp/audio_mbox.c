@@ -214,6 +214,13 @@ static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 		}
 	}
 
+	/*audio reserved memory */
+	pr_notice("%s() adsp_reserve_memory_ioremap\n", __func__);
+	ret = adsp_mem_device_probe(pdev);
+	if (ret) {
+		pr_notice("%s(), memory probe fail, %d\n", __func__, ret);
+		return ret;
+	}
 #else
 	ret = 0;
 #endif /* CONFIG_MTK_TINYSYS_SCP_SUPPORT */

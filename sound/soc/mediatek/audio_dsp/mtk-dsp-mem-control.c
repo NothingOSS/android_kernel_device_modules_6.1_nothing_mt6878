@@ -958,21 +958,12 @@ int init_mtk_adsp_dram_segment(void)
 
 	for (i = 0; i < AUDIO_DSP_SHARE_MEM_NUM; i++) {
 		dram = &dsp_dram_buffer[i];
-		if (get_adsp_type() == ADSP_TYPE_RV55) {
-			dram->phy_addr =
-			scp_get_reserve_mem_phys(SCP_AUDIO_COMMON_MEM_ID);
-			dram->vir_addr =
-	(unsigned char *)scp_get_reserve_mem_virt(SCP_AUDIO_COMMON_MEM_ID);
-			dram->size =
-			scp_get_reserve_mem_size(SCP_AUDIO_COMMON_MEM_ID);
-		} else {
-			dram->phy_addr =
-				adsp_get_reserve_mem_phys(dsp_mem_id[i]);
-			dram->vir_addr =
-				adsp_get_reserve_mem_virt(dsp_mem_id[i]);
-			dram->size =
-				adsp_get_reserve_mem_size(dsp_mem_id[i]);
-		}
+		dram->phy_addr =
+			adsp_get_reserve_mem_phys(dsp_mem_id[i]);
+		dram->vir_addr =
+			adsp_get_reserve_mem_virt(dsp_mem_id[i]);
+		dram->size =
+			adsp_get_reserve_mem_size(dsp_mem_id[i]);
 		dram->va_addr = (u64)dram->vir_addr;
 
 		if (!dram->phy_addr || !dram->size || !dram->vir_addr)

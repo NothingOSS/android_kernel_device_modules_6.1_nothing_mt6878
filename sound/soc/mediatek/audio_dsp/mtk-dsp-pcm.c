@@ -214,11 +214,11 @@ static int dsp_pcm_dev_probe(struct platform_device *pdev)
 	}
 
 	/* set adsp shared memory cacheable by using ADSP MPU */
-	if (dsp->dsp_ver)
+	if (dsp->dsp_ver) {
 		ret = set_mtk_adsp_mpu_sharedram(AUDIO_DSP_AFE_SHARE_MEM_ID);
-	if (ret)
-		pr_info("set_mtk_adsp_mpu_sharedram fail\n");
-
+		if (ret)
+			pr_info("set_mtk_adsp_mpu_sharedram fail\n");
+	}
 	ret = mtk_init_adsp_audio_share_mem(dsp);
 	if (ret) {
 		pr_info("init share mem fail\n");
