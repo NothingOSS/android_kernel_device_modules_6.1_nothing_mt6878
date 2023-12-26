@@ -14782,6 +14782,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	};
 
+	cgppt: cgppt {
+		compatible = "mediatek,cgppt";
+		nvmem-cells = <&efuse_segment>;
+		nvmem-cell-names = "efuse_segment_cell";
+	};
+
 	peak_power_budget:peak-power-budget@117780 {
 		compatible = "mediatek,peak_power_budget";
 		bootmode = <&chosen>;
