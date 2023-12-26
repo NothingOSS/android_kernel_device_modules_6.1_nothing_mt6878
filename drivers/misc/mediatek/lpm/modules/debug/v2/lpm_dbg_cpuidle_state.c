@@ -5,6 +5,7 @@
 #include <linux/cpuidle.h>
 #include <linux/topology.h>
 #include <linux/slab.h>
+#include <linux/of.h>
 
 #include <mtk_cpuidle_sysfs.h>
 
@@ -70,6 +71,14 @@ static const char *node_name[NF_IDLE_PARAM] = {
 	[IDLE_PARAM_RES]	= "residency",
 };
 
+struct lpm_idle_state_info {
+	char name[CPUIDLE_NAME_LEN];
+	unsigned int param;
+};
+
+static struct lpm_idle_state_info state_info[CPUIDLE_STATE_MAX];
+static unsigned int nr_states;
+
 static long lpm_per_cpuidle_drv_param(void *pData)
 {
 	struct cpuidle_driver *drv = cpuidle_get_driver();
@@ -78,14 +87,13 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 	int i = 0;
 	size_t sz = *(info->sz);
 	char *p = info->p;
-	char name[20] = {0};
 
 	if (!drv)
 		return -ENODEV;
 	if (info->type == MTK_CPUIDLE_DRIVE_STATE_GET) {
 		if (info->cpu == 0) {
 			mtk_dbg_cpuidle_log("%-12s:", "state_index");
-			for (i = 0; i < drv->state_count; i++)
+			for (i = 0; i < nr_states; i++)
 				if (i == 0)
 					mtk_dbg_cpuidle_log("  %-8d", i);
 				else
@@ -93,21 +101,11 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 			mtk_dbg_cpuidle_log("\n");
 
 			mtk_dbg_cpuidle_log("%-12s:", "state_name");
-			for (i = 0; i < drv->state_count; i++) {
+			for (i = 0; i < nr_states; i++) {
 				if (i == 0)
-					mtk_dbg_cpuidle_log("  %-8s", (drv->states[i]).name);
-				else {
-					if (!strncmp((drv->states[i]).name + 3, "off_", 4) ||
-						!strncmp((drv->states[i]).name + 6, "off_", 4) ||
-						!strncmp((drv->states[i]).name + 7, "off_", 4)) {
-						memset(name, 0, sizeof(name));
-						strncpy(name, (drv->states[i]).name,
-							strlen((drv->states[i]).name)-2);
-						mtk_dbg_cpuidle_log("%-15s", name);
-					} else
-						mtk_dbg_cpuidle_log("%-15s",
-								(drv->states[i]).name);
-				}
+					mtk_dbg_cpuidle_log("  %-8s", state_info[i].name);
+				else
+					mtk_dbg_cpuidle_log("%-15s", state_info[i].name);
 			}
 			mtk_dbg_cpuidle_log("\n");
 		}
@@ -116,20 +114,31 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 		if (cpu_is_offline(info->cpu))
 			mtk_dbg_cpuidle_log("%18s ", "Offline");
 		else {
-			for (i = 0; i < drv->state_count; i++) {
-				if (i == 0)
-					mtk_dbg_cpuidle_log("  %-8ld",
-						mtk_cpuidle_get_param(drv, i, info->param));
-				else
+			unsigned int j = 1;
+
+			mtk_dbg_cpuidle_log("  %-8ld",
+				mtk_cpuidle_get_param(drv, i, info->param));
+			for (i = 0; i < nr_states; i++) {
+				if (!strncmp((drv->states[j]).name, state_info[i].name,
+					strlen(state_info[i].name))) {
 					mtk_dbg_cpuidle_log("%-15ld",
-						mtk_cpuidle_get_param(drv, i, info->param));
+						mtk_cpuidle_get_param(drv, j, info->param));
+					j += 1;
+				} else {
+					mtk_dbg_cpuidle_log("%-15s", "X");
+				}
 			}
 		}
-
 		mtk_dbg_cpuidle_log("\n");
-	} else if (info->type == MTK_CPUIDLE_DRIVE_STATE_SET) {
-		mtk_cpuidle_set_param(drv, info->state_idx, info->param,
-					info->val);
+	} else if (info->type == MTK_CPUIDLE_DRIVE_STATE_SET && info->state_idx < nr_states) {
+		for (i = 0; i < drv->state_count; i++) {
+			if (!strncmp((drv->states[i]).name,
+				state_info[info->state_idx].name,
+				strlen(state_info[info->state_idx].name))) {
+				mtk_cpuidle_set_param(drv, i, info->param, info->val);
+				break;
+			}
+		}
 	}
 
 	*(info->sz) = sz;
@@ -289,6 +298,36 @@ static ssize_t lpm_cpuidle_state_write(char *FromUserBuf,
 	return -EINVAL;
 }
 
+void lpm_cpuidle_state_info_init(void)
+{
+	struct device_node *node = NULL;
+	int i = 1;
+
+	strcpy(state_info[0].name, "WFI");
+	state_info[0].param = 0;
+	do {
+		node = of_find_compatible_node(node, NULL, "arm,idle-state");
+		if (node) {
+			unsigned int param = 0;
+			int j = 0;
+
+			of_property_read_u32(node, "arm,psci-suspend-param", &param);
+			for (j = 0; j < i; j++)
+				if (param == state_info[j].param)
+					break;
+			if (j == i) {
+				strcpy(state_info[i].name, node->name);
+				state_info[i].param = param;
+				i += 1;
+			} else {
+				if (strcmp(state_info[j].name, node->name))
+					state_info[j].name[strlen(node->name)-2] = '\0';
+			}
+		}
+	} while (node);
+	nr_states = i;
+}
+
 static int lpm_topology_init(void)
 {
 	unsigned int cluster_id_map = 0, cluster_num = 0;
@@ -366,4 +405,6 @@ void lpm_cpuidle_state_init(void)
 					&state_residency.op,
 					&lpm_entry_cpuidle_state,
 					&state_residency.handle);
+
+	lpm_cpuidle_state_info_init();
 }
