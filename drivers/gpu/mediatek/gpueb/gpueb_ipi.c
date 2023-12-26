@@ -517,12 +517,27 @@ void *get_gpueb_ipidev(void)
 }
 EXPORT_SYMBOL_GPL(get_gpueb_ipidev);
 
-void gpueb_clr_mbox1_irq(void)
+unsigned int gpueb_get_mbox1_irq(void)
+{
+	unsigned int val = 0;
+
+	if (g_gpueb_mbox_ipi) {
+		/* g_gpueb_mbox_ipi (0x13C62000) */
+		/* GPUEB to APMCU IRQ[1] SW INT Status (0x13C62088) */
+		val = readl(g_gpueb_mbox_ipi + 0x88);
+	} else
+		gpueb_pr_info("null g_gpueb_mbox_ipi");
+
+	return val;
+}
+EXPORT_SYMBOL_GPL(gpueb_get_mbox1_irq);
+
+void gpueb_clr_mbox1_irq(unsigned int val)
 {
 	if (g_gpueb_mbox_ipi) {
 		/* g_gpueb_mbox_ipi (0x13C62000) */
 		/* GPUEB to APMCU IRQ[1] SW INT Clear (0x13C62084) */
-		writel(1, (g_gpueb_mbox_ipi + 0x84));
+		writel(val, (g_gpueb_mbox_ipi + 0x84));
 	} else
 		gpueb_pr_info("null g_gpueb_mbox_ipi");
 }
