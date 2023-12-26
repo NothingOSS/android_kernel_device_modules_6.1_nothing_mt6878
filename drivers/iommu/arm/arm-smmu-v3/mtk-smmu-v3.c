@@ -368,6 +368,54 @@ static u64 get_smmu_tab_id_by_domain(struct iommu_domain *domain)
 	return smmu_id << 32 | asid;
 }
 
+static int mtk_smmu_map_pages(struct arm_smmu_domain *smmu_domain,
+			      unsigned long iova, phys_addr_t paddr, size_t pgsize,
+			      size_t pgcount, int prot, gfp_t gfp, size_t *mapped)
+{
+	struct io_pgtable_ops *ops = smmu_domain->pgtbl_ops;
+	struct arm_smmu_device *smmu = smmu_domain->smmu;
+	int retry_count = 0;
+	int ret;
+
+	if (!ops)
+		return -ENODEV;
+
+	ret = ops->map_pages(ops, iova, paddr, pgsize, pgcount, prot, gfp, mapped);
+
+	/* Retry if atomic alloc memory fail */
+	while (ret == -ENOMEM && (gfp & GFP_ATOMIC) != 0 && retry_count < 8) {
+		gfp_t gfp_flags = gfp;
+
+		if (!(in_atomic() || irqs_disabled() || in_interrupt())) {
+			/* If not in atomic ctx, wait memory reclaim */
+			gfp_flags = (gfp & ~GFP_ATOMIC) | GFP_KERNEL;
+		}
+
+		ret = ops->map_pages(ops, iova, paddr, pgsize, pgcount,
+				     prot, gfp_flags, mapped);
+		dev_info_ratelimited(smmu->dev,
+				     "[%s] retry map alloc memory gfp:0x%x->0x%x %d:%d\n",
+				     __func__, gfp, gfp_flags, retry_count + 1, ret);
+
+		if (ret == -ENOMEM) {
+			retry_count++;
+			if (in_atomic() || irqs_disabled() || in_interrupt()) {
+				/* most wait 4ms at atomic */
+				udelay(500);
+			} else {
+				usleep_range(8000, 10*1000);
+			}
+		}
+	}
+
+	if (ret)
+		dev_info(smmu->dev,
+			 "[%s] iova:0x%lx pgsize:0x%zx pgcount:0x%zx prot:%d gfp:0x%x %d:%d\n",
+			 __func__, iova, pgsize, pgcount, prot, gfp, retry_count, ret);
+
+	return ret;
+}
+
 static void mtk_iotlb_sync_map(struct iommu_domain *domain, unsigned long iova,
 			       size_t size)
 {
@@ -2304,6 +2352,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.smmu_irq_handler = mtk_smmu_irq_handler,
 	.smmu_evt_handler = mtk_smmu_evt_handler,
 	.report_device_fault = mtk_report_device_fault,
+	.map_pages = mtk_smmu_map_pages,
 	.iotlb_sync_map = mtk_iotlb_sync_map,
 	.iotlb_sync = mtk_iotlb_sync,
 	.tlb_flush = mtk_tlb_flush,

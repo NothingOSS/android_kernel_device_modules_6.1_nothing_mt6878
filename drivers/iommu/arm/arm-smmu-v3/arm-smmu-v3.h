@@ -805,6 +805,9 @@ struct arm_smmu_impl {
 				   enum iommu_dev_features feat);
 	bool (*dev_disable_feature)(struct device *dev,
 				    enum iommu_dev_features feat);
+	int (*map_pages)(struct arm_smmu_domain *smmu_domain, unsigned long iova,
+			 phys_addr_t paddr, size_t pgsize, size_t pgcount,
+			 int prot, gfp_t gfp, size_t *mapped);
 	void (*iotlb_sync_map)(struct iommu_domain *domain,
 			       unsigned long iova, size_t size);
 	void (*iotlb_sync)(struct iommu_domain *domain,

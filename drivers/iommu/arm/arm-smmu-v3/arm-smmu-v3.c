@@ -2676,10 +2676,16 @@ static int arm_smmu_map_pages(struct iommu_domain *domain, unsigned long iova,
 			      phys_addr_t paddr, size_t pgsize, size_t pgcount,
 			      int prot, gfp_t gfp, size_t *mapped)
 {
-	struct io_pgtable_ops *ops = to_smmu_domain(domain)->pgtbl_ops;
+	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
+	struct io_pgtable_ops *ops = smmu_domain->pgtbl_ops;
+	struct arm_smmu_device *smmu = smmu_domain->smmu;
 
 	if (!ops)
 		return -ENODEV;
+
+	if (smmu && smmu->impl && smmu->impl->map_pages)
+		return smmu->impl->map_pages(smmu_domain, iova, paddr, pgsize, pgcount,
+					     prot, gfp, mapped);
 
 	return ops->map_pages(ops, iova, paddr, pgsize, pgcount, prot, gfp, mapped);
 }
