@@ -19905,7 +19905,11 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 		if (value >= 0) {
 			reg = readl_relaxed(config_regs + addr) |
 					(unsigned int)value;
+			DDPINFO("%s, MT6878_MMSYS_OVL_CON:0x%x\n",
+				__func__, readl_relaxed(config_regs + addr));
 			writel_relaxed(reg, config_regs + addr);
+			DDPINFO("%s, MT6878_MMSYS_OVL_CON:0x%x\n",
+				__func__, readl_relaxed(config_regs + addr));
 		}
 
 		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
@@ -20439,10 +20443,13 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			config_regs_pa + addr1, reg1, reg1);
 
 		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
-		if (value >= 0)
+		if (value >= 0) {
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				config_regs_pa
 				+ addr, value, value);
+			DDPINFO("%s, will set MT6878_MMSYS_OVL_CON value:0x%x\n",
+				__func__, value);
+		}
 
 		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
 		if (value >= 0)
@@ -20768,7 +20775,11 @@ void mtk_ddp_remove_comp_from_path(struct mtk_drm_crtc *mtk_crtc,
 		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
 		if (value >= 0) {
 			reg = readl_relaxed(config_regs + addr) & ~(unsigned int)value;
+			DDPINFO("%s, MT6878_MMSYS_OVL_CON:0x%x\n",
+				__func__, readl_relaxed(config_regs + addr));
 			writel_relaxed(reg, config_regs + addr);
+			DDPINFO("%s, MT6878_MMSYS_OVL_CON:0x%x\n",
+				__func__, readl_relaxed(config_regs + addr));
 		}
 
 		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
@@ -21028,10 +21039,13 @@ void mtk_ddp_remove_comp_from_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 
 		case MMSYS_MT6878:
 		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
-		if (value >= 0)
+		if (value >= 0) {
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 					   config_regs_pa + addr,
 					   ~(unsigned int)value, value);
+			DDPINFO("%s, will set MT6878_MMSYS_OVL_CON value:0x%x\n",
+				__func__, value);
+		}
 
 		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
 		if (value >= 0)

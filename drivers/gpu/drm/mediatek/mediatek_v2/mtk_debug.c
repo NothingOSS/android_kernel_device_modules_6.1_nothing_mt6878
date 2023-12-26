@@ -2939,7 +2939,14 @@ static void process_dbg_opt(const char *opt)
 		char *p = (char *)opt + 15;
 		unsigned int flg = 0;
 		struct drm_crtc *crtc;
+		struct drm_crtc *crtc3;
 		int ret;
+		struct mtk_drm_private *private = drm_dev->dev_private;
+
+		if (!private) {
+			DDPPR_ERR("%d private is NULL\n", __LINE__);
+			return;
+		}
 
 		ret = kstrtouint(p, 0, &flg);
 		if (ret) {
@@ -2951,11 +2958,24 @@ static void process_dbg_opt(const char *opt)
 		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
 					typeof(*crtc), head);
 		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
+			DDPPR_ERR("find crtc0 fail\n");
 			return;
 		}
 
 		mtk_drm_set_idlemgr(crtc, flg, 1);
+
+		/* If dual display , apply to crtc3 */
+		if (of_property_read_bool(private->mmsys_dev->of_node,
+			"enable-secondary-path")) {
+			crtc3 = private->crtc[3];
+
+			if (!crtc3) {
+				DDPPR_ERR("%d CRTC3 is NULL\n", __LINE__);
+				return;
+			}
+
+			mtk_drm_set_idlemgr(crtc3, flg, 1);
+		}
 	} else if (strncmp(opt, "idle_wait:", 10) == 0) {
 		unsigned long long idle_check_interval = 0;
 		struct drm_crtc *crtc;
