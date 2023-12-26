@@ -1578,6 +1578,11 @@
 				scmi-ise = <12>;
 			};
 		};
+
+		android: android {
+			compatible = "android,firmware";
+			hardware = "mt6989";
+		};
 	};
 
 	cpuqos_v3: cpuqos-v3@c0dc350 {
