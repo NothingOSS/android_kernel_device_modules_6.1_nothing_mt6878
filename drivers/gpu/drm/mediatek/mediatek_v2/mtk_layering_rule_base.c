@@ -2997,6 +2997,10 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info,
 	if (!get_layering_opt(LYE_OPT_CLEAR_LAYER))
 		return;
 
+	if ((priv->data->mmsys_id == MMSYS_MT6878) &&
+		(disp_info->disp_idx == 3))
+		return;
+
 	drm_for_each_crtc(crtc, drm_dev) {
 		if (drm_crtc_index(crtc) == 0)
 			break;
