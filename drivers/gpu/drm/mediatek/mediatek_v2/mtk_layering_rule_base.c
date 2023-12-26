@@ -4616,6 +4616,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	check_gles_change(&dbg_gles, __LINE__, true);
 
 	check_layering_result(&layering_info);
+	/* Double Check GLES adjustment and ext layer checking */
+	ret = filter_by_ovl_cnt(dev, &layering_info);
 	ret = dispatch_ovl_id(&layering_info, lyeblob_ids, dev, &lye_state);
 
 	layering_info.hrt_idx = _layering_rule_get_hrt_idx(disp_idx);
