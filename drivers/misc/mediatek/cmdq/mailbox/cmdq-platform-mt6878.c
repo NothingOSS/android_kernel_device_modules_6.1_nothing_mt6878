@@ -61,6 +61,19 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 		case CMDQ_EVENT_DISPSYS_DISP_OVL0_2L_SOF
 			... CMDQ_EVENT_DISPSYS_BUF_UNDERRUN_ENG_EVENT_7:
 			return "DISP";
+		case CMDQ_SYNC_TOKEN_CONFIG_DIRTY:
+		case CMDQ_SYNC_TOKEN_STREAM_EOF:
+		case CMDQ_SYNC_TOKEN_ESD_EOF:
+		case CMDQ_SYNC_TOKEN_STREAM_BLOCK:
+		case CMDQ_SYNC_TOKEN_CABC_EOF:
+		case CMDQ_SYNC_TOKEN_CONFIG_DIRTY_1
+			... CMDQ_SYNC_TOKEN_CABC_EOF_1:
+		case CMDQ_SYNC_TOKEN_CONFIG_DIRTY_3
+			... CMDQ_SYNC_TOKEN_CABC_EOF_3:
+			return "DISP";
+		case CMDQ_SYNC_TOKEN_MML_BUFA
+			... CMDQ_SYNC_TOKEN_MML_PIPE1_NEXT:
+			return "MML";
 		default:
 			return "CMDQ";
 		}
