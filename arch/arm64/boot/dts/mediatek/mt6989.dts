@@ -12687,6 +12687,7 @@
 		scp-low-pwr-dbg = "enable";
 		scp-cfgreg-ap-en = "enable";
 		scp-ipc-wa = "enable";
+		scp-mbrain = "enable";
 		//scp_aovmem_key = "mediatek,scp_aov_reserved";
 		scp-mem-key = "mediatek,reserve-memory-scp_share";
 
