@@ -203,20 +203,26 @@ static int aoltestv2_nl_msg_to_scp(struct sk_buff *skb, struct genl_info *info)
 	struct nlattr *attr_info = NULL;
 	u32 msg_id, msg_sz, module_id = 0;
 	u8 *buf = NULL;
+	struct nlattr **attrs;
 
 	if (info == NULL)
+		return -1;
+
+	attrs = info->attrs;
+	if (attrs[AOLTEST_ATTR_MODULE] == NULL ||
+		attrs[AOLTEST_ATTR_MSG_ID] == NULL ||
+		attrs[AOLTEST_ATTR_MSG_SIZE] == NULL)
 		return -1;
 
 	if (mutex_lock_killable(&g_ctx->nl_lock))
 		return -1;
 
-	module_id = nla_get_u32(info->attrs[AOLTEST_ATTR_MODULE]);
-	msg_id = nla_get_u32(info->attrs[AOLTEST_ATTR_MSG_ID]);
-	msg_sz = nla_get_u32(info->attrs[AOLTEST_ATTR_MSG_SIZE]);
-
-	attr_info = info->attrs[AOLTEST_ATTR_MSG_DATA];
-
+	module_id = nla_get_u32(attrs[AOLTEST_ATTR_MODULE]);
+	msg_id = nla_get_u32(attrs[AOLTEST_ATTR_MSG_ID]);
+	msg_sz = nla_get_u32(attrs[AOLTEST_ATTR_MSG_SIZE]);
 	pr_info("[%s] msg [%d][%d][%d]", __func__, module_id, msg_id, msg_sz);
+
+	attr_info = attrs[AOLTEST_ATTR_MSG_DATA];
 	if (attr_info != NULL)
 		buf = nla_data(attr_info);
 
@@ -304,20 +310,26 @@ static int aoltestv2_nl_start(struct sk_buff *skb, struct genl_info *info)
 	struct nlattr *attr_info = NULL;
 	u32 msg_id, msg_sz, module_id = 0;
 	u8 *buf = NULL;
+	struct nlattr **attrs;
 
 	if (info == NULL)
+		return -1;
+
+	attrs = info->attrs;
+	if (attrs[AOLTEST_ATTR_MODULE] == NULL ||
+		attrs[AOLTEST_ATTR_MSG_ID] == NULL ||
+		attrs[AOLTEST_ATTR_MSG_SIZE] == NULL)
 		return -1;
 
 	if (mutex_lock_killable(&g_ctx->nl_lock))
 		return -1;
 
-	module_id = nla_get_u32(info->attrs[AOLTEST_ATTR_MODULE]);
-	msg_id = nla_get_u32(info->attrs[AOLTEST_ATTR_MSG_ID]);
-	msg_sz = nla_get_u32(info->attrs[AOLTEST_ATTR_MSG_SIZE]);
-
-	attr_info = info->attrs[AOLTEST_ATTR_MSG_DATA];
-
+	module_id = nla_get_u32(attrs[AOLTEST_ATTR_MODULE]);
+	msg_id = nla_get_u32(attrs[AOLTEST_ATTR_MSG_ID]);
+	msg_sz = nla_get_u32(attrs[AOLTEST_ATTR_MSG_SIZE]);
 	pr_info("[%s] msg [%d][%d][%d]", __func__, module_id, msg_id, msg_sz);
+
+	attr_info = attrs[AOLTEST_ATTR_MSG_DATA];
 	if (attr_info != NULL)
 		buf = nla_data(attr_info);
 
@@ -336,20 +348,26 @@ static int aoltestv2_nl_stop(struct sk_buff *skb, struct genl_info *info)
 	struct nlattr *attr_info = NULL;
 	u32 msg_id, msg_sz, module_id = 0;
 	u8 *buf = NULL;
+	struct nlattr **attrs;
 
 	if (info == NULL)
+		return -1;
+
+	attrs = info->attrs;
+	if (attrs[AOLTEST_ATTR_MODULE] == NULL ||
+		attrs[AOLTEST_ATTR_MSG_ID] == NULL ||
+		attrs[AOLTEST_ATTR_MSG_SIZE] == NULL)
 		return -1;
 
 	if (mutex_lock_killable(&g_ctx->nl_lock))
 		return -1;
 
-	module_id = nla_get_u32(info->attrs[AOLTEST_ATTR_MODULE]);
-	msg_id = nla_get_u32(info->attrs[AOLTEST_ATTR_MSG_ID]);
-	msg_sz = nla_get_u32(info->attrs[AOLTEST_ATTR_MSG_SIZE]);
-
-	attr_info = info->attrs[AOLTEST_ATTR_MSG_DATA];
-
+	module_id = nla_get_u32(attrs[AOLTEST_ATTR_MODULE]);
+	msg_id = nla_get_u32(attrs[AOLTEST_ATTR_MSG_ID]);
+	msg_sz = nla_get_u32(attrs[AOLTEST_ATTR_MSG_SIZE]);
 	pr_info("[%s] msg [%d][%d][%d]", __func__, module_id, msg_id, msg_sz);
+
+	attr_info = attrs[AOLTEST_ATTR_MSG_DATA];
 	if (attr_info != NULL)
 		buf = nla_data(attr_info);
 
@@ -367,20 +385,26 @@ static int aoltestv2_nl_data_trans(struct sk_buff *skb, struct genl_info *info)
 	struct nlattr *attr_info = NULL;
 	u32 msg_id, msg_sz, module_id = 0;
 	u8 *buf = NULL;
+	struct nlattr **attrs;
 
 	if (info == NULL)
+		return -1;
+
+	attrs = info->attrs;
+	if (attrs[AOLTEST_ATTR_MODULE] == NULL ||
+		attrs[AOLTEST_ATTR_MSG_ID] == NULL ||
+		attrs[AOLTEST_ATTR_MSG_SIZE] == NULL)
 		return -1;
 
 	if (mutex_lock_killable(&g_ctx->nl_lock))
 		return -1;
 
-	module_id = nla_get_u32(info->attrs[AOLTEST_ATTR_MODULE]);
-	msg_id = nla_get_u32(info->attrs[AOLTEST_ATTR_MSG_ID]);
-	msg_sz = nla_get_u32(info->attrs[AOLTEST_ATTR_MSG_SIZE]);
-
-	attr_info = info->attrs[AOLTEST_ATTR_MSG_DATA];
-
+	module_id = nla_get_u32(attrs[AOLTEST_ATTR_MODULE]);
+	msg_id = nla_get_u32(attrs[AOLTEST_ATTR_MSG_ID]);
+	msg_sz = nla_get_u32(attrs[AOLTEST_ATTR_MSG_SIZE]);
 	pr_info("[%s] msg [%d][%d][%d]", __func__, module_id, msg_id, msg_sz);
+
+	attr_info = attrs[AOLTEST_ATTR_MSG_DATA];
 	if (attr_info != NULL)
 		buf = nla_data(attr_info);
 
