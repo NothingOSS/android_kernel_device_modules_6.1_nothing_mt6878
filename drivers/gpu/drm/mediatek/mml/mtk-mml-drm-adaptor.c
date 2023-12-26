@@ -199,6 +199,10 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 			ctx->panel_width, ctx->panel_height);
 	else
 		mode = tp->op->query_mode(ctx->mml, info, &reason);
+
+	if (reason != 0)
+		mml_msg("[drm]%s query mode result mode: %u, reason:%d", __func__, mode, reason);
+
 	if (mode == MML_MODE_MML_DECOUPLE &&
 		(atomic_read(&ctx->racing_cnt) || atomic_read(&ctx->dl_cnt))) {
 		/* if mml hw running racing mode and query info need dc,
