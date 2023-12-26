@@ -1579,6 +1579,7 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	int i = 0;
 	enum mml_mode new_mode = MML_MODE_UNKNOWN;
 	struct mtk_drm_private *priv = dev->dev_private;
+	bool need_update_plane = false;
 
 	for_each_oldnew_crtc_in_state(state, crtc, old_cs, new_cs, i) {
 		if (drm_crtc_index(crtc) == 0)
@@ -1598,6 +1599,7 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	for_each_old_plane_in_state(state, plane, old_plane_state, i) {
 		plane_state = plane->state;
 		if (plane_state && plane_state->crtc && drm_crtc_index(plane_state->crtc) == 0) {
+			need_update_plane = true;
 			mtk_plane_state = to_mtk_plane_state(plane_state);
 			mtk_plane_state->mml_mode = _mtk_atomic_mml_plane(dev, mtk_plane_state);
 			if (mtk_plane_state->mml_mode > MML_MODE_UNKNOWN) {
@@ -1605,6 +1607,14 @@ static void mtk_atomic_mml(struct drm_device *dev,
 				mtk_plane_state->mml_cfg = mtk_crtc->mml_cfg_pq;
 			}
 		}
+	}
+
+	/* return this function when CRTC's no plane to update and exist lye_state with mml lye config */
+	/* which imply mml_dl_lye does not change in this atomic_commit */
+	if (!need_update_plane && (mtk_crtc_state->lye_state.mml_ir_lye ||
+			mtk_crtc_state->lye_state.mml_dl_lye)) {
+		DDPINFO("no plane_update with mml lye, skip %s\n", __func__);
+		return;
 	}
 
 	if (unlikely((new_mode == MML_MODE_UNKNOWN) &&
