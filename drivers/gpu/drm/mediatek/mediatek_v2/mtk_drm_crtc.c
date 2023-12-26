@@ -3502,6 +3502,9 @@ _mtk_crtc_wb_addon_module_connect(
 		if (!addon_data_dual)
 			return;
 	}
+
+	mtk_crtc->wb_error = 0;
+
 	for (i = 0; i < addon_data->module_num; i++) {
 		addon_module = &addon_data->module_data[i];
 		addon_config.config_type.module = addon_module->module;
@@ -3532,6 +3535,21 @@ _mtk_crtc_wb_addon_module_connect(
 			dst_roi.y = state->prop_val[CRTC_PROP_OUTPUT_Y];
 			dst_roi.width = state->prop_val[CRTC_PROP_OUTPUT_WIDTH];
 			dst_roi.height = state->prop_val[CRTC_PROP_OUTPUT_HEIGHT];
+
+			if (dst_roi.x >= src_roi.width ||
+				dst_roi.y >= src_roi.height ||
+				!dst_roi.width || !dst_roi.height) {
+				DDPMSG("[cwb_dump]x:%d,y:%d,w:%d,h:%d\n",
+					dst_roi.x, dst_roi.y, dst_roi.width, dst_roi.height);
+				mtk_crtc->wb_error = 1;
+				return;
+			}
+
+			if (dst_roi.x + dst_roi.width > src_roi.width)
+				dst_roi.width = src_roi.width - dst_roi.x;
+			if (dst_roi.y + dst_roi.height > src_roi.height)
+				dst_roi.height = src_roi.height - dst_roi.y;
+
 			fb = mtk_drm_framebuffer_lookup(crtc->dev,
 				state->prop_val[CRTC_PROP_OUTPUT_FB_ID]);
 			mtk_crtc->capturing = true;
@@ -3539,6 +3557,7 @@ _mtk_crtc_wb_addon_module_connect(
 //			drm_framebuffer_get(fb);
 			if (!fb) {
 				DDPPR_ERR("fb is NULL\n");
+				mtk_crtc->wb_error = 1;
 				return;
 			}
 			addon_config.addon_wdma_config.wdma_src_roi = src_roi;
@@ -14741,25 +14760,31 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 
 	if (mtk_crtc_is_dc_mode(crtc) ||
 		(state->prop_val[CRTC_PROP_OUTPUT_ENABLE] && crtc_index != 0)) {
-		int gce_event =
-			get_path_wait_event(mtk_crtc, mtk_crtc->ddp_mode);
+		if (!mtk_crtc->wb_error) {
+			int gce_event =
+				get_path_wait_event(mtk_crtc, mtk_crtc->ddp_mode);
 
-		mtk_crtc_wb_comp_config(crtc, cmdq_handle);
+			mtk_crtc_wb_comp_config(crtc, cmdq_handle);
 
-		if (mtk_crtc_is_dc_mode(crtc))
-			/* Decouple and Decouple mirror mode */
-			mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[1],
-					cmdq_handle, mtk_crtc->gce_obj.base);
-		else {
-			/* For virtual display write-back path */
-			cmdq_pkt_clear_event(cmdq_handle, gce_event);
-			mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0],
-					cmdq_handle, mtk_crtc->gce_obj.base);
+			if (mtk_crtc_is_dc_mode(crtc))
+				/* Decouple and Decouple mirror mode */
+				mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[1],
+						cmdq_handle, mtk_crtc->gce_obj.base);
+			else {
+				/* For virtual display write-back path */
+				cmdq_pkt_clear_event(cmdq_handle, gce_event);
+				mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0],
+						cmdq_handle, mtk_crtc->gce_obj.base);
+			}
+
+			cmdq_pkt_wait_no_clear(cmdq_handle, gce_event);
+			event = mtk_crtc_wb_addon_get_event(crtc);
+			cmdq_pkt_clear_event(cmdq_handle, event);
+		} else {
+			fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
+			session_id = mtk_get_session_id(crtc);
+			mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
 		}
-
-		cmdq_pkt_wait_no_clear(cmdq_handle, gce_event);
-		event = mtk_crtc_wb_addon_get_event(crtc);
-		cmdq_pkt_clear_event(cmdq_handle, event);
 	} else if (mtk_crtc_is_frame_trigger_mode(crtc) &&
 					mtk_crtc_with_trigger_loop(crtc)) {
 		if (mtk_crtc->skip_frame ||
@@ -14851,7 +14876,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	/* For DL write-back path */
 	/* wait WDMA frame done and disconnect immediately */
 	if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
-		&& crtc_index == 0 && !is_from_dal) {
+		&& crtc_index == 0 && !is_from_dal && !mtk_crtc->wb_error) {
 		wb_cb_data = kmalloc(sizeof(*wb_cb_data), GFP_KERNEL);
 		if (unlikely(wb_cb_data == NULL)) {
 			DDPPR_ERR("%s:%d kmalloc fail\n", __func__, __LINE__);
@@ -14898,6 +14923,11 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 							wb_cb_data->wb_fence_idx);
 		if (cmdq_pkt_flush_threaded(handle, mtk_drm_wb_cb, wb_cb_data) < 0)
 			DDPPR_ERR("failed to flush gce_cb threaded\n");
+	} else if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
+		&& crtc_index == 0 && !is_from_dal && mtk_crtc->wb_error) {
+		fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
+		session_id = mtk_get_session_id(crtc);
+		mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
 	}
 
 	return 0;

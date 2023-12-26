@@ -968,6 +968,7 @@ struct mtk_drm_crtc {
 	struct drm_writeback_connector wb_connector;
 	bool wb_enable;
 	bool wb_hw_enable;
+	bool wb_error;
 
 	struct mtk_drm_crtc_caps crtc_caps;
 	const struct mtk_crtc_path_data *path_data;
