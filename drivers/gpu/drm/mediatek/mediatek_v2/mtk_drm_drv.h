@@ -86,6 +86,7 @@ struct mtk_mmsys_driver_data {
 	bool need_seg_id;
 	bool need_rpo_ratio_for_mmclk;
 	bool not_support_csc;
+	bool wcg_2nd_3st_support;
 	void (*disable_merge_irq)(struct drm_device *drm);
 	enum PF_TS_TYPE pf_ts_type;
 };

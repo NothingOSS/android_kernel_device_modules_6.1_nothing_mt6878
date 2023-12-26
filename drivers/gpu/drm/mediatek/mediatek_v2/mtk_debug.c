@@ -4192,6 +4192,61 @@ static void process_dbg_opt(const char *opt)
 		/* fill connector prop caps for hwc */
 		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_FILL_CONNECTOR_PROP_CAPS, mtk_crtc);
 		DDPINFO("set panel color_mode to %d\n", params->lcm_color_mode);
+	} else if (strncmp(opt, "fake_csc:", 9) == 0) {
+		unsigned int temp = 0, fake_hdr_en = 0, disp_idx = 3;
+		struct drm_crtc *crtc;
+		struct mtk_panel_params *params = NULL;
+		struct mtk_drm_crtc *mtk_crtc;
+		struct mtk_ddp_comp *output_comp;
+		struct mtk_crtc_state *state;
+		unsigned int mode_cont, cur_mode_idx, i, idx;
+		int ret;
+
+		DDPMSG("%s, input:%s, ++\n", __func__, opt);
+		//ret = sscanf(opt, "fake_csc:%u,%u\n", &fake_hdr_en, &disp_idx);
+		ret = sscanf(opt, "fake_csc:%x\n", &temp);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		fake_hdr_en = temp & 0xf;
+		disp_idx = (temp >> 4) & 0xf;
+		DDPMSG("%s,1, temp=0x%x, hdr_en=%d, disp_idx=%d\n", __func__, temp, fake_hdr_en, disp_idx);
+		drm_for_each_crtc(crtc, drm_dev) {
+			mtk_crtc = to_mtk_crtc(crtc);
+			idx = drm_crtc_index(&mtk_crtc->base);
+			if (idx != disp_idx)
+				continue;
+
+			state = to_mtk_crtc_state(mtk_crtc->base.state);
+			cur_mode_idx = state->prop_val[CRTC_PROP_DISP_MODE_IDX];
+			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+			if (!output_comp) {
+				DDPMSG("output_comp is null!\n");
+				return;
+			}
+			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_MODE_CONT, &mode_cont);
+
+			DDPMSG("set panel color_mode info: mode_cont = %d, cur_mode_idx = %d\n",
+								mode_cont, cur_mode_idx);
+
+			for (i = 0; i < mode_cont; i++) {
+				mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_SET_PANEL_PARAMS_BY_IDX, &i);
+				params = mtk_drm_get_lcm_ext_params(crtc);
+				if (!params) {
+					DDPINFO("[Fake HDR] find lcm ext fail[%d]\n", i);
+					return;
+				}
+				params->lcm_color_mode = (fake_hdr_en) ?
+					MTK_DRM_COLOR_MODE_DISPLAY_P3 : MTK_DRM_COLOR_MODE_NATIVE;
+			}
+			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_SET_PANEL_PARAMS_BY_IDX, &cur_mode_idx);
+
+			/* fill connector prop caps for hwc */
+			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_FILL_CONNECTOR_PROP_CAPS, mtk_crtc);
+			DDPMSG("set panel color_mode to %d, idx:%d\n", params->lcm_color_mode, idx);
+		}
+		DDPMSG("%s,--\n", __func__);
 	} else if (strncmp(opt, "fake_mode:", 10) == 0) {
 		unsigned int en = 0;
 		struct drm_crtc *crtc;
