@@ -204,7 +204,7 @@ static u32 rsz_tbl_sel(u32 alg, u32 step, bool alpha)
 		if (step == 32768)
 			table = 7;
 		else
-			table = alpha ? 9 : 9;
+			table = 9;
 	} else if (alg == 1 || alg == 2) {
 		table = alpha ? 19 : 17;
 	}
