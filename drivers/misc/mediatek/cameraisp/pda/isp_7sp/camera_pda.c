@@ -2091,10 +2091,6 @@ static long PDA_Ioctl(struct file *a_pstFile,
 	}
 
 	switch (a_u4Command) {
-	case PDA_RESET:
-		for (i = 0; i < g_PDA_quantity; i++)
-			pda_reset(i);
-		break;
 	case PDA_GET_VERSION:
 
 		if (copy_from_user(&Init_Data,
@@ -2133,12 +2129,6 @@ static long PDA_Ioctl(struct file *a_pstFile,
 		ktime_get_real_ts64(&total_time_begin);
 #endif
 
-#ifndef FPGA_UT
-		// MRAW PDA reset
-		for (i = 0; i < g_PDA_quantity; i++)
-			pda_nontransaction_reset(i);
-#endif
-
 		// reset HW status
 		for (i = 0; i < g_PDA_quantity; i++)
 			PDA_devs[i].HWstatus = 0;
@@ -2166,6 +2156,12 @@ static long PDA_Ioctl(struct file *a_pstFile,
 
 		/* Protect the Multi Process */
 		mutex_lock(&pda_mutex);
+
+#ifndef FPGA_UT
+		// MRAW PDA reset
+		for (i = 0; i < g_PDA_quantity; i++)
+			pda_nontransaction_reset(i);
+#endif
 
 		ret = g_pda_Pdadata.ROInumber == 0 && g_pda_Pdadata.nNumerousROI == 0;
 		if (g_pda_Pdadata.ROInumber > PDAROIARRAYMAX || ret) {
