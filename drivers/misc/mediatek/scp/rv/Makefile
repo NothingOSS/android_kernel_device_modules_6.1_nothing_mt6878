@@ -13,6 +13,9 @@ scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_awake.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_dvfs.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_hwvoter_dbg.o
 
+scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_low_pwr_dbg.o
+scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_mbrain_dbg.o
+
 scp-$(CONFIG_MTK_TINYSYS_SAP_SUPPORT) += sap.o
 
 ccflags-y += -D DEBUG_DO -fno-pic -mcmodel=large

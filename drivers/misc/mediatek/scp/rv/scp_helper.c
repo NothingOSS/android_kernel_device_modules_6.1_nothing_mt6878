@@ -58,6 +58,8 @@
 /* scp chre manager header */
 #include "scp_chre_manager.h"
 
+#include "scp_low_pwr_dbg.h"
+
 /* scp semaphore timeout count definition */
 #define SEMAPHORE_TIMEOUT 5000
 #define SEMAPHORE_3WAY_TIMEOUT 5000
@@ -2627,6 +2629,7 @@ static int scp_device_probe(struct platform_device *pdev)
 	const char *scp_low_pwr_dbg = NULL;
 	const char *scp_cfgreg_ap_en = NULL;
 	const char *scp_ipc_wa = NULL;
+	const char *scp_mbrain = NULL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scpreg.sram = devm_ioremap_resource(dev, res);
@@ -2805,6 +2808,16 @@ static int scp_device_probe(struct platform_device *pdev)
 		if (!strncmp(scp_low_pwr_dbg, "enable", strlen("enable"))) {
 			pr_notice("[SCP] scp_low_pwr_dbg enabled\n");
 			scpreg.low_pwr_dbg = 1;
+		}
+	}
+
+	/* scp mbrain debug */
+	scpreg.mbrain = 0;
+	if (!of_property_read_string(pdev->dev.of_node,
+				"scp-mbrain", &scp_mbrain)){
+		if (!strncmp(scp_mbrain, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_mbrain enabled\n");
+			scpreg.mbrain = 1;
 		}
 	}
 
@@ -3169,6 +3182,10 @@ static int __init scp_init(void)
 		scp_init_vcore_request();
 
 	register_3way_semaphore_notifier(&scp_semaphore_init_notifier);
+
+	/* Enable mbrain profile*/
+	if(scpreg.mbrain)
+		scp_sys_res_mbrain_plat_init();
 
 	return ret;
 err:
