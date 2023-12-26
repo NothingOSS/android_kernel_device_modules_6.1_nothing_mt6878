@@ -13,6 +13,10 @@
 bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 };
 
+&android {
+	hardware = "mt8796";
+};
+
 &clkbuf_ctrl {
 	compatible = "mediatek,mt8796-clkbuf";
 };
