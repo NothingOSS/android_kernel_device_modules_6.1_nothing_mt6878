@@ -1165,7 +1165,7 @@ int vcp_disable_pm_clk(enum feature_id id)
 		mutex_lock(&vcp_pw_clk_mutex);
 	}
 
-	pr_notice("[VCP] %s id %d entered %d ready %d\n", __func__, id,
+	pr_debug("[VCP] %s id %d entered %d ready %d\n", __func__, id,
 		pwclkcnt, is_vcp_ready(VCP_A_ID));
 
 	if (vcp_ao && id != RTOS_FEATURE_ID) {
