@@ -1072,13 +1072,13 @@ int mtk_drm_idle_async_flush_func(struct drm_crtc *crtc,
 }
 
 /*free cmdq handle after job done*/
-void mtk_drm_idle_async_flush(struct drm_crtc *crtc,
+int mtk_drm_idle_async_flush(struct drm_crtc *crtc,
 	unsigned int user_id, struct cmdq_pkt *cmdq_handle)
 {
 	int ret = 0;
 
 	if (cmdq_handle == NULL || crtc == NULL)
-		return;
+		return -EFAULT;
 
 	ret = mtk_drm_idle_async_flush_func(crtc, user_id,
 				cmdq_handle, true, mtk_drm_idle_async_cb);
@@ -1086,6 +1086,7 @@ void mtk_drm_idle_async_flush(struct drm_crtc *crtc,
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
 	}
+	return ret;
 }
 
 int mtk_drm_idle_async_flush_cust(struct drm_crtc *crtc,
@@ -2039,6 +2040,16 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"async_wait2", 11, perf_string, true);
 	mtk_drm_idle_async_wait(crtc, 80, "gce_thread_async");
+
+	if ((priv->data->mmsys_id == MMSYS_MT6878) &&
+		(mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_IDLEMGR_ASYNC)) &&
+		(mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_USE_M4U))) {
+		DDPINFO("%s crtc:%d cmdq_prepare_instr -\n",
+			__func__, drm_crtc_index(crtc));
+		mutex_unlock(&priv->cmdq_prepare_instr_lock);
+	}
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"connect_default_path", 12, perf_string, true);

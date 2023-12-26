@@ -122,7 +122,7 @@ bool mtk_drm_idlemgr_get_sram_status(struct drm_crtc *crtc);
 /* flush cmdq pkt with async wait,
  * this can be applied when user wants to free cmdq pkt by async task.
  */
-void mtk_drm_idle_async_flush(struct drm_crtc *crtc,
+int mtk_drm_idle_async_flush(struct drm_crtc *crtc,
 	unsigned int user_id, struct cmdq_pkt *cmdq_handle);
 
 /* flush cmdq pkt with async wait,
