@@ -34,6 +34,8 @@ static const struct usb_audio_quirk_flags_table mtk_snd_quirk_flags_table[] = {
 		   QUIRK_FLAG_CTL_MSG_DELAY),
 		DEVICE_FLG(0x12d1, 0x3a07,	/* HUAWEI AM33/CM33 HeadSet */
 		   QUIRK_FLAG_CTL_MSG_DELAY),
+		DEVICE_FLG(0x04e8, 0xa051,      /* SS USBC Headset (AKG) */
+		   QUIRK_FLAG_CTL_MSG_DELAY),
 
 		{} /* terminator */
 };
