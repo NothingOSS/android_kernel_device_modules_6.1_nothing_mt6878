@@ -32,6 +32,8 @@
 #define MAX_DEBUG_WRITE_INPUT 256
 #define CODEC_SYS_DEBUG_SIZE (1024 * 32)
 
+static unsigned int bypass_vant18;
+
 static ssize_t mt6369_codec_sysfs_read(struct file *filep, struct kobject *kobj,
 				       struct bin_attribute *attr,
 				       char *buf, loff_t offset, size_t size);
@@ -3915,10 +3917,16 @@ static int mt_dcc_clk_connect(struct snd_soc_dapm_widget *source,
 		return 0;
 }
 
+static int mt_vant18_connect(struct snd_soc_dapm_widget *source,
+			      struct snd_soc_dapm_widget *sink)
+{
+	return !bypass_vant18;
+}
+
 static const struct snd_soc_dapm_route mt6369_dapm_routes[] = {
 	/* Capture */
 	{"AIFTX_Supply", NULL, "CLK_BUF"},
-	{"AIFTX_Supply", NULL, "mt6369_vant18"},
+	{"AIFTX_Supply", NULL, "mt6369_vant18", mt_vant18_connect},
 	{"AIFTX_Supply", NULL, "AUDGLB"},
 	{"AIFTX_Supply", NULL, "CLKSQ Audio"},
 	{"AIFTX_Supply", NULL, "AUD_CK"},
@@ -4030,7 +4038,7 @@ static const struct snd_soc_dapm_route mt6369_dapm_routes[] = {
 
 	/* DL Supply */
 	{"DL Power Supply", NULL, "CLK_BUF"},
-	{"DL Power Supply", NULL, "mt6369_vant18"},
+	{"DL Power Supply", NULL, "mt6369_vant18", mt_vant18_connect},
 	{"DL Power Supply", NULL, "AUDGLB"},
 	{"DL Power Supply", NULL, "CLKSQ Audio"},
 	{"DL Power Supply", NULL, "AUDNCP_CK"},
@@ -4115,7 +4123,7 @@ static const struct snd_soc_dapm_route mt6369_dapm_routes[] = {
 	/* VOW */
 	{"VOW TX", NULL, "VOW_UL_SRC_MUX"},
 	{"VOW TX", NULL, "CLK_BUF"},
-	{"VOW TX", NULL, "mt6369_vant18"},
+	{"VOW TX", NULL, "mt6369_vant18", mt_vant18_connect},
 	{"VOW TX", NULL, "AUDGLB"},
 	//{"VOW TX", NULL, "AUDGLB_VOW", mt_vow_amic_connect},
 	{"VOW TX", NULL, "AUD_CK", mt_vow_amic_connect},
@@ -4326,11 +4334,13 @@ static void enable_trim_circuit(struct mt6369_priv *priv, bool enable)
 	unsigned int value = 0;
 
 	if (enable) {
-		if (!IS_ERR(priv->reg_vant18)) {
-			status = regulator_enable(priv->reg_vant18);
-			if (status)
-				dev_err(priv->dev, "%s() failed to enable vant18(%d)\n",
-					__func__, status);
+		if (!bypass_vant18) {
+			if (!IS_ERR(priv->reg_vant18)) {
+				status = regulator_enable(priv->reg_vant18);
+				if (status)
+					dev_info(priv->dev, "%s() failed to enable vant18(%d)\n",
+						__func__, status);
+			}
 		}
 
 		regmap_update_bits(priv->regmap, MT6369_AUDDEC_ANA_CON7,
@@ -4342,17 +4352,20 @@ static void enable_trim_circuit(struct mt6369_priv *priv, bool enable)
 				   RG_AUDHPTRIM_EN_VAUDP15_MASK_SFT,
 				   0 << RG_AUDHPTRIM_EN_VAUDP15_SFT);
 
-		if (!IS_ERR(priv->reg_vant18)) {
-			status = regulator_disable(priv->reg_vant18);
-			if (status)
-				dev_err(priv->dev, "%s() failed to disable vant18(%d)\n",
-					__func__, status);
+		if (!bypass_vant18) {
+			if (!IS_ERR(priv->reg_vant18)) {
+				status = regulator_disable(priv->reg_vant18);
+				if (status)
+					dev_info(priv->dev, "%s() failed to disable vant18(%d)\n",
+						 __func__, status);
+			}
 		}
 	}
-
-	regmap_read(priv->regmap, MT6369_LDO_VANT18_CON0, &value);
-	dev_dbg(priv->dev, "%s(), enable(%d), 0x%x MT6369_LDO_VANT18_CON0 = 0x%x\n",
-		__func__, enable, MT6369_LDO_VANT18_CON0, value);
+	if (!bypass_vant18) {
+		regmap_read(priv->regmap, MT6369_LDO_VANT18_CON0, &value);
+		dev_dbg(priv->dev, "%s(), enable(%d), 0x%x MT6369_LDO_VANT18_CON0 = 0x%x\n",
+			__func__, enable, MT6369_LDO_VANT18_CON0, value);
+	}
 	regmap_read(priv->regmap, MT6369_LDO_VAUD28_CON0, &value);
 	dev_dbg(priv->dev, "%s(), enable(%d), 0x%x MT6369_LDO_VAUD28_CON0 = 0x%x\n",
 		__func__, enable, MT6369_LDO_VAUD28_CON0, value);
@@ -5592,11 +5605,13 @@ static int mt6369_rcv_acc_set(struct snd_kcontrol *kcontrol,
 #if IS_ENABLED(CONFIG_MT6685_AUDCLK)
 	mt6685_set_dcxo(true);
 #endif
-	if (!IS_ERR(priv->reg_vant18)) {
-		status = regulator_enable(priv->reg_vant18);
-		if (status)
-			dev_err(priv->dev, "%s() failed to enable vant18(%d)\n",
-				__func__, status);
+	if (!bypass_vant18) {
+		if (!IS_ERR(priv->reg_vant18)) {
+			status = regulator_enable(priv->reg_vant18);
+			if (status)
+				dev_info(priv->dev, "%s() failed to enable vant18(%d)\n",
+					 __func__, status);
+		}
 	}
 
 	/* audio clk source from internal dcxo */
@@ -7393,6 +7408,16 @@ static int mt6369_parse_dt(struct mt6369_priv *priv)
 	if (!np)
 		return -EINVAL;
 
+	/* get bypass-vant18 setting */
+	ret = of_property_read_u32(np, "mediatek,bypass-vant18", &bypass_vant18);
+	if (ret) {
+		dev_info(dev, "%s() not setting bypass-vant18, default not bypass\n",
+			 __func__);
+		bypass_vant18 = 0;
+	}
+
+	dev_info(dev, "%s() bypass-vant18 = %d\n", __func__, bypass_vant18);
+
 	/* get mic type */
 	ret = of_property_read_u32(np, "mediatek,dmic-mode",
 				   &priv->dmic_one_wire_mode);
@@ -7455,19 +7480,21 @@ static int mt6369_parse_dt(struct mt6369_priv *priv)
 		return ret;
 	}
 
-	/* get pmic regulator handler */
-	priv->reg_vant18 = devm_regulator_get_optional(dev, "reg-vant18");
-	ret = IS_ERR(priv->reg_vant18);
-	if (ret) {
-		ret = PTR_ERR(priv->reg_vant18);
-		if (ret != -EPROBE_DEFER)
-			dev_err(dev, "%s() Get regulator failed (%d)\n",
-				__func__, ret);
-		else
-			dev_err(dev, "%s() Get regulator failed (%d), will retry ...\n",
-				__func__, ret);
+	if (!bypass_vant18) {
+		/* get pmic regulator handler */
+		priv->reg_vant18 = devm_regulator_get_optional(dev, "reg-vant18");
+		ret = IS_ERR(priv->reg_vant18);
+		if (ret) {
+			ret = PTR_ERR(priv->reg_vant18);
+			if (ret != -EPROBE_DEFER)
+				dev_info(dev, "%s() Get regulator failed (%d)\n",
+					 __func__, ret);
+			else
+				dev_info(dev, "%s() Get regulator failed (%d), will retry ...\n",
+					 __func__, ret);
 
-		return ret;
+			return ret;
+		}
 	}
 
 	return 0;
