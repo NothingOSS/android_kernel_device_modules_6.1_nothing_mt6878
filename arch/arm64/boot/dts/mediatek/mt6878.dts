@@ -10385,7 +10385,8 @@
 				  <12 0x100 0x0>, /* sensor custom reader */
 				  <19 0x200 0x0>,  /* low power debug */
 				  <20 0x5c0000 0x0>, /* audio common, 5.75MB */
-				  <21 0x80000 0x0>; /* usb audio offload, 512 KB */
+				  <21 0x80000 0x0>, /* usb audio offload, 512 KB */
+				  <22 0x1c0000 0x0>; /* scp audio logger, 1.75MB */
 
 		memorydump = <0x100000>, /* l2tcm */
 				 <0x0c4000>, /* l1c */
