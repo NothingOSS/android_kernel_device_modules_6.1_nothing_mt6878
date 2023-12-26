@@ -277,18 +277,23 @@ do { \
 #define cmdq_dump(fmt, args...) \
 	pr_notice("[cmdq][err] "fmt"\n", ##args)
 
-#ifdef CMDQ_TRACE_ENABLE
+#ifndef CMDQ_TRACE_DISABLE
 /* CMDQ FTRACE */
+#define CMDQ_DRV_TRACE_FORCE_BEGIN_TID(tid, fmt, args...) \
+	cmdq_print_trace("B|%d|" fmt "\n", tid, ##args) \
+
+#define CMDQ_DRV_TRACE_FORCE_END_TID(tid, fmt, args...) \
+	cmdq_print_trace("E|%d|" fmt "\n", tid, ##args) \
+
 #define cmdq_trace_begin(fmt, args...) do { \
 	preempt_disable(); \
-	event_trace_printk(cmdq_get_tracing_mark(), \
-		"B|%d|"fmt"\n", current->tgid, ##args); \
+	CMDQ_DRV_TRACE_FORCE_BEGIN_TID(current->tgid, fmt, ##args); \
 	preempt_enable();\
 } while (0)
 
-#define cmdq_trace_end() do { \
+#define cmdq_trace_end(fmt, args...) do { \
 	preempt_disable(); \
-	event_trace_printk(cmdq_get_tracing_mark(), "E\n"); \
+	CMDQ_DRV_TRACE_FORCE_END_TID(current->tgid, fmt, ##args); \
 	preempt_enable(); \
 } while (0)
 
@@ -296,8 +301,7 @@ extern int cmdq_trace;
 #define cmdq_trace_ex_begin(fmt, args...) do { \
 	if (cmdq_trace) { \
 		preempt_disable(); \
-		event_trace_printk(cmdq_get_tracing_mark(), \
-			"B|%d|"fmt"\n", current->tgid, ##args); \
+		CMDQ_DRV_TRACE_FORCE_BEGIN_TID(current->tgid, fmt, ##args); \
 		preempt_enable();\
 	} \
 } while (0)
@@ -305,7 +309,7 @@ extern int cmdq_trace;
 #define cmdq_trace_ex_end() do { \
 	if (cmdq_trace) { \
 		preempt_disable(); \
-		event_trace_printk(cmdq_get_tracing_mark(), "E\n"); \
+		cmdq_print_trace("E\n"); \
 		preempt_enable(); \
 	} \
 } while (0)
@@ -321,7 +325,7 @@ extern int cmdq_trace;
 #define cmdq_trace_begin(fmt, args...) do { \
 } while (0)
 
-#define cmdq_trace_end() do { \
+#define cmdq_trace_end(fmt, args...) do { \
 } while (0)
 
 extern int cmdq_trace;
@@ -335,6 +339,8 @@ extern int cmdq_trace;
 		cmdq_trace_end(fmt, ##args); \
 } while (0)
 #endif
+
+void cmdq_print_trace(char *fmt, ...);
 struct cmdq_thread *cmdq_get_thread(u8 thread_idx, u8 hwid);
 void cmdq_dump_pkt_usage(u32 hwid, struct seq_file *seq);
 void cmdq_mbox_mtcmos_by_fast(void *cmdq_mbox, bool on);

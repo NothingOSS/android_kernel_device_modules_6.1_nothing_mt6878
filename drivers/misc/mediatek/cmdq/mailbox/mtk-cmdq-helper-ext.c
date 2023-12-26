@@ -1261,7 +1261,16 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 	struct cmdq_pkt *pkt =
 		container_of(work_item, struct cmdq_pkt, destroy_work);
 	u64 start = sched_clock(), diff;
+	struct cmdq_client *cl = pkt->cl;
+	s32 hwid, thd;
 
+	if (cl) {
+		hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+		thd = (s32)cmdq_mbox_chan_id(cl->chan);
+		cmdq_trace_begin("%s hwid:%d thrd:%d pkt:%p",
+			__func__, hwid, thd, pkt);
+	} else
+		cmdq_trace_begin("%s pkt:%p", __func__, pkt);
 	cmdq_log("%s pkt:%p ", __func__, pkt);
 	cmdq_pkt_free_buf(pkt);
 	kfree(pkt->flush_item);
@@ -1275,16 +1284,24 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 	diff = sched_clock() - start;
 	if (diff >= 4000000) /* 4 ms*/
 		cmdq_msg("%s cost time %llu ms ", __func__, div_u64(diff, 1000000));
+	cmdq_trace_end("%s pkt:%p", __func__, pkt);
 }
 
 void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
 {
 	struct cmdq_client *client = pkt->cl;
 	u64 start = sched_clock(), diff;
+	s32 hwid, thd;
 
 	cmdq_log("%s pkt:%p ", __func__, pkt);
-	if (client)
+	if (client) {
 		mutex_lock(&client->chan_mutex);
+		hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(client->chan));
+		thd = (s32)cmdq_mbox_chan_id(client->chan);
+		cmdq_trace_begin("%s hwid:%d thrd:%d pkt:%p",
+			__func__, hwid, thd, pkt);
+	} else
+		cmdq_trace_begin("%s pkt:%p", __func__, pkt);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 	if (cmdq_pkt_is_exec(pkt)) {
 		if (client && client->chan) {
@@ -1314,6 +1331,7 @@ void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
 	diff = sched_clock() - start;
 	if (diff >= 4000000) /* 4 ms*/
 		cmdq_msg("%s cost time %llu ms ", __func__, div_u64(diff, 1000000));
+	cmdq_trace_end("%s pkt:%p", __func__, pkt);
 }
 EXPORT_SYMBOL(cmdq_pkt_destroy_no_wq);
 
@@ -3333,7 +3351,7 @@ int cmdq_pkt_wait_complete(struct cmdq_pkt *pkt)
 	}
 
 	pkt->rec_wait = sched_clock();
-	cmdq_trace_begin("%s", __func__);
+	cmdq_trace_begin("%s pkt:%p", __func__, pkt);
 
 #ifdef CMDQ_SECURE_SUPPORT
 	if (pkt->sec_data)
@@ -3344,7 +3362,7 @@ int cmdq_pkt_wait_complete(struct cmdq_pkt *pkt)
 	cmdq_pkt_wait_complete_loop(pkt);
 #endif
 
-	cmdq_trace_end();
+	cmdq_trace_end("%s pkt:%p", __func__, pkt);
 	cmdq_util_helper->track(pkt);
 
 	return item->err;
@@ -3358,13 +3376,25 @@ static void cmdq_pkt_flush_q_wait_work(struct work_struct *w)
 	struct cmdq_flush_item *item_q = container_of(w,
 		struct cmdq_flush_item, work);
 	int ret;
+	struct cmdq_client *cl = item_q->pkt->cl;
+	s32 hwid, thd;
 
 	ret = cmdq_pkt_wait_complete(item_q->pkt);
+	if (cl) {
+		hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+		thd = (s32)cmdq_mbox_chan_id(cl->chan);
+		cmdq_trace_begin("%s hwid:%d thrd:%d pkt:%p",
+			__func__, hwid, thd, item_q->pkt);
+	} else {
+		cmdq_trace_begin("%s pkt:%p", __func__, item_q->pkt);
+	}
+
 	if (item_q->cb) {
 		struct cmdq_cb_data data = {.data = item_q->data, .err = ret};
 
 		item_q->cb(data);
 	}
+	cmdq_trace_end("%s pkt:%p", __func__, item_q->pkt);
 	kfree(item_q);
 }
 #else
