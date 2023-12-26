@@ -258,12 +258,18 @@ struct mtu3_gpd_ring {
 * @manual_drd_enabled: it's true when supports dual-role device by debugfs
 *		to switch host/device modes depending on user input.
 */
+struct dr_work_data_mtk {
+	struct otg_switch_mtk *otg_sx;
+	struct work_struct dr_work;
+	enum usb_role desired_role;
+};
+
 struct otg_switch_mtk {
 	struct regulator *vbus;
 	struct extcon_dev *edev;
 	struct notifier_block id_nb;
-	struct work_struct dr_work;
-	enum usb_role desired_role;
+	struct workqueue_struct *wq;
+
 	enum usb_role default_role;
 	struct usb_role_switch *role_sw;
 	bool role_sw_used;
