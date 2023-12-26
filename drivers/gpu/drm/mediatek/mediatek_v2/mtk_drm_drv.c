@@ -5774,7 +5774,7 @@ static const struct mtk_mmsys_driver_data mt6878_mmsys_driver_data = {
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
 	.need_seg_id = true,
-	.need_rpo_ratio_for_mmclk = false,
+	.need_rpo_ratio_for_mmclk = true,
 	.not_support_csc = true,
 	.pf_ts_type = IRQ_CMDQ_CB,
 };

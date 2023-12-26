@@ -8772,7 +8772,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			pixclk /= 1000;
 		}
 
-		/* DISP MMCLK with RPO will multiply rpo ratio */
+		/* DISP MMCLK with RPO will multiply rpo ratio,RPO zoom in only */
 		/* mmclk = (pixel_number / (OVL_ROI_width * layer_height)) * original disp mmclk */
 		/* pixel_number = (after_rsz_width + input_crop_width + OVL_BG_width) * */
 		/* (after_rsz_width + input_crop_height) */
@@ -8780,14 +8780,14 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			mtk_crtc->rpo_params.need_rpo_en) {
 			int ratio = 0;
 			int hdisplay = 0;
-			/* tile size 32 x 8 , left and right crop worst */
-			int hcrop_worst = 31 + 31;
-			/* tile size 32 x 8 , half block mode, top and bottom crop worst */
-			int vcrop_worst = 3 + 3;
+			int vdisplay = 0;
+			int input_crop_width = 0;
+			int input_crop_height = 0;
 
 			hdisplay = mtk_dsi_get_virtual_width(dsi, &mtk_crtc->base);
+			vdisplay = mtk_dsi_get_virtual_heigh(dsi, &mtk_crtc->base);
 
-			CRTC_MMP_EVENT_START((int) crtc_idx, set_mmclk, 0, hdisplay);
+			CRTC_MMP_EVENT_START((int) crtc_idx, set_mmclk, hdisplay, vdisplay);
 			CRTC_MMP_MARK((int) crtc_idx, set_mmclk,
 				mtk_crtc->rpo_params.ovl_layer_width,
 				mtk_crtc->rpo_params.ovl_layer_height);
@@ -8798,14 +8798,27 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 				mtk_crtc->rpo_params.rsz_out_layer_width,
 				mtk_crtc->rpo_params.rsz_out_layer_height);
 
-			ratio = ((mtk_crtc->rpo_params.rsz_out_layer_width + hcrop_worst +
-				hdisplay - mtk_crtc->rpo_params.rsz_out_layer_width) *
-				(mtk_crtc->rpo_params.rsz_out_layer_height + vcrop_worst) * 100) /
-				(hdisplay * mtk_crtc->rpo_params.rsz_out_layer_height);
+			input_crop_width = mtk_crtc->rpo_params.ovl_layer_width -
+				mtk_crtc->rpo_params.rsz_in_layer_width;
+			input_crop_height = mtk_crtc->rpo_params.ovl_layer_height -
+				mtk_crtc->rpo_params.rsz_in_layer_height;
 
-			pixclk = pixclk * ratio / 100;
+			if ((input_crop_width >= 0) && (input_crop_height >= 0) &&
+				(mtk_crtc->rpo_params.rsz_out_layer_height > 0)) {
+
+				ratio = ((mtk_crtc->rpo_params.rsz_out_layer_width + input_crop_width +
+					hdisplay - mtk_crtc->rpo_params.rsz_out_layer_width) *
+					(mtk_crtc->rpo_params.rsz_out_layer_height + input_crop_height) * 100) /
+					(hdisplay * mtk_crtc->rpo_params.rsz_out_layer_height);
+
+				pixclk = pixclk * ratio / 100;
+			}
 			CRTC_MMP_EVENT_END((int) crtc_idx, set_mmclk, ratio, pixclk);
-
+			DDPINFO("bg(%dx%d) ovl_layer(%dx%d) rsz_in(%dx%d) rsz_out(%dx%d) ratio:%d\n",
+				hdisplay, vdisplay, mtk_crtc->rpo_params.ovl_layer_width,
+				mtk_crtc->rpo_params.ovl_layer_height, mtk_crtc->rpo_params.rsz_in_layer_width,
+				mtk_crtc->rpo_params.rsz_in_layer_height, mtk_crtc->rpo_params.rsz_out_layer_width,
+				mtk_crtc->rpo_params.rsz_out_layer_height, ratio);
 		} else {
 			CRTC_MMP_MARK((int) crtc_idx, set_mmclk, 0, pixclk);
 		}
