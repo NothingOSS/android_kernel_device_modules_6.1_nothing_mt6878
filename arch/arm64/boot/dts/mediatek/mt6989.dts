@@ -18900,8 +18900,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
     codec_en_off: codec-en-off {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
-			input-enable;
-			bias-pull-down;
+			output-low;
 		};
 	};
 	codec_en_on: codec-en-on {
@@ -18931,6 +18930,10 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		status = "okay";
 		compatible = "mediatek,mt6681_pmic";
 		reg = <0x6b>;
+		pinctrl-names = "codec-en-off",
+		"codec-en-on";
+		pinctrl-0 = <&codec_en_off>;
+		pinctrl-1 = <&codec_en_on>;
 		mt6681_sound: mt6681-sound {
 			compatible = "mediatek,mt6681-sound";
 			mediatek,dmic-mode = <0>;
@@ -18942,10 +18945,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			nvmem = <&mt6681_efuse>;
 			nvmem-names = "pmic-hp-efuse";
 			reg-vaud18-supply = <&mt6681_vaud18>;
-			pinctrl-names = "codec-en-off",
-			"codec-en-on";
-			pinctrl-0 = <&codec_en_off>;
-			pinctrl-1 = <&codec_en_on>;
 		};
 		regulators {
 			compatible = "mediatek,mt6681-regulator";
