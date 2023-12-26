@@ -8823,7 +8823,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			CRTC_MMP_MARK((int) crtc_idx, set_mmclk, 0, pixclk);
 		}
 
-		DDPMSG("%s, %d, crtc:%d, data_rate=%d, mmclk=%u pixclk_min=%d, dual=%u\n", __func__,
+		DDPINFO("%s, %d, crtc:%d, data_rate=%d, mmclk=%u pixclk_min=%d, dual=%u\n", __func__,
 				__LINE__, crtc_idx, data_rate,
 				pixclk, pixclk_min, mtk_crtc->is_dual_pipe);
 
