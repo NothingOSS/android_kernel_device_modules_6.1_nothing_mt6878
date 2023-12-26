@@ -10405,15 +10405,31 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 	struct mtk_ddp_comp *output_comp;
 	bool only_output;
 
-	if ((mtk_crtc->res_switch == RES_SWITCH_ON_AP)
-		&& mtk_crtc->scaling_ctx.scaling_en
-		&& (crtc->state->adjusted_mode.hdisplay == mtk_crtc->scaling_ctx.lcm_width)
-		&& (crtc->state->adjusted_mode.vdisplay == mtk_crtc->scaling_ctx.lcm_height)) {
-		DDPMSG("%s scaling_en mismatch, reset to false\n", __func__);
-		mtk_crtc->scaling_ctx.scaling_en = false;
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+	if (mtk_crtc->res_switch == RES_SWITCH_ON_AP) {
+		/* Retrieve panel original size and remap scaling mode */
+		/* for HWC be killed and suspend&resueme will display abnormal */
+		mtk_drm_crtc_get_panel_original_size(crtc,
+				&mtk_crtc->scaling_ctx.lcm_width,
+				&mtk_crtc->scaling_ctx.lcm_height);
+		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_SET_CRTC_SCALING_MODE_MAPPING, mtk_crtc);
+
+		if ((crtc->state->adjusted_mode.hdisplay == mtk_crtc->scaling_ctx.lcm_width)
+			&& (crtc->state->adjusted_mode.vdisplay == mtk_crtc->scaling_ctx.lcm_height)) {
+			DDPMSG("%s scaling_en mismatch, reset to false\n", __func__);
+			mtk_crtc->scaling_ctx.scaling_en = false;
+		} else {
+			DDPMSG("%s scaling_en, will continue to scaling\n", __func__);
+			mtk_crtc->scaling_ctx.scaling_en = true;
+		}
 	}
 
-	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	DDPMSG("%s:%d scaling_en:%d hdisplay:%d vdisplay:%d lcm:width:%d lcm_height:%d\n",
+		__func__, __LINE__, mtk_crtc->scaling_ctx.scaling_en,
+		crtc->state->adjusted_mode.hdisplay, crtc->state->adjusted_mode.vdisplay,
+		mtk_crtc->scaling_ctx.lcm_width, mtk_crtc->scaling_ctx.lcm_height);
+
 
 	cfg.w = crtc->state->adjusted_mode.hdisplay;
 	cfg.h = crtc->state->adjusted_mode.vdisplay;
