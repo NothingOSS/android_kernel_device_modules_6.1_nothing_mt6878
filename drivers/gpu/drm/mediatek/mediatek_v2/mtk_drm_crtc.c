@@ -3538,17 +3538,14 @@ _mtk_crtc_wb_addon_module_connect(
 
 			if (dst_roi.x >= src_roi.width ||
 				dst_roi.y >= src_roi.height ||
+				dst_roi.x + dst_roi.width > src_roi.width ||
+				dst_roi.y + dst_roi.height > src_roi.height ||
 				!dst_roi.width || !dst_roi.height) {
 				DDPMSG("[cwb_dump]x:%d,y:%d,w:%d,h:%d\n",
 					dst_roi.x, dst_roi.y, dst_roi.width, dst_roi.height);
 				mtk_crtc->wb_error = 1;
 				return;
 			}
-
-			if (dst_roi.x + dst_roi.width > src_roi.width)
-				dst_roi.width = src_roi.width - dst_roi.x;
-			if (dst_roi.y + dst_roi.height > src_roi.height)
-				dst_roi.height = src_roi.height - dst_roi.y;
 
 			fb = mtk_drm_framebuffer_lookup(crtc->dev,
 				state->prop_val[CRTC_PROP_OUTPUT_FB_ID]);
