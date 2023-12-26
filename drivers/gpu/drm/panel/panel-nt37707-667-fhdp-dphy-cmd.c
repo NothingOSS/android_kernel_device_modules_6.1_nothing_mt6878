@@ -36,6 +36,23 @@ enum panel_version{
 	PANEL_V3,
 };
 
+unsigned int nt37707_cmd_fhd_buf_thresh[14] = {
+	896, 1792, 2688, 3584, 4480,
+	5376, 6272, 6720, 7168, 7616,
+	7744, 7872, 8000, 8064};
+unsigned int nt37707_cmd_fhd_range_min_qp[15] = {
+	0, 4, 5, 5, 7, 7,
+	7, 7, 7, 7, 9, 9,
+	9, 11, 17};
+unsigned int nt37707_cmd_fhd_range_max_qp[15] = {
+	8, 8, 9, 10, 11, 11,
+	11, 12, 13, 14, 15, 16,
+	17, 17, 19};
+int nt37707_cmd_fhd_range_bpg_ofs[15] = {
+	2, 0, 0, -2, -4, -6,
+	-8, -8, -8, -10, -10, -12,
+	-12, -12, -12};
+
 struct lcm {
 	struct device *dev;
 	struct drm_panel panel;
@@ -504,6 +521,14 @@ static struct mtk_panel_params ext_params_30hz = {
 		.rc_quant_incr_limit1 = 15,
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37707_cmd_fhd_buf_thresh,
+			.range_min_qp = nt37707_cmd_fhd_range_min_qp,
+			.range_max_qp = nt37707_cmd_fhd_range_max_qp,
+			.range_bpg_ofs = nt37707_cmd_fhd_range_bpg_ofs,
+		},
 	},
 	//.max_bl_level = 16380,
 	//.hbm_type = HBM_MODE_DCS_ONLY,
@@ -565,6 +590,14 @@ static struct mtk_panel_params ext_params_60hz = {
 		.rc_quant_incr_limit1 = 15,
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37707_cmd_fhd_buf_thresh,
+			.range_min_qp = nt37707_cmd_fhd_range_min_qp,
+			.range_max_qp = nt37707_cmd_fhd_range_max_qp,
+			.range_bpg_ofs = nt37707_cmd_fhd_range_bpg_ofs,
+		},
 	},
 	//.max_bl_level = 16380,
 	//.hbm_type = HBM_MODE_DCS_ONLY,
@@ -627,6 +660,14 @@ static struct mtk_panel_params ext_params_90hz = {
 		.rc_quant_incr_limit1 = 15,
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37707_cmd_fhd_buf_thresh,
+			.range_min_qp = nt37707_cmd_fhd_range_min_qp,
+			.range_max_qp = nt37707_cmd_fhd_range_max_qp,
+			.range_bpg_ofs = nt37707_cmd_fhd_range_bpg_ofs,
+		},
 	},
 	//.max_bl_level = 16380,
 	//.hbm_type = HBM_MODE_DCS_ONLY,
@@ -688,6 +729,14 @@ static struct mtk_panel_params ext_params_120hz = {
 		.rc_quant_incr_limit1 = 15,
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37707_cmd_fhd_buf_thresh,
+			.range_min_qp = nt37707_cmd_fhd_range_min_qp,
+			.range_max_qp = nt37707_cmd_fhd_range_max_qp,
+			.range_bpg_ofs = nt37707_cmd_fhd_range_bpg_ofs,
+		},
 	},
 	//.max_bl_level = 16380,
 	//.hbm_type = HBM_MODE_DCS_ONLY,
@@ -749,6 +798,14 @@ static struct mtk_panel_params ext_params_24hz = {
 		.rc_quant_incr_limit1 = 15,
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37707_cmd_fhd_buf_thresh,
+			.range_min_qp = nt37707_cmd_fhd_range_min_qp,
+			.range_max_qp = nt37707_cmd_fhd_range_max_qp,
+			.range_bpg_ofs = nt37707_cmd_fhd_range_bpg_ofs,
+		},
 	},
 	//.max_bl_level = 16380,
 	//.hbm_type = HBM_MODE_DCS_ONLY,
@@ -810,6 +867,14 @@ static struct mtk_panel_params ext_params_10hz = {
 		.rc_quant_incr_limit1 = 15,
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37707_cmd_fhd_buf_thresh,
+			.range_min_qp = nt37707_cmd_fhd_range_min_qp,
+			.range_max_qp = nt37707_cmd_fhd_range_max_qp,
+			.range_bpg_ofs = nt37707_cmd_fhd_range_bpg_ofs,
+		},
 	},
 	//.max_bl_level = 16380,
 	//.hbm_type = HBM_MODE_DCS_ONLY,
@@ -871,6 +936,14 @@ static struct mtk_panel_params ext_params_1hz = {
 		.rc_quant_incr_limit1 = 15,
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37707_cmd_fhd_buf_thresh,
+			.range_min_qp = nt37707_cmd_fhd_range_min_qp,
+			.range_max_qp = nt37707_cmd_fhd_range_max_qp,
+			.range_bpg_ofs = nt37707_cmd_fhd_range_bpg_ofs,
+		},
 	},
 	//.max_bl_level = 16380,
 	//.hbm_type = HBM_MODE_DCS_ONLY,
