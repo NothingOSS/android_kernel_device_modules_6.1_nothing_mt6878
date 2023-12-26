@@ -10375,7 +10375,6 @@
 				  <1 0xca700 0x0>, /* vow */
 				  <2 0x100000 0x0>, /* sensor main*/
 				  <3 0x180000 0x0>, /* logger */
-				  <4 0x200000 0x0>, /* audio */
 				  <5 0xa000 0x0>, /* vow bargein */
 				  <7 0x1a000 0x0>, /* ultrasound*/
 				  <8 0x10000 0x0>, /* sensor supper*/
@@ -10384,8 +10383,6 @@
 				  <11 0x100 0x0>, /* sensor custom writer */
 				  <12 0x100 0x0>, /* sensor custom reader */
 				  <19 0x200 0x0>,  /* low power debug */
-				  <20 0x5c0000 0x0>, /* audio common, 5.75MB */
-				  <21 0x80000 0x0>, /* usb audio offload, 512 KB */
 				  <22 0x1c0000 0x0>; /* scp audio logger, 1.75MB */
 
 		memorydump = <0x100000>, /* l2tcm */
@@ -10427,6 +10424,10 @@
 		interrupts = <GIC_SPI 522 IRQ_TYPE_LEVEL_HIGH 0>,
 			     <GIC_SPI 535 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names = "mbox0", "mbox1";
+		adsp-rsv-logger-a = <0x80000>;
+		adsp-rsv-ipidma-a = <0x200000>;
+		adsp-rsv-xhci = <0x80000>;
+		adsp-rsv-audio = <0x5c0000>;
 	};
 
 	mtee_svp: mtee-svp {
