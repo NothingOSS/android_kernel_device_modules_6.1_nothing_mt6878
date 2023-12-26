@@ -1048,7 +1048,7 @@ static const struct drm_display_mode performance_mode_10hz = {
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params = {
 	.pll_clk = PLL_CLK,
-	.vfp_low_power = 4150,
+	.vfp_low_power = 5450,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_degree = PROBE_FROM_DTS,
@@ -1123,7 +1123,7 @@ static struct mtk_panel_params ext_params = {
 	.dyn = {
 		.switch_en = 1,
 		.pll_clk = PLL_CLK+5,
-		.vfp_lp_dyn = 4200,
+		.vfp_lp_dyn = 5510,
 		.hfp = 106,
 		.vfp = 3540,
 	},
@@ -1135,7 +1135,7 @@ static struct mtk_panel_params ext_params = {
 
 static struct mtk_panel_params ext_params_90hz = {
 	.pll_clk = PLL_CLK,
-	.vfp_low_power = 2510,
+	.vfp_low_power = 3500,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_degree = PROBE_FROM_DTS,
@@ -1210,7 +1210,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.dyn = {
 		.switch_en = 1,
 		.pll_clk = PLL_CLK+5,
-		.vfp_lp_dyn = 2550,
+		.vfp_lp_dyn = 3540,
 		.hfp = 106,
 		.vfp = 1565,
 	},
@@ -1222,7 +1222,7 @@ static struct mtk_panel_params ext_params_90hz = {
 
 static struct mtk_panel_params ext_params_144hz = {
 	.pll_clk = PLL_CLK,
-	.vfp_low_power = 2510,
+	.vfp_low_power = 3500,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_degree = PROBE_FROM_DTS,
@@ -1297,7 +1297,7 @@ static struct mtk_panel_params ext_params_144hz = {
 	.dyn = {
 		.switch_en = 1,
 		.pll_clk = PLL_CLK+5,
-		.vfp_lp_dyn = 2550,
+		.vfp_lp_dyn = 3540,
 		.hfp = 106,
 		.vfp = 76,
 	},
