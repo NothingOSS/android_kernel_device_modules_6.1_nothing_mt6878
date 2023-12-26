@@ -1130,6 +1130,9 @@ struct mtk_drm_crtc {
 	struct mtk_vblank_config_rec *vblank_rec;
 
 	unsigned int usage_ovl_fmt[OVL_LAYER_NR]; // for mt6989 hrt by larb
+
+	bool pending_update_pq;
+	unsigned int backup_bypass_pq;
 };
 
 enum BL_GAMMA_GAIN {
