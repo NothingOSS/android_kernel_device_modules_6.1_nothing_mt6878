@@ -52,6 +52,9 @@ obj-$(CONFIG_DRM_PANEL_ILI7838E_DV2_ALPHA_CMD) += k6989v1_64_alpha/panel-ili7838
 obj-$(CONFIG_DRM_PANEL_ILI7838E_DV2_SPR_CMD) += k6989v1_64_alpha/panel-ili7838e-dv2-spr-cmd.o
 obj-$(CONFIG_DRM_PANEL_RM692H5_ALPHA_CMD) += k6989v1_64_alpha/panel-rm692h5-alpha-cmd.o
 endif
+ifneq ($(wildcard $(srctree)/$(src)/k6989v1_64_alpha_vdo),)
+obj-$(CONFIG_DRM_PANEL_ILI7838E_DV2_ALPHA_VDO) += k6989v1_64_alpha_vdo/panel-ili7838e-dv2-alpha-vdo.o
+endif
 ifneq ($(wildcard $(srctree)/$(src)/k6989v1_64_flip_alpha),)
 obj-$(CONFIG_DRM_PANEL_BOE_BF130_DPHY_CMD_HD) += k6989v1_64_flip_alpha/panel-boe-bf130-dphy-cmd-hd.o
 obj-$(CONFIG_DRM_PANEL_SAMSUNG_AMF680CM01_CMD_FHD) += k6989v1_64_flip_alpha/panel-samsung-amf680cm01-cmd-fhd.o

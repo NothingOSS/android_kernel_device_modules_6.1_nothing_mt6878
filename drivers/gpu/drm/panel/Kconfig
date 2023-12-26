@@ -420,6 +420,17 @@ config DRM_PANEL_ILI7838E_DV2_SPR_CMD
 	  resolution and uses 24-bits RGB per pixel. It provides a
 	  MIPI DSI interface to host.
 
+config DRM_PANEL_ILI7838E_DV2_ALPHA_VDO
+	tristate "mt6985 ili7838e-dv2-alpha vdo panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for mt6985
+	  ili7838e-dv2-alpha fhd vdo panel. The panel has a 1260x2800
+	  resolution and uses 24-bits RGB per pixel. It provides a
+	  MIPI DSI interface to host.
+
 config DRM_PANEL_RM692H5_ALPHA_CMD
 	tristate "mt6985 rm692h5-alpha cmd panel"
 	depends on OF

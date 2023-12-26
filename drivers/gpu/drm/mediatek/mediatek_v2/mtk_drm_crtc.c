@@ -13009,7 +13009,7 @@ void mtk_drm_set_backlight(struct mtk_drm_crtc *mtk_crtc)
 	/* set backlight */
 	/* the output should be DSI and cmd mode OLDE panel */
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DSI, 0);
-	if (comp && mtk_dsi_is_cmd_mode(comp))
+	if (comp)
 		mtk_ddp_comp_io_cmd(comp,
 			NULL, DSI_SET_CSC_BL, NULL);
 }
