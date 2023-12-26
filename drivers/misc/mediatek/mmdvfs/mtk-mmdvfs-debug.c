@@ -607,9 +607,6 @@ static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, 
 		val = mt_get_fmeter_freq(g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i]);
 		MMDVFS_DBG("i:%d id:%hu type:%hu freq:%u",
 			i, g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i], val);
-		if (g_mmdvfs->fmeter_id[i] == 2 && g_mmdvfs->fmeter_type[i] == 4 &&
-			val && (val > 2596000 || val < 2396000))
-			mtk_clk_notify(NULL, NULL, NULL, 0, 0, 1, CLK_EVT_CHECK_APMIXED_STAT);
 	}
 
 	for (i = 0; i < g_mmdvfs->clk_count; i++)
