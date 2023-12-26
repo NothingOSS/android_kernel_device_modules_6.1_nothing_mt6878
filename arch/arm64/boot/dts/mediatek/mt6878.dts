@@ -12719,3 +12719,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 &md_auxadc {
 	io-channels = <&pmic_adc (ADC_PURES_OPEN_MASK | AUXADC_VIN1)>;
 };
+
+&mt6369codec {
+	mediatek,bypass-vant18 = <1>; /* 0: do not bypass; 1: bypass */
+};
