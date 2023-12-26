@@ -15,6 +15,7 @@
 #include <linux/delay.h>
 #include <linux/component.h>
 #include <linux/iommu.h>
+#include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/pm_runtime.h>
@@ -136,6 +137,13 @@ dma_addr_t test_pa;
 #endif
 
 struct mtk_aod_scp_cb aod_scp_ipi;
+
+struct tag_bootmode {
+	u32 size;
+	u32 tag;
+	u32 bootmode;
+	u32 boottype;
+};
 
 void mtk_aod_scp_ipi_init(struct mtk_aod_scp_cb *cb)
 {
@@ -8989,6 +8997,31 @@ done:
 	return ret;
 }
 
+static unsigned int mtk_drm_get_boot_mode_from_dts(void)
+{
+	struct tag_bootmode *tags = NULL;
+	struct device_node *node = NULL;
+	int ret = 0;
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+
+	if (node) {
+		tags = (struct tag_bootmode *)of_get_property(node,
+			"atag,boot", NULL);
+	} else
+		DDPPR_ERR("[%s] of_chosen not found\n", __func__);
+
+	if (tags) {
+		ret = tags->bootmode;
+		DDPMSG("[%s] 'atag,boot' mode %d\n", __func__, ret);
+	} else
+		DDPPR_ERR("[%s] 'atag,boot' not found\n", __func__);
+
+	return ret;
+}
+
 static int mtk_drm_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -9380,11 +9413,15 @@ SKIP_OVLSYS_CONFIG:
 	if (ret)
 		goto err_pm;
 
+	private->boot_mode = mtk_drm_get_boot_mode_from_dts();
+
 	for (i = 0 ; i < MAX_CRTC ; ++i) {
 		unsigned int value;
 
 		ret = of_property_read_u32_index(dev->of_node, "pre-define-bw", i, &value);
-		if (unlikely(ret < 0))
+		if (unlikely(ret < 0) ||
+			((private->data && private->data->mmsys_id == MMSYS_MT6878) &&
+			(i == 3) && (private->boot_mode == KERNEL_POWER_OFF_CHARGING_BOOT)))
 			value = 0;
 
 		private->pre_defined_bw[i] = value;

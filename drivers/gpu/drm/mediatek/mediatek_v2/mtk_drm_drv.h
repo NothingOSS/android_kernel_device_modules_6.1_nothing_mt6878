@@ -36,6 +36,8 @@
 #endif
 #define MTK_DRM_ASYNC_HANDLE
 
+#define KERNEL_POWER_OFF_CHARGING_BOOT 8
+
 struct device;
 struct device_node;
 struct drm_crtc;
@@ -254,6 +256,7 @@ struct mtk_drm_private {
 	struct mutex cmdq_prepare_instr_lock;
 
 	unsigned int seg_id;
+	unsigned int boot_mode;
 };
 
 struct mtk_drm_property {

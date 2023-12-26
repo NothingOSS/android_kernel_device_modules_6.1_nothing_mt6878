@@ -10567,9 +10567,12 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 		mtk_ddp_comp_start(comp, cmdq_handle);
 
-		if (!mtk_drm_helper_get_opt(
-				    priv->helper_opt,
-				    MTK_DRM_OPT_USE_PQ))
+		if ((!mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_USE_PQ)) ||
+			((priv->data && priv->data->mmsys_id == MMSYS_MT6878) &&
+			(drm_crtc_index(crtc) == 3) &&
+			(priv->boot_mode == KERNEL_POWER_OFF_CHARGING_BOOT) &&
+			(mtk_ddp_comp_get_type(comp->id) == MTK_DISP_TDSHP)))
 			mtk_ddp_comp_bypass(comp, 1, cmdq_handle);
 
 		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) {
