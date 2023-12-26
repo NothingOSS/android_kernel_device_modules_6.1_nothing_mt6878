@@ -174,6 +174,7 @@ mgk_64_k61_device_modules = [
     "drivers/gpu/drm/panel/panel-truly-td4330-vdo.ko",
     "drivers/gpu/drm/panel/panel-himax-hx83121a-vdo.ko",
     "drivers/gpu/drm/panel/panel-boe-ts127qfmll1dkp0.ko",
+    "drivers/gpu/drm/panel/panel-boe-ts127qfmll1dkp0-120hz.ko",
     "drivers/gpu/drm/panel/panel-nt37707-667-fhdp-dphy-cmd.ko",
     "drivers/gpu/drm/panel/panel-nt37705-1056-1068-dphy-cmd.ko",
     "drivers/gpu/mediatek/ged/ged.ko",
