@@ -4851,6 +4851,7 @@
 			cammux-raw-range = <34 37>;
 			cammux-pdp-range = <40 40>;
 
+			mtk-iomem-ver = "mt6878";
 			/* for clock scaling bind vcore */
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/*
