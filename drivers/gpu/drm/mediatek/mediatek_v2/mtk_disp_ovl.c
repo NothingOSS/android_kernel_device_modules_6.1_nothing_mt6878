@@ -2760,11 +2760,12 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		else
 			vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
+		/* query display mode anyway, would use it even in CMD mode */
 		if (output_comp && ((output_comp->id == DDP_COMPONENT_DSI0) ||
-				(output_comp->id == DDP_COMPONENT_DSI1))
-				&& !(mtk_dsi_is_cmd_mode(output_comp))) {
+				(output_comp->id == DDP_COMPONENT_DSI1)))
 			mtk_ddp_comp_io_cmd(output_comp, NULL,
 				DSI_GET_MODE_BY_MAX_VREFRESH, &mode);
+		if (mode && !(mtk_dsi_is_cmd_mode(output_comp))) {
 			vtotal = mode->vtotal;
 			vact = mode->vdisplay;
 			ratio_tmp = vtotal * 100 / vact;
@@ -2788,7 +2789,12 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		 * layer_w * layer_h * bpp * vrefresh * max fps blanking_ratio
 		 * Sum_SRT(all layer) *= 1.33
 		 */
-		temp_bw = (unsigned long long)pending->width * pending->height;
+		/* use full frame size's peak BW request bus capability, because tiny region layer */
+		/* peak BW should be the same with full frame */
+		if (mode)
+			temp_bw = (unsigned long long)mode->vdisplay * mode->hdisplay;
+		else
+			temp_bw = (unsigned long long)pending->width * pending->height;
 		temp_bw *= mtk_get_format_bpp(fmt);
 
 		/* COMPRESS ratio */
