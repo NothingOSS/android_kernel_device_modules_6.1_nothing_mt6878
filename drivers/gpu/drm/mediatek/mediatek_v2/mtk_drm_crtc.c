@@ -6863,7 +6863,7 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv =
 			mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *comp;
-	unsigned int cur_hrt_bw, cur_larb_hrt_bw, hrt_idx, crtc_idx;
+	unsigned int cur_hrt_bw, cur_larb_hrt_bw, hrt_idx, crtc_idx, flag = DISP_BW_UPDATE_PENDING;
 	int i, j;
 
 	crtc_idx = drm_crtc_index(crtc);
@@ -6871,6 +6871,7 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 		for_each_comp_in_target_ddp_mode_bound(comp, mtk_crtc,
 				i, j, ddp_mode, 0)
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
 	}
 
 	if (priv->power_state == false)
@@ -10766,6 +10767,7 @@ void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 	int i, j;
 	bool async = false;
 	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
+	unsigned int flag = DISP_BW_UPDATE_PENDING;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct drm_device *dev = crtc->dev;
 	struct mtk_drm_private *priv = dev->dev_private;
@@ -10839,7 +10841,7 @@ skip:
 	mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
-			PMQOS_UPDATE_BW, NULL);
+			PMQOS_UPDATE_BW, &flag);
 	mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
 
 	/* 3.1 stop the last mml pkt */

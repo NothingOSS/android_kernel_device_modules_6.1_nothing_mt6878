@@ -4187,6 +4187,7 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
 		unsigned int force_update = 0; /* force_update repeat last qos BW */
+		unsigned int update_pending = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -4202,10 +4203,12 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (params) {
 			force_update = *(unsigned int *)params;
+			/* tricky way use variable force update */
+			update_pending = (force_update == DISP_BW_UPDATE_PENDING);
 			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
 		}
 
-		if (!force_update) {
+		if (!force_update && !update_pending) {
 			mtk_crtc->total_srt += comp->qos_bw;
 			if (!IS_ERR_OR_NULL(comp->qos_req_other))
 				mtk_crtc->total_srt += comp->qos_bw_other;
@@ -4218,14 +4221,20 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				break;
 			goto other;
 		}
-		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw,
-					    DISP_BW_NORMAL_MODE);
-		comp->last_qos_bw = comp->qos_bw;
+		if ((comp->last_qos_bw < comp->qos_bw) ||
+				(update_pending && comp->last_qos_bw > comp->qos_bw)) {
+			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw,
+						    DISP_BW_NORMAL_MODE);
+			comp->last_qos_bw = comp->qos_bw;
+		}
 other:
 		if (!IS_ERR(comp->qos_req_other)) {
-			__mtk_disp_set_module_srt(comp->qos_req_other, comp->id, comp->qos_bw_other,
-					    DISP_BW_NORMAL_MODE);
-			comp->last_qos_bw_other = comp->qos_bw_other;
+			if ((comp->last_qos_bw_other < comp->qos_bw_other) || (update_pending &&
+					comp->last_qos_bw_other > comp->qos_bw_other)) {
+				__mtk_disp_set_module_srt(comp->qos_req_other,
+					comp->id, comp->qos_bw_other, DISP_BW_NORMAL_MODE);
+				comp->last_qos_bw_other = comp->qos_bw_other;
+			}
 		}
 		DDPINFO("update ovl fbdc_bw to %u, qos bw to %u, %u\n",
 			comp->fbdc_bw, comp->qos_bw, comp->qos_bw_other);
