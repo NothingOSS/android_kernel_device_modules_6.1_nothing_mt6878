@@ -92,7 +92,7 @@ int mt6681_codec_gpio_init(struct mt6681_pmic_info *mpi)
 	codec_pinctrl = devm_pinctrl_get(mpi->dev);
 	if (IS_ERR(codec_pinctrl)) {
 		ret = PTR_ERR(codec_pinctrl);
-		dev_info(mpi->dev, "%s(), ret %d, cannot get aud_pinctrl!\n",
+		dev_info(mpi->dev, "%s(), ret %d, cannot get codec_pinctrl!\n",
 			__func__, ret);
 		return -ENODEV;
 	}
@@ -126,20 +126,112 @@ static const struct mfd_cell mt6681_devs[] = {
 	/* debug dev */
 	/* { .name = "mt6360_dbg", },*/
 };
+static int retry_total;
+
+#ifdef DEBUG_DUMP
+unsigned int dump_reg[] = {
+	MT6681_HWCID_H, MT6681_SWCID_L, MT6681_SWCID_H, MT6681_TOP_CON,
+	MT6681_TOP0_ID_H, MT6681_TOP1_ID_H, MT6681_TOP2_ID_H,
+	MT6681_TOP3_ID_H, MT6681_TOP_RST_REG_ID_H,
+	MT6681_PLT0_ID_DIG_ID, MT6681_I2CRECORD_ID_DIG_ID};
+static int mt6681_debug_read(struct mt6681_pmic_info *mpi)
+{
+	int i = 0, ret = 0;
+	unsigned int data = 0;
+
+	for (i = 0; i < ARRAY_SIZE(dump_reg); i++) {
+		ret = regmap_read(mpi->regmap, dump_reg[i], &data);
+		dev_info(mpi->dev, "reg (0x%x) = 0x%x, ret %d\n",
+				 dump_reg[i], data, ret);
+	}
+	return 0;
+}
+#endif
+static int mt6681_retry_read(struct mt6681_pmic_info *mpi)
+{
+	int i = 0, ret = 0;
+	unsigned int data = 0;
+
+	while ((i < 3) && (data != MT6681_SWCID_H_CODE)) {
+		ret = regmap_read(mpi->regmap, MT6681_SWCID_H, &data);
+		dev_info(mpi->dev, "retry (%d) MT6681_SWCID_H = 0x%x, ret %d\n",
+				 i, data, ret);
+
+		retry_total++;
+		i++;
+	}
+	if (data != MT6681_SWCID_H_CODE)
+		return -1;
+	else
+		return 0;
+}
+static int mt6681_retry_wait(struct mt6681_pmic_info *mpi)
+{
+	int i = 0, ret = 0;
+	unsigned int data = 0;
+	struct timespec64 ts64;
+	unsigned long long t1, t2;
+	/* one interrupt period = 100ms */
+	unsigned long long timeout_limit = 50000000;
+
+	ktime_get_ts64(&ts64);
+	t1 = timespec64_to_ns(&ts64);
+
+	while ((data & 0x2) != 0x2) {
+		if (t2 > timeout_limit){
+			dev_info(mpi->dev, "retry wait Timeout!!!\n");
+			break;
+		}
+		/* MT6681_ACDIF_MON0[1] : MON_DA_QI_INTERNAL_RSTB */
+		ret = regmap_read(mpi->regmap, MT6681_ACDIF_MON0, &data);
+		dev_info(mpi->dev, "retry wait for RDY (%d) MT6681_ACDIF_MON0 = 0x%x, ret %d\n",
+				 i, data, ret);
+		i++;
+		ktime_get_ts64(&ts64);
+		t2 = timespec64_to_ns(&ts64);
+		t2 = t2 - t1; /* in ns (10^9) */
+	}
+	return i;
+}
 
 static int mt6681_check_id(struct mt6681_pmic_info *mpi)
 {
-	int ret = 0;
+	int ret = 0, wait = 0;
 	unsigned int data = 0;
+	retry_total = 0;
 
 	ret = regmap_read(mpi->regmap, MT6681_SWCID_H, &data);
 	if (ret < 0) {
-		dev_info(mpi->dev, "device not found\n");
+		dev_info(mpi->dev, "device not found %d\n", ret);
 		return ret;
 	}
 	if (data != MT6681_SWCID_H_CODE) {
 		dev_info(mpi->dev, "data = %d, not mt6681 chip\n", data);
 		//return -ENODEV;
+		wait = mt6681_retry_wait(mpi);
+		/* Step 1: retry test */
+#ifdef DEBUG_DUMP
+		mt6681_debug_read(mpi);
+#endif
+		ret = mt6681_retry_read(mpi);
+		dev_info(mpi->dev, "total retry (%d) MT6681_SWCID_H, ready wait time %d, ret %d\n",
+			 retry_total, ret, wait);
+		/*Step 2: mt6681 reset */
+		if ( ret < 0) {
+			mt6681_codec_gpio_select(mpi, MT6681_CODEC_GPIO_EN_OFF);
+			mt6681_codec_gpio_select(mpi, MT6681_CODEC_GPIO_EN_ON);
+			wait = mt6681_retry_wait(mpi);
+			ret = mt6681_retry_read(mpi);
+			dev_info(mpi->dev, "total retry (%d) MT6681_SWCID_H, ready wait time %d, ret %d\n",
+				 retry_total, ret, wait);
+
+		}
+
+		if (ret < 0) {
+			dev_info(mpi->dev, "total retry (%d) MT6681_SWCID_H, ready wait time %d, ret %d\n",
+				 retry_total, ret, wait);
+			BUG_ON(1);
+		}
 	}
 	mpi->chip_rev = data;
 
