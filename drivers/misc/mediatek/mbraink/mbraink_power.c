@@ -458,7 +458,7 @@ int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 			g_spm_raw = NULL;
 		}
 
-		if (g_data_size == SPM_TOTAL_SZ) {
+		if (g_data_size <= SPM_TOTAL_SZ) {
 			g_spm_raw = vmalloc(g_data_size);
 			if (g_spm_raw != NULL) {
 				memset(g_spm_raw, 0, g_data_size);
