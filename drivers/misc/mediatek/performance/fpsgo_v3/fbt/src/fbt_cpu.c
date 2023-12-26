@@ -306,6 +306,9 @@ static int limit_rfreq2cap;
 static int limit_cfreq2cap_m;
 static int limit_rfreq2cap_m;
 static int limit_min_cap_target_t;
+static int exp_fps_raw_enable;
+static int exp_normal_fps_pct;
+static int exp_fps_disp_enable;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -375,6 +378,9 @@ module_param(rl_learning_rate_n, int, 0644);
 module_param(rl_expect_fps_margin, int, 0644);
 module_param(aa_b_minus_idle_time, int, 0644);
 module_param(limit_min_cap_target_t, int, 0644);
+module_param(exp_fps_raw_enable, int, 0644);
+module_param(exp_normal_fps_pct, int, 0644);
+module_param(exp_fps_disp_enable, int, 0644);
 
 static DEFINE_SPINLOCK(freq_slock);
 static DEFINE_MUTEX(fbt_mlock);
@@ -4607,6 +4613,34 @@ int fbt_get_rl_ko_is_ready(void)
 	return rl_ko_is_ready;
 }
 
+unsigned int fbt_get_expected_fpks(int pid, unsigned long long bufID,
+	unsigned int target_fpks, unsigned int target_raw_10fps,
+	unsigned long long vsync_period_ns, unsigned int normalized_target_fps,
+	int display_fps_enable, int target_raw_fps_enable, int normalized_fps_pct)
+{
+	unsigned long long vsync_period_us;
+	unsigned int vsync_fpks;
+	unsigned int final_expect_fpks = target_fpks;
+
+	if (display_fps_enable && vsync_period_ns) {
+		vsync_period_us = vsync_period_ns / 1000;
+		vsync_fpks = FBTCPU_SEC_DIVIDER / vsync_period_us;
+		final_expect_fpks = min(vsync_fpks, final_expect_fpks);
+		fpsgo_systrace_c_fbt(pid, bufID, vsync_fpks, "vsync_fpks");
+	}
+	if (target_raw_fps_enable && target_raw_10fps) {
+		final_expect_fpks = min(final_expect_fpks, target_raw_10fps * 100);
+		fpsgo_systrace_c_fbt(pid, bufID, target_raw_10fps, "target_raw_10fps");
+	}
+	if (normalized_fps_pct) {
+		final_expect_fpks = min(final_expect_fpks,
+			normalized_target_fps * normalized_fps_pct * 10);
+	}
+
+	fpsgo_systrace_c_fbt(pid, bufID, final_expect_fpks, "expect_fpks_wo_margin");
+	return final_expect_fpks;
+}
+
 int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int rl_is_ready, int rl_active, unsigned int target_fps_ori,
 	unsigned int last_target_fps_ori, unsigned int target_fpks, unsigned long long target_t,
@@ -4627,6 +4661,7 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 
 	if (out_target_t_ns)
 		*out_target_t_ns = target_t;
+
 	rl_target_fpks = target_fpks + expected_fps_margin * 100;
 
 	if (limit_min_cap_final)
@@ -4708,6 +4743,7 @@ static int fbt_boost_policy(
 {
 	unsigned int blc_wt = 0U, blc_wt_b = 0U, blc_wt_m = 0U;
 	unsigned int last_blc_wt = 0U, last_blc_wt_b = 0U, last_blc_wt_m = 0U;
+	unsigned int expected_fpks = target_fpks;
 	unsigned long long t1, t2, t_Q2Q, next_vsync;
 	unsigned long long cur_ts;
 	struct fbt_boost_info *boost_info;
@@ -4813,8 +4849,11 @@ static int fbt_boost_policy(
 	t2 = target_time;
 
 	next_vsync = fbt_get_next_vsync_locked(ts);
+
+	expected_fpks = fbt_get_expected_fpks(pid, buffer_id, target_fpks, 0, vsync_period,
+		target_fps_ori, exp_fps_disp_enable, exp_fps_raw_enable, exp_normal_fps_pct);
 	fbt_cal_target_time_ns(pid, buffer_id, rl_ko_is_ready, gcc_enable_active, target_fps_ori,
-		thread_info->target_fps_origin, target_fpks, target_time, fps_margin, boost_info->last_target_time_ns,
+		thread_info->target_fps_origin, expected_fpks, target_time, fps_margin, boost_info->last_target_time_ns,
 		thread_info->Q2Q_time, ts, next_vsync, expected_fps_margin_final,
 		rl_learning_rate_p, rl_learning_rate_n, quota_v2_clamp_max,
 		quota_v2_diff_clamp_min_final, quota_v2_diff_clamp_max_final,
@@ -5986,6 +6025,17 @@ void fpsgo_ctrl2fbt_vsync(unsigned long long ts)
 	mutex_unlock(&fbt_mlock);
 }
 
+void fpsgo_ctrl2fbt_vsync_period(unsigned long long period_ts)
+{
+	if (!fbt_is_enable())
+		return;
+
+	mutex_lock(&fbt_mlock);
+	vsync_period = period_ts;
+	xgf_trace("vsync_period %d", vsync_period);
+	mutex_unlock(&fbt_mlock);
+}
+
 void fpsgo_comp2fbt_frame_start(struct render_info *thr,
 		unsigned long long ts)
 {
@@ -6035,10 +6085,8 @@ void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit)
 
 	mutex_lock(&fbt_mlock);
 	_gdfrc_fps_limit = fps_limit;
-	vsync_period = FBTCPU_SEC_DIVIDER / fps_limit;
 
 	xgf_trace("_gdfrc_fps_limit %d", _gdfrc_fps_limit);
-	xgf_trace("vsync_period %d", vsync_period);
 
 	mutex_unlock(&fbt_mlock);
 }
@@ -9390,6 +9438,9 @@ int __init fbt_cpu_init(void)
 
 	aa_b_minus_idle_time = 0;
 
+	exp_fps_raw_enable = 0;
+	exp_normal_fps_pct = 0;
+	exp_fps_disp_enable = 1;
 	limit_min_cap_target_t = 0;
 
 	if (cluster_num <= 0)

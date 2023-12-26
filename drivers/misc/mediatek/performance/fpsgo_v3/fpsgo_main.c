@@ -45,7 +45,7 @@ enum FPSGO_NOTIFIER_PUSH_TYPE {
 	FPSGO_NOTIFIER_QUEUE_DEQUEUE		= 0x01,
 	FPSGO_NOTIFIER_CONNECT				= 0x02,
 	FPSGO_NOTIFIER_DFRC_FPS				= 0x03,
-	FPSGO_NOTIFIER_BQID				= 0x04,
+	FPSGO_NOTIFIER_BQID					= 0x04,
 	FPSGO_NOTIFIER_VSYNC				= 0x05,
 	FPSGO_NOTIFIER_SWAP_BUFFER          = 0x06,
 	FPSGO_NOTIFIER_SBE_RESCUE           = 0x07,
@@ -54,8 +54,10 @@ enum FPSGO_NOTIFIER_PUSH_TYPE {
 	FPSGO_NOTIFIER_ADPF_HINT            = 0x0a,
 	FPSGO_NOTIFIER_MAGT_TARGET_FPS      = 0x0b,
 	FPSGO_NOTIFIER_MAGT_DEP_LIST        = 0x0c,
+	FPSGO_NOTIFIER_VSYNC_PERIOD         = 0x0d,
 	FPSGO_NOTIFIER_FRAME_HINT			= 0x10,
 	FPSGO_NOTIFIER_SBE_POLICY			= 0x11,
+
 };
 
 struct fpsgo_adpf_session {
@@ -156,8 +158,18 @@ static void fpsgo_notifier_wq_cb_vsync(unsigned long long ts)
 	if (!fpsgo_is_enable())
 		return;
 
-	fpsgo_ctrl2fstb_vsync(ts);
+	// fpsgo_ctrl2fstb_vsync(ts);
 	fpsgo_ctrl2fbt_vsync(ts);
+}
+
+static void fpsgo_notifier_wq_cb_vsync_period(unsigned long long period_ts)
+{
+	FPSGO_LOGI("[FPSGO_CB] vsync: %llu\n", period_ts);
+
+	if (!fpsgo_is_enable())
+		return;
+
+	fpsgo_ctrl2fbt_vsync_period(period_ts);
 }
 
 static void fpsgo_notifier_wq_cb_swap_buffer(int pid)
@@ -475,6 +487,9 @@ static void fpsgo_notifier_wq_cb(void)
 	case FPSGO_NOTIFIER_VSYNC:
 		fpsgo_notifier_wq_cb_vsync(vpPush->cur_ts);
 		break;
+	case FPSGO_NOTIFIER_VSYNC_PERIOD:
+		fpsgo_notifier_wq_cb_vsync_period(vpPush->cur_ts);
+		break;
 	case FPSGO_NOTIFIER_SWAP_BUFFER:
 		fpsgo_notifier_wq_cb_swap_buffer(vpPush->pid);
 		break;
@@ -730,6 +745,36 @@ void fpsgo_notify_vsync(void)
 
 	fpsgo_queue_work(vpPush);
 }
+
+void fpsgo_notify_vsync_period(unsigned long long period)
+{
+	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
+
+	FPSGO_LOGI("[FPSGO_CTRL] vsync period\n");
+
+	if (!fpsgo_is_enable())
+		return;
+
+	vpPush = (struct FPSGO_NOTIFIER_PUSH_TAG *)
+		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+
+	if (!vpPush) {
+		FPSGO_LOGE("[FPSGO_CTRL] OOM\n");
+		return;
+	}
+
+	if (!kfpsgo_tsk) {
+		FPSGO_LOGE("[FPSGO_CTRL] NULL WorkQueue\n");
+		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+		return;
+	}
+
+	vpPush->ePushType = FPSGO_NOTIFIER_VSYNC_PERIOD;
+	vpPush->cur_ts = period;
+
+	fpsgo_queue_work(vpPush);
+}
+
 
 void fpsgo_notify_swap_buffer(int pid)
 {
@@ -1470,6 +1515,7 @@ static int __init fpsgo_init(void)
 		fpsgo_switch_enable(1);
 
 	fpsgo_notify_vsync_fp = fpsgo_notify_vsync;
+	fpsgo_notify_vsync_period_fp = fpsgo_notify_vsync_period;
 
 	fpsgo_notify_qudeq_fp = fpsgo_notify_qudeq;
 	fpsgo_notify_connect_fp = fpsgo_notify_connect;

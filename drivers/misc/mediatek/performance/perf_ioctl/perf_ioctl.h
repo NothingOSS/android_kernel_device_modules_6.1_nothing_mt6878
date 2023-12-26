@@ -128,6 +128,7 @@ struct _XGFFRAME_BOOST_PACKAGE {
 #define FPSGO_GET_CAM_SERVER_PID     _IOW('g', 26, struct _FPSGO_PACKAGE)
 #define FPSGO_SBE_SET_POLICY         _IOW('g', 27, struct _FPSGO_SBE_PACKAGE)
 #define FPSGO_HINT_FRAME             _IOW('g', 28, struct _FPSGO_SBE_PACKAGE)
+#define FPSGO_VSYNC_PERIOD           _IOW('g', 29, struct _FPSGO_PACKAGE)
 
 #define XGFFRAME_START              _IOW('g', 1, struct _XGFFRAME_PACKAGE)
 #define XGFFRAME_END                _IOW('g', 2, struct _XGFFRAME_PACKAGE)

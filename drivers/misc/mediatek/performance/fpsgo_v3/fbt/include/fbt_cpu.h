@@ -27,6 +27,7 @@ void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq_lastest_ts,
 void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid, unsigned long freq);
 #endif  // FPSGO_DYNAMIC_WL
 void fpsgo_ctrl2fbt_vsync(unsigned long long ts);
+void fpsgo_ctrl2fbt_vsync_period(unsigned long long period_ts);
 int fpsgo_ctrl2fbt_switch_uclamp(int enable);
 void fpsgo_comp2fbt_frame_start(struct render_info *thr,
 		unsigned long long ts);
@@ -150,6 +151,7 @@ static inline void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq
 	unsigned int *freq_clus_obv, unsigned int *freq_clus_iso, unsigned int *freq_last_obv,
 	unsigned long long fake_time_ns) { }
 static inline void fpsgo_ctrl2fbt_vsync(unsigned long long ts) { }
+static inline void fpsgo_ctrl2fbt_vsync_period(unsigned long long period_ts) { }
 int fpsgo_ctrl2fbt_switch_uclamp(int enable) { return 0; }
 static inline void fpsgo_comp2fbt_frame_start(struct render_info *thr,
 	unsigned long long ts) { }

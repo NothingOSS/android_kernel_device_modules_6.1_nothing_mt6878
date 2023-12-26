@@ -19,6 +19,7 @@ extern void (*fpsgo_notify_bqid_fp)(int pid, unsigned long long bufID,
 		int queue_SF,
 		unsigned long long identifier, int create);
 extern void (*fpsgo_notify_vsync_fp)(void);
+extern void (*fpsgo_notify_vsync_period_fp)(unsigned long long period);
 extern void (*fpsgo_notify_swap_buffer_fp)(int pid);
 extern void (*fpsgo_get_fps_fp)(int *pid, int *fps);
 extern void (*fpsgo_get_cmd_fp)(int *cmd, int *value1, int *value2);

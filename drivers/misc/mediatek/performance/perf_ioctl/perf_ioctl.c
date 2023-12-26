@@ -18,6 +18,8 @@ void (*fpsgo_notify_bqid_fp)(int pid, unsigned long long bufID,
 EXPORT_SYMBOL_GPL(fpsgo_notify_bqid_fp);
 void (*fpsgo_notify_vsync_fp)(void);
 EXPORT_SYMBOL_GPL(fpsgo_notify_vsync_fp);
+void (*fpsgo_notify_vsync_period_fp)(unsigned long long period);
+EXPORT_SYMBOL_GPL(fpsgo_notify_vsync_period_fp);
 void (*fpsgo_get_fps_fp)(int *pid, int *fps);
 EXPORT_SYMBOL_GPL(fpsgo_get_fps_fp);
 void (*fpsgo_get_cmd_fp)(int *cmd, int *value1, int *value2);
@@ -485,6 +487,10 @@ static long device_ioctl(struct file *filp,
 		if (fpsgo_notify_vsync_fp)
 			fpsgo_notify_vsync_fp();
 		break;
+	case FPSGO_VSYNC_PERIOD:
+		if (fpsgo_notify_vsync_period_fp)
+			fpsgo_notify_vsync_period_fp(msgKM->frame_time);
+		break;
 	case FPSGO_SWAP_BUFFER:
 		if (fpsgo_notify_swap_buffer_fp)
 			fpsgo_notify_swap_buffer_fp(msgKM->tid);
@@ -566,6 +572,8 @@ static long device_ioctl(struct file *filp,
 	case FPSGO_QUEUE_CONNECT:
 		 [[fallthrough]];
 	case FPSGO_VSYNC:
+		 [[fallthrough]];
+	case FPSGO_VSYNC_PERIOD:
 		 [[fallthrough]];
 	case FPSGO_BQID:
 		 [[fallthrough]];
