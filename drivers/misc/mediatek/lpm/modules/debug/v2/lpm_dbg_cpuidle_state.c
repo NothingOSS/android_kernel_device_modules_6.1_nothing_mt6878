@@ -118,7 +118,7 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 
 			mtk_dbg_cpuidle_log("  %-8ld",
 				mtk_cpuidle_get_param(drv, i, info->param));
-			for (i = 0; i < nr_states; i++) {
+			for (i = 1; i < nr_states; i++) {
 				if (!strncmp((drv->states[j]).name, state_info[i].name,
 					strlen(state_info[i].name))) {
 					mtk_dbg_cpuidle_log("%-15ld",
@@ -298,7 +298,7 @@ static ssize_t lpm_cpuidle_state_write(char *FromUserBuf,
 	return -EINVAL;
 }
 
-void lpm_cpuidle_state_info_init(void)
+static void lpm_cpuidle_state_info_init(void)
 {
 	struct device_node *node = NULL;
 	int i = 1;
