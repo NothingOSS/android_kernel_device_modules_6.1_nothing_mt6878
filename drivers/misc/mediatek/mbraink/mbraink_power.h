@@ -10,6 +10,14 @@
 #include <linux/io.h>
 #include "mbraink_ioctl_struct_def.h"
 
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
+		IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+
+#include <lpm_dbg_common_v2.h>
+
+#endif
+
+
 #define MAX_POWER_HD_SZ 8
 #define SPM_DATA_SZ (5640)
 #define SPM_TOTAL_SZ (MAX_POWER_HD_SZ+SPM_DATA_SZ)
@@ -47,45 +55,8 @@ struct mbraink_26m {
 
 extern void __iomem *lpm_spm_base;
 
-enum MT_SPM_STAT_SCENARIO_TYPE {
-	SPM_IDLE_STAT,
-	SPM_SUSPEND_STAT,
-};
-
-enum MT_SPM_STAT_STATE {
-	SPM_STAT_MCUSYS,
-	SPM_STAT_F26M,
-	SPM_STAT_VCORE,
-	NUM_SPM_STAT,
-};
-
-struct lpm_stat_record {
-	u64 count;
-	u64 duration;
-};
-
-struct lpm_dbg_lp_info {
-	struct lpm_stat_record record[NUM_SPM_STAT];
-};
-
 void mtk_get_lp_info(struct lpm_dbg_lp_info *info, int type);
 
-struct md_sleep_status {
-	u64 guard_sleep_cnt1;
-	u64 sleep_utc;
-	u64 sleep_wall_clk;
-	u64 sleep_cnt;
-	u64 sleep_cnt_reserve;
-	u64 sleep_time;
-	u64 sleep_time_reserve;
-	u64 md_sleep_time;      // uS
-	u64 gsm_sleep_time;     // uS
-	u64 wcdma_sleep_time;   // uS
-	u64 lte_sleep_time;     // uS
-	u64 nr_sleep_time;      // uS
-	u64 reserved[51];       //0x60~0x1F0
-	u64 guard_sleep_cnt2;
-};
 
 extern struct md_sleep_status before_md_sleep_status;
 int is_md_sleep_info_valid(struct md_sleep_status *md_data);
@@ -118,6 +89,8 @@ void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info
 int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *power_spm_buffer);
 int mbraink_power_get_spm_l1_info(long long *spm_l1_array, int spm_l1_size);
 int mbraink_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info);
+
+int mbraink_power_get_scp_info(struct mbraink_power_scp_info *scp_info);
 
 int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer);
 

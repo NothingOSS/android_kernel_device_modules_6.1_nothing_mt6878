@@ -42,6 +42,8 @@
 #define TRACE_BINDER_INFO              'o'
 #define VCORE_VOTE_INFO			'p'
 #define POWER_SPM_L2_INFO		'q'
+#define POWER_SCP_INFO			'r'
+
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -94,6 +96,9 @@
 
 #define RO_POWER_SPM_L2_INFO	_IOR(IOC_MAGIC, POWER_SPM_L2_INFO, \
 						struct mbraink_power_spm_raw*)
+
+#define RO_POWER_SCP_INFO	_IOR(IOC_MAGIC, POWER_SCP_INFO, \
+						struct mbraink_power_scp_raw*)
 
 
 #define SUSPEND_DATA	0

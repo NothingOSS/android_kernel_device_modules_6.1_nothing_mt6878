@@ -11,6 +11,9 @@
 
 #include "mbraink_power.h"
 
+#include <scp_mbrain_dbg.h>
+
+
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
 	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
 
@@ -508,6 +511,48 @@ int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 }
 
 #endif
+
+
+int mbraink_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
+{
+	struct scp_res_mbrain_dbg_ops *scp_res_mbrain_ops = NULL;
+	unsigned int data_size = 0;
+	unsigned char *ptr = NULL;
+
+	if (scp_info == NULL)
+		return -1;
+
+	scp_res_mbrain_ops = get_scp_mbrain_dbg_ops();
+
+	if (scp_res_mbrain_ops &&
+		scp_res_mbrain_ops->get_length &&
+		scp_res_mbrain_ops->get_data) {
+
+		data_size = scp_res_mbrain_ops->get_length();
+
+		if (data_size > 0 && data_size <= sizeof(scp_info->scp_data)) {
+			ptr = kmalloc(data_size, GFP_KERNEL);
+			if (ptr == NULL)
+				goto End;
+
+			scp_res_mbrain_ops->get_data(ptr, data_size);
+			if (data_size <= sizeof(scp_info->scp_data))
+				memcpy(scp_info->scp_data, ptr, data_size);
+
+		} else {
+			goto End;
+		}
+	}
+
+End:
+	if (ptr != NULL) {
+		kfree(ptr);
+		ptr = NULL;
+	}
+
+	return 0;
+}
+
 
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)

@@ -49,6 +49,7 @@
 #define SPM_L2_RES_SIZE (16)
 #define SPM_L2_LS_SZ (32)
 
+#define SCP_SZ (200)
 
 #define MD_HD_SZ 8
 #define MD_MDHD_SZ 8
@@ -243,6 +244,10 @@ struct mbraink_power_spm_raw {
 struct mbraink_power_spm_l2_info {
 	unsigned int value[4];
 	unsigned char spm_data[SPM_L2_SZ];
+};
+
+struct mbraink_power_scp_info {
+	unsigned char scp_data[SCP_SZ];
 };
 
 struct mbraink_modem_raw {

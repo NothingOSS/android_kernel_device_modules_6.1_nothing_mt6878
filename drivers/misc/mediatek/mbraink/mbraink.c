@@ -33,6 +33,13 @@
 #include "mbraink_battery.h"
 #include "mbraink_pmu.h"
 
+
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
+	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+
+#include <lpm_dbg_logger.h>
+
+#endif
 static DEFINE_MUTEX(power_lock);
 static DEFINE_MUTEX(pmu_lock);
 struct mbraink_data mbraink_priv;
@@ -753,6 +760,22 @@ static long mbraink_ioctl(struct file *filp,
 		}
 		break;
 	}
+	case RO_POWER_SCP_INFO:
+	{
+		struct mbraink_power_scp_info power_scp_buffer;
+
+		memset(&power_scp_buffer,
+				0,
+				sizeof(struct mbraink_power_scp_info));
+		mbraink_power_get_scp_info(&power_scp_buffer);
+		if (copy_to_user((struct mbraink_power_scp_info *) arg,
+					&power_scp_buffer,
+					sizeof(power_scp_buffer))) {
+			pr_notice("Copy power_scp_buffer to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;
@@ -863,6 +886,15 @@ static void mbraink_complete(struct device *dev)
 	long long last_resume_ktime = 0;
 	struct mbraink_battery_data resume_battery_buffer;
 
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
+	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+
+	struct lpm_logger_mbrain_dbg_ops *logger_mbrain_ops = NULL;
+	long long wakeup_event = 0;
+#else
+	long long wakeup_event = 0;
+#endif
+
 	memset(&resume_battery_buffer, 0,
 		sizeof(struct mbraink_battery_data));
 
@@ -875,13 +907,24 @@ static void mbraink_complete(struct device *dev)
 
 	mbraink_get_battery_info(&resume_battery_buffer, mbraink_priv.last_resume_timestamp);
 
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
+		IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+
+	logger_mbrain_ops = get_lpm_logger_mbrain_dbg_ops();
+	if (logger_mbrain_ops && logger_mbrain_ops->get_last_suspend_wakesrc)
+		wakeup_event = (long long)(logger_mbrain_ops->get_last_suspend_wakesrc());
+#else
+	wakeup_event = 0;
+#endif
+
 	n += snprintf(netlink_buf, MAX_BUF_SZ,
-			"%s %lld:%lld:%lld:%lld %d:%d:%d:%d %d:%d:%d:%d",
+			"%s %lld:%lld:%lld:%lld:%lld %d:%d:%d:%d %d:%d:%d:%d",
 			NETLINK_EVENT_SYSRESUME,
 			mbraink_priv.last_suspend_timestamp,
 			mbraink_priv.last_resume_timestamp,
 			mbraink_priv.last_suspend_ktime,
 			last_resume_ktime,
+			wakeup_event,
 			mbraink_priv.suspend_battery_buffer.quse,
 			mbraink_priv.suspend_battery_buffer.qmaxt,
 			mbraink_priv.suspend_battery_buffer.precise_soc,
