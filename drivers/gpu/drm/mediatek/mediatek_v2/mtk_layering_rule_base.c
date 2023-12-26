@@ -1775,6 +1775,9 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 	if (is_dal)
 		bpp = HRT_AEE_WEIGHT / weight;
 
+	if (priv->data->mmsys_id == MMSYS_MT6878 && is_dal)
+		bpp = (HRT_AEE_WEIGHT + 400 * 3 / 2) / weight;
+
 	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) && frame_idx && is_gles &&
 			get_layering_opt(LYE_OPT_GPU_CACHE) && (disp_idx == HRT_PRIMARY)
 			&& (have_force_gpu_layer == 0)) {
@@ -2426,6 +2429,8 @@ static int _calc_hrt_num(struct drm_device *dev,
 	}
 
 	if (has_dal_layer) {
+		DDPINFO("%s 1, overlap_num=%d,%d, (%d)\n", __func__, sum_overlap_w,
+			sum_overlap_w_of_bwm, get_layer_weight(dev, disp, NULL, 0, false, has_dal_layer));
 		sum_overlap_w += get_layer_weight(dev, disp, NULL, 0, false, has_dal_layer);
 		if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 			sum_overlap_w_of_bwm += get_layer_weight(dev, disp, NULL, 0, false, has_dal_layer);
@@ -2460,6 +2465,8 @@ static int _calc_hrt_num(struct drm_device *dev,
 			}
 		}
 		if (has_dal_layer) {
+			DDPINFO("%s 2, overlap_num=%d,%d, (%d)\n", __func__, sum_overlap_w,
+				sum_overlap_w_of_bwm, get_layer_weight(dev, disp, NULL, 0, false, has_dal_layer));
 			sum_overlap_w += get_layer_weight(dev, disp, NULL, 0, false, has_dal_layer);
 			if ((disp == HRT_PRIMARY) && bw_monitor_is_on) {
 				sum_overlap_w_of_bwm += get_layer_weight(dev, disp, NULL, 0, false, has_dal_layer);
@@ -3291,6 +3298,7 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 {
 	int disp_idx;
 	bool no_disp = true;
+	struct mtk_drm_private *priv = drm_dev->dev_private;
 
 	for (disp_idx = 0; disp_idx < HRT_DISP_TYPE_NUM; disp_idx++)
 		if (disp_info->layer_num[disp_idx] > 0) {
@@ -3309,10 +3317,11 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 		int valid_ovl_cnt = max_ovl_cnt;
 		int hrt_disp_num = get_hrt_disp_num(disp_info);
 
-		if (l_rule_info->dal_enable)
+		if (priv->data->mmsys_id == MMSYS_MT6878 && l_rule_info->dal_enable)
+			valid_ovl_cnt -= 200; /* 2 layer */
+		else if (l_rule_info->dal_enable)
 			valid_ovl_cnt -= (HRT_AEE_WEIGHT / HRT_UINT_BOUND_BPP);
 		valid_ovl_cnt /= HRT_UINT_WEIGHT;
-
 		hrt_disp_num--;
 		for (disp_idx = HRT_DISP_TYPE_NUM - 1; disp_idx >= 0; disp_idx--) {
 			if (!has_hrt_limit(disp_info, disp_idx))
@@ -3331,6 +3340,8 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 		if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) &&
 			(disp_info->hrt_weight <= sum_overlap_w_of_bwm))
 			sum_overlap_w_of_bwm = disp_info->hrt_weight;
+		DDPINFO("%s, max_ovl_cnt=%d, overlap:%d,%d\n", __func__, max_ovl_cnt,
+				disp_info->hrt_weight, sum_overlap_w_of_bwm);
 	}
 
 	return 0;
@@ -4621,7 +4632,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 			}
 		}
 	}
-	check_gles_change(&dbg_gles, __LINE__, false);
+	check_gles_change(&dbg_gles, __LINE__, true);
 
 	lyeblob_ids = kzalloc(sizeof(struct mtk_drm_lyeblob_ids), GFP_KERNEL);
 
