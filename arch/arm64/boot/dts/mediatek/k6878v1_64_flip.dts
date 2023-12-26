@@ -325,7 +325,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 		<0>, /*MTK_DRM_OPT_HBM*/
 		<0>, /*MTK_DRM_OPT_VDS_PATH_SWITCH*/
 		<0>, /*MTK_DRM_OPT_LAYER_REC*/
-		<0>, /*MTK_DRM_OPT_CLEAR_LAYER*/
+		<1>, /*MTK_DRM_OPT_CLEAR_LAYER*/
 		<1>, /*MTK_DRM_OPT_LFR*/
 		<0>, /*MTK_DRM_OPT_SF_PF*/
 		<1>, /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
