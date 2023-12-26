@@ -4205,6 +4205,12 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
 		}
 
+		if (!force_update) {
+			mtk_crtc->total_srt += comp->qos_bw;
+			if (!IS_ERR_OR_NULL(comp->qos_req_other))
+				mtk_crtc->total_srt += comp->qos_bw_other;
+		}
+
 		/* process normal */
 		if (!force_update && comp->last_qos_bw == comp->qos_bw) {
 			if (IS_ERR(comp->qos_req_other) ||
@@ -4215,15 +4221,11 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw,
 					    DISP_BW_NORMAL_MODE);
 		comp->last_qos_bw = comp->qos_bw;
-		if (!force_update)
-			mtk_crtc->total_srt += comp->qos_bw;
 other:
 		if (!IS_ERR(comp->qos_req_other)) {
 			__mtk_disp_set_module_srt(comp->qos_req_other, comp->id, comp->qos_bw_other,
 					    DISP_BW_NORMAL_MODE);
 			comp->last_qos_bw_other = comp->qos_bw_other;
-			if (!force_update)
-				mtk_crtc->total_srt += comp->qos_bw_other;
 		}
 		DDPINFO("update ovl fbdc_bw to %u, qos bw to %u, %u\n",
 			comp->fbdc_bw, comp->qos_bw, comp->qos_bw_other);
