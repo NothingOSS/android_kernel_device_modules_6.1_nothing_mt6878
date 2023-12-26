@@ -101,13 +101,13 @@ static int vow_ipi_ack_handler(unsigned int id,
 }
 #endif
 
-bool vow_ipi_send(unsigned int msg_id,
+int vow_ipi_send(unsigned int msg_id,
 		  unsigned int payload_len,
 		  unsigned int *payload,
 		  unsigned int need_ack)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
-	bool ret = false;
+	int ret = IPI_SCP_SEND_FAIL;
 	int ipi_result = -1;
 	unsigned int retry_time = VOW_IPI_SEND_CNT_TIMEOUT;
 	unsigned int retry_cnt = 0;
@@ -119,11 +119,11 @@ bool vow_ipi_send(unsigned int msg_id,
 
 	if (!vow_check_scp_status()) {
 		VOWDRV_DEBUG("SCP is off, bypass send ipi id(%d)\n", msg_id);
-		return false;
+		return IPI_SCP_DIE;
 	}
 	if (vow_service_GetScpRecoverStatus() == true) {
-		VOWDRV_DEBUG("scp is recovering, then break\n");
-		return false;
+		VOWDRV_DEBUG("scp is recovering, then break, ipi id(%d)\n", msg_id);
+		return IPI_SCP_RECOVERING;
 	}
 
 	/* clear send buffer */
@@ -145,9 +145,9 @@ bool vow_ipi_send(unsigned int msg_id,
 
 RESEND_IPI:
 	if (resend_cnt == VOW_IPI_RESEND_TIMES) {
-		VOWDRV_DEBUG("%s(), resend over time, drop id:%d\n",
+		VOWDRV_DEBUG("%s(), resend over time, drop ipi id:%d\n",
 			__func__, msg_id);
-		return false;
+		return IPI_SCP_SEND_FAIL;
 	}
 	/* ipi ack reset */
 	ipi_ack_return = 0;
@@ -155,6 +155,10 @@ RESEND_IPI:
 	ipi_ack_data = 0;
 
 	for (retry_cnt = 0; retry_cnt <= retry_time; retry_cnt++) {
+		if (!vow_check_scp_status()) {
+			VOWDRV_DEBUG("SCP is off, bypass send ipi id(%d)\n", msg_id);
+			return IPI_SCP_DIE;
+		}
 		ipi_result = mtk_ipi_send(&scp_ipidev,
 					  IPI_OUT_AUDIO_VOW_1,
 					  0,
@@ -179,7 +183,8 @@ RESEND_IPI:
 			}
 		}
 		if (vow_service_GetScpRecoverStatus() == true) {
-			VOWDRV_DEBUG("scp is recovering, then break\n");
+			VOWDRV_DEBUG("scp is recovering, then break, ipi id(%d)\n", msg_id);
+			ret = IPI_SCP_RECOVERING;
 			break;
 		}
 		msleep(VOW_WAITCHECK_INTERVAL_MS);
@@ -204,7 +209,11 @@ RESEND_IPI:
 			}
 		}
 		VOWDRV_DEBUG("%s(), ipi_id(%d) pass\n", __func__, msg_id);
-		ret = true;
+		ret = IPI_SCP_SEND_PASS;
+	} else {
+		// IPI fail log
+		VOWDRV_DEBUG("%s(), ipi_id(%d) fail, ipi_res=%d, res=%d\n",
+			     __func__, msg_id, ipi_result, ret);
 	}
 	return ret;
 #else
@@ -213,7 +222,7 @@ RESEND_IPI:
 	(void) payload;
 	(void) need_ack;
 	VOWDRV_DEBUG("%s(), vow: SCP no support\n\r", __func__);
-	return false;
+	return IPI_SCP_NO_SUPPORT;
 #endif
 }
 EXPORT_SYMBOL_GPL(vow_ipi_send);

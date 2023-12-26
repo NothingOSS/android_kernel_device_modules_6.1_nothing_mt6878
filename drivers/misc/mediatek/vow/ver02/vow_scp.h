@@ -29,6 +29,14 @@ enum {
 	VOW_IPI_ACK_BACK
 };
 
+enum {
+	IPI_SCP_DIE = -1,
+	IPI_SCP_SEND_FAIL = -2,
+	IPI_SCP_NO_SUPPORT = -3,
+	IPI_SCP_SEND_PASS = 0,
+	IPI_SCP_RECOVERING = 1
+};
+
 /* AP -> SCP ipi structure */
 struct vow_ipi_send_info {
 	unsigned char msg_id;
@@ -64,9 +72,9 @@ unsigned int vow_check_scp_status(void);
 void vow_ipi_register(void (*ipi_rx_call)(unsigned int, void *),
 		      bool (*ipi_tx_ack_call)(unsigned int, unsigned int));
 
-bool vow_ipi_send(unsigned int msg_id,
-		  unsigned int payload_len,
-		  unsigned int *payload,
-		  unsigned int need_ack);
+int vow_ipi_send(unsigned int msg_id,
+		 unsigned int payload_len,
+		 unsigned int *payload,
+		 unsigned int need_ack);
 
 #endif /*__VOW_SCP_H__ */

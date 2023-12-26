@@ -602,7 +602,7 @@ static void vow_service_getScpRecover(void)
 static void vow_service_Init(void)
 {
 	int I;
-	bool ret;
+	int ipi_ret;
 	//unsigned int vow_ipi_buf[3];
 	unsigned long rec_queue_flags;
 
@@ -721,9 +721,18 @@ static void vow_service_Init(void)
 		vowserv.google_engine_version = DEFAULT_GOOGLE_ENGINE_VER;
 		memset(vowserv.alexa_engine_version, 0, VOW_ENGINE_INFO_LENGTH_BYTE);
 	} else {
-		vow_ipi_send(IPIMSG_VOW_GET_ALEXA_ENGINE_VER, 0, NULL, VOW_IPI_BYPASS_ACK);
-		vow_ipi_send(IPIMSG_VOW_GET_GOOGLE_ENGINE_VER, 0, NULL, VOW_IPI_BYPASS_ACK);
-		vow_ipi_send(IPIMSG_VOW_GET_GOOGLE_ARCH, 0, NULL, VOW_IPI_BYPASS_ACK);
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_GET_ALEXA_ENGINE_VER,
+				       0,
+				       NULL,
+				       VOW_IPI_BYPASS_ACK);
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_GET_GOOGLE_ENGINE_VER,
+				       0,
+				       NULL,
+				       VOW_IPI_BYPASS_ACK);
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_GET_GOOGLE_ARCH,
+				       0,
+				       NULL,
+				       VOW_IPI_BYPASS_ACK);
 		for (I = 0; I < MAX_VOW_SPEAKER_MODEL; I++) {
 			if ((vowserv.vow_speaker_model[I].flag > 1) ||
 			    (vowserv.vow_speaker_model[I].enabled > 1)) {
@@ -736,14 +745,10 @@ static void vow_service_Init(void)
 				vowserv.vow_speaker_model[I].enabled = 0;
 			}
 		}
-		ret = vow_ipi_send(IPIMSG_VOW_APINIT,
-				   0,
-				   NULL,
-				   VOW_IPI_BYPASS_ACK);
-		if (ret == 0) {
-			VOWDRV_DEBUG(
-			"IPIMSG_VOW_APINIT ipi send error\n");
-		}
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_APINIT,
+				       0,
+				       NULL,
+				       VOW_IPI_BYPASS_ACK);
 #if VOW_PRE_LEARN_MODE
 		VowDrv_SetFlag(VOW_FLAG_PRE_LEARN, true);
 #endif
@@ -868,20 +873,20 @@ static int vow_service_SearchSpeakerModelWithKeyword(int keyword)
 
 static bool vow_service_SendSpeakerModel(int slot, bool release_flag)
 {
-	bool ret = false;
+	int ipi_ret;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	unsigned int vow_ipi_buf[5];
 
 	if (slot >= MAX_VOW_SPEAKER_MODEL || slot < 0) {
 		VOWDRV_DEBUG("%s(), slot id=%d, over range\n", __func__, slot);
-		return ret;
+		return false;
 	}
 
 	if (release_flag == VOW_CLEAN_MODEL) {
 		if (vowserv.vow_speaker_model[slot].flag == 0) {
 			VOWDRV_DEBUG("%s(), slot:%d, no model need to clean\n",
 				     __func__, slot);
-			return ret;
+			return false;
 		}
 		vow_ipi_buf[0] = VOW_MODEL_CLEAR;
 	} else {  /* VOW_SET_MODEL */
@@ -892,7 +897,7 @@ static bool vow_service_SendSpeakerModel(int slot, bool release_flag)
 		    (vowserv.vow_speaker_model[slot].model_size == 0)) {
 			VOWDRV_DEBUG("%s(), slot:%d, no model need to set\n",
 				     __func__, slot);
-			return ret;
+			return false;
 		}
 		vow_ipi_buf[0] = VOW_MODEL_SPEAKER;
 	}
@@ -901,7 +906,6 @@ static bool vow_service_SendSpeakerModel(int slot, bool release_flag)
 	vow_ipi_buf[3] = vowserv.vow_speaker_model[slot].model_size;
 	vow_ipi_buf[4] = vowserv.vow_speaker_model[slot].keyword;
 
-	VOWDRV_DEBUG("%s(), ready to send model\n", __func__);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
 	VOWDRV_DEBUG(
 	    "Model:slot_%d, model_%x, addr_%x, id_%x, size_%x, keyword_%x\n",
@@ -913,14 +917,19 @@ static bool vow_service_SendSpeakerModel(int slot, bool release_flag)
 		      vow_ipi_buf[4]);
 #endif
 
-	ret = vow_ipi_send(IPIMSG_VOW_SET_MODEL,
-			   5,
-			   &vow_ipi_buf[0],
-			   VOW_IPI_BYPASS_ACK);
+	ipi_ret = vow_ipi_send(IPIMSG_VOW_SET_MODEL,
+			       5,
+			       &vow_ipi_buf[0],
+			       VOW_IPI_BYPASS_ACK);
 #else
 	VOWDRV_DEBUG("%s(), vow: SCP no support\n\r", __func__);
 #endif
-	return ret;
+	if ((ipi_ret == IPI_SCP_DIE) ||
+	    (ipi_ret == IPI_SCP_SEND_PASS) ||
+	    (ipi_ret == IPI_SCP_RECOVERING))
+		return true;
+	// IPI_SCP_SEND_FAIL, IPI_SCP_NO_SUPPORT
+	return false;
 }
 
 static bool vow_service_ReleaseSpeakerModel(int id)
@@ -989,9 +998,9 @@ static bool vow_service_SetSpeakerModel(unsigned long arg)
 	mutex_unlock(&vow_sendspkmdl_mutex);
 
 	ret = vow_service_SendSpeakerModel(I, VOW_SET_MODEL);
-	/* if IPI send fail, then just clean this model information */
+	/* if setup speaker model fail, then just clean this model information */
 	if (ret == false) {
-		VOWDRV_DEBUG("vow ipi fail, then ignore this load model\n");
+		VOWDRV_DEBUG("vow setup speaker model fail, then ignore this load model\n");
 		mutex_lock(&vow_sendspkmdl_mutex);
 		vowserv.vow_speaker_model[I].model_ptr = NULL;
 		vowserv.vow_speaker_model[I].uuid = 0;
@@ -1009,7 +1018,7 @@ static bool vow_service_SetSpeakerModel(unsigned long arg)
 
 static bool vow_service_SetCustomModel(unsigned long arg)
 {
-	bool ret = false;
+	int ipi_ret;
 	struct vow_engine_info_t info;
 	struct vow_engine_info_t *p_info = &info;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
@@ -1057,45 +1066,56 @@ static bool vow_service_SetCustomModel(unsigned long arg)
 
 	vowserv.custom_model_size = (unsigned long)data_size;
 	vow_ipi_buf[0] = (unsigned long)data_size;
-	ret = vow_ipi_send(IPIMSG_VOW_SET_CUSTOM_MODEL,
-			   1,
-			   &vow_ipi_buf[0],
-			   VOW_IPI_BYPASS_ACK);
+	ipi_ret = vow_ipi_send(IPIMSG_VOW_SET_CUSTOM_MODEL,
+			       1,
+			       &vow_ipi_buf[0],
+			       VOW_IPI_BYPASS_ACK);
 #else
 	VOWDRV_DEBUG("vow SCP is not supported\n");
 #endif
-	return ret;
+	if ((ipi_ret == IPI_SCP_DIE) ||
+	    (ipi_ret == IPI_SCP_SEND_PASS) ||
+	    (ipi_ret == IPI_SCP_RECOVERING))
+		return true;
+	// IPI_SCP_SEND_FAIL, IPI_SCP_NO_SUPPORT
+	return false;
 }
+
 static bool vow_service_SendModelStatus(int slot, bool enable)
 {
-	bool ret = false;
+	int ipi_ret;
 	unsigned int vow_ipi_buf[2];
 
 	if (slot >= MAX_VOW_SPEAKER_MODEL || slot < 0) {
 		VOWDRV_DEBUG("%s(), slot id=%d, over range\n", __func__, slot);
-		return ret;
+		return false;
 	}
 	if (!vowserv.vow_speaker_model[slot].flag) {
 		VOWDRV_DEBUG("%s(), this speaker model isn't load\n", __func__);
-		return ret;
+		return false;
 	}
 
 	vow_ipi_buf[0] = vowserv.vow_speaker_model[slot].keyword;
 	vow_ipi_buf[1] = vowserv.vow_speaker_model[slot].confidence_lv;
 
 	if (enable == VOW_MODEL_STATUS_START) {
-		ret = vow_ipi_send(IPIMSG_VOW_MODEL_START,
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_MODEL_START,
 				   2,
 				   &vow_ipi_buf[0],
 				   VOW_IPI_BYPASS_ACK);
 	} else {  /* VOW_MODEL_STATUS_STOP */
-		ret = vow_ipi_send(IPIMSG_VOW_MODEL_STOP,
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_MODEL_STOP,
 				   2,
 				   &vow_ipi_buf[0],
 				   VOW_IPI_BYPASS_ACK);
 	}
 
-	return ret;
+	if ((ipi_ret == IPI_SCP_DIE) ||
+	    (ipi_ret == IPI_SCP_SEND_PASS) ||
+	    (ipi_ret == IPI_SCP_RECOVERING))
+		return true;
+	// IPI_SCP_SEND_FAIL, IPI_SCP_NO_SUPPORT
+	return false;
 }
 
 static void vow_register_vendor_feature(int uuid)
@@ -1333,28 +1353,34 @@ static bool vow_service_SetVBufAddr(unsigned long arg)
 
 static bool vow_service_Enable(void)
 {
-	bool ret = false;
+	int ipi_ret;
 
 	VOWDRV_DEBUG("+%s()\n", __func__);
-	ret = vow_ipi_send(IPIMSG_VOW_ENABLE,
-			   0,
-			   NULL,
-			   VOW_IPI_BYPASS_ACK);
+	ipi_ret = vow_ipi_send(IPIMSG_VOW_ENABLE,
+			       0,
+			       NULL,
+			       VOW_IPI_BYPASS_ACK);
 
-	VOWDRV_DEBUG("-%s():%d\n", __func__, ret);
-	return ret;
+	//VOWDRV_DEBUG("-%s():%d\n", __func__, ret);
+
+	if ((ipi_ret == IPI_SCP_DIE) ||
+	    (ipi_ret == IPI_SCP_SEND_PASS) ||
+	    (ipi_ret == IPI_SCP_RECOVERING))
+		return true;
+	// IPI_SCP_SEND_FAIL, IPI_SCP_NO_SUPPORT
+	return false;
 }
 
 static bool vow_service_Disable(void)
 {
-	bool ret = false;
+	int ipi_ret;
 
 	VOWDRV_DEBUG("+%s()\n", __func__);
 
-	ret = vow_ipi_send(IPIMSG_VOW_DISABLE,
-			   0,
-			   NULL,
-			   VOW_IPI_BYPASS_ACK);
+	ipi_ret = vow_ipi_send(IPIMSG_VOW_DISABLE,
+			       0,
+			       NULL,
+			       VOW_IPI_BYPASS_ACK);
 
 	/* release lock */
 	if (vowserv.suspend_lock == 1) {
@@ -1367,7 +1393,12 @@ static bool vow_service_Disable(void)
 #else
 	VOWDRV_DEBUG("%s(), vow: SCP no support\n\r", __func__);
 #endif
-	return ret;
+	if ((ipi_ret == IPI_SCP_DIE) ||
+	    (ipi_ret == IPI_SCP_SEND_PASS) ||
+	    (ipi_ret == IPI_SCP_RECOVERING))
+		return true;
+	// IPI_SCP_SEND_FAIL, IPI_SCP_NO_SUPPORT
+	return false;
 }
 
 static void vow_check_boundary(unsigned int copy_len, unsigned int bound_len)
@@ -1827,14 +1858,14 @@ static bool vow_service_get_scp_recover(unsigned long arg)
 
 static void vow_hal_reboot(void)
 {
-	bool ret = false;
+	int ipi_ret;
 
 	VOWDRV_DEBUG("%s(), Send VOW_HAL_REBOOT ipi\n", __func__);
 
-	ret = vow_ipi_send(IPIMSG_VOW_HAL_REBOOT, 0, NULL,
-			   VOW_IPI_BYPASS_ACK);
-	if (ret == 0)
-		VOWDRV_DEBUG("IPIMSG_VOW_HAL_REBOOT ipi send error\n\r");
+	ipi_ret = vow_ipi_send(IPIMSG_VOW_HAL_REBOOT,
+			       0,
+			       NULL,
+			       VOW_IPI_BYPASS_ACK);
 }
 
 static void vow_service_reset(void)
@@ -1897,27 +1928,22 @@ static int vow_pcm_dump_notify(bool enable)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	unsigned int vow_ipi_buf[1] = {0};
-	bool ret;
+	int ipi_ret;
 
 	/* dump flag */
 	vow_ipi_buf[0] = vowserv.dump_pcm_flag;
 
 	/* if scp reset happened, need re-send PCM dump IPI to SCP again */
 	if (enable == true) {
-		ret = vow_ipi_send(IPIMSG_VOW_PCM_DUMP_ON,
-				   1,
-				   &vow_ipi_buf[0],
-				   VOW_IPI_BYPASS_ACK);
-
-		if (ret == 0)
-			VOWDRV_DEBUG("PCM_DUMP_ON ipi send error\n");
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_PCM_DUMP_ON,
+				       1,
+				       &vow_ipi_buf[0],
+				       VOW_IPI_BYPASS_ACK);
 	} else {
-		ret = vow_ipi_send(IPIMSG_VOW_PCM_DUMP_OFF,
-				   1,
-				   &vow_ipi_buf[0],
-				   VOW_IPI_BYPASS_ACK);
-		if (ret == 0)
-			VOWDRV_DEBUG("PCM_DUMP_OFF ipi send error\n");
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_PCM_DUMP_OFF,
+				       1,
+				       &vow_ipi_buf[0],
+				       VOW_IPI_BYPASS_ACK);
 	}
 #else
 	VOWDRV_DEBUG("%s(), vow: SCP no support\n\r", __func__);
@@ -2142,17 +2168,6 @@ void VowDrv_SetSmartDevice(bool enable)
 
 		if (enable == false)
 			eint_num = 0xFF;
-
-		//vow_ipi_buf[0] = enable;
-		//vow_ipi_buf[1] = eint_num;
-		//ret = vow_ipi_send(IPIMSG_VOW_SET_SMART_DEVICE,
-		//		   2,
-		//		   &vow_ipi_buf[0],
-		//		   VOW_IPI_BYPASS_ACK);
-		//if (ret == 0) {
-		//	VOWDRV_DEBUG(
-		//	    "IPIMSG_VOW_SET_SMART_DEVICE ipi send error\n\r");
-		//}
 	} else {
 		/* no node here */
 		VOWDRV_DEBUG("there is no node\n");
@@ -2192,21 +2207,24 @@ void VowDrv_SetSmartDevice_GPIO(bool enable)
 
 static bool VowDrv_SetFlag(int type, unsigned int set)
 {
-	bool ret = false;
+	int ipi_ret;
 	unsigned int vow_ipi_buf[2];
 
 	VOWDRV_DEBUG("%s(), type:%x, set:%x\n", __func__, type, set);
 	vow_ipi_buf[0] = type;
 	vow_ipi_buf[1] = set;
 
-	ret = vow_ipi_send(IPIMSG_VOW_SET_FLAG,
-			   2,
-			   &vow_ipi_buf[0],
-			   VOW_IPI_BYPASS_ACK);
-	if (ret == 0)
-		VOWDRV_DEBUG("IPIMSG_VOW_SET_FLAG ipi send error\n\r");
+	ipi_ret = vow_ipi_send(IPIMSG_VOW_SET_FLAG,
+			       2,
+			       &vow_ipi_buf[0],
+			       VOW_IPI_BYPASS_ACK);
 
-	return ret;
+	if ((ipi_ret == IPI_SCP_DIE) ||
+	    (ipi_ret == IPI_SCP_SEND_PASS) ||
+	    (ipi_ret == IPI_SCP_RECOVERING))
+		return true;
+	// IPI_SCP_SEND_FAIL, IPI_SCP_NO_SUPPORT
+	return false;
 }
 
 static bool VowDrv_SetSpeakerNumber(void)
@@ -2463,13 +2481,13 @@ DEVICE_ATTR(vow_SetBargeIn,
 
 static bool VowDrv_SetBargeIn(unsigned int set, unsigned int irq_id)
 {
-	bool ret = false;
+	int ipi_ret;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	unsigned int vow_ipi_buf[1];
 
 	if (irq_id >= VOW_BARGEIN_IRQ_MAX_NUM) {
 		VOWDRV_DEBUG("out of vow bargein irq range %d", irq_id);
-		return ret;
+		return false;
 	}
 	vow_ipi_buf[0] = irq_id;
 
@@ -2477,29 +2495,31 @@ static bool VowDrv_SetBargeIn(unsigned int set, unsigned int irq_id)
 	if (set == 1) {
 		vow_register_feature(VOW_BARGEIN_FEATURE_ID);
 
-		ret = vow_ipi_send(IPIMSG_VOW_SET_BARGEIN_ON,
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_SET_BARGEIN_ON,
 				   1,
 				   &vow_ipi_buf[0],
 				   VOW_IPI_NEED_ACK);
-		if (ret == true)
+		if ((ipi_ret == IPI_SCP_DIE) ||
+		    (ipi_ret == IPI_SCP_SEND_PASS) ||
+		    (ipi_ret == IPI_SCP_RECOVERING))
 			vowserv.bargein_enable = true;
 	} else if (set == 0) {
-		ret = vow_ipi_send(IPIMSG_VOW_SET_BARGEIN_OFF,
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_SET_BARGEIN_OFF,
 				   1,
 				   &vow_ipi_buf[0],
 				   VOW_IPI_NEED_ACK);
 		vow_deregister_feature(VOW_BARGEIN_FEATURE_ID);
-		if (ret == true)
+		if ((ipi_ret == IPI_SCP_DIE) ||
+		    (ipi_ret == IPI_SCP_SEND_PASS) ||
+		    (ipi_ret == IPI_SCP_RECOVERING))
 			vowserv.bargein_enable = false;
 	} else {
 		VOWDRV_DEBUG("Adb comment error\n\r");
 	}
-	if (ret == false)
-		VOWDRV_DEBUG("IPIMSG_BARGE_IN(%d) ipi send error\n", set);
 #else
 	VOWDRV_DEBUG("%s(), vow: SCP no support\n\r", __func__);
 #endif
-	return ret;
+	return true;
 }
 
 static ssize_t VowDrv_GetBypassPhase3Flag(struct device *kobj,
@@ -3493,7 +3513,7 @@ static int vow_scp_recover_event(struct notifier_block *this,
 	switch (event) {
 	case SCP_EVENT_READY: {
 		int I;
-		bool ret = false;
+		int ipi_ret;
 		unsigned int vow_ipi_buf[2];
 
 		vowserv.vow_recovering = true;
@@ -3524,10 +3544,8 @@ static int vow_scp_recover_event(struct notifier_block *this,
 		}
 		/* send AEC custom model */
 		vow_ipi_buf[0] = vowserv.custom_model_size;
-		ret = vow_ipi_send(IPIMSG_VOW_SET_CUSTOM_MODEL,
-				   1, &vow_ipi_buf[0], VOW_IPI_BYPASS_ACK);
-		if (!ret)
-			VOWDRV_DEBUG("fail: vow_service_SetCustomModel\n");
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_SET_CUSTOM_MODEL,
+				       1, &vow_ipi_buf[0], VOW_IPI_BYPASS_ACK);
 
 		/* send VOW model status */
 		for (I = 0; I < MAX_VOW_SPEAKER_MODEL; I++) {
@@ -3549,16 +3567,6 @@ static int vow_scp_recover_event(struct notifier_block *this,
 			VOWDRV_DEBUG("fail: vow recover3\n");
 			break;
 		}
-
-		/* barge-in resume for SCP recovery */
-		/*
-		if (vowserv.bargein_enable == true) {
-			ret = vow_ipi_send(IPIMSG_VOW_SCP_BARGE_IN_RESUME,
-				   0, NULL, VOW_IPI_BYPASS_ACK);
-			if (!ret)
-				VOWDRV_DEBUG("fail: vow scp barge-in resume\n");
-		}
-		*/
 
 		/* pcm dump recover */
 		VOWDRV_DEBUG("recording_flag = %d, dump_pcm_flag = %d\n",
