@@ -1024,6 +1024,10 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 
 sleep_err:
 	resume_ip_and_ports(ssusb, msg);
+	if (ssusb->is_host) {
+		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_NONE);
+		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST);
+	}
 err:
 	return ret;
 }

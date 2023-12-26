@@ -106,6 +106,7 @@ static inline bool ssusb_gadget_ip_sleep_check(struct ssusb_mtk *ssusb)
 int ssusb_otg_switch_init(struct ssusb_mtk *ssusb);
 void ssusb_otg_switch_exit(struct ssusb_mtk *ssusb);
 void ssusb_mode_switch(struct ssusb_mtk *ssusb, int to_host);
+void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role);
 int ssusb_set_vbus(struct otg_switch_mtk *otg_sx, int is_on);
 void ssusb_set_force_mode(struct ssusb_mtk *ssusb,
 			  enum mtu3_dr_force_mode mode);
@@ -121,6 +122,9 @@ static inline void ssusb_otg_switch_exit(struct ssusb_mtk *ssusb)
 {}
 
 static inline void ssusb_mode_switch(struct ssusb_mtk *ssusb, int to_host)
+{}
+
+void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role)
 {}
 
 static inline int ssusb_set_vbus(struct otg_switch_mtk *otg_sx, int is_on)

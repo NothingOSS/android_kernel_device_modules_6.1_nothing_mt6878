@@ -353,7 +353,7 @@ same_role:
 	kfree(work_data);
 }
 
-static void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role)
+void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role)
 {
 	struct ssusb_mtk *ssusb = otg_sx_to_ssusb(otg_sx);
 	struct dr_work_data_mtk *work_data;
