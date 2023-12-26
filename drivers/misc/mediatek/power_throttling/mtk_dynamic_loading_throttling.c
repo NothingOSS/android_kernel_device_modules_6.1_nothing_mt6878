@@ -559,8 +559,9 @@ static void pmic_uvlo_init(int uvlo_level, int vbb_uvlo_level)
 
 static void dlpt_parse_dt(struct platform_device *pdev)
 {
-	struct device_node *np;
+	struct device_node *np, *rt6160_np;
 	int uvlo_level = 0, vbb_uvlo_level;
+	int bob_check_flag = 0, bob_exist = 0;
 	int ret;
 
 	/* get dlpt device node */
@@ -579,6 +580,25 @@ static void dlpt_parse_dt(struct platform_device *pdev)
 		ret = of_property_read_u32(np, "vbb-uvlo-level", &vbb_uvlo_level);
 		if (ret)
 			vbb_uvlo_level = 0;
+
+		ret = of_property_read_u32(np, "bob-check-flag", &bob_check_flag);
+		if (ret)
+			bob_check_flag = 0;
+		if (bob_check_flag) {
+			rt6160_np = of_find_node_by_name(NULL, "rt6160");
+			if (rt6160_np) {
+				ret = of_property_read_u32(rt6160_np, "is-existed", &bob_exist);
+				if (ret)
+					bob_exist = 0;
+				dev_notice(&pdev->dev, "bob_exist:%d\n", bob_exist);
+				if (!bob_exist) {
+					uvlo_level = 2600;
+					vbb_uvlo_level = 2500;
+				}
+			} else {
+				dev_notice(&pdev->dev, "get rt6160 node fail\n");
+			}
+		}
 		pmic_uvlo_init(uvlo_level, vbb_uvlo_level);
 
 		/* get power_path_support */
