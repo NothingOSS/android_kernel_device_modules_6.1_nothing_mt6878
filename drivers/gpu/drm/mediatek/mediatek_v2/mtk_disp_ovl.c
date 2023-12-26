@@ -184,6 +184,16 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define DISP_REG_OVL_LC_SRC_SIZE (0x288UL)
 #define DISP_REG_OVL_LC_OFFSET (0x28cUL)
 #define DISP_REG_OVL_LC_SRC_SEL (0x290UL)
+#define FLD_OVL_CONST_LAYER_SEL		REG_FLD_MSB_LSB(2, 0)
+#define FLD_OVL_LC_SA_SEL			REG_FLD_MSB_LSB(17, 16)
+#define FLD_OVL_LC_SRGB_SEL			REG_FLD_MSB_LSB(19, 18)
+#define FLD_OVL_LC_DA_SEL			REG_FLD_MSB_LSB(21, 20)
+#define FLD_OVL_LC_DRGB_SEL			REG_FLD_MSB_LSB(23, 22)
+#define FLD_OVL_LC_SA_SEL_EXT		REG_FLD_MSB_LSB(24, 24)
+#define FLD_OVL_LC_SRGB_SEL_EXT		REG_FLD_MSB_LSB(25, 25)
+#define FLD_OVL_LC_DA_SEL_EXT		REG_FLD_MSB_LSB(26, 26)
+#define FLD_OVL_LC_DRGB_SEL_EXT		REG_FLD_MSB_LSB(27, 27)
+#define FLD_OVL_SURFL_EN			REG_FLD_MSB_LSB(31, 31)
 #define DISP_REG_OVL_BANK_CON (0x29cUL)
 #define DISP_REG_OVL_DEBUG_MON_SEL (0x1D4UL)
 #define DISP_REG_OVL_RDMA_GREQ_NUM (0x1F8UL)
@@ -2675,9 +2685,36 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	}
 
 	if (ovl->data->pqout_ufodin_loop &&
-		(state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER))
+		(state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER)) {
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, (lye_idx + 1), FLD_OVL_CONST_LAYER_SEL);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_LC_SRC_SEL, lye_idx + 1, 0x7);
+			comp->regs_pa + DISP_REG_OVL_LC_SRC_SEL, value, mask);
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, alpha, L_CON_FLD_APHA);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_LC_CON, value, mask);
+
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, 1, FLD_OVL_SURFL_EN);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SA_SEL);
+		if (pixel_blend_mode == DRM_MODE_BLEND_COVERAGE)
+			SET_VAL_MASK(value, mask, 2, FLD_OVL_LC_SRGB_SEL);
+		else
+			SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SRGB_SEL);
+		if (pixel_blend_mode == DRM_MODE_BLEND_PIXEL_NONE)
+			SET_VAL_MASK(value, mask, 1, FLD_OVL_LC_DRGB_SEL);
+		else
+			SET_VAL_MASK(value, mask, 3, FLD_OVL_LC_DRGB_SEL);
+		SET_VAL_MASK(value, mask, 1, FLD_OVL_LC_SA_SEL_EXT);
+		SET_VAL_MASK(value, mask, 1, FLD_OVL_LC_SRGB_SEL_EXT);
+		SET_VAL_MASK(value, mask, 1, FLD_OVL_LC_DRGB_SEL_EXT);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_LC_SRC_SEL, value, mask);
+	}
 
 #define _LAYER_CONFIG_FMT \
 	"%s %s idx:%d lye_idx:%d ext_idx:%d en:%d fmt:0x%x " \
@@ -3469,6 +3506,7 @@ static int _ovl_UFOd_in(struct mtk_ddp_comp *comp, int connect,
 			struct cmdq_pkt *handle)
 {
 	unsigned int value = 0, mask = 0;
+	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 
 	if (!connect) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -3479,7 +3517,10 @@ static int _ovl_UFOd_in(struct mtk_ddp_comp *comp, int connect,
 	}
 
 	SET_VAL_MASK(value, mask, 2, L_CON_FLD_LSRC);
-	SET_VAL_MASK(value, mask, 0, L_CON_FLD_AEN);
+	if (ovl->data->pqout_ufodin_loop)
+		SET_VAL_MASK(value, mask, 1, L_CON_FLD_AEN);
+	else
+		SET_VAL_MASK(value, mask, 0, L_CON_FLD_AEN);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_LC_CON, value, mask);
@@ -3601,6 +3642,26 @@ static void mtk_ovl_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 			value, mask);
 	cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_PQ_LOOP_CON,
 			0, DISP_OVL_PQ_OUT_SIZE_SEL);
+	if (ovl->data->pqout_ufodin_loop) {
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_SURFL_EN);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SA_SEL);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SRGB_SEL);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_DRGB_SEL);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SA_SEL_EXT);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SRGB_SEL_EXT);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_DRGB_SEL_EXT);
+		SET_VAL_MASK(value, mask, 4, FLD_OVL_CONST_LAYER_SEL);
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_LC_SRC_SEL,
+				value, mask);
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, 0xFF, L_CON_FLD_APHA);
+		SET_VAL_MASK(value, mask, 0, L_CON_FLD_AEN);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_LC_CON, value, mask);
+	}
 }
 
 static void mtk_ovl_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
