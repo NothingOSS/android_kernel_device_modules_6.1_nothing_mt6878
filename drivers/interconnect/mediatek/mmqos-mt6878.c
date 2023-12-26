@@ -34,10 +34,10 @@ static const struct mtk_node_desc node_descs_mt6878[] = {
 	DEFINE_MNODE(DISP_larb0,  SLAVE_LARB(0),  0,   false, 0x0, MASTER_COMMON_PORT(0, 0)),
 	DEFINE_MNODE(DISP_larb1,  SLAVE_LARB(1),  0,   false, 0x0, MASTER_COMMON_PORT(0, 1)),
 	DEFINE_MNODE(MML_larb2,   SLAVE_LARB(2),  0,   false, 0x0, MASTER_COMMON_PORT(0, 2)),
-	DEFINE_MNODE(IMG_larb9,   SLAVE_LARB(9),  0x7, false, 0x0, MASTER_COMMON_PORT(0, 3)), //img input1 read
+	DEFINE_MNODE(IMG_larb9,   SLAVE_LARB(9),  0x6, false, 0x0, MASTER_COMMON_PORT(0, 3)), //img input1 read
 	DEFINE_MNODE(IMG_larb11,  SLAVE_LARB(11), 0,   false, 0x0, MASTER_COMMON_PORT(0, 3)),
 	DEFINE_MNODE(IMG_larb22,  SLAVE_LARB(22), 0x8, true,  0x0, MASTER_COMMON_PORT(0, 3)), //img input0 write
-	DEFINE_MNODE(IMG_larb28,  SLAVE_LARB(28), 0x7, false, 0x0, MASTER_COMMON_PORT(0, 3)), //img input0 read
+	DEFINE_MNODE(IMG_larb28,  SLAVE_LARB(28), 0x6, false, 0x0, MASTER_COMMON_PORT(0, 3)), //img input0 read
 	DEFINE_MNODE(IMG_larb38,  SLAVE_LARB(38), 0,   false, 0x0, MASTER_COMMON_PORT(0, 3)),
 	DEFINE_MNODE(IMG_larb12,  SLAVE_LARB(12), 0,   false, 0x0, MASTER_COMMON_PORT(0, 3)),
 	DEFINE_MNODE(IMG_larb15,  SLAVE_LARB(15), 0x8, true,  0x0, MASTER_COMMON_PORT(0, 3)), //img input1 write
