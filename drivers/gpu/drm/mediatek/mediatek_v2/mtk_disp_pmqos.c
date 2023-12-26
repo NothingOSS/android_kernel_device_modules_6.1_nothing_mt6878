@@ -109,13 +109,13 @@ int __mtk_disp_pmqos_slot_look_up(int comp_id, int mode)
 }
 
 int __mtk_disp_set_module_srt(struct icc_path *request, int comp_id,
-				unsigned int bandwidth, unsigned int bw_mode)
+				unsigned int bandwidth, unsigned int peak_bw, unsigned int bw_mode)
 {
-	DDPDBG("%s set %s bw = %u\n", __func__,
-			mtk_dump_comp_str_id(comp_id), bandwidth);
+	DDPDBG("%s set %s bw = %u peak %u\n", __func__,
+			mtk_dump_comp_str_id(comp_id), bandwidth, peak_bw);
 	bandwidth = bandwidth * 133 / 100;
 
-	mtk_icc_set_bw(request, MBps_to_icc(bandwidth), 0);
+	mtk_icc_set_bw(request, MBps_to_icc(bandwidth), MBps_to_icc(peak_bw));
 
 	DRM_MMP_MARK(pmqos, comp_id, bandwidth);
 

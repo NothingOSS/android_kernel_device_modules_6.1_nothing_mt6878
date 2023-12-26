@@ -887,6 +887,9 @@ struct mtk_ddp_comp {
 	u32 last_qos_bw_other;
 	u32 fbdc_bw;
 	u32 hrt_bw;
+	u32 hrt_bw_other;
+	u32 last_hrt_bw;
+	u32 last_hrt_bw_other;
 	bool in_scaling_path;
 };
 

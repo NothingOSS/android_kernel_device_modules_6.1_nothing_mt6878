@@ -2072,19 +2072,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_crtc_connect_addon_module(crtc);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"restore_plane", 15, perf_string, true);
-	/* 10. restore OVL setting */
-	mtk_crtc_restore_plane_setting(mtk_crtc);
-
-	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"update_pmqos", 16, perf_string, true);
-	/* 11. Set QOS BW */
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
-		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
-
-	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"update_hrt", 17, perf_string, true);
-	/* 12. restore HRT BW */
+				"update_hrt", 15, perf_string, true);
+	/* 10. restore HRT BW */
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_MMQOS_SUPPORT))
 		mtk_disp_set_hrt_bw(mtk_crtc,
@@ -2095,6 +2084,17 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_disp_set_per_larb_hrt_bw(mtk_crtc,
 				mtk_crtc->qos_ctx->last_larb_hrt_req);
 	}
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"restore_plane", 16, perf_string, true);
+	/* 11. restore OVL setting */
+	mtk_crtc_restore_plane_setting(mtk_crtc);
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"update_pmqos", 17, perf_string, true);
+	/* 12. Set QOS BW */
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"async_wait3", 18, perf_string, true);

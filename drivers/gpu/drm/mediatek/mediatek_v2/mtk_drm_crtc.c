@@ -10839,10 +10839,6 @@ skip:
 
 	/* 3. Reset QOS BW after CRTC stop */
 	mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
-		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
-			PMQOS_UPDATE_BW, &flag);
-	mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
 
 	/* 3.1 stop the last mml pkt */
 	if (kref_read(&mtk_crtc->mml_ir_sram.ref)) {
@@ -10862,8 +10858,12 @@ skip:
 	}
 
 	/* 4. Set QOS BW to 0 */
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
+		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
+	}
+	mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
+
 
 	/* 5. Set HRT BW to 0 */
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -13796,6 +13796,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		comp->qos_bw_other = 0;
 		comp->fbdc_bw = 0;
 		comp->hrt_bw = 0;
+		comp->hrt_bw_other = 0;
 	}
 	if (!mtk_crtc->is_dual_pipe)
 		goto end;
@@ -13805,6 +13806,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		comp->qos_bw_other = 0;
 		comp->fbdc_bw = 0;
 		comp->hrt_bw = 0;
+		comp->hrt_bw_other = 0;
 	}
 
 end:
