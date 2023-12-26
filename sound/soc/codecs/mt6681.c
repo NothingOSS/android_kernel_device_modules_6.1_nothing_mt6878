@@ -12019,9 +12019,9 @@ static int mt_sdm_event(struct snd_soc_dapm_widget *w,
 	dev_info(priv->dev, "%s() dl sample_rate = %d", __func__,
 		priv->dl_rate[0]);
 	if (priv->dl_rate[0] != 0)
-		rate = mt6681_rate_transform(priv->dl_rate[0]);
+		rate = mt6681_dlsrc_rate_transform(priv->dl_rate[0]);
 	else
-		rate = MT6681_ADDA_48000HZ;
+		rate = MT6681_DLSRC_48000HZ;
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		/* select 12bit 2nd SDM  */
@@ -12055,9 +12055,9 @@ static int mt_sdm_3rd_event(struct snd_soc_dapm_widget *w,
 	dev_dbg(priv->dev, "%s() dl sample_rate = %d", __func__,
 		priv->dl_rate[0]);
 	if (priv->dl_rate[0] != 0)
-		rate = mt6681_rate_transform(priv->dl_rate[0]);
+		rate = mt6681_dlsrc_rate_transform(priv->dl_rate[0]);
 	else
-		rate = MT6681_ADDA_48000HZ;
+		rate = MT6681_DLSRC_48000HZ;
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (priv->hp_hifi_mode) {
