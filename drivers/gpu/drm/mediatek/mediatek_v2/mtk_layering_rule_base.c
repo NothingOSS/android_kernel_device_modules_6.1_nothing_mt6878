@@ -890,6 +890,10 @@ static int _rollback_to_GPU_bottom_up(struct drm_mtk_layering_info *info,
 			available_ovl_num = 0;
 			info->gles_head[idx] = i;
 			info->gles_tail[idx] = info->layer_num[idx] - 1;
+			if (info->gles_head[idx] == info->gles_tail[idx]) {
+				info->gles_head[idx] = -1;
+				info->gles_tail[idx] = -1;
+			}
 			break;
 		}
 	}
@@ -2582,6 +2586,8 @@ static int calc_hrt_num(struct drm_device *dev,
 		sum_overlap_w_of_bwm += comp_hrt_added;
 
 	emi_hrt_level = get_hrt_level(sum_overlap_w, false);
+	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
+		emi_hrt_level = get_hrt_level(sum_overlap_w_of_bwm, false);
 
 	overlap_num = sum_overlap_w;
 
@@ -4597,12 +4603,22 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 				(priv->data->mmsys_id == MMSYS_MT6989) ||
 				(priv->data->mmsys_id == MMSYS_MT6878)) {
 			layering_info.hrt_weight = (400 * 10000) / default_emi_eff;
-			if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
+			if (l_rule_info->dal_enable)
+				layering_info.hrt_weight += (200 * 10000) / default_emi_eff;
+			if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR)) {
 				sum_overlap_w_of_bwm = (400 * 10000) / default_emi_eff;
+				if (l_rule_info->dal_enable)
+					sum_overlap_w_of_bwm += (200 * 10000) / default_emi_eff;
+			}
 		} else {
 			layering_info.hrt_weight = 400;
-			if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
+			if (l_rule_info->dal_enable)
+				layering_info.hrt_weight += 200;
+			if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR)) {
 				sum_overlap_w_of_bwm = 400;
+				if (l_rule_info->dal_enable)
+					sum_overlap_w_of_bwm += 200;
+			}
 		}
 	}
 	check_gles_change(&dbg_gles, __LINE__, false);
