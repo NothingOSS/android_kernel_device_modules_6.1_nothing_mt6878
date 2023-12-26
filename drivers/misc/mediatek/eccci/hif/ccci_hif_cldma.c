@@ -704,9 +704,7 @@ static int cldma_gpd_rx_collect(struct md_cd_queue *queue,
 	struct cldma_request *req;
 	struct cldma_rgpd *rgpd;
 	struct ccci_header ccci_h;
-#ifdef ENABLE_FAST_HEADER
 	struct lhif_header lhif_h;
-#endif
 	struct sk_buff *skb = NULL;
 	struct sk_buff *new_skb = NULL;
 	int ret = 0, count = 0, rxbytes = 0;
@@ -777,31 +775,10 @@ again:
 		/*set data len*/
 		skb_put(skb, rgpd->data_buff_len);
 		skb_bytes = skb->len;
-#ifdef ENABLE_FAST_HEADER
-		if (queue->fast_hdr.gpd_count == 0) {
-			ccci_h = *((struct ccci_header *)skb->data);
-			queue->fast_hdr =
-				*((struct ccci_fast_header *)skb->data);
-		} else {
-			queue->fast_hdr.seq_num++;
-			--queue->fast_hdr.gpd_count;
-			if (queue->fast_hdr.has_hdr_room)
-				memcpy(skb->data, &queue->fast_hdr,
-					sizeof(struct ccci_header));
-			else
-				memcpy(skb_push(skb,
-					sizeof(struct ccci_header)),
-					&queue->fast_hdr,
-					sizeof(struct ccci_header));
-			ccci_h = *((struct ccci_header *)skb->data);
-		}
-
 		lhif_h = *((struct lhif_header *)skb->data);
 		memset(&ccci_h, 0, sizeof(ccci_h));
 		memcpy(&ccci_h, &lhif_h, sizeof(lhif_h));
 		ccci_h.channel = lhif_h.netif;
-
-#endif
 		/* check wakeup source */
 		if (atomic_cmpxchg(&md_ctrl->wakeup_src, 1, 0) == 1) {
 			md_ctrl->wakeup_count++;
