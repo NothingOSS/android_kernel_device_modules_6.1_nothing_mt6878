@@ -169,6 +169,7 @@ enum scp_reserve_mem_id_t {
 	SCP_LOW_PWR_DBG_MEM_ID,
 	SCP_AUDIO_COMMON_MEM_ID,
 	SCP_XHCI_MEM_ID,
+	SCP_AUDIO_LOGGER_MEM_ID,
 	NUMS_MEM_ID,
 };
 

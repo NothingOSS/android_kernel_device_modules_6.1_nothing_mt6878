@@ -18,11 +18,11 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/inc
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/rv
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
 
 # platform include path
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common
 
 # object code
-mtk-scp-audiocommon-objs := scp_audio_ipi.o audio_mbox.o
+mtk-scp-audiocommon-objs := scp_audio_ipi.o audio_mbox.o scp_audio_logger.o
 obj-$(CONFIG_SND_SOC_MTK_AUDIO_DSP) += mtk-scp-audiocommon.o
-

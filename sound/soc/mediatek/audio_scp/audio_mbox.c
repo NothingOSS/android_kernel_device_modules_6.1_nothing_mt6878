@@ -9,11 +9,16 @@
 #include <linux/interrupt.h>
 #include <linux/miscdevice.h>
 #include <linux/soc/mediatek/mtk-mbox.h>
-#include "scp_ipi_pin.h"
+#include "scp_audio_logger.h"
 #include "audio_mbox.h"
+#include "adsp_helper.h"
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+#include "scp_ipi_pin.h"
+#endif
 
 static u32 audio_mbox_pin_buf[AUDIO_MBOX_RECV_SLOT_SIZE];
-static bool init_done;
+static bool mbox_init_done;
 
 struct mtk_mbox_info audio_mbox_table[AUDIO_TOTAL_MBOX] = {
 	{ .opt = MBOX_OPT_QUEUE_DIR, .is64d = true},
@@ -48,7 +53,9 @@ struct mtk_mbox_device audio_mboxdev = {
 	.count = AUDIO_TOTAL_MBOX,
 	.recv_count = AUDIO_TOTAL_RECV_PIN,
 	.send_count = AUDIO_TOTAL_SEND_PIN,
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	.post_cb = (mbox_rx_cb_t)scp_clr_spm_reg,
+#endif
 };
 
 static struct miscdevice mdev = {
@@ -58,18 +65,19 @@ static struct miscdevice mdev = {
 
 bool is_audio_mbox_init_done(void)
 {
-	return init_done;
+	return mbox_init_done;
 }
 EXPORT_SYMBOL_GPL(is_audio_mbox_init_done);
 
 int audio_mbox_send(void *msg, unsigned int wait)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	int ret;
 	struct mtk_mbox_device *mbdev = &audio_mboxdev;
 	struct mtk_mbox_pin_send *pin_send = &audio_mbox_pin_send[0];
 	ktime_t ts;
 
-	if (!init_done) {
+	if (!mbox_init_done) {
 		pr_info_ratelimited("%s, not implemented", __func__);
 		return -1;
 	}
@@ -117,16 +125,19 @@ EXIT:
 
 	mutex_unlock(&pin_send->mutex_send);
 	return ret;
+#endif
+	return 0;
 }
 
 static bool audio_mbox_table_init(struct mtk_mbox_device *mbdev, struct platform_device *pdev)
 {
+	int ret = 0;
 	struct mtk_mbox_pin_send *pin_send = NULL;
 	struct mtk_mbox_pin_recv *pin_recv = NULL;
 
 	/* Get mbox count */
-	of_property_read_u32(pdev->dev.of_node, "mbox-num", &mbdev->count);
-	if (mbdev->count <= 0 || mbdev->count > AUDIO_TOTAL_MBOX) {
+	ret = of_property_read_u32(pdev->dev.of_node, "mbox-num", &mbdev->count);
+	if (ret < 0 || mbdev->count <= 0 || mbdev->count > AUDIO_TOTAL_MBOX) {
 		pr_warn("[audio_mbox] mbox-num %d invalid\n", mbdev->count);
 		return false;
 	}
@@ -134,7 +145,6 @@ static bool audio_mbox_table_init(struct mtk_mbox_device *mbdev, struct platform
 	/* Setup send and receive table when mbox count is 1, which is true for legacy plaform.
 	 * Use the same mbox channel for send and receive.
 	 */
-
 	if (mbdev->count == 1) {
 		// send table
 		pin_send = mbdev->pin_send_table;
@@ -162,6 +172,8 @@ static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+
 	for (idx = 0; idx < mbdev->count; idx++) {
 		ret = mtk_mbox_probe(pdev, mbdev, idx);
 		if (ret) {
@@ -180,14 +192,32 @@ static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 		mutex_init(&audio_mbox_pin_send[idx].mutex_send);
 
 	ret = misc_register(&mdev);
-	if (ret)
+	if (ret) {
 		pr_info("%s, cannot register misc device\n", __func__);
+		goto EXIT;
+	}
 
 	ret = device_create_file(mdev.this_device, &dev_attr_audio_ipi_test);
-	if (ret)
+	if (ret) {
 		pr_info("%s, cannot create dev_attr_audio_ipi_test\n", __func__);
+		goto EXIT;
+	}
 
-	init_done = true;
+	mbox_init_done = true;
+
+	/* scp audio logger */
+	if (get_adsp_type() == ADSP_TYPE_RV55) {
+		ret = scp_audio_logger_init(pdev);
+		if (ret) {
+			pr_info("%s, init scp audio logger fail\n", __func__);
+			goto EXIT;
+		}
+	}
+
+#else
+	ret = 0;
+#endif /* CONFIG_MTK_TINYSYS_SCP_SUPPORT */
+
 EXIT:
 	pr_info("%s, done ret:%d", __func__, ret);
 	return ret;
