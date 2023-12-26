@@ -500,6 +500,13 @@ static int lpm_log_common_info(void)
 	return 0;
 }
 
+static unsigned int lpm_get_last_suspend_wakesrc(void)
+{
+	struct lpm_spm_wake_status *wakesrc = log_help.wakesrc;
+
+	return wakesrc->r12_last_suspend;
+}
+
 static int lpm_get_wakeup_status(void)
 {
 	struct lpm_log_helper *help = &log_help;
@@ -845,6 +852,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 		log_md_sleep_info();
 #endif
+		wakesrc->r12_last_suspend = wakesrc->r12;
 	} else
 		pr_info("[name:spm&][SPM] %s", log_buf);
 
@@ -877,6 +885,10 @@ static struct lpm_dbg_plat_info dbg_info = {
 	.spm_req_sta_num = SPM_REQ_STA_NUM,
 };
 
+static struct lpm_logger_mbrain_dbg_ops lpm_logger_mbrain_ops = {
+	.get_last_suspend_wakesrc = lpm_get_last_suspend_wakesrc,
+};
+
 static int __init mt6989_dbg_device_initcall(void)
 {
 	int ret;
@@ -899,6 +911,11 @@ static int __init mt6989_dbg_device_initcall(void)
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	ret = lpm_ccci_dump_init();
 #endif
+
+	ret = register_lpm_logger_mbrain_dbg_ops(&lpm_logger_mbrain_ops);
+	if(ret)
+		pr_info("[name:spm&][SPM] Failed to register lpm logger mbrain dbg ops\n");
+
 	return 0;
 }
 
@@ -934,6 +951,7 @@ void __exit mt6989_dbg_exit(void)
 	lpm_sys_res_plat_deinit();
 	lpm_sys_res_mbrain_plat_deinit();
 #endif
+	unregister_lpm_logger_mbrain_dbg_ops();
 }
 
 module_init(mt6989_dbg_init);

@@ -11,6 +11,7 @@
 
 struct lpm_spm_wake_status {
 	u32 r12;			/* SPM_BK_WAKE_EVENT */
+	u32 r12_last_suspend;		/* last suspend SPM_BK_WAKE_EVENT */
 	u32 r12_ext;		/* SPM_WAKEUP_EXT_STA */
 	u32 raw_sta;		/* SPM_WAKEUP_STA */
 	u32 raw_ext_sta;	/* SPM_WAKEUP_EXT_STA */

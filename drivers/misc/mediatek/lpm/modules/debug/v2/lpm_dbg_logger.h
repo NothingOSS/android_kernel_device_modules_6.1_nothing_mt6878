@@ -20,10 +20,17 @@ struct spm_req_sta_list {
 	struct rtc_time *suspend_tm;
 };
 
+struct lpm_logger_mbrain_dbg_ops {
+	unsigned int (*get_last_suspend_wakesrc)(void);
+};
+
 int lpm_logger_init(void);
 void lpm_logger_deinit(void);
 struct spm_req_sta_list *spm_get_req_sta_list(void);
 char *get_spm_resource_str(unsigned int index);
 char *get_spm_scenario_str(unsigned int index);
+struct lpm_logger_mbrain_dbg_ops *get_lpm_logger_mbrain_dbg_ops(void);
+int register_lpm_logger_mbrain_dbg_ops(struct lpm_logger_mbrain_dbg_ops *ops);
+void unregister_lpm_logger_mbrain_dbg_ops(void);
 
 #endif

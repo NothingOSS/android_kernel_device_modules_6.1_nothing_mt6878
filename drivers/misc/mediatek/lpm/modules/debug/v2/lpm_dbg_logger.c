@@ -811,6 +811,29 @@ static struct notifier_block lpm_dbg_logger_notifier_func = {
 	.priority = 0,
 };
 
+static struct lpm_logger_mbrain_dbg_ops _lpm_logger_mbrain_dbg_ops;
+struct lpm_logger_mbrain_dbg_ops *get_lpm_logger_mbrain_dbg_ops(void)
+{
+	return &_lpm_logger_mbrain_dbg_ops;
+}
+EXPORT_SYMBOL(get_lpm_logger_mbrain_dbg_ops);
+
+int register_lpm_logger_mbrain_dbg_ops(struct lpm_logger_mbrain_dbg_ops *ops)
+{
+	if (!ops)
+		return -1;
+
+	_lpm_logger_mbrain_dbg_ops.get_last_suspend_wakesrc = ops->get_last_suspend_wakesrc;
+
+	return 0;
+}
+EXPORT_SYMBOL(register_lpm_logger_mbrain_dbg_ops);
+
+void unregister_lpm_logger_mbrain_dbg_ops(void)
+{
+	_lpm_logger_mbrain_dbg_ops.get_last_suspend_wakesrc = NULL;
+}
+EXPORT_SYMBOL(unregister_lpm_logger_mbrain_dbg_ops);
 
 int lpm_logger_init(void)
 {
