@@ -156,6 +156,7 @@ struct mtk_dsi {
 
 s32 mtk_dsi_poll_for_idle(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id);
+unsigned int mtk_dsi_get_dsc_compress_rate(struct mtk_dsi *dsi);
 void mtk_dsi_set_mmclk_by_datarate_V1(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc, unsigned int en);
 void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
