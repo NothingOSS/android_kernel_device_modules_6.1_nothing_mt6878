@@ -4982,6 +4982,8 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 	struct mtk_crtc_state *old_mtk_state = NULL;
 	struct mtk_crtc_state *new_mtk_state = NULL;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct drm_display_mode *old_mode = NULL;
+	struct drm_display_mode *new_mode = NULL;
 
 	if (!new_state || !old_state)
 		return;
@@ -4989,9 +4991,13 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 	old_mtk_state = to_mtk_crtc_state(old_state);
 	new_mtk_state = to_mtk_crtc_state(new_state);
 	mtk_crtc->mode_chg = false;
+	old_mode = &old_state->adjusted_mode;
+	new_mode = &new_state->adjusted_mode;
 
-	if (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
-		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
+	if ((old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
+		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]) &&
+		(new_mode->hdisplay == old_mode->hdisplay) &&
+		(new_mode->vdisplay == old_mode->vdisplay))
 		return;
 
 	/*connector is changed , update mode_idx to new one*/
