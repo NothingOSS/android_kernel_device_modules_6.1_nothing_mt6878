@@ -1048,6 +1048,8 @@ static int fpsgo_is_exceed_render_info_limit(void)
 
 	if (total_render_info_num + total_linger_num > FPSGO_MAX_RENDER_INFO_SIZE) {
 		ret = 1;
+		fpsgo_main_trace("[%s] total_render_info_num=%d,total_linger_num=%d",
+			__func__, total_render_info_num, total_linger_num);
 #ifdef FPSGO_DEBUG
 		struct render_info *r_iter = NULL;
 		struct rb_node *rbn = NULL;
