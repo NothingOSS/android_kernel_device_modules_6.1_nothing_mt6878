@@ -5404,7 +5404,7 @@
 				"GPU",
 				"EVENT",
 				"PWR",
-				"LOWVOLT";
+				"GPUEB_MBOX1";
 			protected-memory-allocator = <&gpu_protected_memory_allocator>;
 			operating-points-v2 = <&gpu_mali_opp>;
 			#cooling-cells = <2>;
