@@ -14,7 +14,10 @@
 #include <linux/device.h>
 #include <linux/uaccess.h>
 #include <linux/cpufreq.h>
-#include <linux/topology.h>
+#include <linux/topology.h>	//cpu freq
+#include <linux/power_supply.h>	//power
+#include <linux/nvmem-consumer.h> //nvram
+#include <mtk_gpu_utility.h> //gpu loading
 
 #define CREATE_TRACE_POINTS
 #include "mtk_cg_peak_power_throttling_trace.h"
@@ -89,14 +92,27 @@ struct platform_data {
 	int default_mo_gpu_curr_freq_power_calc;
 	int default_defer_timer_period_ms;
 	int default_gacboost_mode;
+
+	/*combo table*/
+	struct ippeakpowertableDataRow *ip_peak_power_table;
+	struct leakagescaletableDataRow *leakage_scale_table;
+	struct peakpowercombotableDataRow *peak_power_combo_table_gpu;
+	struct peakpowercombotableDataRow *peak_power_combo_table_cpu;
+
 };
 
 static const struct platform_data default_platform_data = {
-	/* MT6989-specific settings */
+	/* unknown platform settings */
 	.default_cg_ppt_mode = 2, /*OFF*/
 	.default_mo_gpu_curr_freq_power_calc = 1,
 	.default_defer_timer_period_ms = 1000,
-	.default_gacboost_mode = 0
+	.default_gacboost_mode = 0,
+
+	/*combo table*/
+	.ip_peak_power_table        = ip_peak_power_table,
+	.leakage_scale_table        = leakage_scale_table,
+	.peak_power_combo_table_gpu = peak_power_combo_table_gpu,
+	.peak_power_combo_table_cpu = peak_power_combo_table_cpu,
 };
 
 static const struct platform_data mt6989_platform_data = {
@@ -104,7 +120,13 @@ static const struct platform_data mt6989_platform_data = {
 	.default_cg_ppt_mode = 0,
 	.default_mo_gpu_curr_freq_power_calc = 1,
 	.default_defer_timer_period_ms = 1000,
-	.default_gacboost_mode = 0
+	.default_gacboost_mode = 0,
+
+	/*combo table*/
+	.ip_peak_power_table        = ip_peak_power_table,
+	.leakage_scale_table        = leakage_scale_table,
+	.peak_power_combo_table_gpu = peak_power_combo_table_gpu,
+	.peak_power_combo_table_cpu = peak_power_combo_table_cpu,
 };
 
 
@@ -178,15 +200,18 @@ static void data_init_dlptsram(uint32_t *mem, size_t size)
 
 static void data_init_movetable(int value, int b_dry)
 {
-	memcpy_toio(g_dlpt_sram_layout_ptr->ip_peak_power_table, ip_peak_power_table,
+	memcpy_toio(g_dlpt_sram_layout_ptr->ip_peak_power_table,
+	       g_platform_data->ip_peak_power_table,
 	       sizeof(ip_peak_power_table));
-	memcpy_toio(g_dlpt_sram_layout_ptr->leakage_scale_table, leakage_scale_table,
+	memcpy_toio(g_dlpt_sram_layout_ptr->leakage_scale_table,
+	       g_platform_data->leakage_scale_table,
 	       sizeof(leakage_scale_table));
 	memcpy_toio(g_dlpt_sram_layout_ptr->peak_power_combo_table_gpu,
-	       peak_power_combo_table_gpu, sizeof(peak_power_combo_table_gpu));
+	       g_platform_data->peak_power_combo_table_gpu,
+		   sizeof(peak_power_combo_table_gpu));
 	memcpy_toio(g_dlpt_sram_layout_ptr->peak_power_combo_table_cpu,
-	       peak_power_combo_table_cpu, sizeof(peak_power_combo_table_cpu));
-	// g_dlpt_sram_layout_ptr->data_moved = 1;
+	       g_platform_data->peak_power_combo_table_cpu,
+		   sizeof(peak_power_combo_table_cpu));
 	iowrite32(1, &g_dlpt_sram_layout_ptr->data_moved);
 }
 
@@ -279,7 +304,21 @@ static int data_init(void)
      */
 	data_init_movetable(0, 0);
 
+
+	/*
+	 * ...................................
+	 * cpu max freq data init
+	 * ...................................
+	 */
 	data_init_cpu_max_freq();
+
+	/*
+	 * ...................................
+	 * zero data
+	 * ...................................
+	 */
+	memset_io(&g_dlpt_sram_layout_ptr->sgnl_info, 0, sizeof(g_dlpt_sram_layout_ptr->sgnl_info));
+
 
 	return 0;
 }
@@ -291,6 +330,106 @@ static void data_deinit(void)
 
 	if (g_thermal_sram_virt_addr != 0)
 		iounmap(g_thermal_sram_virt_addr);
+}
+
+/*
+ * ========================================================
+ * signal data
+ * ========================================================
+ */
+static void get_sgnl_data(struct sgnlInfo *sgnl_info)
+{
+	static const enum power_supply_property my_props[] = {
+		POWER_SUPPLY_PROP_STATUS,
+		POWER_SUPPLY_PROP_VOLTAGE_NOW,
+		POWER_SUPPLY_PROP_CURRENT_NOW,
+	};
+
+	struct power_supply *psy;
+	union power_supply_propval val;
+	unsigned int gpu_loading;
+	int i;
+
+	/*
+	 * -----------------------------------------------
+	 * Power Data
+	 * -----------------------------------------------
+	 */
+	psy = power_supply_get_by_name("battery");
+	if (!psy) {
+		pr_info("[CG PPT] Failed to get power supply\n");
+		return;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(my_props); i++) {
+		if (!power_supply_get_property(psy, my_props[i], &val)) {
+			switch (my_props[i]) {
+			case POWER_SUPPLY_PROP_STATUS:
+				sgnl_info->pwr_status = val.intval;
+				break;
+			case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+				sgnl_info->pwr_vol_now = val.intval;
+				break;
+			case POWER_SUPPLY_PROP_CURRENT_NOW:
+				sgnl_info->pwr_curr_now = -val.intval;
+				break;
+			default:
+				break;
+			}
+			// pr_info("[CG PPT] Property %d: %d\n", my_props[i], val.intval);
+		} else {
+			switch (my_props[i]) {
+			case POWER_SUPPLY_PROP_STATUS:
+				sgnl_info->pwr_status = 0;
+				break;
+			case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+				sgnl_info->pwr_vol_now = 0;
+				break;
+			case POWER_SUPPLY_PROP_CURRENT_NOW:
+				sgnl_info->pwr_curr_now = 0;
+				break;
+			default:
+				break;
+			}
+			// pr_info("[CG PPT] Failed to get property %d\n", my_props[i]);
+		}
+	}
+
+	power_supply_put(psy);
+
+
+	/*
+	 * ...................................
+	 * Power Data: post-process power (uW)
+	 * ...................................
+	 */
+	sgnl_info->pwr_power_now = (sgnl_info->pwr_vol_now/1000000)*sgnl_info->pwr_curr_now;
+
+
+	/*
+	 * -----------------------------------------------
+	 * GPU Loading
+	 * -----------------------------------------------
+	 */
+
+	mtk_get_gpu_loading(&gpu_loading);
+	sgnl_info->gpu_loading = gpu_loading;
+
+
+
+	return;
+
+}
+
+
+static void update_sgnl_data(int sample_period)
+{
+	struct sgnlInfo sgnl_info;
+
+	get_sgnl_data(&sgnl_info);
+	sgnl_info.sample_period = sample_period;
+	memcpy_toio((void __iomem *)&g_dlpt_sram_layout_ptr->sgnl_info,
+		(const void *)&sgnl_info, sizeof(sgnl_info));
 }
 
 
@@ -454,6 +593,136 @@ static struct cg_sm_info *get_cg_sm_info(void)
 
 /*
  * ========================================================
+ * CGPPT Workqueue
+ * ========================================================
+ */
+static void cgppt_work_handler(struct work_struct *work)
+{
+	update_sgnl_data(g_defer_timer_period_ms);
+}
+
+static void cgppt_work_init(void)
+{
+	INIT_WORK(&g_cgppt_work, cgppt_work_handler);
+}
+
+static void cgppt_work_deinit(void)
+{
+	cancel_work_sync(&g_cgppt_work);
+}
+
+/*
+ * ========================================================
+ * trace Workqueue
+ * ========================================================
+ */
+static void trace_work_handler(struct work_struct *work)
+{
+	/*ftrace event*/
+	trace_cg_ppt_status_info(get_cg_ppt_status_info());
+	trace_cg_ppt_freq_info(get_cg_ppt_freq_info());
+	trace_cg_ppt_power_info(get_cg_ppt_power_info());
+	trace_cg_ppt_combo_info(get_cg_ppt_combo_info());
+	trace_cg_sm_info(get_cg_sm_info());
+
+}
+
+static void trace_work_init(void)
+{
+	INIT_WORK(&g_trace_work, trace_work_handler);
+}
+
+static void trace_work_deinit(void)
+{
+	cancel_work_sync(&g_trace_work);
+}
+
+
+/*
+ * ========================================================
+ * Deferrable Timer
+ * ========================================================
+ */
+static void defer_timer_kick(void)
+{
+	mod_timer(&g_defer_timer, jiffies + msecs_to_jiffies(g_defer_timer_period_ms));
+}
+
+static void defer_timer_callback(struct timer_list *t)
+{
+	pr_info("[CG PPT] defer timer callback.\n");
+
+	/*
+	 * ...................................
+	 * cgppt work
+	 * ...................................
+	 */
+	schedule_work(&g_cgppt_work);
+
+	if (g_defer_timer_enabled)
+		defer_timer_kick();
+}
+
+static void defer_timer_init(void)
+{
+	// Initialize the deferrable timer
+	timer_setup(&g_defer_timer, defer_timer_callback, TIMER_DEFERRABLE);
+}
+
+
+static void defer_timer_deinit(void)
+{
+	// Remove the deferrable timer
+	del_timer(&g_defer_timer);
+}
+
+
+/*
+ * ========================================================
+ * HR Timer
+ * ========================================================
+ */
+static void hr_timer_kick(void)
+{
+	hrtimer_forward_now(&g_hr_timer, hr_timer_interval_ns);
+}
+
+static enum hrtimer_restart hr_timer_callback(struct hrtimer *timer)
+{
+	// pr_info("[CG PPT] hr_timer: timer triggered\n");
+	/*
+	 * ...................................
+	 * trace work
+	 * ...................................
+	 */
+	schedule_work(&g_trace_work);
+
+	// Restart the timer if it's still enabled
+	if (g_hr_timer_enabled) {
+		hr_timer_kick();
+		return HRTIMER_RESTART;
+	}
+	return HRTIMER_NORESTART;
+}
+
+static void hr_timer_init(void)
+{
+	// Initialize and set up hr_timer
+	hrtimer_init(&g_hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	g_hr_timer.function = hr_timer_callback;
+	hr_timer_interval_ns = ktime_set(0, 1000 * 1000); // 1 ms
+}
+
+static void hr_timer_deinit(void)
+{
+	if (g_hr_timer_enabled)
+		hrtimer_cancel(&g_hr_timer);
+}
+
+
+
+/*
+ * ========================================================
  * Sysfs device node
  * ========================================================
  */
@@ -530,6 +799,64 @@ static ssize_t hr_enable_store(struct device *dev,
 
 	return count;
 }
+
+/*
+ * -----------------------------------------------
+ * device node: defer_enable
+ * -----------------------------------------------
+ */
+static ssize_t defer_timer_enable_show(struct device *dev, struct device_attribute *attr,
+			      char *buf)
+{
+	return sprintf(buf, "%d\n", g_defer_timer_enabled ? 1 : 0);
+}
+
+static ssize_t defer_timer_enable_store(struct device *dev,
+			       struct device_attribute *attr, const char *buf,
+			       size_t count)
+{
+	int input;
+
+	if (kstrtoint(buf, 10, &input) != 0)
+		return count;
+
+	if (input == 1 && !g_defer_timer_enabled) {
+		g_defer_timer_enabled = true;
+		defer_timer_kick();
+		pr_info("defer timer started.\n");
+	} else if (input == 0 && g_defer_timer_enabled) {
+		g_defer_timer_enabled = false;
+		pr_info("defer timer stopped.\n");
+	}
+
+	return count;
+}
+
+/*
+ * -----------------------------------------------
+ * device node: defer_timer_period
+ * -----------------------------------------------
+ */
+static ssize_t defer_timer_period_show(struct device *dev, struct device_attribute *attr,
+			      char *buf)
+{
+	return sprintf(buf, "%d %d\n", g_defer_timer_period_ms, g_defer_timer_enabled);
+}
+
+static ssize_t defer_timer_period_store(struct device *dev,
+			       struct device_attribute *attr, const char *buf,
+			       size_t count)
+{
+	int input;
+
+	if (kstrtoint(buf, 10, &input) != 0)
+		return count;
+	g_defer_timer_period_ms = input;
+	return count;
+}
+
+
+
 
 /*
  * -----------------------------------------------
@@ -626,6 +953,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 
 	return -EINVAL;
 }
+
 
 /*
  * -----------------------------------------------
@@ -749,26 +1077,24 @@ static ssize_t cgsm_dump_show(struct device *dev, struct device_attribute *attr,
 
 /*
  * -----------------------------------------------
- * device node: defer_timer_period
+ * device node: sgnl_dump
  * -----------------------------------------------
  */
-static ssize_t defer_timer_period_show(struct device *dev, struct device_attribute *attr,
-			      char *buf)
+static ssize_t sgnl_dump_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
 {
-	return sprintf(buf, "%d %d\n", g_defer_timer_period_ms, g_defer_timer_enabled);
+	return snprintf(buf, PAGE_SIZE,
+	"%d,%d,%d,%d,%d,%d\n",
+	ioread32(&g_dlpt_sram_layout_ptr->sgnl_info.sample_period),
+	ioread32(&g_dlpt_sram_layout_ptr->sgnl_info.pwr_status),
+	ioread32(&g_dlpt_sram_layout_ptr->sgnl_info.pwr_vol_now),
+	ioread32(&g_dlpt_sram_layout_ptr->sgnl_info.pwr_curr_now),
+	ioread32(&g_dlpt_sram_layout_ptr->sgnl_info.pwr_power_now),
+	ioread32(&g_dlpt_sram_layout_ptr->sgnl_info.gpu_loading)
+	);
+
 }
 
-static ssize_t defer_timer_period_store(struct device *dev,
-			       struct device_attribute *attr, const char *buf,
-			       size_t count)
-{
-	int input;
-
-	if (kstrtoint(buf, 10, &input) != 0)
-		return count;
-	g_defer_timer_period_ms = input;
-	return count;
-}
 
 
 
@@ -832,6 +1158,8 @@ static DEVICE_ATTR_RW(command);
 static DEVICE_ATTR_RW(model_option);
 static DEVICE_ATTR_RO(cgppt_dump);
 static DEVICE_ATTR_RO(cgsm_dump);
+static DEVICE_ATTR_RO(sgnl_dump);
+static DEVICE_ATTR_RW(defer_timer_enable);
 static DEVICE_ATTR_RW(defer_timer_period);
 static DEVICE_ATTR_RW(gacboost_mode);
 static DEVICE_ATTR_RO(gacboost_hint);
@@ -845,6 +1173,8 @@ static struct attribute *sysfs_attrs[] = {
 	&dev_attr_model_option.attr,
 	&dev_attr_cgppt_dump.attr,
 	&dev_attr_cgsm_dump.attr,
+	&dev_attr_sgnl_dump.attr,
+	&dev_attr_defer_timer_enable.attr,
 	&dev_attr_defer_timer_period.attr,
 	&dev_attr_gacboost_mode.attr,
 	&dev_attr_gacboost_hint.attr,
@@ -904,144 +1234,27 @@ void cgppt_set_mo_multiscene(int value)
 }
 EXPORT_SYMBOL(cgppt_set_mo_multiscene);
 
-/*
- * ========================================================
- * CGPPT Workqueue
- * ========================================================
- */
-static void cgppt_work_handler(struct work_struct *work)
-{
-
-}
-
-static void cgppt_work_init(void)
-{
-	INIT_WORK(&g_cgppt_work, cgppt_work_handler);
-}
-
-static void cgppt_work_deinit(void)
-{
-	cancel_work_sync(&g_cgppt_work);
-}
-
-/*
- * ========================================================
- * trace Workqueue
- * ========================================================
- */
-static void trace_work_handler(struct work_struct *work)
-{
-	/*ftrace event*/
-	trace_cg_ppt_status_info(get_cg_ppt_status_info());
-	trace_cg_ppt_freq_info(get_cg_ppt_freq_info());
-	trace_cg_ppt_power_info(get_cg_ppt_power_info());
-	trace_cg_ppt_combo_info(get_cg_ppt_combo_info());
-	trace_cg_sm_info(get_cg_sm_info());
-
-}
-
-static void trace_work_init(void)
-{
-	INIT_WORK(&g_trace_work, trace_work_handler);
-}
-
-static void trace_work_deinit(void)
-{
-	cancel_work_sync(&g_trace_work);
-}
-
-
-
-/*
- * ========================================================
- * Deferrable Timer
- * ========================================================
- */
-static void defer_timer_callback(struct timer_list *t)
-{
-	pr_info("[CG PPT] defer timer callback.\n");
-
-	/*
-	 * ...................................
-	 * cgppt work
-	 * ...................................
-	 */
-	schedule_work(&g_cgppt_work);
-
-
-	if (ioread32(&g_dlpt_sram_layout_ptr->cgsm_info.gacboost_mode) != 0) {
-		// Restart the timer
-		g_defer_timer_enabled = true;
-		mod_timer(&g_defer_timer, jiffies + msecs_to_jiffies(g_defer_timer_period_ms));
-	} else
-		g_defer_timer_enabled = false;
-}
-
-static void defer_timer_init(void)
-{
-	// Initialize the deferrable timer
-	timer_setup(&g_defer_timer, defer_timer_callback, TIMER_DEFERRABLE);
-}
-
-
-static void defer_timer_deinit(void)
-{
-	// Remove the deferrable timer
-	del_timer(&g_defer_timer);
-}
-
-/*
- * ========================================================
- * HR Timer
- * ========================================================
- */
-// hr_timer callback function
-static enum hrtimer_restart hr_timer_callback(struct hrtimer *timer)
-{
-	// pr_info("hr_timer: timer triggered\n");
-
-	// Restart the timer if it's still enabled
-	if (g_hr_timer_enabled) {
-		/*
-		 * ...................................
-		 * trace work
-		 * ...................................
-		 */
-		schedule_work(&g_trace_work);
-
-		hrtimer_forward_now(&g_hr_timer, hr_timer_interval_ns);
-		return HRTIMER_RESTART;
-	}
-
-	return HRTIMER_NORESTART;
-}
-
-static void hr_timer_init(void)
-{
-	// Initialize and set up hr_timer
-	hrtimer_init(&g_hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	g_hr_timer.function = hr_timer_callback;
-	hr_timer_interval_ns = ktime_set(0, 1000 * 1000); // 1 ms
-}
-
-static void hr_timer_deinit(void)
-{
-	if (g_hr_timer_enabled)
-		hrtimer_cancel(&g_hr_timer);
-}
 
 /*
  * ========================================================
  * Platform Data Initial
  * ========================================================
  */
-static const struct platform_data *get_platform_data(void)
+static struct platform_data *get_platform_data(int seg_id)
 {
-	const struct platform_data *ret = &default_platform_data;
+	static struct platform_data ret_platform_data;
+
 	struct device_node *root;
 	const struct of_device_id *match;
 	const char *compatible;
 	int len;
+
+	/*
+	 * ...................................
+	 * initial as default value
+	 * ...................................
+	 */
+	memcpy(&ret_platform_data, &default_platform_data, sizeof(struct platform_data));
 
 
 	/*
@@ -1052,7 +1265,7 @@ static const struct platform_data *get_platform_data(void)
 	root = of_find_node_by_path("/");
 	if (!root) {
 		pr_info("[CG PPT] Failed to find root node\n");
-		return ret;
+		return &ret_platform_data;
 	}
 
 	/*
@@ -1064,7 +1277,7 @@ static const struct platform_data *get_platform_data(void)
 	if (!compatible) {
 		pr_info("[CG PPT] No compatible property in root, use default.\n");
 		of_node_put(root);
-		return ret;
+		return &ret_platform_data;
 	}
 	pr_info("[CG PPT] Root node compatible: %.*s\n", len, compatible);
 
@@ -1075,44 +1288,101 @@ static const struct platform_data *get_platform_data(void)
 	 * ...................................
 	 */
 	match = of_match_node(cgppt_of_ids, root);
-	if (!match)
+	if (!match) {
 		pr_info("[CG PPT] No matching compatible, use default.\n");
-	else {
-		/*
-		 * ...................................
-		 * set platform data to return
-		 * ...................................
-		 */
-		pr_info("[CG PPT] Matching node compatible: %s\n", match->compatible);
-		ret = match->data;
+		return &ret_platform_data;
 	}
+
+	/*
+	 * ...................................
+	 * set platform data to return
+	 * ...................................
+	 */
+	pr_info("[CG PPT] Matching node compatible: %s\n", match->compatible);
+	memcpy(&ret_platform_data, match->data, sizeof(struct platform_data));
 
 	of_node_put(root);
 
-	return ret;
+	/*
+	 * -----------------------------------------------
+	 * process ic segment
+	 * -----------------------------------------------
+	 */
+	if (strncmp(match->compatible, "mediatek,MT6989", sizeof("mediatek,MT6989")) == 0) {
+		if (seg_id == 3) //mt6989_89t
+			ret_platform_data.peak_power_combo_table_cpu = peak_power_combo_table_cpu_mt6989_89t;
+		else if (seg_id == 4) //mt6989_89tt
+			ret_platform_data.peak_power_combo_table_cpu = peak_power_combo_table_cpu_mt6989_89tt;
+	}
+
+	return &ret_platform_data;
 
 }
 
 
 
+static int nvram_get_segment_id(struct platform_device *pdev)
+{
+	int ret = -1;
+	struct nvmem_cell *efuse_cell;
+	unsigned int *efuse_buf;
+	size_t efuse_len;
+
+	efuse_cell = nvmem_cell_get(&pdev->dev, "efuse_segment_cell");
+	if (IS_ERR(efuse_cell)) {
+		pr_info("[CG PPT] fail to get efuse_segment_cell (%ld)", PTR_ERR(efuse_cell));
+		return ret;
+	}
+
+	efuse_buf = (unsigned int *)nvmem_cell_read(efuse_cell, &efuse_len);
+	nvmem_cell_put(efuse_cell);
+	if (IS_ERR(efuse_buf)) {
+		pr_info("[CG PPT] fail to get efuse_buf (%ld)", PTR_ERR(efuse_buf));
+		return ret;
+	}
+
+	ret = (*efuse_buf & 0xFF);
+	kfree(efuse_buf);
+
+
+	return ret;
+}
+
+
 /*
  * ========================================================
- * Module Initial
+ * Platform Driver
  * ========================================================
  */
-// Module init function
-static int __init cg_peak_power_throttling_init(void)
+static int cgppt_driver_probe(struct platform_device *pdev)
 {
 	int result;
+	int seg_id;
 
-	pr_info("[CG PPT] throttling module: Init\n");
+	pr_info("[CG PPT] %s()\n", __func__);
+
+
+	/*
+	 * ...................................
+	 * Platform Dependent Init
+	 * ...................................
+	 */
+
+	// get segment id
+	seg_id = nvram_get_segment_id(pdev);
+	pr_info("[CG PPT] efuse_segment_id = %d", seg_id);
 
 	// get platform data
-	g_platform_data = get_platform_data();
+	g_platform_data = get_platform_data(seg_id);
 	pr_info("[CG PPT] g_platform_data->default_cg_ppt_mode = %d\n",
 		g_platform_data->default_cg_ppt_mode);
 
 
+	/*
+	 * ...................................
+	 * Platform Independent Init
+	 * ...................................
+	 */
 	// create sysfs
 	result = sysfs_device_init();
 	if (result != 0) {
@@ -1139,14 +1409,13 @@ static int __init cg_peak_power_throttling_init(void)
 	//trace work
 	trace_work_init();
 
-	return 0;
+
+	return 0; // Return 0 means success, negative values indicate failure
 }
 
-// Module exit function
-static void __exit cg_peak_power_throttling_exit(void)
+static int cgppt_driver_remove(struct platform_device *pdev)
 {
-	pr_info("[CG PPT] throttling module: Exit\n");
-
+	pr_info("[CG PPT] %s()\n", __func__);
 
 	//delete sysfs device
 	sysfs_device_deinit();
@@ -1165,6 +1434,49 @@ static void __exit cg_peak_power_throttling_exit(void)
 
 	//cgppt work
 	trace_work_deinit();
+
+	return 0;
+}
+
+
+static const struct of_device_id cgppt_of_match[] = {
+	{ .compatible = "mediatek,cgppt" },
+	{}, // Sentinel entry to mark the end of the array
+};
+MODULE_DEVICE_TABLE(of, cgppt_of_match);
+
+static struct platform_driver cgppt_driver = {
+	.probe = cgppt_driver_probe,
+	.remove = cgppt_driver_remove,
+	.driver = {
+		.name = "cgppt_driver",
+		.owner = THIS_MODULE,
+		.of_match_table = cgppt_of_match,
+	},
+};
+
+
+
+/*
+ * ========================================================
+ * Module Initial
+ * ========================================================
+ */
+// Module init function
+static int __init cg_peak_power_throttling_init(void)
+{
+	pr_info("[CG PPT] throttling module: Init\n");
+	pr_info("[CG PPT] register platform driver.\n");
+	platform_driver_register(&cgppt_driver);
+	return 0;
+}
+
+// Module exit function
+static void __exit cg_peak_power_throttling_exit(void)
+{
+	pr_info("[CG PPT] throttling module: Exit\n");
+	pr_info("[CG PPT] unregister platform driver.\n");
+	platform_driver_unregister(&cgppt_driver);
 }
 
 module_init(cg_peak_power_throttling_init);

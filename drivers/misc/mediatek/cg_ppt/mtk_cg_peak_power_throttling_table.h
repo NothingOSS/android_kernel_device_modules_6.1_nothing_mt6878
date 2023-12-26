@@ -129,6 +129,10 @@ extern struct peakpowercombotableDataRow
 	peak_power_combo_table_gpu[GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
 extern struct peakpowercombotableDataRow
 	peak_power_combo_table_cpu[CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
+extern struct peakpowercombotableDataRow
+	peak_power_combo_table_cpu_mt6989_89t[CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
+extern struct peakpowercombotableDataRow
+	peak_power_combo_table_cpu_mt6989_89tt[CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
 
 /*
  * -----------------------------------------------
@@ -173,6 +177,15 @@ struct cgsmInfo {
 	int gt_ema_3;
 };
 
+struct sgnlInfo {
+	int sample_period;
+	int pwr_status;
+	int pwr_vol_now;
+	int pwr_curr_now;
+	int pwr_power_now;
+	int gpu_loading;
+};
+
 struct DlptSramLayout {
 	/*meta-data (status)*/
 	int data_moved;
@@ -200,6 +213,8 @@ struct DlptSramLayout {
 	struct moInfo mo_info
 	__ppt_table_alignment__;
 	struct cgsmInfo cgsm_info
+	__ppt_table_alignment__;
+	struct sgnlInfo sgnl_info
 	__ppt_table_alignment__;
 }  __ppt_table_alignment__;
 
