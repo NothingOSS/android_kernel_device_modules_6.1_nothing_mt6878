@@ -855,6 +855,7 @@ enum {
 	CMD_UT_RANDOM,
 	CMD_GET_PWR_ON_OFF_TIME,
 	CMD_PWR_TIME_PROFILE_INTERNAL,
+	CMD_UT_IPI_OUTBOX_FUZZ_WRITE,
 	MAX_CMD_UT_ID,
 };
 
@@ -1273,6 +1274,14 @@ static int apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
 		d.data[0] = args[0];
 		ret = apu_ipi_ut_send(&d, false);
 		break;
+	case CMD_UT_IPI_OUTBOX_FUZZ_WRITE:
+		apu_ipi_ut_val = args[0];
+		d.cmd_id = cmd;
+		d.data[0] = args[0];
+		d.data[1] = args[1];
+		d.data[2] = args[2];
+		ret = apu_ipi_ut_send(&d, false);
+		break;
 	default:
 		pr_info("%s: unknown cmd %d\n", __func__, cmd);
 		ret = -EINVAL;
@@ -1281,7 +1290,7 @@ static int apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
 	return ret;
 }
 
-#define IPI_DBG_MAX_ARGS	(1)
+#define IPI_DBG_MAX_ARGS	(3)
 static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 				 size_t count, loff_t *f_pos)
 {
@@ -1332,6 +1341,8 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		ce_dbg_polling_dump_mode = true;
 	} else if (strcmp(token, "apusys_rv_trace_on") == 0) {
 		change_apusys_rv_trace_on = true;
+	} else if (strcmp(token, "ut_ipi_outbox_check") == 0) {
+		cmd = CMD_UT_IPI_OUTBOX_FUZZ_WRITE;
 	} else {
 		ret = -EINVAL;
 		pr_info("%s: unknown ipi dbg cmd: %s\n", __func__, token);
