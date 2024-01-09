@@ -26,6 +26,8 @@ ifeq ($(CONFIG_MTK_DVFSRC_MB),m)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dvfsrc/
 endif
 
+ccflags-y += -I$(srctree)/drivers/android/
+
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 
