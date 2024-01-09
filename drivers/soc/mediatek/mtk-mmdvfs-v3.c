@@ -41,6 +41,7 @@ static struct clk *mmdvfs_pwr_clk[PWR_MMDVFS_NUM];
 static struct clk *mmdvfs_rst_clk[MMDVFS_RST_CLK_NUM];
 static u8 mmdvfs_rst_clk_num;
 static bool mmdvfs_rst_clk_done;
+static bool mmdvfs_rst_clk_high_rate;
 
 static phys_addr_t mmdvfs_memory_iova;
 static phys_addr_t mmdvfs_memory_pa;
@@ -674,6 +675,8 @@ int mmdvfs_rst_clk_rate(const char *val, const struct kernel_param *kp)
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
 		ret = clk_set_rate(mmdvfs_rst_clk[idx], rate);
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_GENPD);
+		if (rate)
+			mmdvfs_rst_clk_high_rate = true;
 	}
 
 
@@ -826,6 +829,9 @@ MODULE_PARM_DESC(vmrc_log, "mmdvfs vmrc log");
 
 module_param(log_level, uint, 0644);
 MODULE_PARM_DESC(log_level, "mmdvfs log level");
+
+module_param(mmdvfs_rst_clk_high_rate, bool, 0644);
+MODULE_PARM_DESC(mmdvfs_rst_clk_high_rate, "mmdvfs reset clk high rate");
 
 struct mmdvfs_mux {
 	u8 id;
@@ -1508,6 +1514,7 @@ static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_
 		break;
 	case PM_POST_SUSPEND:
 		mmdvfs_rst_clk_done = false;
+		mmdvfs_rst_clk_high_rate = false;
 		mmdvfs_release_step_done = false;
 		break;
 	}
