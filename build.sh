@@ -11,14 +11,20 @@ result=$(echo ${KLEAF_SUPPORTED_PROJECTS} | grep -wo ${PROJECT}) || result=""
 if [[ ${result} != "" ]]
 then # run kleaf commands
 
+build_scope=internal
+if [ ! -d "vendor/mediatek/tests/kernel" ]
+then
+  build_scope=customer
+fi
+
 if [ -z ${TARGET} ]
 then
-  TARGET=internal_modules_install
+  TARGET=${build_scope}_modules_install
   KLEAF_BUILD_TARGET=//${DEVICE_MODULES_DIR}:${PROJECT}_${TARGET}.${MODE}
 else
   KLEAF_BUILD_TARGET=${TARGET}.${MODE}
 fi
-KLEAF_DIST_TARGET=//${DEVICE_MODULES_DIR}:${PROJECT}_internal_dist.${MODE}
+KLEAF_DIST_TARGET=//${DEVICE_MODULES_DIR}:${PROJECT}_${build_scope}_dist.${MODE}
 
 KLEAF_OUT=("--output_user_root=${OUT_DIR} --output_base=${OUT_DIR}/bazel/output_user_root/output_base")
 KLEAF_ARGS=("${DEBUG_ARGS} ${SANDBOX_ARGS} \
