@@ -3450,7 +3450,8 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 				comp_state.layer_hrt_weight, layer_info->buffer_alloc_id,
 				disp_info->gles_head[idx], disp_info->gles_tail[idx],
 				mml_idx, clear_idx);
-		}
+		} else
+			comp_state.layer_hrt_weight = 0;
 
 		lye_add_lye_priv_blob(&comp_state, lyeblob_ids, plane_idx,
 				      disp_idx, drm_dev);
@@ -4845,7 +4846,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		}
 		scn_decision_flag |= SCN_IDLE;
 		layering_info.hrt_num = HRT_LEVEL_LEVEL0;
-		if (priv->data->need_emi_eff) {
+		if (priv && priv->data->need_emi_eff) {
 			weight = (400 * 10000) / default_emi_eff;
 			layering_info.hrt_weight = weight;
 			if (l_rule_info->dal_enable)
