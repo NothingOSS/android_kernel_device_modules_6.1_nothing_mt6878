@@ -170,7 +170,7 @@ static int mt6681_retry_wait(struct mt6681_pmic_info *mpi)
 	int i = 0, ret = 0;
 	unsigned int data = 0;
 	struct timespec64 ts64;
-	unsigned long long t1, t2;
+	unsigned long long t1, t2 = 0;
 	/* one interrupt period = 100ms */
 	unsigned long long timeout_limit = 50000000;
 
