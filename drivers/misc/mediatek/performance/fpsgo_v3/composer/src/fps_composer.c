@@ -1610,7 +1610,7 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 	} else if (final_pid_arr_idx > 0 && start)
 		fpsgo_other2xgf_set_dep_list(tgid, final_pid_arr,
 			final_bufID_arr, final_pid_arr_idx,
-			specific_name, num, XGF_ADD_DEP);
+			specific_name, num, XGF_ADD_DEP_FORCE_CPU_TIME);
 
 	ret = final_pid_arr_idx;
 
