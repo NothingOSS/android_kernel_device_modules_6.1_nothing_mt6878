@@ -10390,8 +10390,7 @@
 				  <10 0x2000 0x0>, /* sensor debug */
 				  <11 0x100 0x0>, /* sensor custom writer */
 				  <12 0x100 0x0>, /* sensor custom reader */
-				  <19 0x200 0x0>,  /* low power debug */
-				  <22 0x1c0000 0x0>; /* scp audio logger, 1.75MB */
+				  <19 0x200 0x0>;  /* low power debug */
 
 		memorydump = <0x100000>, /* l2tcm */
 				 <0x0c4000>, /* l1c */
@@ -10432,7 +10431,7 @@
 		interrupts = <GIC_SPI 522 IRQ_TYPE_LEVEL_HIGH 0>,
 			     <GIC_SPI 535 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names = "mbox0", "mbox1";
-		adsp-rsv-logger-a = <0x80000>;
+		adsp-rsv-logger-a = <0x180000>;
 		adsp-rsv-ipidma-a = <0x200000>;
 		adsp-rsv-xhci = <0x80000>;
 		adsp-rsv-audio = <0x5c0000>;
