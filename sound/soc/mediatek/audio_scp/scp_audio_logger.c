@@ -25,8 +25,6 @@
 #define LOGGER_D(...)
 #endif
 
-#define DRAM_REGION_ID_AUDIO_LOGGER 22
-
 #define ROUNDUP(a, b)		(((a) + ((b)-1)) & ~((b)-1))
 #define PLT_LOG_ENABLE		0x504C5402 /*magic*/
 
@@ -194,9 +192,8 @@ int scp_audio_logger_init(struct platform_device *pdev)
 	mutex_init(&logger_lock);
 
 	/* setup scp audio logger */
-	// TODO: use ADSP shared DRAM for final solution
-	addr = (void *)scp_get_reserve_mem_virt(DRAM_REGION_ID_AUDIO_LOGGER);
-	size = scp_get_reserve_mem_size(DRAM_REGION_ID_AUDIO_LOGGER);
+	addr = adsp_get_reserve_mem_virt(ADSP_A_LOGGER_MEM_ID);
+	size = adsp_get_reserve_mem_size(ADSP_A_LOGGER_MEM_ID);
 	if (!addr || size == 0) {
 		pr_err("%s, get reserved memory failed, addr 0x%llx size 0x%llx\n",
 		       __func__, (uint64_t)addr, size);
@@ -285,6 +282,7 @@ static inline ssize_t log_enable_store(struct device *dev,
 {
 	int ret = -1;
 	unsigned int enable = 0;
+	unsigned int retry_count = 10;
 
 	if (!logger_inited)
 		return -EINVAL;
@@ -296,9 +294,16 @@ static inline ssize_t log_enable_store(struct device *dev,
 	logger_enable = enable;
 	logger_ctrl->enable = enable;
 
-	ret = scp_send_message(SCP_AUDIO_IPI_LOGGER_ENABLE, &enable, sizeof(enable), 20, 0);
+	do {
+		retry_count--;
+		ret = scp_send_message(SCP_AUDIO_IPI_LOGGER_ENABLE, &enable, sizeof(enable), 20, 0);
+		if (ret != ADSP_IPI_DONE)
+			usleep_range(1000, 1500);
+	} while ((retry_count > 0) && (ret != ADSP_IPI_DONE));
+
 	if (ret != ADSP_IPI_DONE)
 		pr_err("%s scp_send_message failed, ret = %d\n", __func__, ret);
+
 	mutex_unlock(&logger_lock);
 
 	LOGGER_D("%s, [SCP AUDIO] enable = %d\n", __func__, enable);

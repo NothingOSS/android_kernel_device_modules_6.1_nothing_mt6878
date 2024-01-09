@@ -145,27 +145,6 @@ static struct scp_reserve_mblock scp_reserve_mblock[] = {
 		.start_virt = 0x0,
 		.size = 0x0,
 	},
-	{
-		.num = SCP_AUDIO_COMMON_MEM_ID,
-		.alignment = 0,
-		.start_phys = 0x0,
-		.start_virt = 0x0,
-		.size = 0x0,
-	},
-	{
-		.num = SCP_XHCI_MEM_ID,
-		.alignment = 0,
-		.start_phys = 0x0,
-		.start_virt = 0x0,
-		.size = 0x0,
-	},
-	{
-		.num = SCP_AUDIO_LOGGER_MEM_ID,
-		.alignment = 0,
-		.start_phys = 0x0,
-		.start_virt = 0x0,
-		.size = 0x0,
-	},
 };
 
 

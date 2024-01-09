@@ -205,20 +205,18 @@ static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 
 	mbox_init_done = true;
 
-	/* scp audio logger */
-	if (get_adsp_type() == ADSP_TYPE_RV55) {
-		ret = scp_audio_logger_init(pdev);
-		if (ret) {
-			pr_info("%s, init scp audio logger fail\n", __func__);
-			goto EXIT;
-		}
-	}
-
 	/*audio reserved memory */
 	pr_notice("%s() adsp_reserve_memory_ioremap\n", __func__);
 	ret = adsp_mem_device_probe(pdev);
 	if (ret) {
 		pr_notice("%s(), memory probe fail, %d\n", __func__, ret);
+		return ret;
+	}
+
+	/* scp audio logger */
+	ret = scp_audio_logger_init(pdev);
+	if (ret) {
+		pr_info("%s, init scp audio logger fail\n", __func__);
 		return ret;
 	}
 #else
