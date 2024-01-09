@@ -6824,10 +6824,12 @@ static const struct mtk_mipitx_data mt6878_mipitx_data = {
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6989,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6989,
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,
+	.dsi_get_pcw_khz = _dsi_get_pcw_khz_mt6989,
 	.dsi_get_data_rate = _dsi_get_data_rate_N4,
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_N4,
+	.pll_rate_khz_switch_gce = mtk_mipi_tx_pll_rate_khz_switch_gce_N4,
 	.phy = MIPITX_DPHY,
 	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_N4,
 };
