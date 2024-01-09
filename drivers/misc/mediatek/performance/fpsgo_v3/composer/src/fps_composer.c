@@ -1541,6 +1541,7 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 	int *local_specific_tid_arr = NULL;
 	int local_specific_tid_num = 0;
 	struct fpsgo_attr_by_pid *attr_iter = NULL;
+	unsigned long long ts = 0;
 
 	if (tgid <= 0 || !name || !mask) {
 		ret = -EINVAL;
@@ -1574,6 +1575,8 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 	fpsgo_main_trace("[comp] sbe tgid:%d name:%s mask:%lu start:%d final_pid_arr_idx:%d",
 		tgid, name, mask, start, final_pid_arr_idx);
 
+
+	ts = fpsgo_get_time();
 	for (i = 0; i < final_pid_arr_idx; i++) {
 		if (test_bit(FPSGO_CONTROL, &mask))
 			switch_ui_ctrl(final_pid_arr[i], start);
@@ -1581,6 +1584,7 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 			switch_thread_max_fps(final_pid_arr[i], start);
 
 		fpsgo_render_tree_lock(__func__);
+		xgf_set_policy_cmd_with_lock(1, 1, tgid, ts, 1);
 		if (start) {
 			attr_iter = fpsgo_find_attr_by_tid(final_pid_arr[i], 1);
 			if (attr_iter) {
