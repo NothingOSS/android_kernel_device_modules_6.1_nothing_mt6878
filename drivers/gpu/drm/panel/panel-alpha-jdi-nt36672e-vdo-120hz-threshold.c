@@ -1636,41 +1636,43 @@ static int jdi_get_modes(struct drm_panel *panel,
 		drm_mode_probed_add(connector, mode6);
 	}
 
-	mode7 = drm_mode_duplicate(connector->dev, &hd_mode_60);
-	if (!mode7) {
-		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
-			 hd_mode_60.hdisplay, hd_mode_60.vdisplay,
-			 drm_mode_vrefresh(&hd_mode_60));
-		return -ENOMEM;
+	if (res_switch_type == RES_SWITCH_ON_AP) {
+		mode7 = drm_mode_duplicate(connector->dev, &hd_mode_60);
+		if (!mode7) {
+			dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+					hd_mode_60.hdisplay, hd_mode_60.vdisplay,
+					drm_mode_vrefresh(&hd_mode_60));
+			return -ENOMEM;
+		}
+
+		drm_mode_set_name(mode7);
+		mode7->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode7);
+
+		mode8 = drm_mode_duplicate(connector->dev, &hd_mode_90);
+		if (!mode8) {
+			dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+					hd_mode_90.hdisplay, hd_mode_90.vdisplay,
+					drm_mode_vrefresh(&hd_mode_90));
+			return -ENOMEM;
+		}
+
+		drm_mode_set_name(mode8);
+		mode8->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode8);
+
+		mode9 = drm_mode_duplicate(connector->dev, &hd_mode_120);
+		if (!mode9) {
+			dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+					hd_mode_120.hdisplay, hd_mode_120.vdisplay,
+					drm_mode_vrefresh(&hd_mode_120));
+			return -ENOMEM;
+		}
+
+		drm_mode_set_name(mode9);
+		mode9->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode9);
 	}
-
-	drm_mode_set_name(mode7);
-	mode7->type = DRM_MODE_TYPE_DRIVER;
-	drm_mode_probed_add(connector, mode7);
-
-	mode8 = drm_mode_duplicate(connector->dev, &hd_mode_90);
-	if (!mode8) {
-		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
-			 hd_mode_90.hdisplay, hd_mode_90.vdisplay,
-			 drm_mode_vrefresh(&hd_mode_90));
-		return -ENOMEM;
-	}
-
-	drm_mode_set_name(mode8);
-	mode8->type = DRM_MODE_TYPE_DRIVER;
-	drm_mode_probed_add(connector, mode8);
-
-	mode9 = drm_mode_duplicate(connector->dev, &hd_mode_120);
-	if (!mode9) {
-		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
-			 hd_mode_120.hdisplay, hd_mode_120.vdisplay,
-			 drm_mode_vrefresh(&hd_mode_120));
-		return -ENOMEM;
-	}
-
-	drm_mode_set_name(mode9);
-	mode9->type = DRM_MODE_TYPE_DRIVER;
-	drm_mode_probed_add(connector, mode9);
 
 	connector->display_info.width_mm = 70;
 	connector->display_info.height_mm = 152;

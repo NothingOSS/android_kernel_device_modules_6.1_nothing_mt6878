@@ -1420,38 +1420,40 @@ static int lcm_get_modes(struct drm_panel *panel, struct drm_connector *connecto
 	mode2->type = DRM_MODE_TYPE_DRIVER;
 	drm_mode_probed_add(connector, mode2);
 
-	mode3 = drm_mode_duplicate(connector->dev, &fhd_60_mode);
-	if (!mode3) {
-		dev_err(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
-			fhd_60_mode.hdisplay, fhd_60_mode.vdisplay,
-			drm_mode_vrefresh(&fhd_60_mode));
-		return -ENOMEM;
-	}
-	drm_mode_set_name(mode3);
-	mode3->type = DRM_MODE_TYPE_DRIVER;
-	drm_mode_probed_add(connector, mode3);
+	if (res_switch_type == RES_SWITCH_ON_AP) {
+		mode3 = drm_mode_duplicate(connector->dev, &fhd_60_mode);
+		if (!mode3) {
+			dev_err(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+					fhd_60_mode.hdisplay, fhd_60_mode.vdisplay,
+					drm_mode_vrefresh(&fhd_60_mode));
+			return -ENOMEM;
+		}
+		drm_mode_set_name(mode3);
+		mode3->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode3);
 
-	mode4 = drm_mode_duplicate(connector->dev, &fhd_90_mode);
-	if (!mode4) {
-		dev_err(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
-			fhd_90_mode.hdisplay, fhd_90_mode.vdisplay,
-			drm_mode_vrefresh(&fhd_90_mode));
-		return -ENOMEM;
-	}
-	drm_mode_set_name(mode4);
-	mode4->type = DRM_MODE_TYPE_DRIVER;
-	drm_mode_probed_add(connector, mode4);
+		mode4 = drm_mode_duplicate(connector->dev, &fhd_90_mode);
+		if (!mode4) {
+			dev_err(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+					fhd_90_mode.hdisplay, fhd_90_mode.vdisplay,
+					drm_mode_vrefresh(&fhd_90_mode));
+			return -ENOMEM;
+		}
+		drm_mode_set_name(mode4);
+		mode4->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode4);
 
-	mode5 = drm_mode_duplicate(connector->dev, &fhd_120_mode);
-	if (!mode5) {
-		dev_err(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
-			fhd_120_mode.hdisplay, fhd_120_mode.vdisplay,
-			drm_mode_vrefresh(&fhd_120_mode));
-		return -ENOMEM;
+		mode5 = drm_mode_duplicate(connector->dev, &fhd_120_mode);
+		if (!mode5) {
+			dev_err(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+					fhd_120_mode.hdisplay, fhd_120_mode.vdisplay,
+					drm_mode_vrefresh(&fhd_120_mode));
+			return -ENOMEM;
+		}
+		drm_mode_set_name(mode5);
+		mode5->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode5);
 	}
-	drm_mode_set_name(mode5);
-	mode5->type = DRM_MODE_TYPE_DRIVER;
-	drm_mode_probed_add(connector, mode5);
 
 	connector->display_info.width_mm = 71;
 	connector->display_info.height_mm = 153;
