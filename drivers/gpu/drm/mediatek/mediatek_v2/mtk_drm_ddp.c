@@ -18651,7 +18651,7 @@ static int mtk_ddp_ovl_con_MT6878(enum mtk_ddp_comp_id cur,
 	*addr = MT6878_MMSYS_OVL_CON;
 
 	if (next == DDP_COMPONENT_RSZ1)
-		return 0;
+		return -1;
 
 	next_is_ovl = (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL);
 	if (cur == DDP_COMPONENT_OVL0_2L) {
