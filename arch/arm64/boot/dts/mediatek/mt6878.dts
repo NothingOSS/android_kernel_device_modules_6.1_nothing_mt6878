@@ -5519,8 +5519,13 @@
 			pd-names = "mminfra_in_dpc";
 			operating-points-v2 = <&opp_table_disp>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-			interconnects = <&mmqos SLAVE_LARB(39) &mmqos SLAVE_COMMON(0)>;
-			interconnect-names = "disp_hrt_qos";
+			interconnects = <&mmqos SLAVE_LARB(39) &mmqos SLAVE_COMMON(0)>,
+						<&mmqos SLAVE_LARB(0) &mmqos SLAVE_COMMON(0)>,
+						<&mmqos SLAVE_LARB(1) &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "disp_hrt_qos",
+						"disp_hrt_qos_larb0",
+						"disp_hrt_qos_larb1";
+			disp-larb-list = <0 1>;
 			pre-define-bw = <0xffffffff>, <4200>, <0>, <600>;
 			crtc-ovl-usage = <0x7>, <0x2>, <0x2>, <0x8>;
 			nvmem-cells = <&efuse_segment>;
@@ -5708,6 +5713,7 @@
 				"MTK_DRM_OPT_SPHRT",
 				"MTK_DRM_OPT_SDPA_OVL_SWITCH",
 				"MTK_DRM_OPT_HRT_BY_LARB",
+				"MTK_DRM_OPT_LAYERING_RULE_BY_LARB",
 				"MTK_DRM_OPT_RES_SWITCH_ON_AP",
 				"MTK_DRM_OPT_TILE_OVERHEAD",
 				"MTK_DRM_OPT_VIDLE_TOP_EN",
@@ -5785,6 +5791,7 @@
 				<1>, /*MTK_DRM_OPT_SPHRT*/
 				<1>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
 				<0>, /*MTK_DRM_OPT_HRT_BY_LARB*/
+				<0>, /*MTK_DRM_OPT_LAYERING_RULE_BY_LARB*/
 				<1>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
 				<0>, /*MTK_DRM_OPT_TILE_OVERHEAD*/
 				<1>, /*MTK_DRM_OPT_VIDLE_TOP_EN*/
