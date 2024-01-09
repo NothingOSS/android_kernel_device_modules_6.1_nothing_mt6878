@@ -37,13 +37,6 @@ unsigned int g_md_read_count;
 	IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
 	IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 1)
-void mtk_get_lp_info(struct lpm_dbg_lp_info *info, int type)
-{
-	pr_info("%s: not support yet...", __func__);
-}
-#endif
-
 int mbraink_get_power_info(char *buffer, unsigned int size, int datatype)
 {
 	int idx = 0, n = 0;
@@ -66,7 +59,6 @@ int mbraink_get_power_info(char *buffer, unsigned int size, int datatype)
 
 	n += snprintf(buffer + n, size, "datatype:%d\n", datatype);
 
-	mtk_get_lp_info(&mbraink_lpm_dbg_lp_info, SPM_IDLE_STAT);
 	for (idx = 0; idx < NUM_SPM_STAT; idx++) {
 		n += snprintf(buffer + n, size, "Idle_count %s:%lld\n",
 			mbraink_lp_state_name[idx], mbraink_lpm_dbg_lp_info.record[idx].count);
@@ -80,7 +72,6 @@ int mbraink_get_power_info(char *buffer, unsigned int size, int datatype)
 				1000));
 	}
 
-	mtk_get_lp_info(&mbraink_lpm_dbg_lp_info, SPM_SUSPEND_STAT);
 	for (idx = 0; idx < NUM_SPM_STAT; idx++) {
 		n += snprintf(buffer + n, size, "Suspend_count %s:%lld\n",
 			mbraink_lp_state_name[idx], mbraink_lpm_dbg_lp_info.record[idx].count);

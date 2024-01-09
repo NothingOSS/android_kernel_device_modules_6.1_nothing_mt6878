@@ -55,8 +55,6 @@ struct mbraink_26m {
 
 extern void __iomem *lpm_spm_base;
 
-void mtk_get_lp_info(struct lpm_dbg_lp_info *info, int type);
-
 
 extern struct md_sleep_status before_md_sleep_status;
 int is_md_sleep_info_valid(struct md_sleep_status *md_data);
