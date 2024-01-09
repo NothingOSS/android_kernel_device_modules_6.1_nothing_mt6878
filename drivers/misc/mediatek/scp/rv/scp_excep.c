@@ -90,6 +90,8 @@ bool scp_need_aed_dump = true;
 bool scp_reset_stress = true;
 static atomic_t coredumping = ATOMIC_INIT(0);
 static DECLARE_COMPLETION(scp_coredump_comp);
+static DECLARE_COMPLETION(scp_coredump_bypass);
+
 static uint32_t get_MDUMP_size(MDUMP_t type)
 {
 	return scp_dump.prefix[type] - scp_dump.prefix[type - 1];
@@ -717,28 +719,34 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 		return;
 	}
 
-	/* wait for previous coredump complete */
-	if(scp_need_aed_dump) {
-		while (1) {
-			if (aee_get_mode() == AEE_MODE_CUSTOMER_USER)
-				break;
-			ret = wait_for_completion_interruptible_timeout(
-				&scp_coredump_comp, timeout);
-			if (ret == 0) {
-				pr_notice("[SCP] %s:TIMEOUT, skip\n",
-					__func__);
-				break;
-			}
-			if (ret > 0)
-				break;
-			if ((ret == -ERESTARTSYS) && time_before(jiffies, expire)) {
-				pr_debug("[SCP] %s: continue waiting for completion\n",
-					__func__);
-				timeout = expire - jiffies;
-				continue;
-			}
+	if (scp_need_aed_dump == false) {
+		scp_crash_dump(SCP_A_ID); /* for smc reset state-machine*/
+		complete(&scp_coredump_bypass);
+		pr_debug("[SCP] scp exception dump is bypass\n");
+		return;
+	}
+
+	while (1) {
+		/* wait for previous coredump complete */
+		if (aee_get_mode() == AEE_MODE_CUSTOMER_USER)
+			break;
+		ret = wait_for_completion_interruptible_timeout(
+			&scp_coredump_comp, timeout);
+		if (ret == 0) {
+			pr_notice("[SCP] %s:TIMEOUT, skip\n",
+				__func__);
+			break;
+		}
+		if (ret > 0)
+			break;
+		if ((ret == -ERESTARTSYS) && time_before(jiffies, expire)) {
+			pr_debug("[SCP] %s: continue waiting for completion\n",
+				__func__);
+			timeout = expire - jiffies;
+			continue;
 		}
 	}
+
 	if (atomic_read(&coredumping) == true)
 		pr_notice("[SCP] coredump overwrite happen\n");
 	atomic_set(&coredumping, true);
@@ -777,20 +785,31 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 	scp_prepare_aed_dump(scp_aed_title, id);
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-	if(scp_need_aed_dump) {
-		if (!scp_reset_stress)
-			scp_need_aed_dump = false;
-		/* scp aed api, only detail information available*/
-		aed_common_exception_api("scp", NULL, 0, NULL, 0,
-			scp_dump.detail_buff, DB_OPT_DEFAULT);
-	}
+	if (!scp_reset_stress)
+		scp_need_aed_dump = false;
+
+	/* scp aed api, only detail information available*/
+	aed_common_exception_api("scp", NULL, 0, NULL, 0, scp_dump.detail_buff, DB_OPT_DEFAULT);
 #endif
 
 	pr_debug("[SCP] scp exception dump is done\n");
-
 }
 
+void scp_aed_reset_bypass_once(void)
+{
+	/* trigger scp reset, but no need dump next one */
+	scp_need_aed_dump = false;
+	reinit_completion(&scp_coredump_bypass);
 
+	scp_wdt_reset(0);
+
+	if (!wait_for_completion_timeout(&scp_coredump_bypass, 3 * HZ))
+		pr_info("[SCP] scp bypass aed timeout(10 sec)\n");
+
+	/* coredump bypass complete, reset the flag */
+	scp_need_aed_dump = true;
+	pr_info("[SCP] %s: done\n", __func__);
+}
 
 static ssize_t scp_A_dump_show(struct file *filep,
 		struct kobject *kobj, struct bin_attribute *attr,

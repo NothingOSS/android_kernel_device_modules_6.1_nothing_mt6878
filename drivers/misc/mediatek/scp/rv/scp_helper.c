@@ -1236,6 +1236,8 @@ static ssize_t wdt_reset_store(struct device *dev
 			scp_wdt_reset(1);
 		else if (value == 668)
 			scp_wdt_reset(sap_get_core_id());
+		else if (value == 665)
+			scp_aed_reset_bypass_once();
 	}
 	return count;
 }
