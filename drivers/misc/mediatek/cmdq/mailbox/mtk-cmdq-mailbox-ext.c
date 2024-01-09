@@ -137,6 +137,9 @@ EXPORT_SYMBOL(cpr_not_support_cookie);
 bool append_by_event;
 EXPORT_SYMBOL(append_by_event);
 
+bool cmdq_tfa_read_dbg;
+EXPORT_SYMBOL(cmdq_tfa_read_dbg);
+
 bool hw_trace_built_in[2];
 EXPORT_SYMBOL(hw_trace_built_in);
 
@@ -2152,12 +2155,13 @@ EXPORT_SYMBOL(cmdq_thread_dump);
 void cmdq_mbox_dump_dbg(void *mbox_cmdq, void *chan, const bool lock)
 {
 	struct cmdq *cmdq = mbox_cmdq;
-	void *base = cmdq->base;
-	u32 dbg0[3], dbg2[6], dbg3, i;
 	u32 id;
 	unsigned long flags;
+	void *base = cmdq->base;
+	u32 dbg0[3], dbg2[6], dbg3, i;
+	u64 dbg[5];
 
-	if (!base) {
+	if (!cmdq_tfa_read_dbg && !base) {
 		cmdq_util_msg("no cmdq dbg since no base");
 		return;
 	}
@@ -2175,37 +2179,58 @@ void cmdq_mbox_dump_dbg(void *mbox_cmdq, void *chan, const bool lock)
 
 	id = cmdq_util_get_hw_id((u32)cmdq->base_pa);
 	cmdq_util_enable_dbg(id);
-
-	/* debug select */
-	for (i = 0; i < 6; i++) {
-		if (i < 3) {
-			writel((i << 8) | i, base + GCE_DBG_CTL);
-			dbg0[i] = readl(base + GCE_DBG0);
-		} else {
-			/* only other part */
-			writel(i << 8, base + GCE_DBG_CTL);
+	if (!cmdq_tfa_read_dbg) {
+		/* debug select */
+		for (i = 0; i < 6; i++) {
+			if (i < 3) {
+				writel((i << 8) | i, base + GCE_DBG_CTL);
+				dbg0[i] = readl(base + GCE_DBG0);
+			} else {
+				/* only other part */
+				writel(i << 8, base + GCE_DBG_CTL);
+			}
+			dbg2[i] = readl(base + GCE_DBG2);
 		}
-		dbg2[i] = readl(base + GCE_DBG2);
-	}
 
-	dbg3 = readl(base + GCE_DBG3);
+		dbg3 = readl(base + GCE_DBG3);
+	} else
+		cmdq_util_return_dbg(id, dbg);
+
 	if (lock)
 		spin_unlock_irqrestore(&cmdq->lock, flags);
 
 	if (chan)
-		cmdq_util_user_msg(chan,
-		"id:%u dbg0:%#x %#x %#x dbg2:%#x %#x %#x %#x %#x %#x dbg3:%#x",
-		id,
-		dbg0[0], dbg0[1], dbg0[2],
-		dbg2[0], dbg2[1], dbg2[2], dbg2[3], dbg2[4], dbg2[5],
-		dbg3);
-	else
-		cmdq_util_msg(
+		if (cmdq_tfa_read_dbg)
+			cmdq_util_user_msg(chan,
+			"id:%u dbg0:%#x %#x %#x dbg2:%#x %#x %#x %#x %#x %#x dbg3:%#x",
+			id,
+			(u32)(dbg[0]>>32), (u32)dbg[0], (u32)(dbg[1]>>32),
+			(u32)(dbg[2]>>32), (u32)dbg[2], (u32)(dbg[3]>>32),
+			(u32)dbg[3], (u32)(dbg[4]>>32), (u32)dbg[4],
+			(u32)dbg[1]);
+		else
+			cmdq_util_user_msg(chan,
 			"id:%u dbg0:%#x %#x %#x dbg2:%#x %#x %#x %#x %#x %#x dbg3:%#x",
 			id,
 			dbg0[0], dbg0[1], dbg0[2],
 			dbg2[0], dbg2[1], dbg2[2], dbg2[3], dbg2[4], dbg2[5],
 			dbg3);
+	else
+		if (cmdq_tfa_read_dbg)
+			cmdq_util_msg(
+				"id:%u dbg0:%#x %#x %#x dbg2:%#x %#x %#x %#x %#x %#x dbg3:%#x",
+				id,
+				(u32)(dbg[0]>>32), (u32)dbg[0], (u32)(dbg[1]>>32),
+				(u32)(dbg[2]>>32), (u32)dbg[2], (u32)(dbg[3]>>32),
+				(u32)dbg[3], (u32)(dbg[4]>>32), (u32)dbg[4],
+				(u32)dbg[1]);
+		else
+			cmdq_util_msg(
+				"id:%u dbg0:%#x %#x %#x dbg2:%#x %#x %#x %#x %#x %#x dbg3:%#x",
+				id,
+				dbg0[0], dbg0[1], dbg0[2],
+				dbg2[0], dbg2[1], dbg2[2], dbg2[3], dbg2[4], dbg2[5],
+				dbg3);
 }
 EXPORT_SYMBOL(cmdq_mbox_dump_dbg);
 
@@ -2861,6 +2886,9 @@ static int cmdq_probe(struct platform_device *pdev)
 	if (!of_property_read_bool(dev->of_node, "no-append-by-event"))
 		append_by_event = true;
 
+	if (of_property_read_bool(dev->of_node, "cmdq-tfa-read-dbg"))
+		cmdq_tfa_read_dbg = true;
+
 	if(of_property_read_bool(dev->of_node, "hw-trace-built-in"))
 		hw_trace_built_in[hwid] = true;
 
@@ -2883,10 +2911,11 @@ static int cmdq_probe(struct platform_device *pdev)
 
 	cmdq_proc_create();
 
-	cmdq_msg("dump_buf_size %d error irq %d cmdq_proc_debug_off:%d",
+	cmdq_msg("dump_buf_size %d error irq %d cmdq_proc_debug_off:%d cmdq_tfa_read_dbg:%d",
 		cmdq_dump_buf_size,
 		error_irq_bug_on,
-		cmdq_proc_debug_off);
+		cmdq_proc_debug_off,
+		cmdq_tfa_read_dbg);
 
 	if (of_property_read_bool(dev->of_node, "gce-fast-mtcmos")) {
 		cmdq->fast_mtcmos = true;

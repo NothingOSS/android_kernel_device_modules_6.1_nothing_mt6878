@@ -949,6 +949,31 @@ void cmdq_util_buff_track(u32 *buf_peek_arr, const uint rows, const uint cols)
 }
 EXPORT_SYMBOL(cmdq_util_buff_track);
 
+void cmdq_util_return_dbg(u32 id, u64 *dbg)
+{
+	if (id < CMDQ_HW_MAX) {
+		struct arm_smccc_res res1, res2;
+
+		cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[id], true);
+		arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_RETURN_DEBUG_1, id,
+			0, 0, 0, 0, 0, &res1);
+		arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_RETURN_DEBUG_2, id,
+			0, 0, 0, 0, 0, &res2);
+		cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[id], false);
+
+		if (res1.a1) {
+			*(dbg + 0) = res1.a1;
+			*(dbg + 1) = res1.a2;
+		}
+		if (res2.a1) {
+			*(dbg + 2) = res2.a1;
+			*(dbg + 3) = res2.a2;
+			*(dbg + 4) = res2.a3;
+		}
+	}
+}
+EXPORT_SYMBOL(cmdq_util_return_dbg);
+
 void cmdq_util_track(struct cmdq_pkt *pkt)
 {
 	struct cmdq_record *record;

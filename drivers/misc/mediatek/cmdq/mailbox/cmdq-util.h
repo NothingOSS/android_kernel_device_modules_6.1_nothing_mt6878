@@ -25,6 +25,8 @@ enum cmdq_smc_request {
 	CMDQ_SET_MML_SEC,
 	CMDQ_DISP_CMD,
 	CMDQ_VCORE_REQ,
+	CMDQ_RETURN_DEBUG_1,
+	CMDQ_RETURN_DEBUG_2,
 };
 
 enum {
@@ -235,6 +237,7 @@ const char *cmdq_util_hw_name(void *chan);
 bool cmdq_thread_ddr_module(const s32 thread);
 bool cmdq_mbox_hw_trace_thread(void *chan);
 void cmdq_util_enable_dbg(u32 id);
+void cmdq_util_return_dbg(u32 id, u64 *dbg);
 void cmdq_util_devapc_dump(void);
 void cmdq_util_dump_fast_mtcmos(void);
 int cmdq_util_init(void);

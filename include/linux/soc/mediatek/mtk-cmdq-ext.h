@@ -111,6 +111,7 @@ extern bool gce_in_vcp;
 extern bool cpr_not_support_cookie;
 extern bool skip_poll_sleep;
 extern bool append_by_event;
+extern bool cmdq_tfa_read_dbg;
 extern bool hw_trace_built_in[2];
 extern int cmdq_dump_buf_size;
 extern int error_irq_bug_on;
