@@ -39,6 +39,7 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_gem.h"
 #include "platform/mtk_drm_platform.h"
+#include "mtk_drm_assert.h"
 
 #include "slbc_ops.h"
 #include "../mml/mtk-mml.h"
@@ -880,19 +881,103 @@ static unsigned int mtk_ovl_phy_mapping_MT6989(struct mtk_ddp_comp *comp)
 	}
 }
 
+static unsigned int mtk_ovl_phy_mapping_MT6878(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+		return 0;
+	case DDP_COMPONENT_OVL1_2L:
+		return 2;
+	case DDP_COMPONENT_OVL2_2L:
+		return 4;
+	case DDP_COMPONENT_OVL3_2L:
+		return 6;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
+
+/* function: mtk_ovl_calc_larb_hrt_bw_v1
+ * 1. only support SMI port by OVL:
+ *   (all layer transactions from 1 ovl are dispatched to the same SMI larb)
+ * 2. not support SMI port by layer:
+ *   (different layer transactions from 1 ovl are dispatched to different SMI larb)
+ */
+static unsigned int mtk_ovl_calc_larb_hrt_bw_v1(struct mtk_drm_crtc *mtk_crtc,
+			struct mtk_ddp_comp *comp)
+{
+	unsigned int bw_base = mtk_drm_primary_frame_bw(&mtk_crtc->base);
+	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
+	unsigned int phy_id = 0, layer_count = 0, i = 0, larb_bw = 0, dal_weight = 0;
+	struct mtk_drm_private *priv = NULL;
+	int crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	struct mtk_plane_comp_state dal_state = { 0 };
+
+	priv = mtk_crtc->base.dev->dev_private;
+	if (!priv || !mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+		return 0;
+
+	if (crtc_idx == 0)
+		dal_weight = mtk_drm_get_dal_weight(&dal_state);
+
+	if (ovl->data->ovl_phy_mapping) {
+		phy_id = ovl->data->ovl_phy_mapping(comp);
+		layer_count = mtk_ovl_layer_num(comp);
+		if (layer_count == 0)
+			return 0;
+
+		for (i = 0; i < layer_count; i++) {
+			larb_bw += bw_base * mtk_crtc->usage_ovl_weight[(phy_id + i)];
+			if (dal_state.comp_id == comp->id && i == dal_state.lye_id)
+				larb_bw += bw_base * dal_weight;
+			DDPDBG("%s,ovl:%u,l:%u,cnt:%u,larb:%d,bw:%u,w:%u,base:%u,dal(%u,%u,%u)\n",
+				__func__, comp->id, phy_id + i,
+				layer_count, comp->larb_id, larb_bw / 400,
+				mtk_crtc->usage_ovl_weight[phy_id + i],
+				bw_base, dal_state.comp_id,
+				dal_state.lye_id, dal_weight);
+		}
+	}
+
+	larb_bw /= 400;
+	return larb_bw;
+}
+
 static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 			struct mtk_ddp_comp *comp, struct mtk_plane_state *plane_state)
 {
 	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 	unsigned int lye_id = plane_state->comp_state.lye_id;
 	unsigned int ext_lye_id = plane_state->comp_state.ext_lye_id;
+	unsigned int weight = plane_state->comp_state.layer_hrt_weight;
 	unsigned int fmt = plane_state->pending.format;
 	unsigned int phy_id = 0;
+	struct mtk_drm_private *priv = NULL;
 
+	priv = mtk_crtc->base.dev->dev_private;
 	if (ovl->data->ovl_phy_mapping) {
 		phy_id = ovl->data->ovl_phy_mapping(comp);
-		if (ext_lye_id == 0)
+		if (ext_lye_id == 0) {
+			/* update layer format bpp */
 			mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)] = mtk_get_format_bpp(fmt);
+
+			/* update layer hrt weight */
+			if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+				mtk_crtc->usage_ovl_weight[(phy_id + lye_id)] = weight;
+		} else if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
+			if (mtk_crtc->usage_ovl_weight[(phy_id + lye_id)] < weight)
+				mtk_crtc->usage_ovl_weight[(phy_id + lye_id)] = weight;
+		}
+
+		DDPDBG("%s,ovl:%u,l:%u,fmt:0x%x,bpp:%u,w:%u/%u,ext:%d\n",
+			 __func__, comp->id, phy_id + lye_id,
+			 fmt, mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)],
+			 mtk_crtc->usage_ovl_weight[(phy_id + lye_id)],
+			 weight, ext_lye_id);
 	}
 }
 
@@ -4192,6 +4277,37 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 #endif
 		break;
 	}
+	case PMQOS_GET_HRT_BW: {
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		struct mtk_larb_bw *data = (struct mtk_larb_bw *)params;
+		int calc = !!data->larb_bw;
+
+		if (IS_ERR_OR_NULL(data)) {
+			DDPMSG("%s, invalid larb data\n", __func__);
+			break;
+		}
+
+		data->larb_id = -1;
+		data->larb_bw = 0;
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT) ||
+			!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+			break;
+
+		if (comp->larb_num == 1)
+			data->larb_id = comp->larb_id;
+		else if (comp->larb_num > 1)
+			data->larb_id = comp->larb_ids[0];
+
+		if (data->larb_id < 0) {
+			DDPMSG("%s, invalid larb id, num:%u\n", __func__, comp->larb_num);
+			break;
+		}
+
+		if (calc)
+			data->larb_bw = mtk_ovl_calc_larb_hrt_bw_v1(mtk_crtc, comp);
+		break;
+	}
 	case PMQOS_SET_HRT_BW: {
 		u32 bw_val = *(unsigned int *)params;
 
@@ -5704,6 +5820,7 @@ static const struct mtk_disp_ovl_data mt6878_ovl_driver_data = {
 	/* mt6878 not support pq self loop */
 	/* but can set pq out and input back to ufod in to constant lye */
 	.pqout_ufodin_loop = true,
+	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6878,
 };
 
 static const struct mtk_disp_ovl_data mt8173_ovl_driver_data = {

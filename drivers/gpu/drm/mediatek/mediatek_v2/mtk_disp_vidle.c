@@ -453,6 +453,13 @@ void mtk_vidle_set_panel_type(enum mtk_panel_type type)
 	disp_dpc_driver.dpc_init_panel_type(type);
 }
 
+bool mtk_vidle_support_hrt_bw(void)
+{
+	if (disp_dpc_driver.dpc_hrt_bw_set)
+		return true;
+	return false;
+}
+
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 {
 	vidle_data.hrt_bw = bw_in_mb;

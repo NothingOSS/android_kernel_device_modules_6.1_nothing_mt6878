@@ -610,6 +610,19 @@ static int mtk_mdp_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 		mtk_mdp_rdma_frame_check(comp, handle);
 	}
 		break;
+	case PMQOS_GET_HRT_BW:
+	{
+		struct mtk_larb_bw *data = (struct mtk_larb_bw *)params;
+
+		if (IS_ERR_OR_NULL(data)) {
+			DDPMSG("%s, invalid larb data\n", __func__);
+			break;
+		}
+
+		data->larb_id = -1;
+		data->larb_bw = 0;
+	}
+		break;
 	case PMQOS_SET_HRT_BW:
 	{
 		u32 bw_val = *(unsigned int *)params;

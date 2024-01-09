@@ -23,14 +23,27 @@ enum DISP_QOS_BW_MODE {
 #define RDMA_REQ_HRT (0x2)
 #define MDP_RDMA_REQ_HRT (0x3)
 
+#define MAX_HRT_LARB_NR 4
+
 struct drm_crtc;
 struct mtk_drm_crtc;
 struct mtk_ddp_comp;
 
+struct mtk_larb_bw {
+	int larb_id;
+	unsigned int larb_bw;
+};
+
+struct mtk_larb_hrt_req {
+	int larb_id;
+	unsigned int last_larb_bw;
+	struct icc_path *hrt_req;
+};
+
 struct mtk_drm_qos_ctx {
 	unsigned int last_hrt_req;
 	unsigned int last_mmclk_req_idx;
-	unsigned int last_larb_hrt_req;
+	unsigned int last_larb_hrt_max;
 	atomic_t last_hrt_idx;
 	atomic_t hrt_cond_sig;
 	wait_queue_head_t hrt_cond_wq;

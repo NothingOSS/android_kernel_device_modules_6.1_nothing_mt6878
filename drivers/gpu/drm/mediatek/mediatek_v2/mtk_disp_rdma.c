@@ -1020,6 +1020,40 @@ static int mtk_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			       inten);
 		break;
 	}
+	case PMQOS_GET_HRT_BW: {
+		bool *rdma_memory_mode = comp->comp_mode;
+		struct mtk_larb_bw *data = (struct mtk_larb_bw *)params;
+		int calc = !!data->larb_bw;
+
+		if (IS_ERR_OR_NULL(data)) {
+			DDPMSG("%s, invalid larb data\n", __func__);
+			break;
+		}
+
+		data->larb_id = -1;
+		data->larb_bw = 0;
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT) ||
+			!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+			break;
+
+		if (comp->larb_num == 1)
+			data->larb_id = comp->larb_id;
+		else if (comp->larb_num > 1)
+			data->larb_id = comp->larb_ids[0];
+
+		if (data->larb_id < 0) {
+			DDPMSG("%s, invalid larb id, num:%u\n",
+				__func__, comp->larb_num);
+			break;
+		}
+
+		if (calc && *rdma_memory_mode == true)
+			data->larb_bw = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
+		DDPDBG_HBL("%s,rdma comp:%u,larb:%d,bw:%u,calc:%d\n",
+			__func__, comp->id, data->larb_id, data->larb_bw, calc);
+		break;
+	}
 	case PMQOS_SET_HRT_BW: {
 		bool *rdma_memory_mode = comp->comp_mode;
 		u32 bw_val = *(unsigned int *)params;

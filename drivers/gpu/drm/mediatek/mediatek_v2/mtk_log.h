@@ -18,6 +18,8 @@ extern unsigned long long mutex_time_end;
 extern long long mutex_time_period;
 extern const char *mutex_locker;
 extern unsigned int g_trace_log;
+extern bool g_hrt_by_larb_debug;
+extern bool g_hrt_by_larb_log;
 
 #ifndef DRM_TRACE_ID
 #define DRM_TRACE_ID 0xFFFF0000
@@ -77,6 +79,15 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
 		if (g_mobile_log)                                              \
 			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
+#define DDPDBG_HBL(fmt, arg...)                                                    \
+	do {                                                                   \
+		if (!g_hrt_by_larb_log)                                             \
+			break;                                                 \
+		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
+		if (g_mobile_log)                                              \
+			pr_info("[DISP_HRT_BY_LARB]" pr_fmt(fmt), ##arg);     \
 	} while (0)
 
 #define DDP_PROFILE(fmt, arg...)                                               \

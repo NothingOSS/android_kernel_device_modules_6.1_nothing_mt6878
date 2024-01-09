@@ -50,6 +50,10 @@ static int drm_dal_enable;
 static struct drm_crtc *dal_crtc;
 static void *dal_va;
 static dma_addr_t dal_pa;
+static unsigned int g_comp_id;
+static unsigned int g_lye_id;
+static unsigned int g_hrt_weight;
+static atomic_t g_current_hrt_weight = ATOMIC_INIT(0);
 
 static u32 DAL_GetLayerSize(void)
 {
@@ -259,6 +263,13 @@ static struct mtk_plane_state *drm_set_dal_plane_state(struct drm_crtc *crtc,
 	plane_state->comp_state.ext_lye_id = 0;
 	plane_state->base.crtc = crtc;
 
+	g_comp_id = plane_state->comp_state.comp_id;
+	g_lye_id = plane_state->comp_state.lye_id;
+	DDPDBG_HBL("%s, enable:%d, ovl:%u, lye:%u, ext:%u, weight:%u\n",
+		__func__, enable, plane_state->comp_state.comp_id,
+		plane_state->comp_state.lye_id,
+		plane_state->comp_state.ext_lye_id,
+		plane_state->comp_state.layer_hrt_weight);
 	return plane_state;
 }
 
@@ -530,6 +541,34 @@ EXPORT_SYMBOL(DAL_Printf);
 int mtk_drm_dal_enable(void)
 {
 	return drm_dal_enable;
+}
+
+void mtk_drm_set_dal_weight(unsigned int weight)
+{
+	g_hrt_weight = weight;
+}
+
+void mtk_drm_update_dal_weight_state(void)
+{
+	atomic_set(&g_current_hrt_weight, g_hrt_weight);
+}
+
+unsigned int mtk_drm_get_dal_weight(struct mtk_plane_comp_state *comp_state)
+{
+	if (IS_ERR_OR_NULL(comp_state))
+		return 0;
+
+	if (drm_dal_enable) {
+		comp_state->comp_id = g_comp_id;
+		comp_state->lye_id = g_lye_id;
+		comp_state->ext_lye_id = 0;
+		return atomic_read(&g_current_hrt_weight);
+	}
+
+	comp_state->comp_id = DDP_COMPONENT_ID_MAX;
+	comp_state->lye_id = 200;
+	comp_state->ext_lye_id = 0;
+	return 0;
 }
 
 void mtk_drm_assert_fb_init(struct drm_device *dev, u32 width, u32 height)

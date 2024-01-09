@@ -9324,6 +9324,31 @@ SKIP_OVLSYS_CONFIG:
 			private->dp_hrt_by_larb  =
 				of_mtk_icc_get(dev, "disp_dp_hrt_by_larb");
 		}
+
+		if (mtk_drm_helper_get_opt(private->helper_opt,
+				MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
+			int count = 0, idx = 0, len = 0;
+			unsigned int larb_list[MAX_HRT_LARB_NR] = { 0 };
+
+			count = of_property_read_variable_u32_array(dev->of_node,
+				"disp-larb-list", &larb_list[0], count, MAX_HRT_LARB_NR);
+			if (count > 0) {
+				for (idx = 0; idx < count; idx++) {
+					char larb_name[64] = {'\0'};
+
+					len = snprintf(larb_name, 63, "disp_hrt_qos_larb%u",
+							larb_list[idx]);
+					if (len < 0) {
+						DDPMSG("%s, invalid larb name %d\n",
+							__func__, idx);
+						continue;
+					}
+					private->larbs_hrt_req[idx].larb_id = larb_list[idx];
+					private->larbs_hrt_req[idx].hrt_req =
+							of_mtk_icc_get(dev, larb_name);
+				}
+			}
+		}
 	}
 	/* Iterate over sibling DISP function blocks */
 	for_each_child_of_node(dev->of_node->parent, node) {

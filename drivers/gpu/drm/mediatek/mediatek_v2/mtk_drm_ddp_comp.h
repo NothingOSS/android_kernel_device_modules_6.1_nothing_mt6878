@@ -714,6 +714,7 @@ enum mtk_ddp_io_cmd {
 	OVL_PHY_USAGE,
 	BYPASS_SPR2RGB,
 	DSI_GET_PANEL_VBLANK_PERIOD_US,
+	PMQOS_GET_HRT_BW,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
@@ -890,6 +891,7 @@ struct mtk_ddp_comp {
 	u32 hrt_bw_other;
 	u32 last_hrt_bw;
 	u32 last_hrt_bw_other;
+	u32 larb_hrt_weight;
 	bool in_scaling_path;
 };
 

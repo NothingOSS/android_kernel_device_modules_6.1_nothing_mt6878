@@ -326,6 +326,7 @@ struct mtk_disp_oddmr {
 	struct mtk_disp_oddmr_tile_overhead_v tile_overhead_v;
 	bool set_partial_update;
 	unsigned int roi_height;
+	atomic_t hrt_weight;
 };
 
 int mtk_drm_ioctl_oddmr_load_param(struct drm_device *dev, void *data,
@@ -342,5 +343,6 @@ unsigned int check_oddmr_err_event(void);
 void clear_oddmr_err_event(void);
 void mtk_oddmr_scp_status(bool enable);
 
+void mtk_oddmr_update_larb_hrt_state(void);
 
 #endif

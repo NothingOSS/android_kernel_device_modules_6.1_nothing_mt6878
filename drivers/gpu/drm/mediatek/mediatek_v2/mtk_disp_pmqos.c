@@ -280,15 +280,160 @@ unsigned int mtk_disp_get_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc)
 	return tmp;
 }
 
+static void mtk_disp_calc_larb_hrt_bw_func(struct mtk_larb_bw *data,
+	struct mtk_larb_bw *larb_list, unsigned int *larb_count,
+	unsigned int *larb_total, unsigned int *max_larb_bw)
+{
+	unsigned int id = 0;
+
+	if (!data || data->larb_id < 0 || !larb_list ||
+		!larb_count || *larb_count > MAX_HRT_LARB_NR)
+		return;
+
+	for (id = 0; id < *larb_count; id++) {
+		if (larb_list[id].larb_id == data->larb_id)
+			break;
+	}
+
+	if (id == *larb_count && id < MAX_HRT_LARB_NR) {
+		larb_list[*larb_count].larb_id = data->larb_id;
+		*larb_count = *larb_count + 1;
+	} else if (id >= MAX_HRT_LARB_NR) {
+		DDPPR_ERR("%s, exceed larb count:%u,larb:%d, bw:%u\n",
+			__func__, id, data->larb_id, data->larb_bw);
+		return;
+	}
+
+	larb_list[id].larb_bw += data->larb_bw;
+	if (larb_total)
+		*larb_total += data->larb_bw;
+	if (max_larb_bw && *max_larb_bw < larb_list[id].larb_bw)
+		*max_larb_bw = larb_list[id].larb_bw;
+}
+
+static void mtk_disp_calc_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int bw, unsigned int *larb_count, struct mtk_larb_bw *larb_list,
+		unsigned int *max_larb_bw)
+{
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *comp;
+	unsigned int crtc_idx = 0, larb_total = 0;
+	struct mtk_larb_bw larb_data = { 0 };
+	int i = 0, j = 0, ret = 0;
+	int diff = 0;
+
+	if (IS_ERR_OR_NULL(larb_list) || IS_ERR_OR_NULL(mtk_crtc) ||
+		IS_ERR_OR_NULL(larb_count))
+		return;
+
+	crtc = &mtk_crtc->base;
+	if (IS_ERR_OR_NULL(crtc) || IS_ERR_OR_NULL(crtc->dev))
+		return;
+
+	crtc_idx = drm_crtc_index(crtc);
+	priv = crtc->dev->dev_private;
+	if (!priv || !mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+		return;
+
+	for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
+		larb_data.larb_id = -1;
+		larb_data.larb_bw = bw;
+		ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_GET_HRT_BW,
+					&larb_data);
+		mtk_disp_calc_larb_hrt_bw_func(&larb_data, &larb_list[0],
+			larb_count, &larb_total, max_larb_bw);
+		if (larb_data.larb_id != -1) {
+			DRM_MMP_MARK(hrt_bw, comp->id, larb_data.larb_bw);
+			DDPINFO("%s,comp:%u,larb:%u,BW:%u,cnt:%u,total:%u,max:%u\n",
+				__func__, comp->id, larb_data.larb_id,
+				larb_data.larb_bw, *larb_count, larb_total,
+				max_larb_bw? *max_larb_bw : 0);
+		}
+	}
+
+	if (mtk_crtc->is_dual_pipe) {
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i) {
+			larb_data.larb_id = -1;
+			larb_data.larb_bw = bw;
+			ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_GET_HRT_BW,
+						&larb_data);
+			mtk_disp_calc_larb_hrt_bw_func(&larb_data, &larb_list[0],
+				larb_count, &larb_total, max_larb_bw);
+			if (larb_data.larb_id != -1) {
+				DRM_MMP_MARK(hrt_bw, comp->id, larb_data.larb_bw);
+				DDPINFO("%s,comp:%u,larb:%u,BW:%u,cnt:%u,total:%u,max:%u\n",
+					__func__, comp->id, larb_data.larb_id,
+					larb_data.larb_bw, *larb_count, larb_total,
+					max_larb_bw? *max_larb_bw : 0);
+			}
+		}
+	}
+
+	if (!g_hrt_by_larb_debug)
+		return;
+
+	diff = (int)(larb_total - bw);
+	if (crtc_idx == 0 && (diff > 10 || diff < -10))
+		DDPMSG("%s,CRTC%d,diff:%d,total_bw=%u,larb_total=%u,larb_max=%u,count=%u\n",
+			__func__, crtc_idx, diff, bw, larb_total,
+			max_larb_bw ? *max_larb_bw : 0, *larb_count);
+}
+
+static void mtk_disp_set_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int larb_count,
+		struct mtk_larb_bw *larb_list)
+{
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	int i = 0, j = 0;
+
+	if (larb_count == 0 || IS_ERR_OR_NULL(larb_list) ||
+		IS_ERR_OR_NULL(mtk_crtc))
+		return;
+
+	crtc = &mtk_crtc->base;
+	if (IS_ERR_OR_NULL(crtc) || IS_ERR_OR_NULL(crtc->dev))
+		return;
+
+	priv = crtc->dev->dev_private;
+	if (!priv || !mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+		return;
+
+	for (i = 0; i < MAX_HRT_LARB_NR; i++) {
+		if (IS_ERR_OR_NULL(priv->larbs_hrt_req[i].hrt_req))
+			break;
+
+		for (j = 0; j < larb_count; j++) {
+			if (priv->larbs_hrt_req[i].larb_id == larb_list[j].larb_id &&
+				priv->larbs_hrt_req[i].last_larb_bw != larb_list[j].larb_bw) {
+				DDPINFO("%s, larb:%u, update bw:%u->%u\n", __func__,
+					larb_list[j].larb_id,
+					priv->larbs_hrt_req[i].last_larb_bw,
+					larb_list[j].larb_bw);
+				DRM_MMP_MARK(hrt_bw, (0xf0000000 | larb_list[j].larb_id),
+					larb_list[j].larb_bw);
+				mtk_icc_set_bw(priv->larbs_hrt_req[i].hrt_req, 0,
+					MBps_to_icc(larb_list[j].larb_bw));
+				priv->larbs_hrt_req[i].last_larb_bw = larb_list[j].larb_bw;
+			}
+		}
+	}
+
+}
 
 int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	struct mtk_ddp_comp *comp;
-	unsigned int tmp, total = 0, tmp1 = 0, bw_base  = 0;
 	unsigned int crtc_idx = drm_crtc_index(crtc);
+	struct mtk_ddp_comp *comp;
+	unsigned int tmp, total = 0, max_larb_bw = 0, bw_base = 0;
 	int i, j, ret = 0, ovl_num = 0;
+	struct mtk_larb_bw larb_list[MAX_HRT_LARB_NR] = { 0 };
+	unsigned int larb_count = 0;
+	static bool vidle_ready;
 
 	tmp = bw;
 
@@ -298,11 +443,26 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
 		return 0;
 
+	DRM_MMP_EVENT_START(hrt_bw, crtc_idx, bw);
+
 	for (i = 0; i < DDP_PATH_NR; i++) {
 		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
 			continue;
 		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
 			continue;
+
+		/* calculate VMM dvfs level with real larb HRT BW */
+		if (mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
+			if (i == crtc_idx)
+				mtk_disp_calc_larb_hrt_bw(mtk_crtc, tmp,
+					&larb_count, &larb_list[0], &max_larb_bw);
+			else
+				mtk_disp_calc_larb_hrt_bw(mtk_crtc, priv->req_hrt[i],
+					&larb_count, &larb_list[0], &max_larb_bw);
+		}
+
+		/* update OTSD of smi port */
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
 			ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
 						   &tmp);
@@ -314,28 +474,47 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 					&tmp);
 	}
 
+	/* update VMM dvfs level with real larb HRT BW */
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+		mtk_disp_set_larb_hrt_bw(mtk_crtc, larb_count, larb_list);
+
 	if (ret == RDMA_REQ_HRT)
 		tmp = mtk_drm_primary_frame_bw(crtc);
-	else if (ret == MDP_RDMA_REQ_HRT)
+	else if (ret == MDP_RDMA_REQ_HRT) {
+		DRM_MMP_EVENT_END(hrt_bw, crtc_idx, 0);
 		return 0;
+	}
 
 	/* skip same HRT BW */
-	if (priv->req_hrt[crtc_idx] == tmp)
+	if (priv->req_hrt[crtc_idx] == tmp) {
+		DRM_MMP_EVENT_END(hrt_bw, crtc_idx, 0);
 		return 0;
-
+	}
 	priv->req_hrt[crtc_idx] = tmp;
 
 	for (i = 0; i < MAX_CRTC; ++i)
 		total += priv->req_hrt[i];
 
+	/* update VCORE dvfs level with total HRT BW */
 	if ((priv->data->mmsys_id == MMSYS_MT6897) &&
 		(mtk_disp_check_segment(mtk_crtc, priv) == false))
 		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(1));
-	else
+	else if (!mtk_vidle_support_hrt_bw() ||
+		!mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
+		DRM_MMP_MARK(hrt_bw, 0xffff0000, total);
 		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(total));
+	} else if (!vidle_ready && mtk_vidle_support_hrt_bw() &&
+		mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
+		/*clear mmqos total bw after DPC is available for HRT BW update*/
+		DRM_MMP_MARK(hrt_bw, 0xffff0000, 1);
+		DDPMSG("%s,clear mmqos bw\n", __func__);
+		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(1));
+		vidle_ready = true;
+	}
 	mtk_vidle_hrt_bw_set(total);
-
-	DRM_MMP_MARK(hrt_bw, 0, tmp);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB)) {
 
@@ -348,28 +527,34 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 				__func__, crtc_idx, total, tmp, mtk_crtc->is_dual_pipe);
 		} else if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI &&
 			(priv->data->mmsys_id != MMSYS_MT6989)) {
-			if (total > 0) {
+			if (total > 0 && !mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
 				bw_base = mtk_drm_primary_frame_bw(crtc);
 				ovl_num = bw_base > 0 ? total / bw_base : 0;
-				tmp1 = ((bw_base / 2) > total) ? total : (ovl_num < 3) ?
+				max_larb_bw = ((bw_base / 2) > total) ? total : (ovl_num < 3) ?
 					(bw_base / 2) : (ovl_num < 5) ?
 					bw_base : (bw_base * 3 / 2);
 			}
 
+			/* update VMM dvfs level with max larb hrt bw*/
 			if ((priv->data->mmsys_id == MMSYS_MT6897) &&
 				(mtk_disp_check_segment(mtk_crtc, priv) == false))
 				mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(1));
-			else
-				mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
+			else if (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+				mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(max_larb_bw));
 
-			mtk_vidle_dvfs_bw_set(tmp1);
-			mtk_crtc->qos_ctx->last_larb_hrt_req = tmp1;
-			DDPINFO("%s, CRTC%d HRT bw=%u total=%u larb bw=%u ovl_num=%d bw_base=%d\n",
-				__func__, crtc_idx, tmp, total, tmp1, ovl_num, bw_base);
+			/* update VDISP dvfs level with max larb hrt bw*/
+			mtk_vidle_dvfs_bw_set(max_larb_bw);
+			mtk_crtc->qos_ctx->last_larb_hrt_max = max_larb_bw;
+
+			DDPINFO("%s,CRTC%d update VDISP dvfs,bw=%u,total=%u,max=%u,bw_base=%d\n",
+				__func__, crtc_idx, tmp, total, max_larb_bw, bw_base);
 		}
 	} else
 		DDPINFO("set CRTC %d HRT bw %u %u\n", crtc_idx, tmp, total);
 
+	DRM_MMP_EVENT_END(hrt_bw, priv->req_hrt[crtc_idx], total);
 	return ret;
 }
 
@@ -426,6 +611,7 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	mode = &crtc->state->adjusted_mode;
 
 	bw = _layering_get_frame_bw(crtc, mode);
+	mtk_crtc_init_hrt_usage(crtc);
 	mtk_disp_set_hrt_bw(mtk_crtc, bw);
 	DDPINFO("%s:pan_disp_set_hrt_bw: %u\n", caller, bw);
 }
@@ -583,7 +769,7 @@ int mtk_disp_hrt_cond_init(struct drm_crtc *crtc)
 	atomic_set(&mtk_crtc->qos_ctx->last_hrt_idx, 0);
 	mtk_crtc->qos_ctx->last_hrt_req = 0;
 	mtk_crtc->qos_ctx->last_mmclk_req_idx = 0;
-	mtk_crtc->qos_ctx->last_larb_hrt_req = 0;
+	mtk_crtc->qos_ctx->last_larb_hrt_max = 0;
 
 	if (drm_crtc_index(crtc) == 0 && mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_MMQOS_SUPPORT))

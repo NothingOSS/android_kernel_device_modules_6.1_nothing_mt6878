@@ -427,6 +427,7 @@ static atomic_t g_oddmr_sof_irq_available = ATOMIC_INIT(0);
 static atomic_t g_oddmr_dmr_hrt_done = ATOMIC_INIT(0);
 static atomic_t g_oddmr_dbi_hrt_done = ATOMIC_INIT(0);
 static atomic_t g_oddmr_od_hrt_done = ATOMIC_INIT(0);
+
 /* 0: instant trigger, 1: delay trigger 2: no trigger*/
 static uint32_t g_od_check_trigger = 1;
 /*
@@ -3462,12 +3463,18 @@ void mtk_oddmr_set_pq_dirty(void)
 
 int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 {
-	int sum = 0;
+	int sum = 0, ret = 0;
 	unsigned long long res_ratio = 1000;
 	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
 
-	if (!default_comp || !g_oddmr_priv)
-		return 0;
+	if (!default_comp || !g_oddmr_priv) {
+		ret = 0;
+		goto out;
+	}
+
+	mtk_crtc = default_comp->mtk_crtc;
+	priv = mtk_crtc->base.dev->dev_private;
 	if (is_oddmr_od_support || is_oddmr_dmr_support || is_oddmr_dbi_support) {
 		if (atomic_read(&g_oddmr_od_hrt_done) == 2)
 			atomic_set(&g_oddmr_od_hrt_done, 1);
@@ -3494,7 +3501,6 @@ int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 			g_oddmr1_priv->dmr_enable = g_oddmr1_priv->dmr_enable_req;
 			g_oddmr1_priv->dbi_enable = g_oddmr1_priv->dbi_enable_req;
 		}
-		mtk_crtc = default_comp->mtk_crtc;
 		if (mtk_crtc->scaling_ctx.scaling_en) {
 			res_ratio =
 				((unsigned long long)mtk_crtc->scaling_ctx.lcm_width *
@@ -3508,12 +3514,44 @@ int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 				g_oddmr_priv->od_enable, g_oddmr_priv->dmr_enable, sum, res_ratio);
 		sum = sum * res_ratio / 1000;
 	} else {
-		return 0;
+		ret = 0;
+		goto out;
 	}
-	if (g_oddmr_hrt_en == false)
-		return 0;
+	if (g_oddmr_hrt_en == false) {
+		ret = 0;
+		goto out;
+	}
+
 	*oddmr_hrt += sum;
-	return sum;
+	ret = sum;
+
+out:
+	if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
+		if (default_comp->mtk_crtc->is_dual_pipe) {
+			default_comp->larb_hrt_weight = *oddmr_hrt / 2;
+			oddmr1_default_comp->larb_hrt_weight = *oddmr_hrt / 2;
+		} else
+			default_comp->larb_hrt_weight = *oddmr_hrt;
+		DDPDBG_HBL("%s,oddmr comp:%u,w:%u,oddmr_hrt:%u,sum:%u\n",
+			__func__, default_comp->id,
+			default_comp->larb_hrt_weight, *oddmr_hrt, sum);
+	}
+
+	return ret;
+}
+
+void mtk_oddmr_update_larb_hrt_state(void)
+{
+	if (default_comp && g_oddmr_priv) {
+		atomic_set(&g_oddmr_priv->hrt_weight, default_comp->larb_hrt_weight);
+		if (!default_comp->mtk_crtc->is_dual_pipe)
+			return;
+	}
+
+	if (oddmr1_default_comp && g_oddmr1_priv)
+		atomic_set(&g_oddmr1_priv->hrt_weight,
+			oddmr1_default_comp->larb_hrt_weight);
 }
 
 void mtk_oddmr_od_sec_bypass(uint32_t sec_on, struct cmdq_pkt *handle)
@@ -3737,6 +3775,54 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (!force_update)
 				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dbir;
 		}
+	}
+		break;
+	case PMQOS_GET_HRT_BW:
+	{
+		struct mtk_drm_private *priv =
+			comp->mtk_crtc->base.dev->dev_private;
+		struct mtk_larb_bw *data = (struct mtk_larb_bw *)params;
+		unsigned int bw_base = 0;
+		int calc = !!data->larb_bw;
+
+		if (IS_ERR_OR_NULL(data)) {
+			DDPMSG("%s, invalid larb data\n", __func__);
+			break;
+		}
+
+		data->larb_id = -1;
+		data->larb_bw = 0;
+		if (!comp || !mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT) ||
+			!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+			break;
+
+		if (comp->larb_num == 1)
+			data->larb_id = comp->larb_id;
+		else if (comp->larb_num > 1)
+			data->larb_id = comp->larb_ids[0];
+
+		if (data->larb_id < 0) {
+			DDPMSG("%s, invalid larb id, num:%d\n", __func__,
+				comp->larb_num);
+			break;
+		}
+
+		if (calc) {
+			bw_base = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
+			if (default_comp && g_oddmr_priv &&
+				comp->id == default_comp->id)
+				data->larb_bw = atomic_read(
+					&g_oddmr_priv->hrt_weight) * bw_base / 400;
+			else if (oddmr1_default_comp && g_oddmr1_priv &&
+				comp->id == oddmr1_default_comp->id)
+				data->larb_bw = atomic_read(
+					&g_oddmr1_priv->hrt_weight) * bw_base / 400;
+		}
+		DDPDBG_HBL("%s,oddmr comp:%u,larb:%d,bw:%u,calc:%d,bw_base:%u\n",
+			__func__, comp->id, data->larb_id, data->larb_bw,
+			calc, bw_base);
 	}
 		break;
 	case PMQOS_SET_HRT_BW:

@@ -211,6 +211,7 @@ struct mtk_plane_comp_state {
 	uint32_t lye_id;
 	int32_t ext_lye_id;
 	uint32_t layer_caps;
+	uint32_t layer_hrt_weight;
 };
 
 struct mtk_plane_state {

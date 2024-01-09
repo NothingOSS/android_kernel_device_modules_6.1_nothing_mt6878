@@ -233,6 +233,7 @@ struct mtk_drm_private {
 	unsigned int rsz_in_max[2];
 
 	struct icc_path *hrt_bw_request, *hrt_by_larb, *dp_hrt_by_larb;
+	struct mtk_larb_hrt_req larbs_hrt_req[MAX_HRT_LARB_NR];
 
 	struct pinctrl *pctrl;
 

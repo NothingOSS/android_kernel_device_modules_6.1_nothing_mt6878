@@ -74,6 +74,7 @@ void mtk_vidle_pq_power_put(const char *caller);
 void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop);
 void mtk_vidle_set_all_flag(unsigned int en, unsigned int stop);
 void mtk_vidle_get_all_flag(unsigned int *en, unsigned int *stop);
+bool mtk_vidle_support_hrt_bw(void);
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb);
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb);
 void mtk_vidle_dvfs_set(const u8 level);

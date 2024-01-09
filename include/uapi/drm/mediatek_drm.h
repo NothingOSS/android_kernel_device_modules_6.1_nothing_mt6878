@@ -643,6 +643,7 @@ struct drm_mtk_layer_config {
 	__u8 compress;
 	__u8 secure;
 	__u8 wcg_force_gpu; /* drv internal use */
+	__u32 layer_hrt_weight; /* drv internal use */
 };
 
 struct wb_frame_info {

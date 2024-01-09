@@ -116,7 +116,7 @@ static unsigned int sb_backlight;
 
 struct timespec64 atomic_flush_tval;
 struct timespec64 rdma_sof_tval;
-
+static bool hrt_usage_status;
 bool hdr_en;
 static const char * const crtc_gce_client_str[] = {
 	DECLARE_GCE_CLIENT(DECLARE_STR)};
@@ -2789,10 +2789,12 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		if (comp->id == plane_state->comp_state.comp_id) {
-			DDPINFO("%s i:%d, ovl_id:%d lye_id:%d, ext_lye_id:%d\n", __func__, i,
+			DDPINFO("%s i:%d,ovl:%d,lye:%d,ext:%d,w:%u,fmt:0x%x\n", __func__, i,
 				plane_state->comp_state.comp_id,
 				plane_state->comp_state.lye_id,
-				plane_state->comp_state.ext_lye_id);
+				plane_state->comp_state.ext_lye_id,
+				plane_state->comp_state.layer_hrt_weight,
+				plane_state->pending.format);
 			return comp;
 		}
 
@@ -3438,10 +3440,11 @@ void _mtk_crtc_atmoic_addon_module_disconnect(
 			crtc, ddp_mode, lye_state, cmdq_handle);
 }
 
-static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
+static void mtk_crtc_update_hrt_usage(struct drm_crtc *crtc, bool hrt_valid)
 {
 	struct drm_plane *plane = NULL;
 	unsigned int plane_mask = 0;
+	struct mtk_drm_private *priv = NULL;
 
 	if (crtc && crtc->state) {
 		plane_mask = crtc->state->plane_mask;
@@ -3455,12 +3458,48 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 			to_mtk_plane_state(plane->state);
 		struct mtk_ddp_comp *comp = mtk_crtc_get_plane_comp(crtc, plane_state);
 
-		DDPINFO("%s ovl_id:%d lye_id:%d, ext_lye_id:%d\n", __func__,
-					plane_state->comp_state.comp_id,
-					plane_state->comp_state.lye_id,
-					plane_state->comp_state.ext_lye_id);
+		DDPINFO("%s ovl:%d,lye:%d,ext:%d,w:%u,fmt:0x%x\n", __func__,
+			plane_state->comp_state.comp_id,
+			plane_state->comp_state.lye_id,
+			plane_state->comp_state.ext_lye_id,
+			plane_state->comp_state.layer_hrt_weight,
+			plane_state->pending.format);
 
 		mtk_ddp_comp_io_cmd(comp, NULL, OVL_PHY_USAGE, plane_state);
+	}
+
+	priv = crtc->dev->dev_private;
+	if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
+		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+
+		mtk_drm_update_dal_weight_state();
+		mtk_oddmr_update_larb_hrt_state();
+		if (hrt_valid)
+			hrt_usage_status = true;
+		else
+			mtk_crtc->usage_ovl_weight[0] = 4 * 114;//bubble:114%
+	}
+}
+
+void mtk_crtc_init_hrt_usage(struct drm_crtc *crtc)
+{
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+
+	if (!crtc)
+		return;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	priv = crtc->dev->dev_private;
+	if (!priv || !mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+		return;
+
+	if (!hrt_usage_status) {
+		memset(mtk_crtc->usage_ovl_weight, 0,
+			sizeof(mtk_crtc->usage_ovl_weight));
+		mtk_crtc->usage_ovl_weight[0] = 4 * 114;//bubble:114%
 	}
 }
 
@@ -4793,20 +4832,20 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 
 		larb_bw = mtk_disp_get_larb_hrt_bw(mtk_crtc);
 
-		if (larb_bw > mtk_crtc->qos_ctx->last_larb_hrt_req) {
+		if (larb_bw > mtk_crtc->qos_ctx->last_larb_hrt_max) {
 			DDPINFO("mtk_disp_set_per_larb_hrt_bw = %d\n", larb_bw);
 			mtk_disp_set_per_larb_hrt_bw(mtk_crtc, larb_bw);
 
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_LARB_HRT),
 			       NO_PENDING_HRT, ~0);
-		} else if (larb_bw < mtk_crtc->qos_ctx->last_larb_hrt_req) {
+		} else if (larb_bw < mtk_crtc->qos_ctx->last_larb_hrt_max) {
 			DDPINFO("cmdq_pkt_write larb hrt = %d\n", larb_bw);
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_LARB_HRT),
 				       larb_bw, ~0);
 		}
-		mtk_crtc->qos_ctx->last_larb_hrt_req = larb_bw;
+		mtk_crtc->qos_ctx->last_larb_hrt_max = larb_bw;
 	}
 
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
@@ -6053,7 +6092,7 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 	int index = drm_crtc_index(crtc);
 	int crtc_mask = 0x1 << index;
 	unsigned int prop_lye_idx;
-	unsigned int pan_disp_frame_weight = 4;
+	unsigned int pan_disp_frame_weight = 4 * 114; //bubble:114%
 	bool hrt_valid = false;
 	int sphrt_enable;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -6114,15 +6153,17 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 				mtk_crtc_atomic_ddp_config(crtc, old_mtk_state, cmdq_handle);
 
 			if (index == 0 || sphrt_enable) {
+				hrt_valid = lyeblob_ids->hrt_valid;
 
 				if (mtk_drm_helper_get_opt(mtk_drm->helper_opt,
 						MTK_DRM_OPT_MMQOS_SUPPORT)) {
 					memset(mtk_crtc->usage_ovl_fmt, 0,
 						sizeof(mtk_crtc->usage_ovl_fmt));
-					mtk_crtc_update_ovl_hrt_usage(crtc);
+					memset(mtk_crtc->usage_ovl_weight, 0,
+						sizeof(mtk_crtc->usage_ovl_weight));
+					mtk_crtc_update_hrt_usage(crtc, hrt_valid);
 				}
 
-				hrt_valid = lyeblob_ids->hrt_valid;
 				if (hrt_valid == true) {
 					mtk_crtc_update_hrt_state(
 						crtc, lyeblob_ids->frame_weight,
@@ -6163,11 +6204,17 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 	}
 	/*set_hrt_bw for pan display ,set 4 for two RGB layer*/
 	if ((index == 0 || mtk_crtc->path_data->is_discrete_path) && hrt_valid == false) {
-		if (mtk_drm_helper_get_opt(mtk_drm->helper_opt, MTK_DRM_OPT_HRT))
+		if (mtk_drm_helper_get_opt(mtk_drm->helper_opt, MTK_DRM_OPT_HRT)) {
 			DDPMSG("%s frame:%u correct invalid hrt to:%u, mode:%llu->%llu\n",
 				__func__, prop_lye_idx, pan_disp_frame_weight,
 				old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 				crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+			if (mtk_drm_helper_get_opt(mtk_drm->helper_opt,
+					MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
+				memset(mtk_crtc->usage_ovl_fmt, 0, sizeof(mtk_crtc->usage_ovl_fmt));
+				mtk_crtc->usage_ovl_weight[0] = pan_disp_frame_weight;
+			}
+		}
 		/*
 		 * prop_lye_idx is 0 when suspend. Update display mode to avoid
 		 * the dsi params not sync with the mode of new crtc state.
@@ -6907,14 +6954,14 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 			DISP_SLOT_CUR_LARB_HRT);
 
 		if (cur_larb_hrt_bw != NO_PENDING_HRT &&
-			cur_larb_hrt_bw <= mtk_crtc->qos_ctx->last_larb_hrt_req) {
+			cur_larb_hrt_bw <= mtk_crtc->qos_ctx->last_larb_hrt_max) {
 
-			DDPINFO("CRTC%u cur:%u last:%u, release HRT to last_larb_hrt_req:%u\n",
-				crtc_idx, cur_larb_hrt_bw, mtk_crtc->qos_ctx->last_larb_hrt_req,
-				mtk_crtc->qos_ctx->last_larb_hrt_req);
+			DDPINFO("CRTC%u cur:%u last:%u, release HRT to last_larb_hrt_max:%u\n",
+				crtc_idx, cur_larb_hrt_bw, mtk_crtc->qos_ctx->last_larb_hrt_max,
+				mtk_crtc->qos_ctx->last_larb_hrt_max);
 
 				mtk_disp_set_per_larb_hrt_bw(mtk_crtc,
-						mtk_crtc->qos_ctx->last_larb_hrt_req);
+						mtk_crtc->qos_ctx->last_larb_hrt_max);
 
 			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_LARB_HRT) =
 					NO_PENDING_HRT;
@@ -11331,7 +11378,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	mtk_crtc_connect_default_path(mtk_crtc);
 
 	mtk_crtc->qos_ctx->last_hrt_req = 0;
-	mtk_crtc->qos_ctx->last_larb_hrt_req = 0;
+	mtk_crtc->qos_ctx->last_larb_hrt_max = 0;
 
 	/* 7. config ddp engine */
 	mtk_crtc_config_default_path(mtk_crtc);
@@ -11342,6 +11389,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 
 	/* 9. restore OVL setting */
 	memset(mtk_crtc->usage_ovl_fmt, 0, sizeof(mtk_crtc->usage_ovl_fmt));
+	memset(mtk_crtc->usage_ovl_weight, 0, sizeof(mtk_crtc->usage_ovl_weight));
 	if (!only_output)
 		mtk_crtc_restore_plane_setting(mtk_crtc);
 

@@ -1133,6 +1133,7 @@ struct mtk_drm_crtc {
 
 	bool pending_update_pq;
 	unsigned int backup_bypass_pq;
+	unsigned int usage_ovl_weight[OVL_LAYER_NR];
 };
 
 enum BL_GAMMA_GAIN {
@@ -1510,6 +1511,7 @@ void mtk_crtc_lye_addon_module_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_
 void mtk_crtc_addon_connector_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
 void mtk_crtc_default_path_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
 void mtk_crtc_rst_module(struct drm_crtc *crtc);
+void mtk_crtc_init_hrt_usage(struct drm_crtc *crtc);
 
 
 #endif /* MTK_DRM_CRTC_H */

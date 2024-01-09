@@ -93,6 +93,8 @@ EXPORT_SYMBOL(g_ovl_bwm_debug);
 bool g_vidle_apsrc_debug;
 EXPORT_SYMBOL(g_vidle_apsrc_debug);
 bool g_profile_log;
+bool g_hrt_by_larb_debug;
+bool g_hrt_by_larb_log;
 
 bool g_irq_log;
 unsigned int mipi_volt;
@@ -2871,6 +2873,16 @@ static void process_dbg_opt(const char *opt)
 		} else if (strncmp(opt + 6, "off", 3) == 0) {
 			g_trace_log = 0;
 		}
+	} else if (strncmp(opt, "hrt_by_larb_log:", 16) == 0) {
+		if (strncmp(opt + 16, "on", 2) == 0)
+			g_hrt_by_larb_log = 1;
+		else if (strncmp(opt + 16, "off", 3) == 0)
+			g_hrt_by_larb_log = 0;
+	} else if (strncmp(opt, "hrt_by_larb_debug:", 18) == 0) {
+		if (strncmp(opt + 18, "on", 2) == 0)
+			g_hrt_by_larb_debug = 1;
+		else if (strncmp(opt + 18, "off", 3) == 0)
+			g_hrt_by_larb_debug = 0;
 	} else if (strncmp(opt, "logger:", 7) == 0) {
 		if (strncmp(opt + 7, "on", 2) == 0) {
 			init_log_buffer();
