@@ -102,7 +102,7 @@ static void pmic_get_temp_convert_params(struct pmic_temp_info *data)
 	}
 }
 
-static int pmic_get_temp(struct thermal_zone_device *tz, int *temp)
+static int __used pmic_get_temp(struct thermal_zone_device *tz, int *temp)
 {
 	int val = 0;
 	int ret;

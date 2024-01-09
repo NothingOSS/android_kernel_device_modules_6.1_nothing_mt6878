@@ -143,7 +143,7 @@ static unsigned int lvts_temp_to_raw_v2(struct formula_coeff *co, unsigned int s
 	return msr_raw;
 }
 
-static int lvts_read_tc_msr_raw(unsigned int *msr_reg)
+static noinline int __used lvts_read_tc_msr_raw(unsigned int *msr_reg)
 {
 	if (msr_reg == 0)
 		return 0;
@@ -151,7 +151,7 @@ static int lvts_read_tc_msr_raw(unsigned int *msr_reg)
 	return readl(msr_reg) & MRS_RAW_MASK;
 }
 
-static int lvts_read_all_tc_temperature(struct lvts_data *lvts_data, bool in_isr)
+static int __used lvts_read_all_tc_temperature(struct lvts_data *lvts_data, bool in_isr)
 {
 	struct tc_settings *tc = lvts_data->tc;
 	unsigned int i, j, s_index, msr_raw;
