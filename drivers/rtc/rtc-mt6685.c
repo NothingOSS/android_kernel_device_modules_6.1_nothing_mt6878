@@ -45,6 +45,8 @@ static int mtk_rtc_write_trigger(struct mt6685_rtc *rtc);
 
 static int counter;
 
+static struct rtc_wkalrm p_alm;
+
 void power_on_mclk(struct mt6685_rtc *rtc)
 {
 	mutex_lock(&rtc->clk_lock);
@@ -706,6 +708,7 @@ static irqreturn_t mtk_rtc_irq_handler_thread(int irq, void *data)
 
 		/* power on */
 		if (now_time >= time - 1 && now_time <= time + 4) {
+			memset(&p_alm, 0, sizeof(struct rtc_wkalrm));
 			if (bootmode == KERNEL_POWER_OFF_CHARGING_BOOT ||
 				bootmode == LOW_POWER_OFF_CHARGING_BOOT) {
 				mtk_rtc_reboot(rtc);
@@ -1046,9 +1049,10 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 {
 	struct rtc_time *tm = &alm->time;
 	struct mt6685_rtc *rtc = dev_get_drvdata(dev);
-	int ret, result = 0;
+	int ret = 0, result = 0;
 	u16 data[RTC_OFFSET_COUNT];
 	ktime_t target;
+	time64_t p_now, scheduled;
 
 	power_on_mclk(rtc);
 
@@ -1073,13 +1077,26 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	case 3:
 		/* enable power-on alarm with logo */
 		mtk_rtc_save_pwron_time(rtc, true, tm);
+		memcpy(&p_alm, alm, sizeof(struct rtc_wkalrm));
 		break;
 	case 4:
 		/* disable power-on alarm */
 		mtk_rtc_save_pwron_time(rtc, false, tm);
+		memcpy(&p_alm, alm, sizeof(struct rtc_wkalrm));
 		break;
 	default:
 		break;
+	}
+
+	if (alm->enabled == 1) {
+		scheduled = rtc_tm_to_time64(tm);
+		if (p_alm.enabled == 3) {
+			p_now = rtc_tm_to_time64(&p_alm.time);
+			if (scheduled >= p_now) {
+				dev_notice(rtc->rtc_dev->dev.parent, " keep original\n");
+				goto exit;
+			}
+		}
 	}
 
 	ret = rtc_update_bits(rtc,
@@ -1122,13 +1139,13 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 				RTC_IRQ_EN_AL, RTC_IRQ_EN_AL);
 		if (ret < 0)
 			goto exit;
-		} else {
-			ret =  rtc_update_bits(rtc,
-					rtc->addr_base + RTC_IRQ_EN,
-					RTC_IRQ_EN_AL, 0);
-			if (ret < 0)
-				goto exit;
-		}
+	} else {
+		ret =  rtc_update_bits(rtc,
+				rtc->addr_base + RTC_IRQ_EN,
+			RTC_IRQ_EN_AL, 0);
+		if (ret < 0)
+			goto exit;
+	}
 
 	/* All alarm time register write to hardware after calling
 	 * mtk_rtc_write_trigger. This can avoid race condition if alarm
@@ -1146,6 +1163,8 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 		aee_kernel_warning("mt6685-rtc", "mt6685-rtc: set alarm time failed\n");
 #endif
 	}
+	if ((alm->enabled == 3) || (alm->enabled == 4))
+		rtc_update_irq(rtc->rtc_dev, 1, RTC_IRQF | RTC_AF);
 exit:
 	mutex_unlock(&rtc->lock);
 	power_down_mclk(rtc);
@@ -1182,7 +1201,7 @@ static int mtk_rtc_ioctl(struct device *dev, unsigned int cmd, unsigned long arg
 {
 	void __user *uarg = (void __user *) arg;
 	int err = 0;
-	struct rtc_wkalrm alm;
+	struct rtc_wkalrm alm = { 0 };
 
 	switch (cmd) {
 	case RTC_POFF_ALM_SET:
@@ -1414,6 +1433,83 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct mt6685_rtc *rtc = dev_get_drvdata(&pdev->dev);
+	u32 bbpu = 0;
+#ifdef SUPPORT_PWR_OFF_ALARM
+	struct rtc_time rtc_time_now = { 0 };
+	struct rtc_time rtc_time_alarm = { 0 };
+	ktime_t ktime_now;
+	ktime_t ktime_alarm;
+	bool is_pwron_alarm = false;
+#endif
+
+	/* disable PWREN */
+	power_on_mclk(rtc);
+	bbpu = RTC_BBPU_KEY;
+	ret = rtc_write(rtc, rtc->addr_base + RTC_BBPU, bbpu);
+
+	if (ret < 0)
+		dev_info(rtc->rtc_dev->dev.parent, "%s: %d error\n",
+							__func__, __LINE__);
+
+	ret = rtc_update_bits(rtc, rtc->addr_base + RTC_IRQ_EN,
+			RTC_IRQ_EN_AL, 0);
+	if (ret < 0)
+		dev_info(rtc->rtc_dev->dev.parent, "%s: %d error\n",
+							__func__, __LINE__);
+	mtk_rtc_write_trigger(rtc);
+	power_down_mclk(rtc);
+
+#ifdef SUPPORT_PWR_OFF_ALARM
+	is_pwron_alarm = mtk_rtc_is_pwron_alarm(rtc,
+				&rtc_time_now, &rtc_time_alarm);
+	if (is_pwron_alarm) {
+		rtc_time_now.tm_year += RTC_MIN_YEAR_OFFSET;
+		rtc_time_now.tm_mon--;
+		rtc_time_alarm.tm_year += RTC_MIN_YEAR_OFFSET;
+		rtc_time_alarm.tm_mon--;
+		pr_notice("now = %04d/%02d/%02d %02d:%02d:%02d\n",
+			rtc_time_now.tm_year + 1900,
+			rtc_time_now.tm_mon + 1,
+			rtc_time_now.tm_mday,
+			rtc_time_now.tm_hour,
+			rtc_time_now.tm_min,
+			rtc_time_now.tm_sec);
+		pr_notice("alarm = %04d/%02d/%02d %02d:%02d:%02d\n",
+			rtc_time_alarm.tm_year + 1900,
+			rtc_time_alarm.tm_mon + 1,
+			rtc_time_alarm.tm_mday,
+			rtc_time_alarm.tm_hour,
+			rtc_time_alarm.tm_min,
+			rtc_time_alarm.tm_sec);
+
+		ktime_now = rtc_tm_to_ktime(rtc_time_now);
+		ktime_alarm = rtc_tm_to_ktime(rtc_time_alarm);
+
+		if (ktime_after(ktime_alarm, ktime_now)) {
+			/* enable PWREN */
+			power_on_mclk(rtc);
+			bbpu = RTC_BBPU_KEY | RTC_BBPU_PWREN;
+			ret = rtc_write(rtc, rtc->addr_base + RTC_BBPU, bbpu);
+			if (ret < 0)
+				dev_info(rtc->rtc_dev->dev.parent,
+					"%s: %d error\n", __func__, __LINE__);
+
+			ret = rtc_update_bits(rtc, rtc->addr_base + RTC_IRQ_EN,
+						RTC_IRQ_EN_AL, RTC_IRQ_EN_AL);
+			if (ret < 0)
+				dev_info(rtc->rtc_dev->dev.parent,
+					"%s: %d error\n", __func__, __LINE__);
+			mtk_rtc_write_trigger(rtc);
+			power_down_mclk(rtc);
+
+			rtc_time_alarm.tm_year -= RTC_MIN_YEAR_OFFSET;
+			rtc_time_alarm.tm_mon++;
+			mtk_rtc_restore_alarm(rtc, &rtc_time_alarm);
+		} else
+			pr_notice("Alarm has happened before\n");
+	} else
+		pr_notice("No power-off alarm is set\n");
+#endif
 
 	if (rtc->data->chip_version == MT6685_SERIES) {
 		/*Normal sequence power off when PON falling*/
