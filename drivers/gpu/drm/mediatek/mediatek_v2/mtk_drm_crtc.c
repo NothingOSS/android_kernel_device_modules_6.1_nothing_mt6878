@@ -6919,9 +6919,10 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	crtc_idx = drm_crtc_index(crtc);
 	if (crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_ENABLE) {
 		for_each_comp_in_target_ddp_mode_bound(comp, mtk_crtc,
-				i, j, ddp_mode, 0)
+				i, j, ddp_mode, 0) {
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
+		}
 	}
 
 	if (priv->power_state == false)
