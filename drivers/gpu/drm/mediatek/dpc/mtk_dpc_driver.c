@@ -2256,8 +2256,8 @@ static int mtk_dpc_mmdvfs_notifier(const bool enable, const bool wdt)
 		g_priv->mmdvfs_settings_count > 0 &&
 		g_priv->mmdvfs_settings_addr) {
 		if (dpc_pm_ctrl(true)) {
-			goto out;
 			ret = -1;
+			goto out;
 		}
 		spin_lock_irqsave(&dpc_lock, flags);
 		mtk_dpc_mmdvfs_settings_backup();
