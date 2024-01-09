@@ -9895,7 +9895,14 @@ void mtk_crtc_connect_default_path(struct mtk_drm_crtc *mtk_crtc)
 	enum mtk_ddp_comp_id prev_id, next_id;
 	bool only_output;
 
-	only_output = (priv && priv->usage[drm_crtc_index(crtc)] == DISP_OPENING);
+	if (!priv) {
+		DDPPR_ERR("%s, priv is NULL\n", __func__);
+		return;
+	}
+
+	mutex_lock(&priv->path_modify_lock);
+
+	only_output = (priv->usage[drm_crtc_index(crtc)] == DISP_OPENING);
 	/* connect path */
 	for_each_comp_in_crtc_path_bound(comp, mtk_crtc, i, j, 1) {
 		struct mtk_ddp_comp *tmp_comp;
@@ -9956,6 +9963,8 @@ void mtk_crtc_connect_default_path(struct mtk_drm_crtc *mtk_crtc)
 	/* if VDO mode, enable mutex by CPU here */
 	if (!mtk_crtc_is_frame_trigger_mode(crtc))
 		mtk_disp_mutex_enable(mtk_crtc->mutex[0]);
+
+	mutex_unlock(&priv->path_modify_lock);
 }
 
 void mtk_crtc_init_plane_setting(struct mtk_drm_crtc *mtk_crtc)
@@ -10940,6 +10949,14 @@ void mtk_crtc_disconnect_default_path(struct mtk_drm_crtc *mtk_crtc)
 	int i, j;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_ddp_comp *comp;
+	struct mtk_drm_private *priv = (crtc && crtc->dev) ? crtc->dev->dev_private : NULL;
+
+	if (!priv) {
+		DDPPR_ERR("%s, priv is NULL\n", __func__);
+		return;
+	}
+
+	mutex_lock(&priv->path_modify_lock);
 
 	/* if VDO mode, disable mutex by CPU here */
 	if (!mtk_crtc_is_frame_trigger_mode(crtc))
@@ -10951,6 +10968,9 @@ void mtk_crtc_disconnect_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 		tmp_comp = mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, i, j + 1);
 		next_comp_id = tmp_comp ? tmp_comp->id : DDP_COMPONENT_ID_MAX;
+		DDPINFO("%s, %s --> %s\n", __func__,
+			mtk_dump_comp_str(comp),
+			mtk_dump_comp_str_id(next_comp_id));
 		mtk_ddp_remove_comp_from_path(mtk_crtc,
 			comp->id, next_comp_id);
 	}
@@ -10993,6 +11013,8 @@ void mtk_crtc_disconnect_default_path(struct mtk_drm_crtc *mtk_crtc)
 				comp->id);
 		}
 	}
+
+	mutex_unlock(&priv->path_modify_lock);
 }
 
 #ifndef DRM_CMDQ_DISABLE

@@ -256,6 +256,7 @@ struct mtk_drm_private {
 	atomic_t need_recover;
 
 	struct mutex cmdq_prepare_instr_lock;
+	struct mutex path_modify_lock;
 
 	unsigned int seg_id;
 	unsigned int boot_mode;
