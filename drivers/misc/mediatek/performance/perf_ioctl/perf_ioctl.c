@@ -419,6 +419,8 @@ static long device_ioctl(struct file *filp,
 		if (perfctl_copy_from_user(msgKM_SBE, msgUM_SBE,
 					sizeof(struct _FPSGO_SBE_PACKAGE))) {
 			ret = -EFAULT;
+			pr_debug(TAG "%s %d %x: perfctl_copy_from_user ret=%ld\n",
+				__FILE__, __LINE__, cmd, ret);
 			goto ret_ioctl;
 		}
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
