@@ -68,19 +68,24 @@ int notify_vow_init_event(struct notifier_block *nb, unsigned long event, void *
 int notify_vow_ipi_send_event(struct notifier_block *nb, unsigned long event, void *v)
 {
 	int status = NOTIFY_STOP;//NOTIFY_DONE; //default don't care it.
+	int ipi_ret;
 
 	if (event == NOTIFIER_VOW_IPI_SEND) {
 		struct vow_sound_soc_ipi_send_info *vow_ipi_info;
 
 		vow_ipi_info = (struct vow_sound_soc_ipi_send_info *)v;
-		pr_debug("%s(), vow received notify ipi send event.\n", __func__);
-		if (vow_ipi_send(vow_ipi_info->msg_id,
-				 vow_ipi_info->payload_len,
-				 vow_ipi_info->payload,
-				 vow_ipi_info->need_ack))
+		/*pr_debug("%s(), vow received notify ipi send event.\n", __func__);*/
+		ipi_ret = vow_ipi_send(vow_ipi_info->msg_id,
+				       vow_ipi_info->payload_len,
+				       vow_ipi_info->payload,
+				       vow_ipi_info->need_ack);
+		if (ipi_ret == IPI_SCP_SEND_PASS)
 			status = NOTIFY_STOP;
-		else
+		else {
+			pr_debug("%s(), vow ipi send[%d] ret = %d.\n",
+				 __func__, vow_ipi_info->msg_id, ipi_ret);
 			status = NOTIFY_BAD;
+		}
 	}
 	return status;
 }
