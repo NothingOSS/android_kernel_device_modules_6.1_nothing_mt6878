@@ -42,7 +42,7 @@ static void timer_inst_spect_update_func(struct timer_list *timer)
 	mbraink_update_pmu_inst_spec();
 	ret = mod_timer(timer, jiffies + CPU_INST_SPEC_UPDATE_INTEVAL);
 	if (ret)
-		pr_notice("timer_inst_spec fired failed!\n");
+		pr_notice("%s: mod timer_inst_spec, ret: %d\n", __func__, ret);
 }
 
 void init_pmu_keep_data(void)
@@ -54,12 +54,11 @@ void init_pmu_keep_data(void)
 	for (i = 0; i < num_possible_cpus(); i++)
 		per_cpu(cpu_last_inst_spec, i) = 0;
 
-	timer_setup(&timer_inst_spec, timer_inst_spect_update_func, 0);
 	ret = mod_timer(&timer_inst_spec, jiffies + CPU_INST_SPEC_UPDATE_INTEVAL);
 	if (ret)
-		pr_notice("timer_inst_spec fired failed!\n");
+		pr_notice("%s: mod timer_inst_spec, ret: %d\n", __func__, ret);
 	else
-		pr_info("-- %s: setup timer: %lu for pmu_inst_spec--\n", __func__, jiffies);
+		pr_info("%s: mod timer_inst_spec, ret: %d\n", __func__, ret);
 #else
 	pr_info("%s: not enable do nothing\n", __func__);
 #endif
@@ -70,11 +69,11 @@ void uninit_pmu_keep_data(void)
 #if IS_ENABLED(CONFIG_MTK_LPM_MT6989)
 	int ret = 0;
 
-	ret = del_timer(&timer_inst_spec);
+	ret = del_timer_sync(&timer_inst_spec);
 	if (ret)
-		pr_notice("timer_inst_spec fired failed!\n");
+		pr_notice("%s: delete timer_inst_spec, ret: %d\n", __func__, ret);
 	else
-		pr_info("-- %s: delete timer: %lu for pmu_inst_spec--\n", __func__, jiffies);
+		pr_info("%s: delete timer_inst_spec, ret: %d\n", __func__, ret);
 #else
 	pr_info("%s: not enable do nothing\n", __func__);
 #endif
@@ -190,6 +189,7 @@ int mbraink_pmu_init(void)
 	struct platform_device *pdev = NULL;
 	struct resource *csram_res = NULL;
 
+	timer_setup(&timer_inst_spec, timer_inst_spect_update_func, 0);
 	pr_notice("mbraink pmu init.\n");
 	csram_base = NULL;
 	pmu_tcm_base = NULL;
@@ -244,6 +244,7 @@ int mbraink_pmu_init(void)
 			goto get_base_failed;
 		}
 	}
+
 get_base_failed:
 	return ret;
 }
