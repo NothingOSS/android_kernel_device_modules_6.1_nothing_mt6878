@@ -6107,8 +6107,10 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 
 		if (comp == NULL)
 			return;
-		DDPINFO("%s, DSI_COMP_DISABLE\n", __func__);
+
 		mtk_ddp_comp_io_cmd(comp, NULL, DSI_COMP_DISABLE, NULL);
+		if (mtk_crtc_with_trigger_loop(crtc))
+			mtk_crtc_stop_trig_loop(crtc);
 	}
 
 	mutex_lock(&mtk_drm->lyeblob_list_mutex);
@@ -9041,6 +9043,11 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 	lop.idx = var1;
 	rop.reg = false;
 	rop.idx = var2;
+
+	if ((priv->data->need_seg_id == true) &&
+		(mtk_disp_check_segment(mtk_crtc, priv) == false) &&
+		(priv->data->mmsys_id == MMSYS_MT6878))
+		return;
 
 	if (mtk_crtc->trig_loop_cmdq_handle) {
 		DDPDBG("exist trigger loop, skip %s\n", __func__);
