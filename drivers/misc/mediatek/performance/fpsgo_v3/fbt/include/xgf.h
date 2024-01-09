@@ -161,5 +161,7 @@ struct xgf_thread_loading fbt_xgff_list_loading_add(int pid,
 	unsigned long long buffer_id, unsigned long long ts);
 long fbt_xgff_get_loading_by_cluster(struct xgf_thread_loading *ploading,
 	unsigned long long ts, unsigned int prefer_cluster, int skip, long *area);
+void xgf_set_policy_cmd_with_lock(int cmd, int value, int tgid,
+	unsigned long long ts, int op);
 
 #endif

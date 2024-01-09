@@ -1149,6 +1149,8 @@ void fpsgo_frame_end(struct render_info *f_render,
 		f_render->hwui);
 	switch_thread_max_fps(f_render->pid, 1);
 
+	// Filter ui process dep-list.
+	xgf_set_policy_cmd_with_lock(1, 1, f_render->tgid, frame_end_time, 1);
 	fpsgo_comp2xgf_qudeq_notify(f_render->pid, f_render->buffer_id,
 		&raw_runtime, &running_time, &enq_running_time,
 		frame_start_time, frame_end_time,

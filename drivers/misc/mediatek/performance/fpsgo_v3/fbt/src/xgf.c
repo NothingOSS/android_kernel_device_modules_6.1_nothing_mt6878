@@ -401,6 +401,14 @@ static void xgf_set_policy_cmd(int cmd, int value, int tgid,
 	}
 }
 
+void xgf_set_policy_cmd_with_lock(int cmd, int value, int tgid,
+	unsigned long long ts, int op)
+{
+	mutex_lock(&xgf_main_lock);
+	xgf_set_policy_cmd(cmd, value, tgid, ts, op);
+	mutex_unlock(&xgf_main_lock);
+}
+
 int set_xgf_spid_list(char *proc_name,
 		char *thrd_name, int action)
 {
