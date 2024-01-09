@@ -22,6 +22,7 @@
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "sched_sys_common.h"
+#include <sugov/cpufreq.h>
 
 #define CREATE_TRACE_POINTS
 
@@ -32,6 +33,7 @@ static struct attribute *sched_ctl_attrs[] = {
 	&sched_target_margin_attr.attr,
 	&sched_target_margin_low_attr.attr,
 	&sched_util_est_ctrl.attr,
+	&sched_am_ctrl.attr,
 #endif
 	NULL,
 };
@@ -169,6 +171,30 @@ struct kobj_attribute *attr, char *buf)
 	return len;
 }
 
+static ssize_t show_sched_am_ctrl(struct kobject *kobj,
+					struct kobj_attribute *attr,
+					char *buf)
+{
+	unsigned int len = 0;
+	unsigned int max_len = 4096;
+
+	len = snprintf(buf, max_len, "%d\n",  get_am_ctrl());
+	return len;
+}
+
+ssize_t store_sched_am_ctrl(struct kobject *kobj, struct kobj_attribute *attr,
+const char __user *buf, size_t cnt)
+{
+	int am_ctrl;
+
+	if (kstrtouint(buf, 10, &am_ctrl))
+		return -EINVAL;
+	if (am_ctrl <0 || am_ctrl > 9)
+		return -1;
+	set_am_ctrl(am_ctrl);
+	return cnt;
+}
+
 struct kobj_attribute sched_turn_point_freq_attr =
 __ATTR(sched_turn_point_freq, 0640, show_sched_turn_point_freq, store_sched_turn_point_freq);
 struct kobj_attribute sched_target_margin_attr =
@@ -177,3 +203,5 @@ struct kobj_attribute sched_target_margin_low_attr =
 __ATTR(sched_target_margin_low, 0640, show_sched_target_margin, store_sched_target_margin_low);
 struct kobj_attribute sched_util_est_ctrl =
 __ATTR(sched_util_est_ctrl, 0640, show_sched_util_est_ctrl, store_sched_util_est_ctrl);
+struct kobj_attribute sched_am_ctrl =
+__ATTR(am_ctrl, 0640, show_sched_am_ctrl, store_sched_am_ctrl);

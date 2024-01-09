@@ -250,6 +250,7 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_RESET_GAS_THR			_IOW('g', 55,  int)
 #define EAS_SET_GAS_MARG_THR		_IOW('g', 56,  struct gas_margin_thr)
 #define EAS_RESET_GAS_MARG_THR		_IOW('g', 57,  int)
+#define EAS_SET_AM_CTRL			    _IOW('g', 60,  int)
 
 
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)

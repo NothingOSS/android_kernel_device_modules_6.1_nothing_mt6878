@@ -34,6 +34,7 @@ extern struct kobj_attribute sched_turn_point_freq_attr;
 extern struct kobj_attribute sched_target_margin_attr;
 extern struct kobj_attribute sched_target_margin_low_attr;
 extern struct kobj_attribute sched_util_est_ctrl;
+extern struct kobj_attribute sched_am_ctrl;
 extern int set_util_est_ctrl(bool enable);
 
 #endif

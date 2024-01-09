@@ -740,6 +740,11 @@ static long eas_ioctl_impl(struct file *filp,
 		if(reset_grp_awr_margin() == -1)
 			return -1;
 		break;
+	case EAS_SET_AM_CTRL:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		 set_am_ctrl(val);
+		break;
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",
 			__FILE__, __LINE__, cmd);
