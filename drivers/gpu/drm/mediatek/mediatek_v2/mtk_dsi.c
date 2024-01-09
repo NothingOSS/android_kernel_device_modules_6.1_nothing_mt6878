@@ -302,10 +302,6 @@
 #define BUF_PREURGENT_MODE BIT(21)
 #define DSI_BUF_CON1 0x404
 
-#define PREURGENT_NO_SUPPORT	0
-#define PREURGENT_SUPPORT_VDO	1
-#define PREURGENT_SUPPORT_CMD	2
-
 #define DSI_TX_BUF_RW_TIMES 0x410
 #define DSI_BUF_SODI_HIGH 0x414
 #define DSI_BUF_SODI_LOW 0x418
@@ -2078,65 +2074,8 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	writel(rw_times, dsi->regs + DSI_TX_BUF_RW_TIMES);
 	mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_BUF_EN, BUF_BUF_EN);
 
-	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
-		(dsi->driver_data->support_pre_urgent & PREURGENT_SUPPORT_CMD)) {
-		/* absolute timer mode for cmd mode */
-		u64 buf_preurgent_high = 0;
-		u32 prefetch_time = 0;
-		struct drm_display_mode *mode = mtk_crtc_get_display_mode_by_comp(__func__,
-						&mtk_crtc->base, comp, false);
-		struct mtk_panel_dsc_params *dsc_params;
-		unsigned int compress_rate;
-		unsigned int bubble_rate = dsi->driver_data->bubble_rate ?
-			(dsi->driver_data->bubble_rate) : 110;
-		int vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-		u64 update_frame_tim;
-		u64 pix_data_size = 0;
-		u64 buf_preurgent_high_cmd_ref = 300;
-		u32 trig_loop_tim_estimate = 200;
-		u32 hw_cfg_tim_estimate = 200;
-		u32 buf_output_valid_theshold = 25;
-
-		dsc_params = &dsi->ext->params->dsc_params;
-		compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
-		if (mode)
-			pix_data_size = (u64)mode->hdisplay * mode->vdisplay * dsi_buf_bpp * 8;
-		update_frame_tim = bubble_rate * pix_data_size / (compress_rate *
-					dsi->lanes * dsi->data_rate);
-		if (vrefresh != 0)
-			prefetch_time = 1000000 / vrefresh - trig_loop_tim_estimate -
-				update_frame_tim - hw_cfg_tim_estimate;	// Unit: us
-		if (prefetch_time - buf_output_valid_theshold > 0 &&
-			prefetch_time - buf_output_valid_theshold >= buf_output_valid_theshold) {
-			buf_preurgent_high = prefetch_time - buf_output_valid_theshold;
-		} else if (prefetch_time - buf_output_valid_theshold > 0 &&
-					prefetch_time - buf_output_valid_theshold < buf_output_valid_theshold) {
-			buf_preurgent_high = prefetch_time - buf_output_valid_theshold;
-			DDPPR_ERR("prefetch_time is too small! urgent signal will usually be sent\n");
-		} else {
-			buf_preurgent_high = 0;
-			DDPPR_ERR("prefetch_time is too small to get enough data!!!\n");
-		}
-
-		/* set buf_preurgent_high_cmd_ref to prefetch data earlier */
-		if (buf_preurgent_high > buf_preurgent_high_cmd_ref)
-			buf_preurgent_high = buf_preurgent_high_cmd_ref;
-		buf_preurgent_high = buf_preurgent_high * mmsys_clk / 64;
-
-		if (mode && vrefresh != 0) {
-			mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_PREURGENT_MODE, 1);
-			writel(buf_preurgent_high, dsi->regs + DSI_BUF_PREURGENT_HIGH);
-			mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_VDE_BLOCK_URGENT, 0);
-			mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_PREURGENT_EN, BUF_PREURGENT_EN);
-		} else {
-			mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_PREURGENT_MODE, 0);
-			writel(0, dsi->regs + DSI_BUF_PREURGENT_HIGH);
-			mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_VDE_BLOCK_URGENT, 1);
-			mtk_dsi_mask(dsi, DSI_BUF_CON0, BUF_PREURGENT_EN, 0);
-			DDPPR_ERR("mode/vrefresh err, disable preurgent\n");
-		}
-	} else if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
-		(dsi->driver_data->support_pre_urgent & PREURGENT_SUPPORT_VDO)) {
+	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
+		dsi->driver_data->support_pre_urgent) {
 		/* line counter mode for vdo mode */
 		u32 line_time_ns;
 		u64 buf_preurgent_high;
@@ -11483,7 +11422,7 @@ static const struct mtk_dsi_driver_data mt6878_dsi_driver_data = {
 	.need_bypass_shadow = true,
 	.need_wait_fifo = false,
 	.dsi_buffer = true,
-	.support_pre_urgent = PREURGENT_SUPPORT_VDO,
+	.support_pre_urgent = true,
 	.vm_rgb_time_interval = true,
 	.disable_te_timeout_by_set_cnt = true,
 	.buffer_unit = 32,
