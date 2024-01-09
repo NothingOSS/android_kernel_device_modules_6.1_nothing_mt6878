@@ -69,8 +69,6 @@ static struct mtk_apu *g_apu;
 static int current_ipi_handler_id;
 
 static bool pwr_profile_polling_mode;
-static bool mbox_hdr_slots;
-static unsigned int mbox_hdr_slots_no;
 
 static inline void dump_mbox0_reg(struct mtk_apu *apu)
 {
@@ -553,25 +551,9 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 	int ret;
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 
-	if (apu->platdata->flags & F_APU_IPI_UT_SUPPORT) {
-		if (mbox_hdr_slots == true) {
-			status = mbox_hdr_slots_no;
-			dev_info(dev, "ststus (0x%x)\n", status);
-			if (status != ((1 << APU_MBOX_HDR_SLOTS) - 1))
-				dev_info(dev, "WARN abnormal isr call(0x%x)(UT)\n", status);
-
-			mbox_hdr_slots = false;
-		} else {
-			status = ioread32(apu->apu_mbox + 0xc4);
-			if (status != ((1 << APU_MBOX_HDR_SLOTS) - 1))
-				dev_info(dev, "WARN abnormal isr call(0x%x)\n", status);
-		}
-
-	} else {
-		status = ioread32(apu->apu_mbox + 0xc4);
-		if (status != ((1 << APU_MBOX_HDR_SLOTS) - 1))
-			dev_info(dev, "WARN abnormal isr call(0x%x)\n", status);
-	}
+	status = ioread32(apu->apu_mbox + 0xc4);
+	if (status != ((1 << APU_MBOX_HDR_SLOTS) - 1))
+		dev_info(dev, "WARN abnormal isr call(0x%x)\n", status);
 
 	ktime_get_ts64(&apu->intr_ts_begin);
 
@@ -873,7 +855,6 @@ enum {
 	CMD_UT_RANDOM,
 	CMD_GET_PWR_ON_OFF_TIME,
 	CMD_PWR_TIME_PROFILE_INTERNAL,
-	CMD_UT_IPI_OUTBOX_CHECK,
 	MAX_CMD_UT_ID,
 };
 
@@ -1292,14 +1273,6 @@ static int apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
 		d.data[0] = args[0];
 		ret = apu_ipi_ut_send(&d, false);
 		break;
-	case CMD_UT_IPI_OUTBOX_CHECK:
-		apu_ipi_ut_val = args[0];
-		d.cmd_id = cmd;
-		d.data[0] = args[0];
-		d.data[1] = args[1];
-		d.data[2] = args[2];
-		ret = apu_ipi_ut_send(&d, true);
-		break;
 	default:
 		pr_info("%s: unknown cmd %d\n", __func__, cmd);
 		ret = -EINVAL;
@@ -1308,7 +1281,7 @@ static int apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
 	return ret;
 }
 
-#define IPI_DBG_MAX_ARGS	(4)
+#define IPI_DBG_MAX_ARGS	(1)
 static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 				 size_t count, loff_t *f_pos)
 {
@@ -1321,7 +1294,6 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 	bool change_pwr_on_polling_dbg_mode = false;
 	bool ce_dbg_polling_dump_mode = false;
 	bool change_apusys_rv_trace_on = false;
-	bool change_mbox_hdr_slots = false;
 
 	/* to prevent integer overflow leading to undefined behavior */
 	if (count == UINT_MAX) {
@@ -1360,9 +1332,6 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		ce_dbg_polling_dump_mode = true;
 	} else if (strcmp(token, "apusys_rv_trace_on") == 0) {
 		change_apusys_rv_trace_on = true;
-	} else if (strcmp(token, "ut_ipi_outbox_check") == 0) {
-		cmd = CMD_UT_IPI_OUTBOX_CHECK;
-		change_mbox_hdr_slots = true;
 	} else {
 		ret = -EINVAL;
 		pr_info("%s: unknown ipi dbg cmd: %s\n", __func__, token);
@@ -1395,10 +1364,6 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		apu->apusys_rv_trace_on = args[0];
 		ret = count;
 		goto out;
-	} else if (change_mbox_hdr_slots) {
-		mbox_hdr_slots = true;
-		mbox_hdr_slots_no = args[0];
-		ret = count;
 	}
 
 	ret = apu_ipi_dbg_exec_cmd(cmd, args);
