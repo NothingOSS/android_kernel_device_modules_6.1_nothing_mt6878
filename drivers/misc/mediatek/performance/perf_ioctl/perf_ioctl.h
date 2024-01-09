@@ -62,7 +62,7 @@ struct _FPSGO_SBE_PACKAGE {
 	__u32 blc;
 	__u64 mask;
 	__u8 name[16];
-	__u8 specific_name[100];
+	__u8 specific_name[1000];
 	__s32 num;
 	__u32 mode;
 };

@@ -118,7 +118,7 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 
 	char name[16];
 	unsigned long mask;
-	char specific_name[100];
+	char specific_name[1000];
 	int num;
 	int mode;
 
@@ -988,7 +988,7 @@ int fpsgo_notify_frame_hint(int qudeq,
 	vpPush->identifier = 5566;
 	vpPush->mode = dep_mode;
 	if (dep_mode && dep_num > 0) {
-		memcpy(vpPush->specific_name, dep_name, 100);
+		memcpy(vpPush->specific_name, dep_name, 1000);
 		vpPush->num = dep_num;
 	} else
 		vpPush->num = 0;
@@ -1032,7 +1032,7 @@ int fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask,
 	vpPush->mask = mask;
 	vpPush->qudeq_cmd = start;
 	memcpy(vpPush->name, name, 16);
-	memcpy(vpPush->specific_name, specific_name, 100);
+	memcpy(vpPush->specific_name, specific_name, 1000);
 	vpPush->num = num;
 	fpsgo_queue_work(vpPush);
 
