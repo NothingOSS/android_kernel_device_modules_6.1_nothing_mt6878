@@ -596,7 +596,18 @@ static int mt6369_put_volsw(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int reg = 0;
 	int index = ucontrol->value.integer.value[0];
-	int ret;
+	int indexr = ucontrol->value.integer.value[1];
+	int ret = 0;
+
+	/* prevent hp_disable between L/R hp volume setting */
+	if (index == 0x1f) {
+		dev_info(priv->dev, "%s(), name %s, set index = %x, index fail, align R channel index = %x\n",
+		 __func__, kcontrol->id.name, index, indexr);
+
+		ucontrol->value.integer.value[0] = ucontrol->value.integer.value[1];
+		index = ucontrol->value.integer.value[0];
+	}
+
 
 	ret = mt6369_snd_soc_put_volsw(kcontrol, ucontrol);
 	if (ret < 0)
