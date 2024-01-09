@@ -4327,10 +4327,15 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_drm_crtc *mtk_crtc;
 		unsigned int force_update = 0; /* force_update repeat last qos BW */
 		unsigned int update_pending = 0;
+		unsigned int per_larb_peak_bw = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
+
+		/* per_larb_peak_bw decide MMQOS SRT report peak BW or not */
+		per_larb_peak_bw = mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_PER_LARB_PORT_PEAK);
 
 		mtk_crtc = comp->mtk_crtc;
 		crtc = &mtk_crtc->base;
@@ -4347,6 +4352,10 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
 		}
 
+		/* should skip PMQOS UPDATE in update_pending case if per_larb_peak_bw not enable */
+		if (update_pending && !per_larb_peak_bw)
+			break;
+
 		if (!force_update && !update_pending) {
 			mtk_crtc->total_srt += comp->qos_bw;
 			if (!IS_ERR_OR_NULL(comp->qos_req_other))
@@ -4355,32 +4364,49 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		/* process normal */
 		if (!force_update && comp->last_qos_bw == comp->qos_bw &&
-			comp->last_hrt_bw == comp->hrt_bw) {
+			 (!per_larb_peak_bw || (comp->last_hrt_bw == comp->hrt_bw))) {
 			if (IS_ERR(comp->qos_req_other) ||
 			    ((comp->last_qos_bw_other == comp->qos_bw_other) &&
-				    (comp->last_hrt_bw_other == comp->hrt_bw_other)))
+				(!per_larb_peak_bw ||
+					(comp->last_hrt_bw_other == comp->hrt_bw_other))))
 				break;
 			goto other;
 		}
-		if ((comp->last_hrt_bw <= comp->hrt_bw) ||
-				(update_pending && comp->last_hrt_bw > comp->hrt_bw)) {
-			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, comp->hrt_bw,
+		if (per_larb_peak_bw) {
+			if ((comp->last_hrt_bw <= comp->hrt_bw) ||
+					(update_pending && comp->last_hrt_bw > comp->hrt_bw)) {
+				__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw,
+					comp->hrt_bw, DISP_BW_NORMAL_MODE);
+				comp->last_qos_bw = comp->qos_bw;
+				comp->last_hrt_bw = comp->hrt_bw;
+			}
+		} else {
+			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
 						    DISP_BW_NORMAL_MODE);
 			comp->last_qos_bw = comp->qos_bw;
 			comp->last_hrt_bw = comp->hrt_bw;
 		}
 other:
 		if (!IS_ERR(comp->qos_req_other)) {
-			if ((comp->last_hrt_bw_other <= comp->hrt_bw_other) || (update_pending &&
-					comp->last_hrt_bw_other > comp->hrt_bw_other)) {
+			if (per_larb_peak_bw) {
+				if ((comp->last_hrt_bw_other <= comp->hrt_bw_other) ||
+						(update_pending &&
+						 comp->last_hrt_bw_other > comp->hrt_bw_other)) {
+					__mtk_disp_set_module_srt(comp->qos_req_other, comp->id,
+							comp->qos_bw_other, comp->hrt_bw_other,
+							DISP_BW_NORMAL_MODE);
+					comp->last_qos_bw_other = comp->qos_bw_other;
+					comp->last_hrt_bw_other = comp->hrt_bw_other;
+				}
+			} else {
 				__mtk_disp_set_module_srt(comp->qos_req_other,
-					comp->id, comp->qos_bw_other, comp->hrt_bw_other, DISP_BW_NORMAL_MODE);
+					comp->id, comp->qos_bw_other, 0, DISP_BW_NORMAL_MODE);
 				comp->last_qos_bw_other = comp->qos_bw_other;
 				comp->last_hrt_bw_other = comp->hrt_bw_other;
 			}
 		}
-		DDPINFO("update ovl qos bw to %u, %u peak %u %u\n",
-			comp->qos_bw, comp->qos_bw_other, comp->hrt_bw, comp->hrt_bw_other);
+		DDPINFO("update ovl %s qos %u %u, peak %u %u\n", mtk_dump_comp_str(comp),
+				comp->qos_bw, comp->qos_bw_other, comp->hrt_bw, comp->hrt_bw_other);
 		break;
 	}
 	case OVL_REPLACE_BOOTUP_MVA: {
