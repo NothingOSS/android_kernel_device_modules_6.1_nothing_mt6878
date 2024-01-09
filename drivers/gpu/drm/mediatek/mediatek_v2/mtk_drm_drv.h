@@ -259,6 +259,7 @@ struct mtk_drm_private {
 
 	struct mutex cmdq_prepare_instr_lock;
 	struct mutex path_modify_lock;
+	struct mutex set_mmclk_lock;
 
 	unsigned int seg_id;
 	unsigned int boot_mode;

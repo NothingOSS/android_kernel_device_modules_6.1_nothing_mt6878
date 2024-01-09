@@ -936,6 +936,7 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 		opp = dev_pm_opp_find_freq_ceil(crtc->dev->dev, &freq);
 		volt = dev_pm_opp_get_voltage(opp);
 		dev_pm_opp_put(opp);
+		DDPINFO("%s, crtc=%d, volt=%d\n", __func__, idx, volt);
 		ret = regulator_set_voltage(mm_freq_request, volt, INT_MAX);
 		if (ret)
 			DDPPR_ERR("%s:regulator_set_voltage fail\n", __func__);
@@ -947,17 +948,21 @@ void mtk_drm_set_mmclk_by_pixclk(struct drm_crtc *crtc,
 {
 	int i;
 	unsigned long freq = pixclk * 1000000;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
+	mutex_lock(&priv->set_mmclk_lock);
 	g_freq = freq;
 
 	if (freq > g_freq_steps[step_size - 1]) {
 		DDPPR_ERR("%s:pixleclk (%lu) is to big for mmclk (%lu)\n",
 			caller, freq, g_freq_steps[step_size - 1]);
 		mtk_drm_set_mmclk(crtc, step_size - 1, false, caller);
+		mutex_unlock(&priv->set_mmclk_lock);
 		return;
 	}
 	if (!freq) {
 		mtk_drm_set_mmclk(crtc, -1, false, caller);
+		mutex_unlock(&priv->set_mmclk_lock);
 		return;
 	}
 	for (i = step_size - 2 ; i >= 0; i--) {
@@ -972,6 +977,7 @@ void mtk_drm_set_mmclk_by_pixclk(struct drm_crtc *crtc,
 				mtk_drm_set_mmclk(crtc, 0, true, caller);
 		}
 	}
+	mutex_unlock(&priv->set_mmclk_lock);
 }
 
 unsigned long mtk_drm_get_freq(struct drm_crtc *crtc, const char *caller)
