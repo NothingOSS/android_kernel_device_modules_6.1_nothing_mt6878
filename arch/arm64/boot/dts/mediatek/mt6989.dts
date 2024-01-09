@@ -12091,7 +12091,6 @@
 				<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
 				<&topckgen_clk CLK_TOP_UNIVPLL_D6>,
 				<&topckgen_clk CLK_TOP_MAINPLL_D4>,
-				<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
 				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM>,
 				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0>,
 				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM1>,
