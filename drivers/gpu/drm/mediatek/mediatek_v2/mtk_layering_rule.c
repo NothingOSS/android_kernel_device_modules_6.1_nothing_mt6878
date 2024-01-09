@@ -452,6 +452,10 @@ static void copy_hrt_bound_table(struct drm_mtk_layering_info *disp_info,
 		get_mapping_table(dev, 0, disp_info->disp_list, DISP_HW_LAYER_TB, MAX_PHY_OVL_CNT));
 	valid_num = min(valid_num, ovl_bound * 100);
 
+	/* if emi eff in display, need change the largest bound */
+	if (priv->data->need_emi_eff)
+		valid_num = (valid_num * 10000) / default_emi_eff;
+
 	for (i = 0; i < HRT_LEVEL_NUM; i++)
 		emi_bound_table[l_rule_info.bound_tb_idx][i] = valid_num;
 	mutex_unlock(&hrt_table_lock);
