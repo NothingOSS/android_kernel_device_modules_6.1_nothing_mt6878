@@ -1918,14 +1918,10 @@ static int vow_pbuf_ch_get(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	unsigned int value = 0;
 	unsigned int pbuf_active = priv->vow_pbuf_active_bit;
 
-	regmap_read(priv->regmap, MT6681_AUDIO_VAD_PBUF_CON1, &value);
-
-	dev_info(priv->dev, "%s(), VAD_PBUF_CON1=0x%x, pbuf_active 0x%x\n",
+	dev_info(priv->dev, "%s(), pbuf_active 0x%x\n",
 		 __func__,
-		 value,
 		 pbuf_active);
 	ucontrol->value.integer.value[0] = pbuf_active;
 
@@ -2088,6 +2084,7 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *component =
 		snd_soc_kcontrol_component(kcontrol);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(component);
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 	struct soc_mixer_control *mc =
 		(struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int reg = 0;
@@ -2097,8 +2094,10 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 	unsigned int pga_cara = 0;
 
 	dev_info(priv->dev,
-		"%s(), name %s, reg(0x%x) = 0x%x, set index = %x indeR = %x\n",
-		__func__, kcontrol->id.name, mc->reg, reg, index, indexR);
+		"%s(), id index %d name %s, reg(0x%x) = 0x%x, set index = %x indeR = %x\n",
+		__func__, kcontrol->id.index, kcontrol->id.name, mc->reg, reg, index, indexR);
+
+	scp_wake_request(adap);
 
 	switch (mc->reg) {
 	case MT6681_ZCD_CON2:
@@ -2234,6 +2233,8 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 			& RG_AUDPREAMP6NEGGAIN_MASK;
 		break;
 	}
+
+	scp_wake_release(adap);
 
 	dev_dbg(priv->dev, "%s(), [1.5dB] name %s, reg(0x%x) = 0x%x, set index = %x, indeR = %x\n",
 		__func__, kcontrol->id.name, mc->reg, reg, index, indexR);
@@ -6500,6 +6501,23 @@ static int mt_scp_req_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static void vow_scp_req_ctrl(struct mt6681_priv *priv, bool enable)
+{
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
+
+	if (enable == true) {
+		if (priv->vow_setup == 0) {
+			dev_info(priv->dev, "%s(), scp request\n", __func__);
+			scp_wake_request(adap);
+		}
+	} else {
+		if (priv->vow_setup == 1) {
+			dev_info(priv->dev, "%s(), scp release\n", __func__);
+			scp_wake_release(adap);
+		}
+	}
+}
+
 static int mt_key_event(struct snd_soc_dapm_widget *w,
 			struct snd_kcontrol *kcontrol, int event)
 {
@@ -7068,12 +7086,8 @@ static int mt_vow_digital_cfg_event(struct snd_soc_dapm_widget *w,
 			regmap_write(priv->regmap, MT6681_AFE_VOW_VAD_CFG64, 0x00);
 			regmap_write(priv->regmap, MT6681_AFE_VOW_VAD_CFG65, 0x00);
 		}
-		/* end of power up vow */
-		priv->vow_setup = 0;
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		/* start to power down vow */
-		priv->vow_setup = 1;
 		regmap_write(priv->regmap, MT6681_AUD_TOP_CKPDN_CON0_H_SET,
 			     0x1 << RG_VOW13M_CK_PDN_SFT);
 		regmap_write(priv->regmap, MT6681_TOP_CKPDN_CON1_SET,
@@ -7096,18 +7110,27 @@ static int mt_aif_vow_tx_event(struct snd_soc_dapm_widget *w,
 	dev_info(priv->dev, "%s, set vow tx event = %d, audio_r_miso1_enable = %d\n",
 		 __func__, event, r_miso1_enable);
 
-	if (priv->audio_r_miso1_enable) {
-		switch (event) {
-		case SND_SOC_DAPM_PRE_PMU:
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		if (priv->audio_r_miso1_enable)
 			mt6681_set_vow_gpio(priv);
-			break;
-		case SND_SOC_DAPM_POST_PMD:
+		/* release scp resource */
+		vow_scp_req_ctrl(priv, false);  // need before vow_setup setting
+		/* end of power up vow */
+		priv->vow_setup = 0;
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		/* request scp resource */
+		vow_scp_req_ctrl(priv, true);  // need before vow_setup setting
+		/* start to power down vow */
+		priv->vow_setup = 1;
+		if (priv->audio_r_miso1_enable)
 			mt6681_reset_vow_gpio(priv);
-			break;
-		default:
-			break;
-		}
+		break;
+	default:
+		break;
 	}
+
 
 	return 0;
 }
@@ -14016,6 +14039,8 @@ static int mt6681_codec_dai_vow_startup(struct snd_pcm_substream *substream,
 
 	dev_info(priv->dev, "%s, set vow_enable=1\n",
 		 __func__);
+	/* request scp resource */
+	vow_scp_req_ctrl(priv, true);  // need before vow_setup setting
 	priv->vow_enable = 1;
 	/* start to power up vow */
 	priv->vow_setup = 1;
@@ -14030,6 +14055,8 @@ static void mt6681_codec_dai_vow_shutdown(struct snd_pcm_substream *substream,
 
 	dev_info(priv->dev, "%s stream %d / dai->id %d\n", __func__, substream->stream, dai->id);
 
+	/* release scp resource */
+	vow_scp_req_ctrl(priv, false);  // need before vow_setup setting
 	if (dai->id == MT6681_AIF_VOW) {
 		/* end of power down vow */
 		priv->vow_setup = 0;
@@ -16421,14 +16448,12 @@ static void get_hp_trim_offset(struct mt6681_priv *priv, bool force)
 
 	if (dc_trim->calibrated && !force)
 		return;
-	keylock_reset(priv);
 	dev_dbg(priv->dev, "%s(), Start Get DCtrim", __func__);
 	enable_trim_circuit(priv, true);
 	mt6681_set_hwgain(priv);
 	calculate_lr_trim_code(priv);
 	calculate_lr_finetrim_code(priv);
 	enable_trim_circuit(priv, false);
-	keylock_set(priv);
 
 	dc_trim->calibrated = true;
 	dev_info(priv->dev,
@@ -16479,6 +16504,10 @@ static void mic_type_default_init(struct mt6681_priv *priv)
 static int dc_trim_thread(void *arg)
 {
 	struct mt6681_priv *priv = arg;
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
+
+	scp_wake_request(adap);
+	keylock_reset(priv);
 
 	get_hp_trim_offset(priv, true);
 
@@ -16491,6 +16520,8 @@ static int dc_trim_thread(void *arg)
 	mt6681_adc_init(priv);
 #endif
 	// do_exit(0);
+	keylock_set(priv);
+	scp_wake_release(adap);
 
 	return 0;
 }
@@ -17198,9 +17229,11 @@ static int mt6681_rcv_dcc_set(struct snd_kcontrol *kcontrol,
 #ifndef SKIP_SB
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 #if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	int status = 0;
 #endif
+	scp_wake_request(adap);
 
 	/* 3:hwgain1/2 swap & bypass HWgain1/2 */
 	regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0xc4);
@@ -17355,7 +17388,9 @@ static int mt6681_rcv_dcc_set(struct snd_kcontrol *kcontrol,
 	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
 			   RG_LDO_VAUD18_EN_0_MASK_SFT, 0x0);
 #endif
+	scp_wake_release(adap);
 #endif
+
 	return 0;
 }
 static int mt6681_mtkaif_stress_set(struct snd_kcontrol *kcontrol,
@@ -17363,10 +17398,12 @@ static int mt6681_mtkaif_stress_set(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 	int enable = ucontrol->value.integer.value[0];
 	int value = 0;
 
 	dev_info(priv->dev, "%s(),  enable = %d\n", __func__, enable);
+	scp_wake_request(adap);
 
 	if (enable) {
 		dev_info(
@@ -17386,7 +17423,7 @@ static int mt6681_mtkaif_stress_set(struct snd_kcontrol *kcontrol,
 	regmap_read(priv->regmap, MT6681_AFE_MTKAIFV4_TX_CFG, &value);
 	dev_info(priv->dev, "%s(), MT6359_AFE_ADDA_MTKAIF_CFG0 = 0x%x\n",
 		 __func__, value);
-
+	scp_wake_release(adap);
 	dev_info(priv->dev, "%s(),	done\n", __func__);
 	return 0;
 }
@@ -17396,8 +17433,10 @@ static int mt6681_mtkaif_stress_get(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 	int value = 0;
 
+	scp_wake_request(adap);
 	regmap_read(priv->regmap, MT6681_AFE_MTKAIFV4_TX_CFG, &value);
 	dev_info(priv->dev, "%s(), MT6681_AFE_MTKAIFV4_TX_CFG = 0x%x\n",
 		 __func__, value);
@@ -17407,6 +17446,7 @@ static int mt6681_mtkaif_stress_get(struct snd_kcontrol *kcontrol,
 	regmap_read(priv->regmap, MT6681_AFE_ADDA6_UL_SRC_CON0_0, &value);
 	dev_info(priv->dev, "%s(), MT6681_AFE_ADDA6_UL_SRC_CON0_0 = 0x%x\n",
 		 __func__, value);
+	scp_wake_release(adap);
 
 	return 0;
 }
@@ -17417,9 +17457,13 @@ static int mt6681_clh_lut0_1_set(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 
+	scp_wake_request(adap);
 	mt6685_set_dcxo(true);
 	mt6681_codec_init_reg(priv);
+	scp_wake_release(adap);
+
 	return 0;
 }
 static int mt6681_hwgain_get(struct snd_kcontrol *kcontrol,
@@ -22221,9 +22265,11 @@ static int mt6681_codec_init_reg(struct mt6681_priv *priv)
 	unsigned int sample_rate = MT6681_AFE_ETDM_48000HZ;
 #endif
 	unsigned int value = 0;
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 
 
 	dev_info(priv->dev, "%s() successfully done", __func__);
+	scp_wake_request(adap);
 #if IS_ENABLED(CONFIG_MT6685_AUDCLK)
 	mt6685_set_dcxo_mode(0);
 	mt6685_set_dcxo(true);
@@ -22460,6 +22506,7 @@ static int mt6681_codec_init_reg(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_0, 0x0);
 	regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_1, 0x0);
 	keylock_set(priv);
+	scp_wake_release(adap);
 	return 0;
 }
 
@@ -22516,12 +22563,14 @@ static void codec_write_reg(struct mt6681_priv *priv, void *arg)
 	unsigned int reg_addr = 0;
 	unsigned int reg_value = 0;
 	int ret = 0;
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 
 	token1 = strsep(&temp, delim);
 	token2 = strsep(&temp, delim);
 	dev_info(priv->dev, "%s(), token1 = %s, token2 = %s, temp = %s\n",
 		 __func__, token1, token2, temp);
 
+	scp_wake_request(adap);
 	if ((token1 != NULL) && (token2 != NULL)) {
 		ret = kstrtouint(token1, 16, &reg_addr);
 		ret = kstrtouint(token2, 16, &reg_value);
@@ -22534,6 +22583,7 @@ static void codec_write_reg(struct mt6681_priv *priv, void *arg)
 	} else {
 		dev_info(priv->dev, "token1 or token2 is NULL!\n");
 	}
+	scp_wake_release(adap);
 }
 
 static void debug_write_reg(struct file *file, void *arg)
@@ -22569,9 +22619,12 @@ static ssize_t mt6681_codec_read(struct mt6681_priv *priv, char *buffer,
 {
 	int n = 0;
 	unsigned int value = 0;
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 
 	if (!buffer)
 		return -ENOMEM;
+
+	scp_wake_request(adap);
 	n += scnprintf(buffer + n, size - n, "mtkaif_protocol = %d\n",
 		       priv->mtkaif_protocol);
 	n += scnprintf(buffer + n, size - n, "dc_trim_data:\n");
@@ -38445,6 +38498,7 @@ static ssize_t mt6681_codec_read(struct mt6681_priv *priv, char *buffer,
 	regmap_read(priv->regmap, MT6681_TOP_RST_REG_RSV, &value);
 	n += scnprintf(buffer + n, size - n, "MT6681_TOP_RST_REG_RSV = 0x%x\n",
 		       value);
+	scp_wake_release(adap);
 	return n;
 }
 static ssize_t mt6681_debugfs_read(struct file *file, char __user *buf,
