@@ -891,7 +891,7 @@ static unsigned int mtk_ovl_phy_mapping_MT6878(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_OVL2_2L:
 		return 4;
 	case DDP_COMPONENT_OVL3_2L:
-		return 6;
+		return 0;
 	default:
 		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
 		return 0;
@@ -932,8 +932,8 @@ static unsigned int mtk_ovl_calc_larb_hrt_bw_v1(struct mtk_drm_crtc *mtk_crtc,
 			larb_bw += bw_base * mtk_crtc->usage_ovl_weight[(phy_id + i)];
 			if (dal_state.comp_id == comp->id && i == dal_state.lye_id)
 				larb_bw += bw_base * dal_weight;
-			DDPDBG("%s,ovl:%u,l:%u,cnt:%u,larb:%d,bw:%u,w:%u,base:%u,dal(%u,%u,%u)\n",
-				__func__, comp->id, phy_id + i,
+			DDPDBG_HBL("%s,crtc:%u,ovl:%u,l:%u,cnt:%u,larb:%d,bw:%u,w:%u,base:%u,dal(%u,%u,%u)\n",
+				__func__, crtc_idx, comp->id, phy_id + i,
 				layer_count, comp->larb_id, larb_bw / 400,
 				mtk_crtc->usage_ovl_weight[phy_id + i],
 				bw_base, dal_state.comp_id,
@@ -953,31 +953,31 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int ext_lye_id = plane_state->comp_state.ext_lye_id;
 	unsigned int weight = plane_state->comp_state.layer_hrt_weight;
 	unsigned int fmt = plane_state->pending.format;
+	int crtc_idx = drm_crtc_index(&mtk_crtc->base);
 	unsigned int phy_id = 0;
 	struct mtk_drm_private *priv = NULL;
 
 	priv = mtk_crtc->base.dev->dev_private;
 	if (ovl->data->ovl_phy_mapping) {
 		phy_id = ovl->data->ovl_phy_mapping(comp);
-		if (ext_lye_id == 0) {
-			/* update layer format bpp */
+		/* update layer format bpp */
+		if (ext_lye_id == 0)
 			mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)] = mtk_get_format_bpp(fmt);
 
-			/* update layer hrt weight */
-			if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+		/* update layer hrt weight */
+		if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
+			if (ext_lye_id == 0)
 				mtk_crtc->usage_ovl_weight[(phy_id + lye_id)] = weight;
-		} else if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
-			if (mtk_crtc->usage_ovl_weight[(phy_id + lye_id)] < weight)
+			else if (mtk_crtc->usage_ovl_weight[(phy_id + lye_id)] < weight)
 				mtk_crtc->usage_ovl_weight[(phy_id + lye_id)] = weight;
-		}
 
-		DDPDBG("%s,ovl:%u,l:%u,fmt:0x%x,bpp:%u,w:%u/%u,ext:%d\n",
-			 __func__, comp->id, phy_id + lye_id,
-			 fmt, mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)],
-			 mtk_crtc->usage_ovl_weight[(phy_id + lye_id)],
-			 weight, ext_lye_id);
+			DDPDBG_HBL("%s,crtc:%u,ovl:%u,l:%u,fmt:0x%x,bpp:%u,w:%u/%u,ext:%d\n",
+				 __func__, crtc_idx, comp->id, phy_id + lye_id,
+				 fmt, mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)],
+				 mtk_crtc->usage_ovl_weight[(phy_id + lye_id)],
+				 weight, ext_lye_id);
+		}
 	}
 }
 

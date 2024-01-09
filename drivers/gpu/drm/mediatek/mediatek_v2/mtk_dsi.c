@@ -8857,7 +8857,7 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 	struct total_tile_overhead to_info;
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
-	DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
+	DDPDBG("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
 			to_info.is_support, to_info.left_in_width, to_info.right_in_width);
 
 	dsi->ext = find_panel_ext(dsi->panel);

@@ -81,13 +81,19 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
 	} while (0)
 
+#define DDP_HBL(fmt, arg...)                                                    \
+	do {                                                                   \
+		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
+		if (!g_hrt_by_larb_log)                                             \
+			break;                                                 \
+		pr_info("[DISP_HRT_BY_LARB]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
 #define DDPDBG_HBL(fmt, arg...)                                                    \
 	do {                                                                   \
 		if (!g_hrt_by_larb_log)                                             \
 			break;                                                 \
-		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
-		if (g_mobile_log)                                              \
-			pr_info("[DISP_HRT_BY_LARB]" pr_fmt(fmt), ##arg);     \
+		pr_info("[DISP_HRT_BY_LARB]" pr_fmt(fmt), ##arg);     \
 	} while (0)
 
 #define DDP_PROFILE(fmt, arg...)                                               \

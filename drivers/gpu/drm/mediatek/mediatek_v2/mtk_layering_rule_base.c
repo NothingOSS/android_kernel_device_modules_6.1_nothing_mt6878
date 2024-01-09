@@ -490,7 +490,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 	"HRT hrt_num:0x%x/disp_idx:%x/disp_list:%x/mod:%d/dal:%d/addon_scn:(%d, %d, %d)/bd_tb:%d/i:%d\n"
 #define _L_FMT \
 	"L%d->%d/(%d,%d,%d,%d)/(%d,%d,%d,%d)/f0x%x/ds%d/e%d/cap0x%x" \
-	"/compr%d/secure%d/frame:%u/force_gpu:%u/AID:%llu\n"
+	"/compr%d/secure%d/frame:%u/weight:%u/force_gpu:%u/AID:0x%llx\n"
 
 	layer_info = kzalloc(sizeof(struct drm_mtk_layer_config),
 			GFP_KERNEL);
@@ -565,6 +565,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 				       layer_info->compress,
 				       layer_info->secure,
 				       disp_info->frame_idx[i],
+				       layer_info->layer_hrt_weight,
 				       layer_info->wcg_force_gpu,
 				       layer_info->buffer_alloc_id);
 			}
@@ -633,6 +634,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 					layer_info->compress,
 					layer_info->secure,
 					disp_info->frame_idx[i],
+					layer_info->layer_hrt_weight,
 					layer_info->wcg_force_gpu,
 					layer_info->buffer_alloc_id);
 
@@ -1271,10 +1273,10 @@ static int dump_entry_list_for_compare(bool sort_by_y)
 	else
 		temp = x_entry_list_for_compare;
 
-	DDPMSG("%s, sort_by_y:%d, addr:0x%p\n", __func__, sort_by_y, temp);
+	DDPDBG_HBL("%s, sort_by_y:%d, addr:0x%p\n", __func__, sort_by_y, temp);
 	while (temp) {
 		layer_info = temp->layer_info;
-		DDPMSG("key:%d, offset(%d, %d), w/h(%d, %d), overlap_w:%d, ID:0x%llx\n",
+		DDPDBG_HBL("key:%d, offset(%d, %d), w/h(%d, %d), overlap_w:%d, ID:0x%llx\n",
 		       temp->key, layer_info->dst_offset_x,
 		       layer_info->dst_offset_y, layer_info->dst_width,
 		       layer_info->dst_height, temp->overlap_w, layer_info->buffer_alloc_id);
@@ -1304,8 +1306,9 @@ static void update_layer_hrt_after_scan(struct drm_mtk_layering_info *disp_info,
 				layer_info = &disp_info->input_config[disp][i];
 				if (layer_info->buffer_alloc_id ==
 					temp->layer_info->buffer_alloc_id) {
-					DDPMSG("%s -neg:%d,w:%u,off(%d,%d),w/h(%d,%d),ID:0x%llx,gles(%d,%d)\n",
-						__func__, clr_neg,
+					DDPDBG_HBL(
+						"%s crtc:%u,-neg:%d,w:%u,off(%d,%d),w/h(%d,%d),ID:0x%llx,gles(%d,%d)\n",
+						__func__, disp_info->disp_idx, clr_neg,
 						layer_info->layer_hrt_weight,
 						layer_info->dst_offset_x,
 						layer_info->dst_offset_y,
@@ -1323,8 +1326,9 @@ static void update_layer_hrt_after_scan(struct drm_mtk_layering_info *disp_info,
 				layer_info = &disp_info->input_config[disp][i];
 				if (layer_info->buffer_alloc_id ==
 					temp->layer_info->buffer_alloc_id) {
-					DDPMSG("%s -pos:%d,w:%u,off(%d,%d),w/h(%d,%d),ID:0x%llx,gles(%d,%d)\n",
-						__func__, clr_neg,
+					DDPDBG_HBL(
+						"%s crtc:%u,-pos:%d,w:%u,off(%d,%d),w/h(%d,%d),ID:0x%llx,gles(%d,%d)\n",
+						__func__, disp_info->disp_idx, clr_neg,
 						layer_info->layer_hrt_weight,
 						layer_info->dst_offset_x,
 						layer_info->dst_offset_y,
@@ -1674,8 +1678,8 @@ static int scan_y_overlap_for_compare(struct drm_mtk_layering_info *disp_info,
 
 		tmp_entry = tmp_entry->tail;
 	}
-	DDPDBG_HBL("%s,limit:%u,max_overlap:%u,max_ID:0x%llx\n",
-		__func__, ovl_overlap_limit_w, max_overlap, *max_layer_id);
+	DDPDBG_HBL("%s,crtc:%u,limit:%u,max_overlap:%u,max_ID:0x%llx\n",
+		__func__, disp_info->disp_idx, ovl_overlap_limit_w, max_overlap, *max_layer_id);
 
 	return max_overlap;
 }
@@ -1849,7 +1853,9 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 	if (is_dal)
 		bpp = HRT_AEE_WEIGHT / weight;
 
-	if (priv->data->mmsys_id == MMSYS_MT6878 && is_dal)
+	if (priv->data->mmsys_id == MMSYS_MT6878 && is_dal &&
+		!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
 		bpp = (HRT_AEE_WEIGHT + 400 * 3 / 2) / weight;
 
 	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) && frame_idx && is_gles &&
@@ -2535,17 +2541,17 @@ static int _calc_hrt_num(struct drm_device *dev,
 			layer_info->layer_hrt_weight = overlap_w;
 			if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on)
 				layer_info->layer_hrt_weight = overlap_w_of_bwm;
-			DDPDBG_HBL("%s,%d,GLES crtc:%d,bwm:%d,gles(%d,%d),l:%u,w:%u,sum:%d,sum_bwm:%d\n",
-				__func__, __LINE__, disp, bw_monitor_is_on,
+			DDPDBG_HBL("%s,%d,GLES crtc:%u,bwm:%d,gles(%d,%d),l:%u,w:%u,sum:%d,sum_bwm:%d\n",
+				__func__, __LINE__, disp_idx, bw_monitor_is_on,
 				disp_info->gles_head[disp], disp_info->gles_tail[disp], i,
-				layer_info->layer_hrt_weight, overlap_w_of_bwm,
+				layer_info->layer_hrt_weight, sum_overlap_w,
 				sum_overlap_w_of_bwm);
 		}
 	}
 
 	if (has_dal_layer && (disp_idx == HRT_PRIMARY)) {
 		DDPINFO("%s 1, overlap_num=%d,%d, (%d)\n", __func__, sum_overlap_w,
-			sum_overlap_w_of_bwm, get_layer_weight(dev, disp, NULL, 0, false, has_dal_layer));
+			sum_overlap_w_of_bwm, get_layer_weight(dev, disp_idx, NULL, 0, false, has_dal_layer));
 		overlap_w = get_layer_weight(dev, disp_idx, NULL, 0, false, has_dal_layer);
 		sum_overlap_w += overlap_w;
 		if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on) {
@@ -2556,12 +2562,13 @@ static int _calc_hrt_num(struct drm_device *dev,
 		}
 		if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
-			if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on)
+			if (bw_monitor_is_on)
 				mtk_drm_set_dal_weight(overlap_w_of_bwm);
 			else
 				mtk_drm_set_dal_weight(overlap_w);
-				DDPDBG_HBL("%s,%d, DAL,w:%u/%u,sum:%d,sum_bwm:%d\n",
-					__func__, __LINE__, overlap_w, overlap_w_of_bwm,
+				DDPDBG_HBL("%s,%d,crtc:%u,DAL,w:%u/%u,sum:%d,sum_bwm:%d\n",
+					__func__, __LINE__, disp_idx,
+					overlap_w, overlap_w_of_bwm,
 					sum_overlap_w, sum_overlap_w_of_bwm);
 		}
 	}
@@ -2608,8 +2615,8 @@ static int _calc_hrt_num(struct drm_device *dev,
 				layer_info->layer_hrt_weight = overlap_w;
 				if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on)
 					layer_info->layer_hrt_weight = overlap_w_of_bwm;
-				DDPDBG_HBL("%s,%d,gles crtc:%d,bwm:%d,gles(%d,%d),l:%u,w:%u,sum:%d,sum_bwm:%d\n",
-					__func__, __LINE__, disp, bw_monitor_is_on,
+				DDPDBG_HBL("%s,%d,gles crtc:%u,bwm:%d,gles(%d,%d),l:%u,w:%u,sum:%d,sum_bwm:%d\n",
+					__func__, __LINE__, disp_idx, bw_monitor_is_on,
 					disp_info->gles_head[disp], disp_info->gles_tail[disp],
 					i, layer_info->layer_hrt_weight, sum_overlap_w,
 					sum_overlap_w_of_bwm);
@@ -2620,7 +2627,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 				sum_overlap_w_of_bwm, get_layer_weight(dev, disp_idx, NULL, 0, false, has_dal_layer));
 			overlap_w = get_layer_weight(dev, disp_idx, NULL, 0, false, has_dal_layer);
 			sum_overlap_w += overlap_w;
-			if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on) {
+			if (bw_monitor_is_on) {
 				overlap_w_of_bwm = get_layer_weight(dev,
 						disp_idx, NULL, 0, false, has_dal_layer);
 				sum_overlap_w_of_bwm += overlap_w_of_bwm;
@@ -2630,12 +2637,12 @@ static int _calc_hrt_num(struct drm_device *dev,
 			}
 			if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
-				if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on)
+				if (bw_monitor_is_on)
 					mtk_drm_set_dal_weight(overlap_w_of_bwm);
 				else
 					mtk_drm_set_dal_weight(overlap_w);
-				DDPDBG_HBL("%s,%d, DAL,w:%u/%u,sum:%d,sum_bwm:%d bound:%d\n",
-					__func__, __LINE__, overlap_w, overlap_w_of_bwm,
+				DDPDBG_HBL("%s,%d,crtc:%u,DAL,w:%u/%u,sum:%d,sum_bwm:%d bound:%d\n",
+					__func__, __LINE__, disp_idx, overlap_w, overlap_w_of_bwm,
 					sum_overlap_w, sum_overlap_w_of_bwm, overlap_l_bound);
 			}
 		}
@@ -3338,8 +3345,8 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			layer_info->ovl_id = plane_idx - 1;
 			if (disp_idx == HRT_PRIMARY)
 				lyeblob_ids->fbt_layer_id = plane_idx - 1;
-			DDPDBG_HBL("%s,%d, skip gles l:%d, w:%u gles(%d,%d)\n",
-				__func__, __LINE__, i, layer_info->layer_hrt_weight,
+			DDPDBG_HBL("%s,%d,crtc:%u skip gles l:%d, w:%u gles(%d,%d)\n",
+				__func__, __LINE__, disp_info->disp_idx, i, layer_info->layer_hrt_weight,
 				disp_info->gles_head[idx], disp_info->gles_tail[idx]);
 			continue;
 		}
@@ -3436,7 +3443,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			comp_state.layer_hrt_weight = layer_info->layer_hrt_weight;
 			DDPDBG_HBL(
 				"%s,%d crtc:%u,l:%u,comp:%u,lye:%u,ext:%u,off(%u,%u),w/h(%u,%u),w:%u,ID:0x%llx,gles(%d,%d),mml:%u,clr:%d\n",
-				__func__, __LINE__, idx, i, comp_state.comp_id,
+				__func__, __LINE__, disp_info->disp_idx, i, comp_state.comp_id,
 				comp_state.lye_id, comp_state.ext_lye_id,
 				layer_info->dst_offset_x, layer_info->dst_offset_y,
 				layer_info->dst_width, layer_info->dst_height,
@@ -3507,7 +3514,9 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 		struct drm_mtk_layer_config *layer_info_new = NULL;
 
 		if (priv->data->mmsys_id == MMSYS_MT6878 &&
-			(disp == 0) && l_rule_info->dal_enable)
+			(disp == 0) && l_rule_info->dal_enable &&
+			!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
 			valid_ovl_cnt -= 200; /* 2 layer */
 		else if ((disp == 0) && l_rule_info->dal_enable)
 			valid_ovl_cnt -= (HRT_AEE_WEIGHT / HRT_UINT_BOUND_BPP);
@@ -3541,8 +3550,8 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 					weight = get_layer_weight(drm_dev, disp_idx, NULL,
 						disp_info->frame_idx[disp_idx], true, false);
 					DDPDBG_HBL(
-						"%s,crtc:%d,update gles(%d,%d)->(%d,%d),w:%u->%u,off(0x%x,0x%x),w/h(%u,%u),ID:0x%llx\n",
-						__func__, disp_idx,
+						"%s,crtc:%u,update gles(%d,%d)->(%d,%d),w:%u->%u,off(0x%x,0x%x),w/h(%u,%u),ID:0x%llx\n",
+						__func__, disp_info->disp_idx,
 						gles_head_old, gles_tail_old,
 						gles_head_new, gles_tail_new,
 						layer_info_new->layer_hrt_weight, weight,
@@ -3563,8 +3572,9 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 		if ((disp == 0) && get_layering_opt(LYE_OPT_OVL_BW_MONITOR) &&
 			(disp_info->hrt_weight <= sum_overlap_w_of_bwm))
 			sum_overlap_w_of_bwm = disp_info->hrt_weight;
-		DDPINFO("%s, max_ovl_cnt=%d, overlap:%d,%d\n", __func__, max_ovl_cnt,
-				disp_info->hrt_weight, sum_overlap_w_of_bwm);
+		DDPINFO("%s,crtc:%u max_ovl_cnt=%d, overlap:%d,%d\n", __func__,
+			disp_info->disp_idx, max_ovl_cnt,
+			disp_info->hrt_weight, sum_overlap_w_of_bwm);
 	}
 
 	return 0;
@@ -4866,8 +4876,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 				gles_layer_info =
 					&layering_info.input_config[disp_idx][gles_id];
 				gles_layer_info->layer_hrt_weight = weight;
-				DDPDBG_HBL("%s,%d,update gles l:%u,w:%u,sum_overlap_w_of_bwm:%u\n",
-					 __func__, __LINE__, gles_id,
+				DDPDBG_HBL("%s,%d,crtc:%u,update gles l:%u,w:%u,sum_overlap_w_of_bwm:%u\n",
+					 __func__, __LINE__, layering_info.disp_idx, gles_id,
 					 gles_layer_info->layer_hrt_weight,
 					 sum_overlap_w_of_bwm);
 			}

@@ -311,7 +311,7 @@ static void mtk_disp_calc_larb_hrt_bw_func(struct mtk_larb_bw *data,
 		*max_larb_bw = larb_list[id].larb_bw;
 }
 
-static void mtk_disp_calc_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
+static void mtk_disp_calc_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int path_idx,
 		unsigned int bw, unsigned int *larb_count, struct mtk_larb_bw *larb_list,
 		unsigned int *max_larb_bw)
 {
@@ -320,7 +320,7 @@ static void mtk_disp_calc_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp;
 	unsigned int crtc_idx = 0, larb_total = 0;
 	struct mtk_larb_bw larb_data = { 0 };
-	int i = 0, j = 0, ret = 0;
+	int j = 0, ret = 0;
 	int diff = 0;
 
 	if (IS_ERR_OR_NULL(larb_list) || IS_ERR_OR_NULL(mtk_crtc) ||
@@ -337,7 +337,7 @@ static void mtk_disp_calc_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 		MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
 		return;
 
-	for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
+	for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, path_idx) {
 		larb_data.larb_id = -1;
 		larb_data.larb_bw = bw;
 		ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_GET_HRT_BW,
@@ -346,15 +346,16 @@ static void mtk_disp_calc_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 			larb_count, &larb_total, max_larb_bw);
 		if (larb_data.larb_id != -1) {
 			DRM_MMP_MARK(hrt_bw, comp->id, larb_data.larb_bw);
-			DDPINFO("%s,comp:%u,larb:%u,BW:%u,cnt:%u,total:%u,max:%u\n",
-				__func__, comp->id, larb_data.larb_id,
+			DDP_HBL("%s,crtc:%u,p:%u,bw:%u,cmp:%u,larb(%u,%u),cnt:%u,total:%u,max:%u\n",
+				__func__, crtc_idx, path_idx, bw,
+				comp->id, larb_data.larb_id,
 				larb_data.larb_bw, *larb_count, larb_total,
 				max_larb_bw? *max_larb_bw : 0);
 		}
 	}
 
 	if (mtk_crtc->is_dual_pipe) {
-		for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i) {
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, j, path_idx) {
 			larb_data.larb_id = -1;
 			larb_data.larb_bw = bw;
 			ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_GET_HRT_BW,
@@ -363,8 +364,9 @@ static void mtk_disp_calc_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 				larb_count, &larb_total, max_larb_bw);
 			if (larb_data.larb_id != -1) {
 				DRM_MMP_MARK(hrt_bw, comp->id, larb_data.larb_bw);
-				DDPINFO("%s,comp:%u,larb:%u,BW:%u,cnt:%u,total:%u,max:%u\n",
-					__func__, comp->id, larb_data.larb_id,
+				DDP_HBL("%s,crtc:%u,p:%u,bw:%u,cmp:%u,larb(%u,%u),cnt:%u,total:%u,max:%u\n",
+					__func__, crtc_idx, path_idx, bw,
+					comp->id, larb_data.larb_id,
 					larb_data.larb_bw, *larb_count, larb_total,
 					max_larb_bw? *max_larb_bw : 0);
 			}
@@ -375,8 +377,8 @@ static void mtk_disp_calc_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 		return;
 
 	diff = (int)(larb_total - bw);
-	if (crtc_idx == 0 && (diff > 10 || diff < -10))
-		DDPMSG("%s,CRTC%d,diff:%d,total_bw=%u,larb_total=%u,larb_max=%u,count=%u\n",
+	if (diff > 10 || diff < -10)
+		DDP_HBL("%s,CRTC%d,diff:%d,bw=%u,larb_total=%u,larb_max=%u,count=%u\n",
 			__func__, crtc_idx, diff, bw, larb_total,
 			max_larb_bw ? *max_larb_bw : 0, *larb_count);
 }
@@ -387,6 +389,7 @@ static void mtk_disp_set_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
 	int i = 0, j = 0;
+	unsigned int crtc_idx = 0;
 
 	if (larb_count == 0 || IS_ERR_OR_NULL(larb_list) ||
 		IS_ERR_OR_NULL(mtk_crtc))
@@ -396,31 +399,62 @@ static void mtk_disp_set_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int
 	if (IS_ERR_OR_NULL(crtc) || IS_ERR_OR_NULL(crtc->dev))
 		return;
 
+	crtc_idx = drm_crtc_index(crtc);
 	priv = crtc->dev->dev_private;
 	if (!priv || !mtk_drm_helper_get_opt(priv->helper_opt,
 		MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
 		return;
 
-	for (i = 0; i < MAX_HRT_LARB_NR; i++) {
-		if (IS_ERR_OR_NULL(priv->larbs_hrt_req[i].hrt_req))
-			break;
-
-		for (j = 0; j < larb_count; j++) {
-			if (priv->larbs_hrt_req[i].larb_id == larb_list[j].larb_id &&
-				priv->larbs_hrt_req[i].last_larb_bw != larb_list[j].larb_bw) {
-				DDPINFO("%s, larb:%u, update bw:%u->%u\n", __func__,
-					larb_list[j].larb_id,
-					priv->larbs_hrt_req[i].last_larb_bw,
-					larb_list[j].larb_bw);
-				DRM_MMP_MARK(hrt_bw, (0xf0000000 | larb_list[j].larb_id),
-					larb_list[j].larb_bw);
-				mtk_icc_set_bw(priv->larbs_hrt_req[i].hrt_req, 0,
-					MBps_to_icc(larb_list[j].larb_bw));
-				priv->larbs_hrt_req[i].last_larb_bw = larb_list[j].larb_bw;
+	/*update larb bw of current crtc*/
+	for (i = 0; i < larb_count; i++) {
+		for (j = 0; j < MAX_HRT_LARB_NR; j++) {
+			if (priv->larbs_hrt_bw[crtc_idx][j].larb_id < 0) {
+				DDPMSG("%s, cannot find larb id:%d, bw:%u\n",
+					__func__, larb_list[i].larb_id, larb_list[i].larb_bw);
+				break;
+			}
+			if (priv->larbs_hrt_bw[crtc_idx][j].larb_id == larb_list[i].larb_id) {
+				if (priv->larbs_hrt_bw[crtc_idx][j].larb_bw != larb_list[i].larb_bw) {
+					DDPDBG_HBL("%s,crtc:%u,larb:%u,update bw:%u->%u\n",
+						__func__, crtc_idx, larb_list[i].larb_id,
+						priv->larbs_hrt_bw[crtc_idx][j].larb_bw,
+						larb_list[i].larb_bw);
+					priv->larbs_hrt_bw[crtc_idx][j].larb_bw = larb_list[i].larb_bw;
+				}
+				break;
 			}
 		}
 	}
 
+	/*update larb bw of all crtc*/
+	for (j = 0; j < MAX_HRT_LARB_NR; j++) {
+		unsigned int total = 0;
+		unsigned int larb_idx = priv->larbs_hrt_req[j].larb_id;
+
+		if (IS_ERR_OR_NULL(priv->larbs_hrt_req[j].hrt_req))
+			break;
+
+		for (crtc_idx = 0; crtc_idx < MAX_CRTC; crtc_idx++) {
+			if (priv->larbs_hrt_bw[crtc_idx][j].larb_bw == 0)
+				continue;
+			total += priv->larbs_hrt_bw[crtc_idx][j].larb_bw;
+			DRM_MMP_MARK(hrt_bw, (0xf000000 | (crtc_idx < 16) | larb_idx),
+				priv->larbs_hrt_bw[crtc_idx][j].larb_bw);
+			DDPDBG_HBL("%s>>>>>crtc:%d,larb:%u,bw:%u\n",
+				__func__, crtc_idx, larb_idx,
+				priv->larbs_hrt_bw[crtc_idx][j].larb_bw);
+		}
+
+		if (total != priv->larbs_hrt_req[j].last_larb_bw) {
+			DDP_HBL("%s>>>>>update VMM dvfs level,larb:%u,bw:%u->%u\n",
+				__func__, larb_idx,
+				priv->larbs_hrt_req[j].last_larb_bw, total);
+			DRM_MMP_MARK(hrt_bw, (0xff000000 | larb_idx), total);
+			mtk_icc_set_bw(priv->larbs_hrt_req[j].hrt_req, 0,
+				MBps_to_icc(total));
+			priv->larbs_hrt_req[j].last_larb_bw = total;
+		}
+	}
 }
 
 int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
@@ -453,14 +487,9 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 
 		/* calculate VMM dvfs level with real larb HRT BW */
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
-			if (i == crtc_idx)
-				mtk_disp_calc_larb_hrt_bw(mtk_crtc, tmp,
-					&larb_count, &larb_list[0], &max_larb_bw);
-			else
-				mtk_disp_calc_larb_hrt_bw(mtk_crtc, priv->req_hrt[i],
-					&larb_count, &larb_list[0], &max_larb_bw);
-		}
+			MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
+			mtk_disp_calc_larb_hrt_bw(mtk_crtc, i, tmp,
+				&larb_count, &larb_list[0], &max_larb_bw);
 
 		/* update OTSD of smi port */
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
@@ -552,7 +581,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 				__func__, crtc_idx, tmp, total, max_larb_bw, bw_base);
 		}
 	} else
-		DDPINFO("set CRTC %d HRT bw %u %u\n", crtc_idx, tmp, total);
+		DDPINFO("set CRTC:%d HRT bw %u %u\n", crtc_idx, tmp, total);
 
 	DRM_MMP_EVENT_END(hrt_bw, priv->req_hrt[crtc_idx], total);
 	return ret;

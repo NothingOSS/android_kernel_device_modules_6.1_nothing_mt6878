@@ -2789,7 +2789,7 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		if (comp->id == plane_state->comp_state.comp_id) {
-			DDPINFO("%s i:%d,ovl:%d,lye:%d,ext:%d,w:%u,fmt:0x%x\n", __func__, i,
+			DDPDBG("%s i:%d,ovl:%d,lye:%d,ext:%d,w:%u,fmt:0x%x\n", __func__, i,
 				plane_state->comp_state.comp_id,
 				plane_state->comp_state.lye_id,
 				plane_state->comp_state.ext_lye_id,
@@ -3472,9 +3472,12 @@ static void mtk_crtc_update_hrt_usage(struct drm_crtc *crtc, bool hrt_valid)
 	if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
 		MTK_DRM_OPT_LAYERING_RULE_BY_LARB)) {
 		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+		int crtc_idx = drm_crtc_index(crtc);
 
-		mtk_drm_update_dal_weight_state();
-		mtk_oddmr_update_larb_hrt_state();
+		if (crtc_idx == 0) {
+			mtk_drm_update_dal_weight_state();
+			mtk_oddmr_update_larb_hrt_state();
+		}
 		if (hrt_valid)
 			hrt_usage_status = true;
 		else
