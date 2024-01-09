@@ -256,6 +256,23 @@ static int scp_suspend_cb(struct device *dev)
 	return 0;
 }
 
+int scp_wdt_pending_check(unsigned int num)
+{
+	int ret = 0;
+	bool state = false;
+
+	if (num >= 2) {
+		pr_err("scp_wdt_peding_check with wrong id\n");
+		return 0;
+	}
+
+	ret = irq_get_irqchip_state(scp_ipi_irqs[num].irq_no, IRQCHIP_STATE_PENDING, &state);
+	if (!ret && state)
+		return 1;
+
+	return 0;
+}
+
 /*
  * memory copy to scp sram
  * @param trg: trg address
