@@ -1176,6 +1176,8 @@ int vcp_disable_pm_clk(enum feature_id id)
 	}
 	pwclkcnt--;
 	if (pwclkcnt == 0) {
+		pr_notice("[VCP] %s pwr off id %d entered %d ready %d\n", __func__, id,
+			pwclkcnt, is_vcp_ready(VCP_A_ID));
 #if VCP_RECOVERY_SUPPORT
 		/* make sure all reset done */
 		flush_workqueue(vcp_reset_workqueue);
