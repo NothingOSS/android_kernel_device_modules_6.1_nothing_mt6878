@@ -201,6 +201,11 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 
 	for (i = 0; i < pd_count; i++) {
 		pd_info = &pd_capacity_tbl[i];
+
+		if(!cpumask_intersects(&pd_info->cpus, cpu_active_mask)) {
+			freq_state.dsu_freq_vote[i] = 0;
+			continue;
+		}
 		cpu = cpumask_first(&pd_info->cpus);
 		if (pd_info->nr_cpus == 1 && gov_pd_info->nr_caps != 1) {
 			if (available_idle_cpu(cpu)) {
