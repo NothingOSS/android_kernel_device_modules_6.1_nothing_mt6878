@@ -4378,6 +4378,14 @@ static bool mt6878_is_volatile_reg(struct device *dev, unsigned int reg)
 	case AFE_GASRC2_NEW_CON9:
 	case AFE_GASRC2_NEW_CON12:
 	case AFE_GASRC2_NEW_IP_VERSION:
+	case AFE_GAIN0_CUR_L:
+	case AFE_GAIN0_CUR_R:
+	case AFE_GAIN1_CUR_L:
+	case AFE_GAIN1_CUR_R:
+	case AFE_GAIN2_CUR_L:
+	case AFE_GAIN2_CUR_R:
+	case AFE_GAIN3_CUR_L:
+	case AFE_GAIN3_CUR_R:
 	/* these reg would change in adsp */
 	case AFE_IRQ_MCU_EN:
 	case AFE_IRQ_MCU_DSP_EN:
