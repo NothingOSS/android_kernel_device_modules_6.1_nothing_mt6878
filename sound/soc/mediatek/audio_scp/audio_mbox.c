@@ -58,9 +58,77 @@ struct mtk_mbox_device audio_mboxdev = {
 #endif
 };
 
+/*==============================================================================
+ *                     ioctl
+ *==============================================================================
+ */
+#define AUDIO_DSP_IOC_MAGIC 'a'
+#define AUDIO_DSP_IOCTL_ADSP_QUERY_STATUS \
+	_IOR(AUDIO_DSP_IOC_MAGIC, 1, unsigned int)
+
+union ioctl_param {
+	struct {
+		int16_t flag;
+		uint16_t cid;
+	} cmd1;
+};
+
+/* file operations */
+static long adspscp_driver_ioctl(
+	struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	union ioctl_param t;
+
+	switch (cmd) {
+	case AUDIO_DSP_IOCTL_ADSP_QUERY_STATUS: {
+		if (copy_from_user(&t, (void *)arg, sizeof(t))) {
+			ret = -EFAULT;
+			break;
+		}
+
+		t.cmd1.flag = is_scp_ready(SCP_A_ID);
+		pr_info("%s(), AUDIO_DSP_IOCTL_ADSP_QUERY_STATUS: %d\n", __func__, t.cmd1.flag);
+
+		if (copy_to_user((void __user *)arg, &t, sizeof(t))) {
+			ret = -EFAULT;
+			break;
+		}
+		break;
+	}
+	default:
+		pr_debug("%s(), invalid ioctl cmd\n", __func__);
+	}
+
+	if (ret < 0)
+		pr_info("%s(), ioctl error %d\n", __func__, ret);
+
+	return ret;
+}
+
+static long adspscp_driver_compat_ioctl(
+	struct file *file, unsigned int cmd, unsigned long arg)
+{
+	if (!file->f_op || !file->f_op->unlocked_ioctl) {
+		pr_notice("op null\n");
+		return -ENOTTY;
+	}
+	return file->f_op->unlocked_ioctl(file, cmd, arg);
+}
+
+const struct file_operations adspscp_file_ops = {
+	.owner = THIS_MODULE,
+	.open = simple_open,
+	.unlocked_ioctl = adspscp_driver_ioctl,
+#if IS_ENABLED(CONFIG_COMPAT)
+	.compat_ioctl   = adspscp_driver_compat_ioctl,
+#endif
+};
+
 static struct miscdevice mdev = {
 	.minor = MISC_DYNAMIC_MINOR,
-	.name = "scp_audio_ipi",
+	.name = "adsp_in_scp",
+	.fops = &adspscp_file_ops,
 };
 
 bool is_audio_mbox_init_done(void)
