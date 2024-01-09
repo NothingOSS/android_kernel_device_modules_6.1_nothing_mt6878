@@ -23,6 +23,8 @@ enum APUMMU_MEM_TYPE {
 	APUMMU_MEM_TYPE_MAX
 };
 
+#define USING_SELF_DMA	(0)
+#if USING_SELF_DMA
 struct ammu_mem_map {
 	struct dma_buf_attachment *attach;
 	struct sg_table *sgt;
@@ -44,5 +46,16 @@ struct apummu_mem {
 	struct mutex mtx;
 	struct ammu_mem_map *map;
 };
+#else // using mm_heap
+struct apummu_mem {
+	uint64_t kva;
+	uint64_t iova;
+	uint32_t size;
 
+	struct dma_heap *heap;
+	void *priv;
+	struct dma_buf_attachment *attach;
+	struct sg_table *sgt;
+};
+#endif
 #endif
