@@ -837,12 +837,6 @@ static int mbraink_suspend(struct device *dev)
 	}
 	mutex_unlock(&power_lock);
 
-	mutex_lock(&pmu_lock);
-	if ((mbraink_priv.pmu_en & MBRAINK_PMU_INST_SPEC_EN) == MBRAINK_PMU_INST_SPEC_EN)
-		uninit_pmu_keep_data();
-	mutex_unlock(&pmu_lock);
-
-
 	pr_info("[MBK_INFO] %s\n", __func__);
 	ret = pm_generic_suspend(dev);
 
@@ -868,11 +862,6 @@ static int mbraink_resume(struct device *dev)
 		}
 	}
 	mutex_unlock(&power_lock);
-
-	mutex_lock(&pmu_lock);
-	if ((mbraink_priv.pmu_en & MBRAINK_PMU_INST_SPEC_EN) == MBRAINK_PMU_INST_SPEC_EN)
-		init_pmu_keep_data();
-	mutex_unlock(&pmu_lock);
 
 	return ret;
 }
@@ -1300,10 +1289,6 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink cpufreq tracer init failed.\n");
 
-	ret = mbraink_pmu_init();
-	if (ret)
-		pr_notice("mbraink pmu init failed.\n");
-
 	return ret;
 }
 
@@ -1344,7 +1329,6 @@ static void mbraink_genetlink_exit(void)
 
 static void mbraink_exit(void)
 {
-	mbraink_pmu_uninit();
 	mbraink_dev_exit();
 	mbraink_genetlink_exit();
 	mbraink_process_tracer_exit();

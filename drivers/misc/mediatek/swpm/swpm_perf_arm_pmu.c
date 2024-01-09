@@ -23,8 +23,10 @@ static unsigned int pmu_dsu_type;
 static unsigned int pmu_ai_support;
 
 static DEFINE_PER_CPU(struct perf_event *, l3dc_events);
-static DEFINE_PER_CPU(struct perf_event *, inst_spec_events);
 static DEFINE_PER_CPU(struct perf_event *, cycle_events);
+
+DEFINE_PER_CPU(struct perf_event *, inst_spec_events);
+EXPORT_SYMBOL(inst_spec_events);
 
 static DEFINE_PER_CPU(int, l3dc_idx);
 static DEFINE_PER_CPU(int, inst_spec_idx);
