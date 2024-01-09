@@ -4287,6 +4287,7 @@
 			iommus = <&disp_iommu M4U_L41_GCE_DM>;
 			dma-mask-bit = <35>;
 			cmdq-dump-buf-size = <1>;
+			cmdq-tfa-read-dbg;
 		};
 
 		gce_sec: gce-mbox-sec@1e980000 {
@@ -4330,6 +4331,7 @@
 			iommus = <&disp_iommu M4U_L41_GCE_MM>;
 			dma-mask-bit = <35>;
 			cmdq-dump-buf-size = <1>;
+			cmdq-tfa-read-dbg;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@1e990000 {
