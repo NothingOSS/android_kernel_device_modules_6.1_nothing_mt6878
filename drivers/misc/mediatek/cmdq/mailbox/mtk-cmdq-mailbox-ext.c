@@ -624,7 +624,7 @@ EXPORT_SYMBOL(cmdq_dump_pkt_usage);
 
 struct cmdq_thread *cmdq_get_thread(u8 thread_idx, u8 hwid)
 {
-	if(hwid >= 2 && thread_idx >= ARRAY_SIZE(g_cmdq[hwid]->thread))
+	if(hwid >= 2 || thread_idx >= ARRAY_SIZE(g_cmdq[hwid]->thread))
 		return NULL;
 
 	return &g_cmdq[hwid]->thread[thread_idx];

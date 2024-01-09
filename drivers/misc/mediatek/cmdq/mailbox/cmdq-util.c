@@ -599,6 +599,7 @@ struct cmdq_thread *cmdq_client_get_thread(struct cmdq_client *client)
 		return cmdq_get_thread(cmdq_util_get_mdp_min_thrd(), 0);
 }
 EXPORT_SYMBOL(cmdq_client_get_thread);
+
 void cmdq_util_set_mml_aid_selmode(void)
 {
 	struct arm_smccc_res res;
