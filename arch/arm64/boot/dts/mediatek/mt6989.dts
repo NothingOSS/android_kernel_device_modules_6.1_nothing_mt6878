@@ -7263,13 +7263,13 @@
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L20_P1_OVL_RDMA1_0)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L21_P0_OVL_RDMA1_1)
-					 &mmqos SLAVE_COMMON(1)>,
+					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P1_OVL_RDMA1_0)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P1_OVL_RDMA1_0)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L21_P0_OVL_RDMA1_1)
-					 &mmqos SLAVE_COMMON(1)>;
+					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_2L_qos",
 					     "DDP_COMPONENT_OVL1_2L_qos_other",
 					     "DDP_COMPONENT_OVL1_2L_fbdc_qos",
