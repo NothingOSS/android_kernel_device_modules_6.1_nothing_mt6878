@@ -5777,12 +5777,14 @@ static void mtk_crtc_frame_buffer_release(struct drm_crtc *crtc,
 {
 #ifndef CONFIG_MTK_DISP_NO_LK
 	struct drm_device *dev = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		if (already_free == true || IS_ERR_OR_NULL(crtc))
 			return;
+		mtk_crtc = to_mtk_crtc(crtc);
 
-		if (index == 0 && hrt_valid == true) {
+		if (index == 0 && hrt_valid == true && mtk_crtc->is_plane0_updated == true) {
 			/*free fb buf after the 1st valid input buffer is unused*/
 			DDPMSG("%s, free frame buffer\n", __func__);
 			dev = crtc->dev;
@@ -14346,6 +14348,8 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 		DISP_SLOT_SUBTRACTOR_WHEN_FREE(mtk_get_plane_slot_idx(mtk_crtc, plane_index)));
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, addr, sub, ~0);
 #endif
+	if (plane_index == 0)
+		mtk_crtc->is_plane0_updated = true;
 }
 
 static void mtk_crtc_wb_comp_config(struct drm_crtc *crtc,

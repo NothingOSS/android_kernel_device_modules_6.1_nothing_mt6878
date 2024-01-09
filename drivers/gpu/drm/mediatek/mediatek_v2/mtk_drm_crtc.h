@@ -1134,6 +1134,8 @@ struct mtk_drm_crtc {
 	bool pending_update_pq;
 	unsigned int backup_bypass_pq;
 	unsigned int usage_ovl_weight[OVL_LAYER_NR];
+
+	bool is_plane0_updated;
 };
 
 enum BL_GAMMA_GAIN {
