@@ -305,10 +305,12 @@ static int mtk_tdm_bck_en_event(struct snd_soc_dapm_widget *w,
 	struct mt6897_afe_private *afe_priv = afe->platform_priv;
 	int dai_id = get_tdm_id_by_name(w->name);
 	struct mtk_afe_tdm_priv *tdm_priv = afe_priv->dai_priv[dai_id];
+	int apll_rate = mt6897_get_apll_rate(afe, tdm_priv->mclk_apll);
 
 	dev_info(cmpnt->dev, "%s(), name %s, event 0x%x, dai_id %d\n",
 		 __func__, w->name, event, dai_id);
 
+	tdm_priv->bck_rate = tdm_priv->bck_rate * (apll_rate / tdm_priv->mclk_rate); //ALPS08623681
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		mt6897_mck_enable(afe, tdm_priv->bck_id, tdm_priv->bck_rate);

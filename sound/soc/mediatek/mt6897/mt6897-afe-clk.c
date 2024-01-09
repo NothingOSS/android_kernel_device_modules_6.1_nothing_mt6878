@@ -721,8 +721,6 @@ int mt6897_mck_enable(struct mtk_base_afe *afe, int mck_id, int rate)
 		dev_info(afe->dev, "%s(), invalid div_clk_id %d\n", __func__, div_clk_id);
 		return -EINVAL;
 	}
-	if (div_clk_id == CLK_TOP_APLL12_DIV_TDMOUT_B)
-		rate = rate * 16;
 	ret = clk_prepare_enable(afe_priv->clk[div_clk_id]);
 	if (ret) {
 		dev_info(afe->dev, "%s(), clk_prepare_enable %s fail %d\n",
