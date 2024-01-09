@@ -10927,8 +10927,10 @@ skip:
 
 	/* 5. Set HRT BW to 0 */
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_MMQOS_SUPPORT))
+			MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		mtk_disp_set_hrt_bw(mtk_crtc, 0);
+		mtk_vidle_dvfs_bw_set(0);
+	}
 
 	/* 6. stop trig loop  */
 	if (mtk_crtc_with_trigger_loop(crtc)) {
