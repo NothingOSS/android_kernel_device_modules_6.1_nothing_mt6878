@@ -104,9 +104,13 @@ void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
+		task_lock(t);
 		if (t->mm) {
+			mmgrab(t->mm);
 			if (current_count < cnt) {
 				++current_count;
+				mmdrop(t->mm);
+				task_unlock(t);
 				continue;
 			}
 			pid_count = process_memory_buffer->pid_count;
@@ -119,13 +123,18 @@ void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 					get_mm_counter(t->mm, MM_SWAPENTS) * (PAGE_SIZE / 1024);
 				process_memory_buffer->drv_data[pid_count].rpage =
 					mm_pgtables_bytes(t->mm) / 1024;
+				mmdrop(t->mm);
+				task_unlock(t);
 				process_memory_buffer->pid_count++;
 				process_memory_buffer->current_cnt++;
 			} else {
 				process_memory_buffer->pid = (unsigned short)(t->pid);
+				mmdrop(t->mm);
+				task_unlock(t);
 				break;
 			}
 		} else {
+			task_unlock(t);
 			/*pr_info("kthread case ...\n");*/
 		}
 	}
