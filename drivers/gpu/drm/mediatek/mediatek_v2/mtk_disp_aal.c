@@ -389,8 +389,9 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 	crtc = get_crtc_from_connector(led_conf->connector_id, g_drm_dev);
 	if (crtc == NULL) {
 		led_conf->aal_enable = 0;
-		DDPPR_ERR("%s: failed to get crtc!\n", __func__);
-		return -1;
+		DDPPR_ERR("%s: connector_id(%d) failed to get crtc!\n", __func__,
+				led_conf->connector_id);
+		return NOTIFY_DONE;
 	}
 	mtk_crtc = to_mtk_crtc(crtc);
 	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_PQ) ||
@@ -398,15 +399,16 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 		DDPINFO("%s, bl %d no need pq, connector_id:%d, crtc_id:%d\n", __func__,
 				led_conf->cdev.brightness, led_conf->connector_id, drm_crtc_index(crtc));
 		led_conf->aal_enable = 0;
-		return 0;
+		return NOTIFY_DONE;
 	}
 
 	pq_data = mtk_crtc->pq_data;
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
 	if (!comp) {
 		led_conf->aal_enable = 0;
-		DDPPR_ERR("%s, comp is null!\n", __func__);
-		return -1;
+		DDPINFO("%s: connector_id: %d, crtc_id: %d, has no DISP_AAL comp!\n", __func__,
+				led_conf->connector_id, drm_crtc_index(crtc));
+		return NOTIFY_DONE;
 	}
 
 	switch (event) {
