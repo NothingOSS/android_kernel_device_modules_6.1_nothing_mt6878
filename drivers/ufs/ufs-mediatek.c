@@ -8,35 +8,41 @@
 
 #include <linux/arm-smccc.h>
 #include <linux/bitfield.h>
-#include <linux/cpumask.h>
+#include <linux/bvec.h>
 #include <linux/clk.h>
+#include <linux/cpumask.h>
 #include <linux/delay.h>
-#include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/of.h>
 #include <linux/phy/phy.h>
 #include <linux/platform_device.h>
 #include <linux/pm_qos.h>
+#include <linux/printk.h>
 #include <linux/regulator/consumer.h>
 #include <linux/reset.h>
+#include <linux/rpmb.h>
 #include <linux/sched/clock.h>
+#include <linux/stddef.h>
 #include <linux/tracepoint.h>
 #include <scsi/scsi_proto.h>
 #include <scsi/scsi_dbg.h>
+#include <ufs/ufs_quirks.h>
 #include <ufs/ufshcd.h>
+#include <ufs/unipro.h>
+
 #include "ufshcd-crypto.h"
 #include "ufshcd-pltfrm.h"
-#include <ufs/ufs_quirks.h>
-#include <ufs/unipro.h>
-#include "ufs-mediatek.h"
-#include "ufs-mediatek-sip.h"
+#include "ufshcd-priv.h"
 
 /* MediaTek UFS facilities */
-#include "ufs-mediatek-dbg.h"
 #include "ufs-mediatek-btag.h"
-#include "ufs-mediatek-rpmb.h"
-#include "ufs-mediatek-sysfs.h"
-#include "ufs-mediatek-priv.h"
+#include "ufs-mediatek-dbg.h"
 #include "ufs-mediatek-mimic.h"
+#include "ufs-mediatek-priv.h"
+#include "ufs-mediatek-rpmb.h"
+#include "ufs-mediatek-sip.h"
+#include "ufs-mediatek-sysfs.h"
+#include "ufs-mediatek.h"
 
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
@@ -971,6 +977,10 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 
 	if (!cmd)
 		return;
+
+#if IS_ENABLED(CONFIG_RPMB)
+	ufs_rpmb_vh_compl_command(hba, lrbp);
+#endif
 
 	ufs_mtk_btag_compl_command(hba, lrbp);
 }

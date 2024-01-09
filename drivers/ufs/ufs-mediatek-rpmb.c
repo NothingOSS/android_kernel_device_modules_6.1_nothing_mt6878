@@ -9,16 +9,22 @@
 #include <asm-generic/errno-base.h>
 #include <asm/unaligned.h>
 #include <linux/async.h>
+#include <linux/container_of.h>
 #include <linux/delay.h>
+#include <linux/dev_printk.h>
+#include <linux/kern_levels.h>
 #include <linux/rpmb.h>
 #include <linux/soc/mediatek/mtk_ise_lpm.h>
 #include <linux/soc/mediatek/mtk-ise-mbox.h>
+#include <linux/stddef.h>
+#include <linux/timer.h>
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_dbg.h>
 #include <ufs/ufshcd.h>
 
-#include "ufs-mediatek.h"
 #include "ufs-mediatek-ise.h"
+#include "ufs-mediatek.h"
+#include "ufshcd-priv.h"
 
 static struct rpmb_dev *rawdev_ufs_rpmb;
 static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
@@ -179,6 +185,103 @@ static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
 	return ret;
 }
 
+/**
+ * @brief PURGE_TIMEOUT_MS: In worst case, purge is not completed and no
+ * status polling command is sent in last PURGE_TIMEOUT_MS. We should
+ * release host RPM and let device sleep.
+ */
+#define PURGE_TIMEOUT_MS 5000
+static void ufs_mtk_rpmb_purge_tmr_update(struct ufs_hba *hba, bool activate)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	spin_lock(&host->purge_lock);
+	if (activate && !host->purge_active) {
+		ufshcd_rpm_get_sync(hba);
+		host->purge_active = true;
+		mod_timer(&host->purge_timer, jiffies + msecs_to_jiffies(PURGE_TIMEOUT_MS));
+		dev_info(hba->dev, "wl rpm get +");
+	} else if (!activate && host->purge_active) {
+		host->purge_active = false;
+		ufshcd_rpm_put(hba);
+		del_timer(&host->purge_timer);
+		dev_info(hba->dev, "wl rpm put -");
+	} else if (activate && host->purge_active) {
+		/* Simply refresh timer */
+		mod_timer(&host->purge_timer, jiffies + msecs_to_jiffies(PURGE_TIMEOUT_MS));
+		dev_info(hba->dev, "update timer");
+	}
+	spin_unlock(&host->purge_lock);
+}
+
+void ufs_rpmb_vh_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
+{
+	struct scsi_cmnd *cmd = lrbp->cmd;
+	struct request *rq = scsi_cmd_to_rq(cmd);
+	struct bio_vec bvec;
+	struct bvec_iter iter;
+
+	u8 *buf = NULL;
+	struct rpmb_frame *rframe = NULL;
+
+	if (cmd->cmnd[0] == SECURITY_PROTOCOL_IN) {
+
+		dev_dbg(hba->dev, "SECURITY_PROTOCOL_IN");
+		if (!rq->bio)
+			return;
+
+		scsi_dma_unmap(cmd);
+
+		bio_for_each_segment(bvec, rq->bio, iter) {
+			/* expect only 1 page */
+			buf = bvec_kmap_local(&bvec);
+			rframe = (void *)buf;
+
+			/* First RPMB frame has enough info */
+			break;
+		}
+
+		if (!rframe) {
+			dev_err(hba->dev, "empty rpmb frame");
+			goto out;
+		}
+
+		dev_dbg(hba->dev, "req_resp=0x%x, result=0x%x",
+			be16_to_cpu(rframe->req_resp), be16_to_cpu(rframe->result));
+
+		if (be16_to_cpu(rframe->req_resp) == RPMB_RESP_PURGE_ENABLE) {
+			dev_dbg(hba->dev, "RPMB_RESP_PURGE_ENABLE rsp found");
+			ufs_mtk_rpmb_purge_tmr_update(hba, true);
+		}
+
+		if (be16_to_cpu(rframe->req_resp) == RPMB_RESP_PURGE_STATUS_READ) {
+			dev_dbg(hba->dev, "RPMB_RESP_PURGE_STATUS_READ rsp found, status=%d", rframe->data[0]);
+			if (rframe->data[0] != RPMB_PURGE_STA_IN_PROGRESS) {
+				ufs_mtk_rpmb_purge_tmr_update(hba, false);
+			} else {
+				/* refresh timer */
+				ufs_mtk_rpmb_purge_tmr_update(hba, true);
+			}
+		}
+
+		/* Dump RPMB frame start from nonce to the end */
+		print_hex_dump(KERN_DEBUG, "tail", DUMP_PREFIX_OFFSET,
+			16, 8, buf + 484, 32, false);
+out:
+		kunmap_local(buf);
+	}
+
+}
+
+static void ufs_mtk_rpmb_purge_timer_cb(struct timer_list *list)
+{
+	struct ufs_mtk_host *host = container_of(list, struct ufs_mtk_host, purge_timer);
+	struct ufs_hba *hba = host->hba;
+
+	/* In case user did not query status until purge finish */
+	ufs_mtk_rpmb_purge_tmr_update(hba, false);
+	dev_info(hba->dev, "purge timer force deactivate");
+}
 
 struct ufs_hba *g_hba;
 /**
@@ -284,8 +387,13 @@ EXPORT_SYMBOL_GPL(ufs_mtk_rpmb_get_raw_dev);
 
 void ufs_mtk_rpmb_init(struct ufs_hba *hba)
 {
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	ufs_mtk_ise_rpmb_probe(hba);
 	async_schedule(ufs_mtk_rpmb_add, hba);
+
+	spin_lock_init(&host->purge_lock);
+	timer_setup(&host->purge_timer, ufs_mtk_rpmb_purge_timer_cb, 0);
+
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_rpmb_init);
 

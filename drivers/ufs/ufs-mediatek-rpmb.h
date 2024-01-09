@@ -12,11 +12,12 @@
 
 void ufs_mtk_rpmb_init(struct ufs_hba *hba);
 struct rpmb_dev *ufs_mtk_rpmb_get_raw_dev(void);
-
+void ufs_rpmb_vh_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp);
 #else
 
 #define ufs_mtk_rpmb_get_raw_dev(...)
 #define ufs_mtk_rpmb_init(...)
+#define ufs_rpmb_vh_compl_command(...)
 
 #endif /* CONFIG_RPMB */
 

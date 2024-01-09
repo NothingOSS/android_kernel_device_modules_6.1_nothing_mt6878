@@ -6,6 +6,7 @@
 #ifndef _UFS_MEDIATEK_H
 #define _UFS_MEDIATEK_H
 
+#include "linux/spinlock_types.h"
 #include <linux/bitops.h>
 #include <linux/pm_qos.h>
 #include <linux/of_device.h>
@@ -263,13 +264,17 @@ struct ufs_mtk_host {
 	/* clk debug */
 	struct notifier_block clk_notifier;
 #endif
+	struct device *phy_dev;
 
+	/* RPMB */
 	struct semaphore rpmb_sem;
 	struct scsi_device *sdev_rpmb;
-	struct device *phy_dev;
 	struct cdev ise_rpmb_cdev;
 	struct device *rpmb_bsg_dev;
 	struct request_queue	*rpmb_bsg_queue;
+	spinlock_t purge_lock;
+	struct timer_list purge_timer;
+	bool purge_active;
 
 	bool mcq_set_intr;
 	bool is_mcq_intr_enabled;
