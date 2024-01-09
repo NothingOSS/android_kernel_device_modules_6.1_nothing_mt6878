@@ -479,6 +479,8 @@ int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 	AMMU_LOG_INFO("DRAM alloc mem(0x%llx/0x%x)\n",
 		mem->iova, mem->size);
 
+	return ret;
+
 #if !(USING_SELF_DMA)
 dbuf_map_attachment_err:
 	dma_buf_detach(mem->priv, mem->attach);
