@@ -1284,7 +1284,7 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 	diff = sched_clock() - start;
 	if (diff >= 4000000) /* 4 ms*/
 		cmdq_msg("%s cost time %llu ms ", __func__, div_u64(diff, 1000000));
-	cmdq_trace_end("%s pkt:%p", __func__, pkt);
+	cmdq_trace_end();
 }
 
 void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
