@@ -77,6 +77,8 @@ static int fstb_vsync_app_fps_disable;
 
 int fstb_no_r_timer_enable;
 EXPORT_SYMBOL(fstb_no_r_timer_enable);
+int fstb_filter_poll_enable;
+EXPORT_SYMBOL(fstb_filter_poll_enable);
 
 DECLARE_WAIT_QUEUE_HEAD(queue);
 DECLARE_WAIT_QUEUE_HEAD(active_queue);
@@ -2545,6 +2547,10 @@ FSTB_SYSFS_READ(gpu_slowdown_check, 1, gpu_slowdown_check);
 FSTB_SYSFS_WRITE_VALUE(gpu_slowdown_check, gpu_slowdown_check, 0, 1);
 static KOBJ_ATTR_RW(gpu_slowdown_check);
 
+FSTB_SYSFS_READ(fstb_filter_poll_enable, 1, fstb_filter_poll_enable);
+FSTB_SYSFS_WRITE_VALUE(fstb_filter_poll_enable, fstb_filter_poll_enable, 0, 1);
+static KOBJ_ATTR_RW(fstb_filter_poll_enable);
+
 static ssize_t fstb_debug_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -2889,6 +2895,8 @@ int mtk_fstb_init(void)
 				&kobj_attr_fstb_vsync_app_fps_disable);
 		fpsgo_sysfs_create_file(fstb_kobj,
 				&kobj_attr_fstb_vsync_app_fps_disable_by_pid);
+		fpsgo_sysfs_create_file(fstb_kobj,
+				&kobj_attr_fstb_filter_poll_enable);
 	}
 
 	wq = alloc_ordered_workqueue("%s", WQ_MEM_RECLAIM | WQ_HIGHPRI, "mt_fstb");
@@ -2956,6 +2964,8 @@ int __exit mtk_fstb_exit(void)
 				&kobj_attr_fstb_vsync_app_fps_disable);
 	fpsgo_sysfs_remove_file(fstb_kobj,
 				&kobj_attr_fstb_vsync_app_fps_disable_by_pid);
+	fpsgo_sysfs_remove_file(fstb_kobj,
+				&kobj_attr_fstb_filter_poll_enable);
 
 	fpsgo_sysfs_remove_dir(&fstb_kobj);
 
