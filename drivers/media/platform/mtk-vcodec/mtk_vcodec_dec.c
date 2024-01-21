@@ -3710,14 +3710,14 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 			struct vb2_dc_buf *dc_buf = vb->planes[0].mem_priv;
 			mtk_v4l2_debug(4, "[%d] Cache sync+", ctx->id);
 
-			mtk_dma_sync_sg_range(dc_buf->dma_sgt, ctx->dev->smmu_dev,
+			mtk_dma_sync_sg_range(dc_buf->dma_sgt, vb->vb2_queue->dev,
 				vb->planes[0].bytesused, DMA_TO_DEVICE);
 
 			src_mem.dma_addr = vb2_dma_contig_plane_dma_addr(vb, 0);
 			src_mem.size = (size_t)vb->planes[0].bytesused;
 
 			mtk_v4l2_debug(4, "[%d] Cache sync- TD for %pad sz=%d dev %p", ctx->id,
-				&src_mem.dma_addr, (unsigned int)src_mem.size, ctx->dev->smmu_dev);
+				&src_mem.dma_addr, (unsigned int)src_mem.size, vb->vb2_queue->dev);
 		} else {
 			for (plane = 0; plane < vb->num_planes; plane++) {
 				struct vdec_fb dst_mem;
@@ -3725,7 +3725,7 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 				mtk_v4l2_debug(4, "[%d] Cache sync+", ctx->id);
 
 				dma_sync_sg_for_device(
-					ctx->dev->smmu_dev,
+					vb->vb2_queue->dev,
 					dc_buf->dma_sgt->sgl,
 					dc_buf->dma_sgt->orig_nents,
 					DMA_TO_DEVICE);
@@ -3738,7 +3738,7 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 					ctx->id,
 					&dst_mem.fb_base[plane].dma_addr,
 					(unsigned int)dst_mem.fb_base[plane].size,
-					ctx->dev->smmu_dev);
+					vb->vb2_queue->dev);
 			}
 		}
 	}
@@ -4121,7 +4121,7 @@ static void vb2ops_vdec_buf_finish(struct vb2_buffer *vb)
 
 			mtk_v4l2_debug(4, "[%d] Cache sync+", ctx->id);
 
-			dma_sync_sg_for_cpu(ctx->dev->smmu_dev, dc_buf->dma_sgt->sgl,
+			dma_sync_sg_for_cpu(vb->vb2_queue->dev, dc_buf->dma_sgt->sgl,
 				dc_buf->dma_sgt->orig_nents, DMA_FROM_DEVICE);
 			dst_mem.fb_base[plane].dma_addr =
 				vb2_dma_contig_plane_dma_addr(vb, plane);
@@ -4131,7 +4131,7 @@ static void vb2ops_vdec_buf_finish(struct vb2_buffer *vb)
 				ctx->id,
 				&dst_mem.fb_base[plane].dma_addr,
 				(unsigned int)dst_mem.fb_base[plane].size,
-				ctx->dev->smmu_dev,
+				vb->vb2_queue->dev,
 				&buf->frame_buffer);
 		}
 	}
@@ -5292,20 +5292,20 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	src_vq->lock            = &ctx->q_mutex;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (ctx->dev->dec_cnt & 1) {
-		src_vq->dev		= vcp_get_io_device(VCP_IOMMU_VENC_512MB2);
-		mtk_v4l2_debug(4, "use VCP_IOMMU_VENC_512MB2 domain");
+		src_vq->dev     = vcp_get_io_device(VCP_IOMMU_VENC_512MB2);
+		mtk_v4l2_debug(4, "use VCP_IOMMU_VENC_512MB2 domain %p", src_vq->dev);
 	} else {
-		src_vq->dev		= vcp_get_io_device(VCP_IOMMU_VDEC_512MB1);
-		mtk_v4l2_debug(4, "use VCP_IOMMU_VDEC_512MB1 domain");
+		src_vq->dev     = vcp_get_io_device(VCP_IOMMU_VDEC_512MB1);
+		mtk_v4l2_debug(4, "use VCP_IOMMU_VDEC_512MB1 domain %p", src_vq->dev);
 	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (!src_vq->dev) {
-		src_vq->dev = ctx->dev->smmu_dev;
-		mtk_v4l2_debug(4, "vcp_get_io_device NULL use plat_dev domain");
+		src_vq->dev     = ctx->dev->smmu_dev;
+		mtk_v4l2_debug(4, "vcp_get_io_device NULL use smmu_dev domain %p", src_vq->dev);
 	}
 #endif
 #else
-	src_vq->dev		= ctx->dev->smmu_dev;
+	src_vq->dev             = ctx->dev->smmu_dev;
 #endif
 	src_vq->allow_zero_bytesused = 1;
 

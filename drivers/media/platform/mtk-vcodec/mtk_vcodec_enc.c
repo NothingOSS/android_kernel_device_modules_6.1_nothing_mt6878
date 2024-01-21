@@ -2620,7 +2620,7 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 			struct dma_buf_attachment *buf_att;
 			struct sg_table *sgt;
 
-			buf_att = dma_buf_attach(vb->planes[i].dbuf, ctx->dev->smmu_dev);
+			buf_att = dma_buf_attach(vb->planes[i].dbuf, vb->vb2_queue->dev);
 			buf_att->dma_map_attrs |= DMA_ATTR_SKIP_CPU_SYNC;
 			sgt = dma_buf_map_attachment(buf_att, DMA_TO_DEVICE);
 			if (IS_ERR_OR_NULL(sgt)) {
@@ -2629,7 +2629,7 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 				return -EINVAL;
 			}
 			dma_sync_sg_for_device(
-				ctx->dev->smmu_dev,
+				vb->vb2_queue->dev,
 				sgt->sgl,
 				sgt->orig_nents,
 				DMA_TO_DEVICE);
@@ -2644,7 +2644,7 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 				ctx->id,
 				(unsigned long)src_mem.dma_addr,
 				(unsigned int)src_mem.size,
-				ctx->dev->smmu_dev);
+				vb->vb2_queue->dev);
 		}
 	}
 
@@ -2680,7 +2680,7 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 			struct mtk_vcodec_mem dst_mem;
 			struct vb2_dc_buf *dc_buf = vb->planes[0].mem_priv;
 
-			mtk_dma_sync_sg_range(dc_buf->dma_sgt, ctx->dev->smmu_dev,
+			mtk_dma_sync_sg_range(dc_buf->dma_sgt, vb->vb2_queue->dev,
 				ROUND_N(vb->planes[0].bytesused, 64), DMA_FROM_DEVICE);
 
 			dst_mem.dma_addr = vb2_dma_contig_plane_dma_addr(vb, 0);
@@ -2689,7 +2689,7 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 				ctx->id,
 				(unsigned long)dst_mem.dma_addr,
 				(unsigned int)dst_mem.size,
-				ctx->dev->smmu_dev);
+				vb->vb2_queue->dev);
 		}
 	}
 
@@ -4542,18 +4542,18 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->allow_zero_bytesused = 1;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (ctx->dev->enc_cnt & 1) {
-		dst_vq->dev		= vcp_get_io_device(VCP_IOMMU_VDEC_512MB1);
-		mtk_v4l2_debug(4, "use VCP_IOMMU_VDEC_512MB1 domain");
+		dst_vq->dev     = vcp_get_io_device(VCP_IOMMU_VDEC_512MB1);
+		mtk_v4l2_debug(4, "use VCP_IOMMU_VDEC_512MB1 domain %p", dst_vq->dev);
 	} else {
-		dst_vq->dev		= vcp_get_io_device(VCP_IOMMU_VENC_512MB2);
-		mtk_v4l2_debug(4, "use VCP_IOMMU_VENC_512MB2 domain");
+		dst_vq->dev     = vcp_get_io_device(VCP_IOMMU_VENC_512MB2);
+		mtk_v4l2_debug(4, "use VCP_IOMMU_VENC_512MB2 domain %p", dst_vq->dev);
 	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (!dst_vq->dev)
-		dst_vq->dev = ctx->dev->smmu_dev;
+		dst_vq->dev     = ctx->dev->smmu_dev;
 #endif
 #else
-	dst_vq->dev		= ctx->dev->smmu_dev;
+	dst_vq->dev             = ctx->dev->smmu_dev;
 #endif
 
 	return vb2_queue_init(dst_vq);
