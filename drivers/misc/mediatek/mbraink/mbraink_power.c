@@ -285,9 +285,11 @@ void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info
 				active_time = 0;
 			}
 
-			if (strlen(ws->name) < MAX_NAME_SZ) {
-				memcpy(wakeup_info_buffer->drv_data[i].name,
+			if (ws->name != NULL) {
+				if ((strlen(ws->name) > 0) && (strlen(ws->name) < MAX_NAME_SZ)) {
+					memcpy(wakeup_info_buffer->drv_data[i].name,
 					ws->name, strlen(ws->name));
+				}
 			}
 
 			wakeup_info_buffer->drv_data[i].active_count = active_count;
