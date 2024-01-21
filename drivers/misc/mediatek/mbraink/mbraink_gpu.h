@@ -17,10 +17,21 @@ int mbraink_gpu_getStateInfo(struct mbraink_gpu_state_info *gStateInfo);
 int mbraink_gpu_getLoadingInfo(struct mbraink_gpu_loading_info *gLoadingInfo);
 
 
+void mbraink_gpu_setPerfIdxTimeoutInNS(unsigned long long perfIdxTimeoutInNS);
+void mbraink_gpu_setPerfIdxLimit(int perfIdxLimit);
+void mbraink_gpu_dumpPerfIdxList(void);
+
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
 
 void fpsgo2mbrain_hint_frameinfo(int pid, unsigned long long bufID,
 	int fps, unsigned long long time);
+
+void fpsgo2mbrain_hint_perfinfo(int pid, unsigned long long bufID,
+	int perf_idx, int sbe_ctrl, unsigned long long ts);
+
+void fpsgo2mbrain_hint_deleteperfinfo(int pid, unsigned long long bufID,
+	int perf_idx, int sbe_ctrl, unsigned long long ts);
+
 #endif
 
 #endif /*end of MBRAINK_GPU_H*/

@@ -1137,9 +1137,15 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 
 	if (command == 1)
 		mbraink_gpu_setQ2QTimeoutInNS(value);
-
+	if (command == 2)
+		mbraink_gpu_setPerfIdxTimeoutInNS(value);
+	if (command == 3)
+		mbraink_gpu_setPerfIdxLimit(value);
+	if (command == 4)
+		mbraink_gpu_dumpPerfIdxList();
 	return count;
 }
+
 static DEVICE_ATTR_RW(mbraink_gpu);
 
 
