@@ -107,6 +107,14 @@ struct therm_intf_info {
 };
 
 static struct therm_intf_info tm_data;
+
+static struct user_vsensor_info u_vsensor0;
+static struct user_vsensor_info u_vsensor1;
+static struct user_vsensor_info u_vsensor2;
+static struct user_vsensor_info u_vsensor3;
+static struct user_vsensor_info u_vsensor4;
+static struct user_vsensor_info u_vsensor5;
+
 void __iomem *thermal_csram_base;
 EXPORT_SYMBOL(thermal_csram_base);
 void __iomem *thermal_cputcm_base;
@@ -666,6 +674,43 @@ int get_catm_ttj(void)
 	return min_ttj;
 }
 EXPORT_SYMBOL(get_catm_ttj);
+
+struct user_vsensor_info *get_u_vsensor0_info(void)
+{
+	return &u_vsensor0;
+}
+EXPORT_SYMBOL(get_u_vsensor0_info);
+
+struct user_vsensor_info *get_u_vsensor1_info(void)
+{
+	return &u_vsensor1;
+}
+EXPORT_SYMBOL(get_u_vsensor1_info);
+
+struct user_vsensor_info *get_u_vsensor2_info(void)
+{
+	return &u_vsensor2;
+}
+EXPORT_SYMBOL(get_u_vsensor2_info);
+
+struct user_vsensor_info *get_u_vsensor3_info(void)
+{
+	return &u_vsensor3;
+}
+EXPORT_SYMBOL(get_u_vsensor3_info);
+
+struct user_vsensor_info *get_u_vsensor4_info(void)
+{
+	return &u_vsensor4;
+}
+EXPORT_SYMBOL(get_u_vsensor4_info);
+
+struct user_vsensor_info *get_u_vsensor5_info(void)
+{
+	return &u_vsensor5;
+}
+EXPORT_SYMBOL(get_u_vsensor5_info);
+
 
 
 static ssize_t ttj_show(struct kobject *kobj,
@@ -1734,6 +1779,222 @@ static ssize_t bat_type_show(struct kobject *kobj, struct kobj_attribute *attr,
 	return len;
 }
 
+static ssize_t user_vsensor0_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d, %s",
+		u_vsensor0.temp,
+		u_vsensor0.user_vsensor_name);
+
+	return len;
+}
+
+static ssize_t user_vsensor0_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[10];
+	int temp = THERMAL_TEMP_INVALID;
+	char name[32];
+	int len;
+
+	if (sscanf(buf, "%9s %d %s", cmd, &temp, name)
+		== 3) {
+		if (strncmp(cmd, "U_VSENSOR", 9) == 0) {
+			u_vsensor0.temp = temp;
+			len = snprintf(u_vsensor0.user_vsensor_name, USER_VSENSOR_NAME, "%s", name);
+			if (len != USER_VSENSOR_NAME)
+				pr_info("user_vsensor_name write fail, %d\n", len);
+			return count;
+		}
+	}
+
+	pr_info("%s: invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+static ssize_t user_vsensor1_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d, %s",
+		u_vsensor1.temp,
+		u_vsensor1.user_vsensor_name);
+
+	return len;
+}
+
+static ssize_t user_vsensor1_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[10];
+	int temp = THERMAL_TEMP_INVALID;
+	char name[32];
+	int len;
+
+	if (sscanf(buf, "%9s %d %s", cmd, &temp, name)
+		== 3) {
+		if (strncmp(cmd, "U_VSENSOR", 9) == 0) {
+			u_vsensor1.temp = temp;
+			len = snprintf(u_vsensor1.user_vsensor_name, USER_VSENSOR_NAME, "%s", name);
+			if (len != USER_VSENSOR_NAME)
+				pr_info("user_vsensor_name write fail, %d\n", len);
+			return count;
+		}
+	}
+
+	pr_info("%s: invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+static ssize_t user_vsensor2_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d, %s",
+		u_vsensor2.temp,
+		u_vsensor2.user_vsensor_name);
+
+	return len;
+}
+
+static ssize_t user_vsensor2_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[10];
+	int temp = THERMAL_TEMP_INVALID;
+	char name[32];
+	int len;
+
+	if (sscanf(buf, "%9s %d %s", cmd, &temp, name)
+		== 3) {
+		if (strncmp(cmd, "U_VSENSOR", 9) == 0) {
+			u_vsensor2.temp = temp;
+			len = snprintf(u_vsensor2.user_vsensor_name, USER_VSENSOR_NAME, "%s", name);
+			if (len != USER_VSENSOR_NAME)
+				pr_info("user_vsensor_name write fail, %d\n", len);
+			return count;
+		}
+	}
+
+	pr_info("%s: invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+static ssize_t user_vsensor3_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d, %s",
+		u_vsensor3.temp,
+		u_vsensor3.user_vsensor_name);
+
+	return len;
+}
+
+static ssize_t user_vsensor3_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[10];
+	int temp = THERMAL_TEMP_INVALID;
+	char name[32];
+	int len;
+
+	if (sscanf(buf, "%9s %d %s", cmd, &temp, name)
+		== 3) {
+		if (strncmp(cmd, "U_VSENSOR", 9) == 0) {
+			u_vsensor3.temp = temp;
+			len = snprintf(u_vsensor3.user_vsensor_name, USER_VSENSOR_NAME, "%s", name);
+			if (len != USER_VSENSOR_NAME)
+				pr_info("user_vsensor_name write fail, %d\n", len);
+			return count;
+		}
+	}
+
+	pr_info("%s: invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+static ssize_t user_vsensor4_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d, %s",
+		u_vsensor4.temp,
+		u_vsensor4.user_vsensor_name);
+
+	return len;
+}
+
+static ssize_t user_vsensor4_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[10];
+	int temp = THERMAL_TEMP_INVALID;
+	char name[32];
+	int len;
+
+	if (sscanf(buf, "%9s %d %s", cmd, &temp, name)
+		== 3) {
+		if (strncmp(cmd, "U_VSENSOR", 9) == 0) {
+			u_vsensor4.temp = temp;
+			len = snprintf(u_vsensor4.user_vsensor_name, USER_VSENSOR_NAME, "%s", name);
+			if (len != USER_VSENSOR_NAME)
+				pr_info("user_vsensor_name write fail, %d\n", len);
+			return count;
+		}
+	}
+
+	pr_info("%s: invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+static ssize_t user_vsensor5_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d, %s",
+		u_vsensor5.temp,
+		u_vsensor5.user_vsensor_name);
+
+	return len;
+}
+
+static ssize_t user_vsensor5_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[10];
+	int temp = THERMAL_TEMP_INVALID;
+	char name[32];
+	int len;
+
+	if (sscanf(buf, "%9s %d %s", cmd, &temp, name)
+		== 3) {
+		if (strncmp(cmd, "U_VSENSOR", 9) == 0) {
+			u_vsensor5.temp = temp;
+			len = snprintf(u_vsensor5.user_vsensor_name, USER_VSENSOR_NAME, "%s", name);
+			if (len != USER_VSENSOR_NAME)
+				pr_info("user_vsensor_name write fail, %d\n", len);
+			return count;
+		}
+	}
+
+	pr_info("%s: invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
 static struct kobj_attribute ttj_attr = __ATTR_RW(ttj);
 static struct kobj_attribute power_budget_attr = __ATTR_RW(power_budget);
 static struct kobj_attribute cpu_info_attr = __ATTR_RO(cpu_info);
@@ -1767,6 +2028,12 @@ static struct kobj_attribute catm_p_attr = __ATTR_RW(catm_p);
 static struct kobj_attribute dram_data_rate_attr = __ATTR_RO(dram_data_rate);
 static struct kobj_attribute pid_info_attr = __ATTR_RW(pid_info);
 static struct kobj_attribute bat_type_attr = __ATTR_RO(bat_type);
+static struct kobj_attribute user_vsensor0_attr = __ATTR_RW(user_vsensor0);
+static struct kobj_attribute user_vsensor1_attr = __ATTR_RW(user_vsensor1);
+static struct kobj_attribute user_vsensor2_attr = __ATTR_RW(user_vsensor2);
+static struct kobj_attribute user_vsensor3_attr = __ATTR_RW(user_vsensor3);
+static struct kobj_attribute user_vsensor4_attr = __ATTR_RW(user_vsensor4);
+static struct kobj_attribute user_vsensor5_attr = __ATTR_RW(user_vsensor5);
 
 
 static struct attribute *thermal_attrs[] = {
@@ -1802,6 +2069,12 @@ static struct attribute *thermal_attrs[] = {
 	&dram_data_rate_attr.attr,
 	&pid_info_attr.attr,
 	&bat_type_attr.attr,
+	&user_vsensor0_attr.attr,
+	&user_vsensor1_attr.attr,
+	&user_vsensor2_attr.attr,
+	&user_vsensor3_attr.attr,
+	&user_vsensor4_attr.attr,
+	&user_vsensor5_attr.attr,
 	NULL
 };
 static struct attribute_group thermal_attr_group = {

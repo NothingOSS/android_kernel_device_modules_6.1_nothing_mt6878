@@ -201,6 +201,13 @@ struct pid_info {
 	struct pid_term_info *pid_term_data;
 };
 
+#define USER_VSENSOR_NAME 32
+
+struct user_vsensor_info {
+	int temp;
+	char user_vsensor_name[USER_VSENSOR_NAME];
+};
+
 extern void update_ap_ntc_headroom(int temp, int polling_interval);
 extern int get_thermal_headroom(enum headroom_id id);
 extern int set_cpu_min_opp(int gear, int opp);
@@ -216,6 +223,13 @@ extern int set_reboot_temperature(int temp);
 extern int set_cold_interrupt_enable_addr(int val);
 extern int get_dsu_ceiling_freq(void);
 extern int get_cpu_ceiling_freq (int cluster_id);
+
+extern struct user_vsensor_info *get_u_vsensor0_info(void);
+extern struct user_vsensor_info *get_u_vsensor1_info(void);
+extern struct user_vsensor_info *get_u_vsensor2_info(void);
+extern struct user_vsensor_info *get_u_vsensor3_info(void);
+extern struct user_vsensor_info *get_u_vsensor4_info(void);
+extern struct user_vsensor_info *get_u_vsensor5_info(void);
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 extern void __iomem *thermal_csram_base;
