@@ -11106,6 +11106,7 @@ int mtk_drm_crtc_usage_enable(struct mtk_drm_private *priv,
 
 	/* can't find main display, free run sage state control */
 	if (unlikely(main_disp_idx == 0xFFFFFFFF)) {
+		priv->usage[crtc_id] = DISP_ENABLE;
 		mutex_unlock(&priv->res_usage_lock);
 		return DISP_ENABLE;
 	}
@@ -11115,26 +11116,37 @@ int mtk_drm_crtc_usage_enable(struct mtk_drm_private *priv,
 		if (priv->ovl_usage[main_disp_idx] != 0 &&
 				(priv->ovl_usage[main_disp_idx] & ~occupied_ovl) == 0) {
 			DDPPR_ERR("main display ovl drained, occupied_ovl %x\n", occupied_ovl);
+			priv->usage[crtc_id] = DISP_OPENING;
 			mutex_unlock(&priv->res_usage_lock);
 			return DISP_OPENING;
 		}
+		priv->usage[crtc_id] = DISP_ENABLE;
 		mutex_unlock(&priv->res_usage_lock);
 		return DISP_ENABLE;
 	}
 
 	/* other display could also enable imediately when main display disable */
 	if (priv->usage[main_disp_idx] == DISP_DISABLE) {
+		priv->usage[crtc_id] = DISP_ENABLE;
 		mutex_unlock(&priv->res_usage_lock);
 		return DISP_ENABLE;
 	}
 
 	/* this crtc OVL usage conflict with main display, pending */
-	if ((priv->ovl_usage[main_disp_idx] & priv->ovl_usage[crtc_id]) != 0)
+	if ((priv->ovl_usage[main_disp_idx] & priv->ovl_usage[crtc_id]) != 0) {
+		priv->usage[crtc_id] = DISP_OPENING;
+		mutex_unlock(&priv->res_usage_lock);
 		return DISP_OPENING;
-
+	}
 	/* enable non HRT display imediateky */
-	if (priv->pre_defined_bw[crtc_id] == 0)
+	if (priv->pre_defined_bw[crtc_id] == 0) {
+		priv->usage[crtc_id] = DISP_ENABLE;
+		mutex_unlock(&priv->res_usage_lock);
 		return DISP_ENABLE;
+	}
+
+	priv->usage[crtc_id] = DISP_OPENING;
+	mutex_unlock(&priv->res_usage_lock);
 
 	return DISP_OPENING;
 }
