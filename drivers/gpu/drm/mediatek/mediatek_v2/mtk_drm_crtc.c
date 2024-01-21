@@ -6602,6 +6602,7 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct cmdq_client *cl;
 	dma_addr_t trig_pc;
+	dma_addr_t event_pc;
 	u64 *inst;
 #endif
 
@@ -6627,6 +6628,16 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 		cmdq_dump_pkt(mtk_crtc->trig_loop_cmdq_handle, trig_pc, true);
 
 		DDPMSG("------ Dump trigger loop ------\n");
+	}
+	if ((mtk_crtc->event_loop_cmdq_handle) &&
+			(mtk_crtc->event_loop_cmdq_handle->cl)) {
+		cl = (struct cmdq_client *)mtk_crtc->event_loop_cmdq_handle->cl;
+		DDPMSG("++++++ Dump event loop ++++++\n");
+		cmdq_thread_dump(cl->chan, mtk_crtc->event_loop_cmdq_handle,
+				&inst, &event_pc);
+		cmdq_dump_pkt(mtk_crtc->event_loop_cmdq_handle, event_pc, true);
+
+		DDPMSG("------ Dump event loop ------\n");
 	}
 	atomic_set(&mtk_crtc->cmdq_trig, 1);
 #endif
