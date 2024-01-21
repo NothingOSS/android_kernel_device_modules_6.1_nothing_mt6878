@@ -3607,7 +3607,7 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)) {
 		crtc_idx = drm_crtc_index(crtc);
-		if (priv && crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_OPENING) {
+		if (mtk_crtc->cur_usage == DISP_OPENING) {
 			DDPINFO("%s %d skip due to still opening\n", __func__, crtc_idx);
 			return;
 		}
@@ -3832,7 +3832,8 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 	unsigned int crtc_idx = 0;
 	bool skip_panel_switch = mtk_dsi_skip_panel_switch(dsi);
 
-	DDPINFO("%s+ doze_enabled:%d\n", __func__, new_doze_state);
+	DDPINFO("%s+ doze_enabled:%d crtc%u %s\n",
+		__func__, new_doze_state, drm_crtc_index(crtc), mtk_dump_comp_str(&dsi->ddp_comp));
 	if (!dsi->output_en)
 		return;
 
@@ -3849,7 +3850,7 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 
 	crtc_idx = drm_crtc_index(crtc);
 	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)
-			&& crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_OPENING) {
+			&& mtk_crtc->cur_usage == DISP_OPENING) {
 		DDPINFO("%s %d wait for opening\n", __func__, drm_crtc_index(crtc));
 		if (cmdq_handle)
 			cmdq_pkt_destroy(cmdq_handle);
@@ -8087,7 +8088,6 @@ int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev, struct cmdq_pkt *h
 
 	CRTC_MMP_EVENT_START(index, ddic_send_cmd, 0xffffffff, prop);
 	if ((prop & MTK_LCM_DSI_CMD_PROP_LOCK) != 0) {
-		DDP_COMMIT_LOCK(&priv->commit.lock, __func__, __LINE__);
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 
@@ -8105,7 +8105,6 @@ int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev, struct cmdq_pkt *h
 
 	if ((prop & MTK_LCM_DSI_CMD_PROP_LOCK) != 0) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, __LINE__);
 	}
 	CRTC_MMP_EVENT_END(index, ddic_send_cmd, mask, ret);
 
