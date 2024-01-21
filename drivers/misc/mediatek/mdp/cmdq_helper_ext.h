@@ -1008,4 +1008,6 @@ struct cmdqSecSharedMemoryStruct *cmdq_core_get_secure_shared_memory(void);
 void cmdq_core_attach_error_handle(const struct cmdqRecStruct *handle,
 	s32 thread);
 
+void cmdq_check_wake_lock(void);
+
 #endif
