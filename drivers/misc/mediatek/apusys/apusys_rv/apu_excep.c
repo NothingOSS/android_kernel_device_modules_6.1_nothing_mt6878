@@ -204,13 +204,6 @@ static const char * const apusys_assert_module_name[assert_module_max] = {
 	"APUSYS_CE",
 };
 
-struct apu_coredump_work_struct {
-	struct mtk_apu *apu;
-	struct work_struct work;
-};
-
-static struct apu_coredump_work_struct apu_coredump_work;
-
 static void apu_do_tcmdump(struct mtk_apu *apu)
 {
 	memcpy(apu->coredump->tcmdump, (char *) apu->md32_tcm, apu->md32_tcm_sz);
@@ -289,13 +282,10 @@ static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 	return res.a0;
 }
 
-static void apu_coredump_work_func(struct work_struct *p_work)
+static void __apu_coredump_work_func(struct mtk_apu *apu)
 {
 	unsigned long flags;
 	int i, j;
-	struct apu_coredump_work_struct *apu_coredump_work =
-		container_of(p_work, struct apu_coredump_work_struct, work);
-	struct mtk_apu *apu = apu_coredump_work->apu;
 	struct device *dev = apu->dev;
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 	uint32_t pc, lr, sp;
@@ -307,6 +297,8 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 	uint32_t *ptr;
 	uint32_t up_code_buf_sz, md32_tcm_sz;
 
+	dev_info(dev, "%s +\n", __func__);
+
 	/* bypass AP coredump flow if wdt timeout
 	 * is triggered by uP exception
 	 */
@@ -317,6 +309,10 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 			apu->conf_buf->ramdump_module = 0;
 		}
 		if ((apu->platdata->flags & F_SECURE_COREDUMP)) {
+
+			apusys_rv_smc_call(dev,
+				MTK_APUSYS_KERNEL_OP_APUSYS_CE_SRAM_DUMP, 0);
+
 			apusys_rv_smc_call(dev,
 				MTK_APUSYS_KERNEL_OP_APUSYS_RV_COREDUMP_SHADOW_COPY, 0);
 			/* gating md32 cg for cache dump */
@@ -346,8 +342,7 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		}
 
 		apu->bypass_aee = true;
-		dev_info(dev, "%s +\n", __func__);
-
+		dev_info(dev, "%s -\n", __func__);
 		return;
 	}
 
@@ -527,7 +522,16 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 	}
 
 	apu->bypass_aee = true;
-	dev_info(dev, "%s +\n", __func__);
+	dev_info(dev, "%s -\n", __func__);
+}
+
+static irqreturn_t apu_wdt_isr_work(int irq, void *private_data)
+{
+	struct mtk_apu *apu = (struct mtk_apu *) private_data;
+
+	__apu_coredump_work_func(apu);
+
+	return IRQ_HANDLED;
 }
 
 
@@ -548,7 +552,7 @@ void apu_coredump_trigger(struct mtk_apu *apu)
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_DISABLE_WDT_ISR, 0);
 	} else {
 		val = ioread32(apu->apu_wdt);
-		if (val != 0x1) {
+		if (val != WDT_INT_STATUS) {
 			dev_info(dev, "%s: skip abnormal isr call(status = 0x%x)\n",
 				__func__, val);
 		}
@@ -557,16 +561,14 @@ void apu_coredump_trigger(struct mtk_apu *apu)
 		if (!hw_ops->cg_gating) {
 			spin_unlock_irqrestore(&apu->reg_lock, flags);
 			WARN_ON(1);
-		}
-
-		if (hw_ops->cg_gating != NULL)
+		} else
 			hw_ops->cg_gating(apu);
 
 		/* disable apu wdt */
-		iowrite32(ioread32(apu->apu_wdt + 4) &
-			(~(0x1U << 31)), apu->apu_wdt + 4);
+		iowrite32(ioread32(apu->apu_wdt + WDT_CTRL0_OFFSET) &
+			(~(0x1U << WDT_EN_BIT)), apu->apu_wdt + WDT_CTRL0_OFFSET);
 		/* clear wdt interrupt */
-		iowrite32(0x1, apu->apu_wdt);
+		iowrite32(WDT_INT_STATUS, apu->apu_wdt);
 		spin_unlock_irqrestore(&apu->reg_lock, flags);
 	}
 
@@ -574,10 +576,9 @@ void apu_coredump_trigger(struct mtk_apu *apu)
 	dev_info(dev, "%s: disable wdt_irq(%d)\n", __func__,
 		apu->wdt_irq_number);
 
-	dev_info(dev, "%s +\n", __func__);
+	__apu_coredump_work_func(apu);
 
-	schedule_work(&(apu_coredump_work.work));
-
+	dev_info(dev, "%s -\n", __func__);
 }
 
 static irqreturn_t apu_wdt_isr(int irq, void *private_data)
@@ -588,6 +589,8 @@ static irqreturn_t apu_wdt_isr(int irq, void *private_data)
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 	uint32_t val;
 
+	dev_info(dev, "%s +\n", __func__);
+
 	if ((apu->platdata->flags & F_SECURE_COREDUMP)) {
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_CG_GATING, 0);
@@ -596,7 +599,7 @@ static irqreturn_t apu_wdt_isr(int irq, void *private_data)
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_DISABLE_WDT_ISR, 0);
 	} else {
 		val = ioread32(apu->apu_wdt);
-		if (val != 0x1) {
+		if (val != WDT_INT_STATUS) {
 			dev_info(dev, "%s: skip abnormal isr call(status = 0x%x)\n",
 				__func__, val);
 			return IRQ_HANDLED;
@@ -606,14 +609,13 @@ static irqreturn_t apu_wdt_isr(int irq, void *private_data)
 		if (!hw_ops->cg_gating) {
 			spin_unlock_irqrestore(&apu->reg_lock, flags);
 			WARN_ON(1);
-			return -EINVAL;
-		}
-		hw_ops->cg_gating(apu);
+		} else
+			hw_ops->cg_gating(apu);
 		/* disable apu wdt */
-		iowrite32(ioread32(apu->apu_wdt + 4) &
-			(~(0x1U << 31)), apu->apu_wdt + 4);
+		iowrite32(ioread32(apu->apu_wdt + WDT_CTRL0_OFFSET) &
+			(~(0x1U << WDT_EN_BIT)), apu->apu_wdt + WDT_CTRL0_OFFSET);
 		/* clear wdt interrupt */
-		iowrite32(0x1, apu->apu_wdt);
+		iowrite32(WDT_INT_STATUS, apu->apu_wdt);
 		spin_unlock_irqrestore(&apu->reg_lock, flags);
 	}
 
@@ -621,11 +623,9 @@ static irqreturn_t apu_wdt_isr(int irq, void *private_data)
 	dev_info(dev, "%s: disable wdt_irq(%d)\n", __func__,
 		apu->wdt_irq_number);
 
-	dev_info(dev, "%s +\n", __func__);
+	dev_info(dev, "%s -\n", __func__);
 
-	schedule_work(&(apu_coredump_work.work));
-
-	return IRQ_HANDLED;
+	return IRQ_WAKE_THREAD;
 }
 
 static int apu_wdt_irq_register(struct platform_device *pdev,
@@ -637,9 +637,11 @@ static int apu_wdt_irq_register(struct platform_device *pdev,
 	apu->wdt_irq_number = platform_get_irq_byname(pdev, "apu_wdt");
 	dev_info(dev, "%s: wdt_irq_number = %d\n", __func__, apu->wdt_irq_number);
 
-	ret = devm_request_irq(&pdev->dev, apu->wdt_irq_number, apu_wdt_isr,
-			irq_get_trigger_type(apu->wdt_irq_number),
-			"apusys_wdt", apu);
+	ret = devm_request_threaded_irq(&pdev->dev, apu->wdt_irq_number,
+				apu_wdt_isr, apu_wdt_isr_work,
+				irq_get_trigger_type(apu->wdt_irq_number),
+				"apusys_wdt", apu);
+
 	if (ret < 0)
 		dev_info(dev, "%s: devm_request_irq Failed to request irq %d: %d\n",
 				__func__, apu->wdt_irq_number, ret);
@@ -651,8 +653,6 @@ int apu_excep_init(struct platform_device *pdev, struct mtk_apu *apu)
 {
 	int ret = 0;
 
-	INIT_WORK(&(apu_coredump_work.work), &apu_coredump_work_func);
-	apu_coredump_work.apu = apu;
 	ret = apu_wdt_irq_register(pdev, apu);
 	if (ret < 0)
 		return ret;
@@ -673,16 +673,14 @@ void apu_excep_remove(struct platform_device *pdev, struct mtk_apu *apu)
 	} else {
 		spin_lock_irqsave(&apu->reg_lock, flags);
 		/* disable apu wdt */
-		iowrite32(ioread32(apu->apu_wdt + 4) &
-			(~(0x1U << 31)), apu->apu_wdt + 4);
+		iowrite32(ioread32(apu->apu_wdt + WDT_CTRL0_OFFSET) &
+			(~(0x1U << WDT_EN_BIT)), apu->apu_wdt + WDT_CTRL0_OFFSET);
 		/* clear wdt interrupt */
-		iowrite32(0x1, apu->apu_wdt);
+		iowrite32(WDT_INT_STATUS, apu->apu_wdt);
 		spin_unlock_irqrestore(&apu->reg_lock, flags);
 	}
 
 	disable_irq(apu->wdt_irq_number);
 	dev_info(dev, "%s: disable wdt_irq(%d)\n", __func__,
 		apu->wdt_irq_number);
-
-	cancel_work_sync(&(apu_coredump_work.work));
 }

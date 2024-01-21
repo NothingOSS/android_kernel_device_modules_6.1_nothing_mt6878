@@ -6,6 +6,13 @@
 #ifndef APU_EXCEP_H
 #define APU_EXCEP_H
 
+/* WDT_INT */
+#define WDT_INT_OFFSET (0x0)
+#define WDT_INT_STATUS (0x1)
+/* WDT_CTRL0 */
+#define WDT_CTRL0_OFFSET (0x4)
+#define WDT_EN_BIT (31)
+
 #define MON_PC (0x838)
 #define MON_LR (0x83c)
 #define MON_SP (0x840)
