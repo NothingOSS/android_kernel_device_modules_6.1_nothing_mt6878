@@ -7,15 +7,18 @@
 #define FSTB_H
 
 enum FSTB_INFO {
-	FPSGO_Q2Q_TIME,
-	FPSGO_CPU_TIME,
-	FPSGO_GPU_TIME,
-	FPSGO_QUEUE_FPS,
-	FPSGO_TARGET_FPS
+	FPSGO_Q2Q_TIME = 0,
+	FPSGO_CPU_TIME = 1,
+	FPSGO_QUEUE_FPS = 2,
+	FPSGO_TARGET_FPS = 3,
+	FPSGO_PERF_IDX = 4,
+	FPSGO_DELETE = 5,
 };
 
 typedef void (*time_notify_callback)(int pid, unsigned long long bufID,
 	int fps, unsigned long long time);
+typedef void (*perf_notify_callback)(int pid, unsigned long long bufID,
+	int perf_idx, int sbe_ctrl, unsigned long long ts);
 
 int mtk_fstb_exit(void);
 int mtk_fstb_init(void);
@@ -37,6 +40,10 @@ int fpsgo_comp2fstb_adpf_set_target_time(int tgid, int rtid, unsigned long long 
 int fpsgo_ctrl2fstb_magt_set_target_fps(int *pid_arr, int *tid_arr, int *tfps_arr, int num);
 int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_cb);
 int fpsgo_other2fstb_unregister_info_callback(int mode, time_notify_callback func_cb);
+int fpsgo_other2fstb_register_perf_callback(int mode, perf_notify_callback func_cb);
+int fpsgo_other2fstb_unregister_perf_callback(int mode, perf_notify_callback func_cb);
+int fpsgo_fstb2other_info_update(int pid, unsigned long long bufID,
+	int mode, int fps, unsigned long long time, int blc, int sbe_ctrl);
 int fpsgo_other2fstb_get_fps(int pid, unsigned long long bufID,
 	int *qfps_arr, int *qfps_num, int max_qfps_num,
 	int *tfps_arr, int *tfps_num, int max_tfps_num);

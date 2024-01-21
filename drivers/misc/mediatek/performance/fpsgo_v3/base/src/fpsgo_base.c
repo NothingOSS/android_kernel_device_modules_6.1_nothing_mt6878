@@ -1925,6 +1925,9 @@ int fpsgo_check_thread_status(void)
 				fpsgo_add_linger(iter);
 			}
 
+			fpsgo_fstb2other_info_update(iter->pid,
+				iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
+
 			fpsgo_thread_unlock(&iter->thr_mlock);
 
 			fpsgo_delete_hwui_info(iter->pid);

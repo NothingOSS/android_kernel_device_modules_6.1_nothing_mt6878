@@ -105,7 +105,9 @@ static struct workqueue_struct *wq;
 static struct rb_root fstb_policy_cmd_tree;
 struct FSTB_POWERFPS_LIST powerfps_array[64];
 
-static time_notify_callback q2q_notify_callback_list[MAX_Q2Q_TIME_CALLBACK];
+static time_notify_callback q2q_notify_callback_list[MAX_INFO_CALLBACK];
+static perf_notify_callback blc_notify_callback_list[MAX_INFO_CALLBACK];
+static perf_notify_callback delete_notify_callback_list[MAX_INFO_CALLBACK];
 
 int (*fstb_get_target_fps_fp)(int pid, unsigned long long bufID, int tgid,
 	int dfps_ceiling, int max_dep_path_num, int max_dep_task_num,
@@ -303,33 +305,56 @@ static int fstb_arbitrate_target_fps(int raw_target_fps, int *margin,
 	return final_target_fps;
 }
 
-int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_cb)
+static time_notify_callback *fstb_get_target_info_cb_list(int mode)
 {
-	int i;
-	int empty_idx = -1;
-	int ret = 0;
-
-	mutex_lock(&fstb_info_callback_lock);
+	time_notify_callback *target_cb_list = NULL;
 
 	switch (mode) {
 	case FPSGO_Q2Q_TIME:
-		for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++) {
-			if (q2q_notify_callback_list[i] == func_cb)
-				break;
-			if (q2q_notify_callback_list[i] == NULL && empty_idx == -1)
-				empty_idx = i;
-		}
-		if (i >= MAX_Q2Q_TIME_CALLBACK) {
-			if (empty_idx < 0 || empty_idx >= MAX_Q2Q_TIME_CALLBACK)
-				ret = -ENOMEM;
-			else
-				q2q_notify_callback_list[empty_idx] = func_cb;
-		}
+		target_cb_list = q2q_notify_callback_list;
+		break;
+	case FPSGO_CPU_TIME:
+		break;
+	case FPSGO_QUEUE_FPS:
+		break;
+	case FPSGO_TARGET_FPS:
 		break;
 	default:
 		break;
 	}
 
+	return target_cb_list;
+}
+
+int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_cb)
+{
+	int i;
+	int empty_idx = -1;
+	int ret = 0;
+	time_notify_callback *target_cb_list = NULL;
+
+	mutex_lock(&fstb_info_callback_lock);
+
+	target_cb_list = fstb_get_target_info_cb_list(mode);
+	if (!target_cb_list) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	for (i = 0; i < MAX_INFO_CALLBACK; i++) {
+		if (target_cb_list[i] == func_cb)
+			break;
+		if (target_cb_list[i] == NULL && empty_idx == -1)
+			empty_idx = i;
+	}
+	if (i >= MAX_INFO_CALLBACK) {
+		if (empty_idx < 0 || empty_idx >= MAX_INFO_CALLBACK)
+			ret = -ENOMEM;
+		else
+			target_cb_list[empty_idx] = func_cb;
+	}
+
+out:
 	mutex_unlock(&fstb_info_callback_lock);
 	return ret;
 }
@@ -338,55 +363,145 @@ EXPORT_SYMBOL(fpsgo_other2fstb_register_info_callback);
 int fpsgo_other2fstb_unregister_info_callback(int mode, time_notify_callback func_cb)
 {
 	int i;
-	int ret = -ESPIPE;
+	int ret = 0;
+	time_notify_callback *target_cb_list = NULL;
 
 	mutex_lock(&fstb_info_callback_lock);
 
-	switch (mode) {
-	case FPSGO_Q2Q_TIME:
-		for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++) {
-			if (q2q_notify_callback_list[i] == func_cb) {
-				q2q_notify_callback_list[i] = NULL;
-				ret = 0;
-				break;
-			}
-		}
-		break;
-	default:
-		break;
+	target_cb_list = fstb_get_target_info_cb_list(mode);
+	if (!target_cb_list) {
+		ret = -EINVAL;
+		goto out;
 	}
 
-	mutex_unlock(&fstb_info_callback_lock);
+	for (i = 0; i < MAX_INFO_CALLBACK; i++) {
+		if (target_cb_list[i] == func_cb) {
+			target_cb_list[i] = NULL;
+			break;
+		}
+	}
 
+out:
+	mutex_unlock(&fstb_info_callback_lock);
 	return ret;
 }
 EXPORT_SYMBOL(fpsgo_other2fstb_unregister_info_callback);
 
-static int fpsgo_fstb2other_info_update(int pid, unsigned long long bufID,
-		int mode, int fps, unsigned long long time)
+static perf_notify_callback *fstb_get_target_perf_cb_list(int mode)
 {
-	int i;
-	int ret = 0;
-
-	mutex_lock(&fstb_info_callback_lock);
+	perf_notify_callback *target_cb_list = NULL;
 
 	switch (mode) {
-	case FPSGO_Q2Q_TIME:
-		for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++) {
-			if (q2q_notify_callback_list[i]) {
-				q2q_notify_callback_list[i](pid, bufID, fps, time);
-				ret = 1;
-				mtk_fstb_dprintk("%s %dth function:%ps\n",
-					__func__, i+1, q2q_notify_callback_list[i]);
-			}
-		}
+	case FPSGO_PERF_IDX:
+		target_cb_list = blc_notify_callback_list;
+		break;
+	case FPSGO_DELETE:
+		target_cb_list = delete_notify_callback_list;
 		break;
 	default:
 		break;
 	}
 
-	mutex_unlock(&fstb_info_callback_lock);
+	return target_cb_list;
+}
 
+int fpsgo_other2fstb_register_perf_callback(int mode, perf_notify_callback func_cb)
+{
+	int i;
+	int empty_idx = -1;
+	int ret = 0;
+	perf_notify_callback *target_cb_list = NULL;
+
+	mutex_lock(&fstb_info_callback_lock);
+
+	target_cb_list = fstb_get_target_perf_cb_list(mode);
+	if (!target_cb_list) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	for (i = 0; i < MAX_INFO_CALLBACK; i++) {
+		if (target_cb_list[i] == func_cb)
+			break;
+		if (target_cb_list[i] == NULL && empty_idx == -1)
+			empty_idx = i;
+	}
+	if (i >= MAX_INFO_CALLBACK) {
+		if (empty_idx < 0 || empty_idx >= MAX_INFO_CALLBACK)
+			ret = -ENOMEM;
+		else
+			target_cb_list[empty_idx] = func_cb;
+	}
+
+out:
+	mutex_unlock(&fstb_info_callback_lock);
+	return ret;
+}
+EXPORT_SYMBOL(fpsgo_other2fstb_register_perf_callback);
+
+int fpsgo_other2fstb_unregister_perf_callback(int mode, perf_notify_callback func_cb)
+{
+	int i;
+	int ret = 0;
+	perf_notify_callback *target_cb_list = NULL;
+
+	mutex_lock(&fstb_info_callback_lock);
+
+	target_cb_list = fstb_get_target_perf_cb_list(mode);
+	if (!target_cb_list) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	for (i = 0; i < MAX_INFO_CALLBACK; i++) {
+		if (target_cb_list[i] == func_cb) {
+			target_cb_list[i] = NULL;
+			break;
+		}
+	}
+
+out:
+	mutex_unlock(&fstb_info_callback_lock);
+	return ret;
+}
+EXPORT_SYMBOL(fpsgo_other2fstb_unregister_perf_callback);
+
+int fpsgo_fstb2other_info_update(int pid, unsigned long long bufID,
+	int mode, int fps, unsigned long long time, int blc, int sbe_ctrl)
+{
+	int i;
+	int ret = 0;
+	unsigned long long ts;
+
+	mutex_lock(&fstb_info_callback_lock);
+
+	switch (mode) {
+	case FPSGO_Q2Q_TIME:
+		for (i = 0; i < MAX_INFO_CALLBACK; i++) {
+			if (q2q_notify_callback_list[i])
+				q2q_notify_callback_list[i](pid, bufID, fps, time);
+		}
+		break;
+	case FPSGO_PERF_IDX:
+		ts = fpsgo_get_time();
+		for (i = 0; i < MAX_INFO_CALLBACK; i++) {
+			if (blc_notify_callback_list[i])
+				blc_notify_callback_list[i](pid, bufID, blc, sbe_ctrl, ts);
+		}
+		break;
+	case FPSGO_DELETE:
+		for (i = 0; i < MAX_INFO_CALLBACK; i++) {
+			if (delete_notify_callback_list[i])
+				delete_notify_callback_list[i](pid, bufID, blc, sbe_ctrl, 0);
+		}
+		break;
+	default:
+		ret = -EINVAL;
+		goto out;
+	}
+
+out:
+	mutex_unlock(&fstb_info_callback_lock);
 	return ret;
 }
 
@@ -1281,7 +1396,7 @@ out:
 		fpsgo2msync_hint_frameinfo_fp((unsigned int)iter->pid, iter->bufid,
 			iter->target_fps, Q2Q_time, Q2Q_time - enqueue_length - dequeue_length);
 
-	fpsgo_fstb2other_info_update(pid, bufID, FPSGO_Q2Q_TIME, 0, Q2Q_time);
+	fpsgo_fstb2other_info_update(pid, bufID, FPSGO_Q2Q_TIME, 0, Q2Q_time, Curr_cap, 0);
 
 	fpsgo_systrace_c_fstb_man(pid, iter->bufid, (int)cpu_time_ns, "t_cpu");
 	fpsgo_systrace_c_fstb(pid, iter->bufid, (int)max_current_cap,
@@ -2718,8 +2833,10 @@ void init_fstb_callback(void)
 
 	mutex_lock(&fstb_info_callback_lock);
 
-	for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++)
+	for (i = 0; i < MAX_INFO_CALLBACK; i++) {
 		q2q_notify_callback_list[i] = NULL;
+		blc_notify_callback_list[i] = NULL;
+	}
 
 	mutex_unlock(&fstb_info_callback_lock);
 }

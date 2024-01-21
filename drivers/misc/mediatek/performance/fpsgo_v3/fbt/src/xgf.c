@@ -404,9 +404,9 @@ static void xgf_set_policy_cmd(int cmd, int value, int tgid,
 void xgf_set_policy_cmd_with_lock(int cmd, int value, int tgid,
 	unsigned long long ts, int op)
 {
-	mutex_lock(&xgf_main_lock);
+	mutex_lock(&xgf_policy_cmd_lock);
 	xgf_set_policy_cmd(cmd, value, tgid, ts, op);
-	mutex_unlock(&xgf_main_lock);
+	mutex_unlock(&xgf_policy_cmd_lock);
 }
 
 int set_xgf_spid_list(char *proc_name,
@@ -1587,15 +1587,13 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 		return;
 
 	mutex_lock(&xgf_main_lock);
-	if (!xgf_is_enable()) {
-		mutex_unlock(&xgf_main_lock);
-		return;
-	}
+	if (!xgf_is_enable())
+		goto by_pass_skip;
 
 	set_bit(FPSGO_TYPE, &local_master_type);
 	iter = xgf_get_render_if(pid, bufID, local_master_type, t_enqueue_end, 1);
 	if (!iter)
-		return;
+		goto by_pass_skip;
 
 	xgf_get_specific_action_spid(XGF_ADD_DEP_FORCE_CPU_TIME, iter);
 
@@ -2881,11 +2879,11 @@ XGF_SYSFS_WRITE_VALUE(xgf_force_set_perf_min, xgf_global_var_lock, xgf_force_set
 static KOBJ_ATTR_RW(xgf_force_set_perf_min);
 
 XGF_SYSFS_READ(xgf_ema2_enable_by_pid, 0, 0);
-XGF_SYSFS_WRITE_POLICY_CMD(xgf_ema2_enable_by_pid, xgf_main_lock, 0, 0, 1);
+XGF_SYSFS_WRITE_POLICY_CMD(xgf_ema2_enable_by_pid, xgf_policy_cmd_lock, 0, 0, 1);
 static KOBJ_ATTR_RW(xgf_ema2_enable_by_pid);
 
 XGF_SYSFS_READ(xgf_filter_dep_task_enable_by_pid, 0, 0);
-XGF_SYSFS_WRITE_POLICY_CMD(xgf_filter_dep_task_enable_by_pid, xgf_main_lock, 1, 0, 1);
+XGF_SYSFS_WRITE_POLICY_CMD(xgf_filter_dep_task_enable_by_pid, xgf_policy_cmd_lock, 1, 0, 1);
 static KOBJ_ATTR_RW(xgf_filter_dep_task_enable_by_pid);
 
 static ssize_t xgf_policy_cmd_show(struct kobject *kobj,
