@@ -988,7 +988,7 @@ static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 			bypass = 1;
 		}
 	} else if ((index == 3) && (mtk_crtc->pending_update_pq == true)
-		&& (stage == 1) && (mtk_crtc->cur_usage == DISP_ENABLE) && (index < MAX_CRTC)) {
+		&& (stage == 1) && (priv->usage[index] == DISP_ENABLE) && (index < MAX_CRTC)) {
 		mtk_crtc->pending_update_pq = false;
 		bypass = mtk_crtc->backup_bypass_pq;
 		DDPINFO("%s %d execute pending update, bypass:%d\n",
@@ -999,12 +999,12 @@ static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) && index < MAX_CRTC) {
-		if ((index == 3) && ((mtk_crtc->cur_usage == DISP_OPENING) || (!mtk_crtc->enabled))) {
+		if ((index == 3) && ((priv->usage[index] == DISP_OPENING) || (!mtk_crtc->enabled))) {
 			mtk_crtc->pending_update_pq = true;
 			mtk_crtc->backup_bypass_pq = bypass;
 			DDPINFO(
 				"%s %d wait for opening or enabled, disp_state:%d, crtc_enabled:%d, backup bypass:%d\n",
-				__func__, index, mtk_crtc->cur_usage, mtk_crtc->enabled,
+				__func__, index, priv->usage[index], mtk_crtc->enabled,
 				mtk_crtc->backup_bypass_pq);
 			return;
 		}
