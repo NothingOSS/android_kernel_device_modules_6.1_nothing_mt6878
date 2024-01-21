@@ -234,6 +234,8 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	case USB_ROLE_HOST:
 		ssusb->is_host = false;
 		ssusb_set_vbus(otg_sx, 0);
+		/* wait for host device remove done, e.g. usb audio */
+		mdelay(100);
 		/* unregister host driver */
 		ssusb_host_register(ssusb, false);
 		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
@@ -465,10 +467,6 @@ static int ssusb_role_sw_set(struct usb_role_switch *sw, enum usb_role role)
 {
 	struct ssusb_mtk *ssusb = usb_role_switch_get_drvdata(sw);
 	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
-
-	/* wait for host device remove done, e.g. usb audio */
-	if (otg_sx->current_role == USB_ROLE_HOST)
-		mdelay(100);
 
 	ssusb_set_mode(otg_sx, role);
 
