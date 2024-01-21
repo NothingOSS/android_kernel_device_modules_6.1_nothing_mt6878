@@ -458,6 +458,10 @@ struct mtu3 {
 	struct work_struct draw_work;
 	unsigned int vbus_draw;
 	unsigned int is_power_limit:1;
+
+	const char *typec_name;
+	const char *typec_port_name;
+	struct typec_port *typec_port;
 };
 
 /* struct ssusb_offload */
@@ -548,8 +552,9 @@ void mtu3_gadget_reset(struct mtu3 *mtu);
 void mtu3_gadget_suspend(struct mtu3 *mtu);
 void mtu3_gadget_resume(struct mtu3 *mtu);
 void mtu3_gadget_disconnect(struct mtu3 *mtu);
-int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA);
 
+int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA);
+int mtu3_is_usb_pd(struct mtu3 *mtu);
 
 int mtu3_device_enable(struct mtu3 *mtu);
 void mtu3_device_disable(struct mtu3 *mtu);

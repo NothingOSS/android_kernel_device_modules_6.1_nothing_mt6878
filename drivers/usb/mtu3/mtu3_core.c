@@ -12,6 +12,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
+#include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
@@ -20,6 +21,9 @@
 #include "mtu3_dr.h"
 #include "mtu3_debug.h"
 #include "mtu3_trace.h"
+
+#include <linux/usb/typec.h>
+#include "class.h"
 
 static int ep_fifo_alloc(struct mtu3_ep *mep, u32 seg_size)
 {
@@ -74,7 +78,8 @@ static void mtu3_vbus_draw_work(struct work_struct *data)
 	union power_supply_propval val;
 	int ret;
 
-	val.intval = mtu->is_active && !(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW);
+	val.intval = mtu->is_active &&	!(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW) &&
+			!mtu3_is_usb_pd(mtu);
 
 	if (mtu->is_power_limit != val.intval) {
 		ret = power_supply_set_property(mtu->usb_psy,
@@ -110,6 +115,54 @@ int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA)
 	return 0;
 skip:
 	return -EOPNOTSUPP;
+}
+
+static struct typec_port *mtu3_get_typec_port(struct mtu3 *mtu)
+{
+	struct device_node *np;
+	struct platform_device *pdev;
+	struct device *child;
+	struct typec_port *port = NULL;
+
+	np = of_find_node_by_name(NULL, mtu->typec_name);
+	if (!np)
+		return NULL;
+
+	pdev = of_find_device_by_node(np);
+	of_node_put(np);
+	if (!pdev)
+		return NULL;
+
+	child = device_find_child_by_name(&pdev->dev, mtu->typec_port_name);
+	if (!child)
+		return NULL;
+
+	if (!strcmp(child->type->name, "typec_port"))
+		port = to_typec_port(child);
+
+	put_device(child);
+
+	return port;
+}
+
+int mtu3_is_usb_pd(struct mtu3 *mtu)
+{
+	int usb_pd = -EOPNOTSUPP;
+
+	if (!mtu->typec_name || !mtu->typec_port_name)
+		goto skip;
+
+	if (!mtu->typec_port) {
+		mtu->typec_port = mtu3_get_typec_port(mtu);
+		if (!mtu->typec_port) {
+			dev_info(mtu->dev, "couldn't get typec port\n");
+			goto skip;
+		}
+	}
+
+	usb_pd = (mtu->typec_port->pwr_opmode == TYPEC_PWR_MODE_PD) ? 1 : 0;
+skip:
+	return usb_pd;
 }
 
 /* enable/disable U3D SS function */
@@ -1116,6 +1169,12 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 		dev_info(mtu->dev, "usb psy: %s\n", mtu->usb_psy_name);
 		INIT_WORK(&mtu->draw_work, mtu3_vbus_draw_work);
 	}
+
+	if (device_property_read_string(mtu->dev, "typec-name", &mtu->typec_name) >= 0)
+		dev_info(mtu->dev, "typec: %s\n", mtu->typec_name);
+
+	if (device_property_read_string(mtu->dev, "typec-port-name", &mtu->typec_port_name) >= 0)
+		dev_info(mtu->dev, "typec port: %s\n", mtu->typec_port_name);
 
 	ret = mtu3_hw_init(mtu);
 	if (ret) {

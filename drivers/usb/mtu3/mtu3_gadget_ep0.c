@@ -36,6 +36,27 @@ static const u8 mtu3_test_packet[53] = {
 	/* implicit CRC16 then EOP to end */
 };
 
+/* update bmAttributes for usb pd compliance */
+static void set_usb_selfpower(struct mtu3 *mtu, bool selfpower)
+{
+	struct usb_configuration *c = NULL, *iter;
+	struct usb_composite_dev *cdev = get_gadget_data(&mtu->g);
+
+	list_for_each_entry(iter, &cdev->configs, list) {
+		c = iter;
+		if (c) {
+			if (selfpower) {
+				c->bmAttributes |= USB_CONFIG_ATT_SELFPOWER;
+				c->MaxPower = 0;
+				dev_info(mtu->dev, "set selfpower\n");
+			} else {
+				c->bmAttributes &= ~USB_CONFIG_ATT_SELFPOWER;
+				c->MaxPower = 500;
+			}
+		}
+	}
+}
+
 static char *decode_ep0_state(struct mtu3 *mtu)
 {
 	switch (mtu->ep0_state) {
@@ -447,6 +468,7 @@ static int handle_standard_request(struct mtu3 *mtu,
 	int handled = -EINVAL;
 	u32 dev_conf;
 	u16 value;
+	int usb_pd;
 
 	value = le16_to_cpu(setup->wValue);
 
@@ -462,9 +484,13 @@ static int handle_standard_request(struct mtu3 *mtu,
 		dev_conf |= DEV_ADDR(mtu->address);
 		mtu3_writel(mbase, U3D_DEVICE_CONF, dev_conf);
 
-		if (mtu->address)
+		if (mtu->address) {
 			usb_gadget_set_state(&mtu->g, USB_STATE_ADDRESS);
-		else
+
+			usb_pd = mtu3_is_usb_pd(mtu);
+			if (usb_pd >= 0)
+				set_usb_selfpower(mtu, usb_pd);
+		} else
 			usb_gadget_set_state(&mtu->g, USB_STATE_DEFAULT);
 
 		handled = 1;
