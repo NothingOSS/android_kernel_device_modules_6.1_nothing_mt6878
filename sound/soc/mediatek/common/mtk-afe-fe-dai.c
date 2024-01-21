@@ -127,7 +127,7 @@ static void vow_barge_in_disable_memif(struct mtk_base_afe *afe,
 	}
 }
 
-static void vow_barge_in_hw_free(struct mtk_base_afe *afe)
+static void vow_barge_in_hw_free(struct mtk_base_afe *afe, int id)
 {
 	struct vow_sound_soc_ipi_send_info vow_ipi_info;
 	int ret = 0;
@@ -137,9 +137,15 @@ static void vow_barge_in_hw_free(struct mtk_base_afe *afe)
 	vow_ipi_info.payload = NULL;
 	vow_ipi_info.need_ack = SOUND_SOC_VOW_IPI_BYPASS_ACK;
 	ret = notify_vow_ipi_send(NOTIFIER_VOW_IPI_SEND, &vow_ipi_info);
-	if (ret != NOTIFY_STOP)
+	if (ret != NOTIFY_STOP) {
 		dev_info(afe->dev, "%s(), IPIMSG_VOW_PCM_HWFREE ipi send error: %d\n",
 			 __func__, ret);
+		ret = mtk_memif_set_disable(afe, id);
+		if (ret) {
+			dev_info(afe->dev, "%s(), error, id %d, memif disable, ret %d\n",
+				__func__, id, ret);
+		}
+	}
 }
 #endif
 
@@ -486,7 +492,7 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 		// audio irq stop
 		vow_barge_in_disable_memif(afe, memif);
 		// send ipi to SCP
-		vow_barge_in_hw_free(afe);
+		vow_barge_in_hw_free(afe, cpu_dai->id);
 	}
 #endif
 
