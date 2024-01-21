@@ -1106,7 +1106,8 @@ const struct mtk_apu_platdata mt6989_platdata = {
 	.flags		= F_AUTO_BOOT | F_FAST_ON_OFF | F_APU_IPI_UT_SUPPORT |
 					F_TCM_WA | F_SMMU_SUPPORT |
 					F_APUSYS_RV_TAG_SUPPORT | F_PRELOAD_FIRMWARE |
-					F_SECURE_BOOT | F_SECURE_COREDUMP | F_CE_EXCEPTION_ON,
+					F_SECURE_BOOT | F_SECURE_COREDUMP | F_CE_EXCEPTION_ON |
+					F_EXCEPTION_KE,
 	.ops		= {
 		.init	= mt6989_rproc_init,
 		.exit	= mt6989_rproc_exit,
