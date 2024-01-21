@@ -552,6 +552,7 @@ int mtk_drm_set_conn_backlight_level(unsigned int conn_id, unsigned int level,
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_dsi *mtk_dsi;
 	int ret = 0;
+	unsigned int crtc_idx, async_ctrl_flag = 0;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev\n", __func__);
@@ -564,6 +565,9 @@ int mtk_drm_set_conn_backlight_level(unsigned int conn_id, unsigned int level,
 		return -EINVAL;
 	}
 
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL))
+		async_ctrl_flag = 1;
+
 	/* connector obj ref count add 1 after lookup */
 	conn = drm_connector_lookup(drm_dev, NULL, conn_id);
 	if (IS_ERR_OR_NULL(conn)) {
@@ -573,6 +577,11 @@ int mtk_drm_set_conn_backlight_level(unsigned int conn_id, unsigned int level,
 
 	mtk_dsi = container_of(conn, struct mtk_dsi, conn);
 
+
+	/* due to DSI connector might attach to different CRTC in each atomic_commit */
+	/* it's risky utilizing macro check_and_try_commit_lock polling specific CRTC wound state */
+	/* need to check current crtc which DSI is attached to each time hold the mutex lock */
+TRY_COMMIT_LOCK:
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, __LINE__);
 	mtk_crtc = mtk_dsi->ddp_comp.mtk_crtc;
 	crtc = (mtk_crtc) ? &mtk_crtc->base : NULL;
@@ -581,6 +590,15 @@ int mtk_drm_set_conn_backlight_level(unsigned int conn_id, unsigned int level,
 		DDPPR_ERR("%s, invalid crtc\n", __func__);
 		ret = -EINVAL;
 		goto out;
+	}
+
+	crtc_idx = drm_crtc_index(crtc);
+	if (async_ctrl_flag && crtc_idx < MAX_CRTC &&
+			atomic_read(&priv->need_wound_crtc[crtc_idx])) {
+		DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, __LINE__);
+		wait_event_interruptible(priv->wound_wq[crtc_idx],
+			atomic_read(&priv->need_wound_crtc[crtc_idx]) == 0);
+		goto TRY_COMMIT_LOCK;
 	}
 
 	ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag, 1);
@@ -698,6 +716,7 @@ int mtk_drm_set_conn_aod_backlight_level(unsigned int conn_id,
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_dsi *mtk_dsi;
 	int ret = 0;
+	unsigned int crtc_idx, async_ctrl_flag = 0;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev\n", __func__);
@@ -710,6 +729,9 @@ int mtk_drm_set_conn_aod_backlight_level(unsigned int conn_id,
 		return -EINVAL;
 	}
 
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL))
+		async_ctrl_flag = 1;
+
 	/* connector obj ref count add 1 after lookup */
 	conn = drm_connector_lookup(drm_dev, NULL, conn_id);
 	if (IS_ERR_OR_NULL(conn)) {
@@ -719,6 +741,11 @@ int mtk_drm_set_conn_aod_backlight_level(unsigned int conn_id,
 
 	mtk_dsi = container_of(conn, struct mtk_dsi, conn);
 
+
+	/* due to DSI connector might attach to different CRTC in each atomic_commit */
+	/* it's risky utilizing macro check_and_try_commit_lock polling specific CRTC wound state */
+	/* need to check current crtc which DSI is attached to each time hold the mutex lock */
+TRY_COMMIT_LOCK:
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, __LINE__);
 	mtk_crtc = mtk_dsi->ddp_comp.mtk_crtc;
 	crtc = (mtk_crtc) ? &mtk_crtc->base : NULL;
@@ -727,6 +754,15 @@ int mtk_drm_set_conn_aod_backlight_level(unsigned int conn_id,
 		DDPPR_ERR("%s, invalid crtc\n", __func__);
 		ret = -EINVAL;
 		goto out;
+	}
+
+	crtc_idx = drm_crtc_index(crtc);
+	if (async_ctrl_flag && crtc_idx < MAX_CRTC &&
+			atomic_read(&priv->need_wound_crtc[crtc_idx])) {
+		DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, __LINE__);
+		wait_event_interruptible(priv->wound_wq[crtc_idx],
+			atomic_read(&priv->need_wound_crtc[crtc_idx]) == 0);
+		goto TRY_COMMIT_LOCK;
 	}
 
 	ret = mtk_drm_aod_setbacklight(crtc, level);

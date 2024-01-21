@@ -190,6 +190,10 @@ struct mtk_drm_private {
 		struct work_struct work;
 		struct mutex lock;
 	} commit;
+	/* record corresponding crtc still hold mutex */
+	/* can't hold crtc mutex and need release commit lock avoid deadlock */
+	atomic_t need_wound_crtc[MAX_CRTC];
+	wait_queue_head_t wound_wq[MAX_CRTC];
 
 	struct drm_atomic_state *suspend_state;
 
