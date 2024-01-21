@@ -532,6 +532,14 @@ struct vdec_set_frame_work_struct {
 	struct mtk_vcodec_ctx *ctx;
 };
 
+struct vdec_stream_cpu_delay_work {
+	struct delayed_work work;
+	struct mtk_vcodec_dev *dev;
+	enum mtk_instance_type type;
+	int ctx_id;
+	int cpu_caller_pid;
+};
+
 struct vdec_check_alive_work_struct {
 	struct work_struct work;
 	struct mtk_vcodec_ctx *ctx;
@@ -799,6 +807,9 @@ struct mtk_vcodec_dev {
 	struct workqueue_struct *encode_workqueue;
 	struct workqueue_struct *check_alive_workqueue;
 	struct vdec_check_alive_work_struct check_alive_work;
+
+	/* for vdec seek need set cpu top grp awr */
+	struct workqueue_struct *stream_cpu_wq;
 
 	int int_cond;
 	int int_type;

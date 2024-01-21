@@ -776,6 +776,54 @@ static void mtk_vdec_trigger_set_frame(struct mtk_vcodec_ctx *ctx)
 		queue_work(ctx->vdec_set_frame_wq, &ctx->vdec_set_frame_work.work);
 }
 
+static void mtk_vdec_stream_set_cpu_handler(struct work_struct *work_ptr)
+{
+	struct delayed_work *delay_work;
+	struct vdec_stream_cpu_delay_work *work;
+	struct mtk_vcodec_dev *dev;
+
+	delay_work = to_delayed_work(work_ptr);
+	work = container_of(delay_work, struct vdec_stream_cpu_delay_work, work);
+	dev = work->dev;
+
+	mtk_vcodec_set_cpu_hint(dev, false, work->type, work->ctx_id, work->cpu_caller_pid, __func__);
+
+	kfree(work);
+}
+
+static void mtk_vdec_trigger_stream_set_cpu(struct mtk_vcodec_ctx *ctx)
+{
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	struct vdec_stream_cpu_delay_work *work;
+
+	work = kzalloc(sizeof(struct vdec_stream_cpu_delay_work), GFP_KERNEL);
+	if (!work)
+		return;
+
+	mtk_vcodec_set_cpu_hint(ctx->dev, true, ctx->type, ctx->id, ctx->cpu_caller_pid, __func__);
+
+	INIT_DELAYED_WORK(&work->work, mtk_vdec_stream_set_cpu_handler);
+	work->dev = dev;
+	work->type = ctx->type;
+	work->ctx_id = ctx->id;
+	work->cpu_caller_pid = ctx->cpu_caller_pid;
+	queue_delayed_work(dev->stream_cpu_wq, &work->work, msecs_to_jiffies(mtk_vdec_stream_hint_delay));
+}
+
+static void mtk_vdec_init_stream_cpu(struct mtk_vcodec_dev *dev)
+{
+	dev->stream_cpu_wq = create_workqueue("vdec_stream_set_cpu");
+}
+
+static void mtk_vdec_deinit_stream_cpu(struct mtk_vcodec_dev *dev)
+{
+	if (dev->stream_cpu_wq != NULL) {
+		flush_workqueue(dev->stream_cpu_wq);
+		destroy_workqueue(dev->stream_cpu_wq);
+		dev->stream_cpu_wq = NULL;
+	}
+}
+
 /*
  * This function tries to clean all display buffers, the buffers will return
  * in display order.
@@ -2506,6 +2554,16 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 	mutex_unlock(&dev->dec_dvfs_mutex);
 }
 
+void mtk_vcodec_dec_probe_setup(struct mtk_vcodec_dev *dev)
+{
+	mtk_vdec_init_stream_cpu(dev);
+}
+
+void mtk_vcodec_dec_remove_setup(struct mtk_vcodec_dev *dev)
+{
+	mtk_vdec_deinit_stream_cpu(dev);
+}
+
 void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
 {
 	struct mtk_q_data *q_data;
@@ -4154,6 +4212,8 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 
 	//SET_PARAM_TOTAL_FRAME_BUFQ_COUNT for SW DEC
 	if (q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
+		mtk_vdec_trigger_stream_set_cpu(ctx);
+
 		if (ctx->ipi_blocked != NULL)
 			*(ctx->ipi_blocked) = false;
 		spin_lock_irqsave(&ctx->lpw_lock, flags);
