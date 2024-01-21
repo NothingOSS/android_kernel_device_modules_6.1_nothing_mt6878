@@ -981,6 +981,7 @@ static int __maybe_unused xhci_mtk_suspend(struct device *dev)
 	struct usb_hcd *hcd = mtk->hcd;
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
 	struct usb_hcd *shared_hcd = xhci->shared_hcd;
+	unsigned long flags;
 	int ret;
 
 	if (xhci_vendor_is_streaming(xhci)) {
@@ -1000,8 +1001,14 @@ static int __maybe_unused xhci_mtk_suspend(struct device *dev)
 	if (ret)
 		goto restart_poll_rh;
 
+	spin_lock_irqsave(&xhci->lock, flags);
+	clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
+	if (xhci->shared_hcd)
+		clear_bit(HCD_FLAG_HW_ACCESSIBLE, &xhci->shared_hcd->flags);
+	spin_unlock_irq(&xhci->lock);
+
 	if (hcd->irq > 0)
-		synchronize_irq(hcd->irq);
+		disable_irq(hcd->irq);
 
 	clk_bulk_disable_unprepare(BULK_CLKS_NUM, mtk->clks);
 	usb_wakeup_set(mtk, true);
@@ -1031,10 +1038,17 @@ static int __maybe_unused xhci_mtk_resume(struct device *dev)
 		return 0;
 	}
 
+	set_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
+	if (xhci->shared_hcd)
+		set_bit(HCD_FLAG_HW_ACCESSIBLE, &xhci->shared_hcd->flags);
+
 	usb_wakeup_set(mtk, false);
 	ret = clk_bulk_prepare_enable(BULK_CLKS_NUM, mtk->clks);
 	if (ret)
 		goto enable_wakeup;
+
+	if (hcd->irq > 0)
+		enable_irq(hcd->irq);
 
 	ret = xhci_mtk_host_enable(mtk);
 	if (ret)

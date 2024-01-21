@@ -1674,8 +1674,10 @@ static int xhci_urb_enqueue_(struct usb_hcd *hcd, struct urb *urb, gfp_t mem_fla
 	ep_index = xhci_get_endpoint_index_(&urb->ep->desc);
 	ep_state = &xhci->devs[slot_id]->eps[ep_index].ep_state;
 
-	if (!HCD_HW_ACCESSIBLE(hcd))
+	if (!HCD_HW_ACCESSIBLE(hcd)) {
+		xhci_warn(xhci, "WARN: Can't queue urb, !HCD_HW_ACCESSIBLE\n");
 		return -ESHUTDOWN;
+	}
 
 	if (xhci->devs[slot_id]->flags & VDEV_PORT_ERROR) {
 		xhci_dbg(xhci, "Can't queue urb, port error, link inactive\n");
