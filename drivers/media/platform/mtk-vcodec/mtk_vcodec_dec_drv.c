@@ -41,7 +41,6 @@ char mtk_vdec_property_prev[LOG_PROPERTY_SIZE];
 char mtk_vdec_vcp_log_prev[LOG_PROPERTY_SIZE];
 module_param(mtk_vdec_lpw_limit, int, 0644);
 module_param(mtk_vdec_lpw_timeout, int, 0644);
-module_param(mtk_vdec_stream_hint_delay, int, 0644);
 module_param(mtk_vdec_slc_enable, bool, 0644);
 
 static struct mtk_vcodec_dev *dev_ptr;
@@ -656,7 +655,6 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	dev->vp_mode_used_cnt = 0;
 	mutex_init(&dev->vp_mode_buf_mutex);
 
-	mtk_vcodec_dec_probe_setup(dev);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	vdec_vcp_probe(dev);
@@ -711,7 +709,6 @@ static int mtk_vcodec_dec_remove(struct platform_device *pdev)
 {
 	struct mtk_vcodec_dev *dev = platform_get_drvdata(pdev);
 
-	mtk_vcodec_dec_remove_setup(dev);
 
 	flush_workqueue(dev->vdec_buf_wq);
 	destroy_workqueue(dev->vdec_buf_wq);

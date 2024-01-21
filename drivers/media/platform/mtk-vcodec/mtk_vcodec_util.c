@@ -159,10 +159,6 @@ EXPORT_SYMBOL_GPL(mtk_vdec_lpw_limit);
 int mtk_vdec_lpw_timeout = MTK_VDEC_WAIT_GROUP_MS;
 EXPORT_SYMBOL_GPL(mtk_vdec_lpw_timeout);
 
-/* For vdec stream on set cpu hint enable time*/
-int mtk_vdec_stream_hint_delay = MTK_VDEC_STREAM_CPU_HINT_MS;
-EXPORT_SYMBOL_GPL(mtk_vdec_stream_hint_delay);
-
 /* For vdec slc switch on/off */
 bool mtk_vdec_slc_enable = true;
 EXPORT_SYMBOL_GPL(mtk_vdec_slc_enable);
