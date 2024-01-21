@@ -14,6 +14,7 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
+#include <linux/power_supply.h>
 
 #include "mtu3.h"
 #include "mtu3_dr.h"
@@ -65,6 +66,50 @@ static void ep_fifo_free(struct mtu3_ep *mep)
 
 	dev_dbg(mep->mtu->dev, "%s size:%#x/%#x, start_bit: %d\n",
 		__func__, mep->fifo_seg_size, mep->fifo_size, start_bit);
+}
+
+static void mtu3_vbus_draw_work(struct work_struct *data)
+{
+	struct mtu3 *mtu = container_of(data, struct mtu3, draw_work);
+	union power_supply_propval val;
+	int ret;
+
+	val.intval = mtu->is_active && !(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW);
+
+	if (mtu->is_power_limit != val.intval) {
+		ret = power_supply_set_property(mtu->usb_psy,
+			POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
+		if (!ret)
+			mtu->is_power_limit = val.intval;
+		else
+			dev_info(mtu->dev, "%s set property error:%d\n", __func__, ret);
+	}
+
+	dev_info(mtu->dev, "%s %d mA, is_limit %d\n",
+		__func__, mtu->vbus_draw, mtu->is_power_limit);
+}
+
+int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA)
+{
+	struct mtu3 *mtu = gadget_to_mtu3(g);
+
+	if (!mtu->usb_psy_name)
+		goto skip;
+
+	if (!mtu->usb_psy) {
+		mtu->usb_psy = power_supply_get_by_name(mtu->usb_psy_name);
+		if (!mtu->usb_psy) {
+			dev_info(mtu->dev, "couldn't get usb power supply\n");
+			goto skip;
+		}
+	}
+
+	mtu->vbus_draw = mA;
+	queue_work(system_power_efficient_wq, &mtu->draw_work);
+
+	return 0;
+skip:
+	return -EOPNOTSUPP;
 }
 
 /* enable/disable U3D SS function */
@@ -468,6 +513,9 @@ void mtu3_start(struct mtu3 *mtu)
 
 	if (mtu->softconnect)
 		mtu3_dev_on_off(mtu, 1);
+
+	/* set vbus limit*/
+	mtu3_gadget_vbus_draw(&mtu->g, USB_SELF_POWER_VBUS_MAX_DRAW);
 }
 
 void mtu3_stop(struct mtu3 *mtu)
@@ -1062,6 +1110,12 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 
 	dev_dbg(dev, "mac_base=0x%p, ippc_base=0x%p\n",
 		mtu->mac_base, mtu->ippc_base);
+
+	/* check usbif compliance property */
+	if (device_property_read_string(mtu->dev, "usb-psy-name", &mtu->usb_psy_name) >= 0) {
+		dev_info(mtu->dev, "usb psy: %s\n", mtu->usb_psy_name);
+		INIT_WORK(&mtu->draw_work, mtu3_vbus_draw_work);
+	}
 
 	ret = mtu3_hw_init(mtu);
 	if (ret) {
