@@ -8839,7 +8839,7 @@
 				"M4U_PORT_VDEC_VIDEO_UP_NOR";
 			vdec-mmdvfs-in-vcp = <1>;
 			vdec-mmdvfs-in-adaptive = <1>;
-			vdec-cpu-grp-aware = <1>;
+			vdec-cpu-hint-mode = <2>; /* cpu grp awr mode */
 		};
 
 		smi-larb7@17010000 {
@@ -8876,7 +8876,7 @@
 			venc-mmdvfs-in-vcp = <1>;
 			venc-mmdvfs-in-adaptive = <1>;
 			venc-slb-cpu-used-perf = <62208000>;
-			venc-cpu-grp-aware = <1>;
+			venc-cpu-hint-mode = <2>; /* cpu grp awr mode */
 			port-arg-num = <3>;
 			port-def = <0 SMMU_L7_P0_VENC_RCPU 0>,
 				<0 SMMU_L7_P1_VENC_REC 0>,

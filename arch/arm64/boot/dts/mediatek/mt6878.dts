@@ -7759,6 +7759,7 @@
 			bandwidth-table = // avg occupy
 				<4 0 975>, /* larb_id, rw, base_bw*/
 				<5 1 645>;
+			vdec-cpu-hint-mode = <1>; /* uclamp mode */
 		};
 
 		venc@17000000 {
@@ -7812,6 +7813,7 @@
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			venc-mmdvfs-in-vcp = <0>;
 			venc-mmdvfs-in-adaptive = <1>;
+			venc-cpu-hint-mode = <1>; /* uclamp mode */
 			mmqos-supply = <&mmqos>;
 			interconnects = <&mmqos SLAVE_LARB(7) &mmqos SLAVE_COMMON(0)>,
 					<&mmqos SLAVE_LARB(8) &mmqos SLAVE_COMMON(0)>;
