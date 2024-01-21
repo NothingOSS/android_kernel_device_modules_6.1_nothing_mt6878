@@ -117,7 +117,7 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 			unsigned int j = 1;
 
 			mtk_dbg_cpuidle_log("  %-8ld",
-				mtk_cpuidle_get_param(drv, i, info->param));
+				mtk_cpuidle_get_param(drv, 0, info->param));
 			for (i = 1; i < nr_states; i++) {
 				if (!strncmp((drv->states[j]).name, state_info[i].name,
 					strlen(state_info[i].name))) {
@@ -130,7 +130,7 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 			}
 		}
 		mtk_dbg_cpuidle_log("\n");
-	} else if (info->type == MTK_CPUIDLE_DRIVE_STATE_SET && info->state_idx < nr_states) {
+	} else if (info->type == MTK_CPUIDLE_DRIVE_STATE_SET) {
 		for (i = 0; i < drv->state_count; i++) {
 			if (!strncmp((drv->states[i]).name,
 				state_info[info->state_idx].name,
@@ -189,7 +189,7 @@ static int idle_proc_state_param_setting(char *cmd, size_t *sz, int param)
 	if (!args || kstrtouint(args, 10, &val) != 0)
 		return -EINVAL;
 
-	if (!state_idx)
+	if (!state_idx || state_idx >= nr_states)
 		return -EINVAL;
 
 	cpu_mask = 0;
@@ -298,12 +298,14 @@ static ssize_t lpm_cpuidle_state_write(char *FromUserBuf,
 	return -EINVAL;
 }
 
-static void lpm_cpuidle_state_info_init(void)
+static int lpm_cpuidle_state_info_init(void)
 {
 	struct device_node *node = NULL;
 	int i = 1;
 
-	strcpy(state_info[0].name, "WFI");
+	if (strscpy(state_info[0].name, "WFI", sizeof(state_info[0].name)) < 0)
+		return -EINVAL;
+
 	state_info[0].param = 0;
 	do {
 		node = of_find_compatible_node(node, NULL, "arm,idle-state");
@@ -316,7 +318,9 @@ static void lpm_cpuidle_state_info_init(void)
 				if (param == state_info[j].param)
 					break;
 			if (j == i) {
-				strcpy(state_info[i].name, node->name);
+				if (strscpy(state_info[i].name, node->name,
+						sizeof(state_info[i].name)) < 0)
+					return -EINVAL;
 				state_info[i].param = param;
 				i += 1;
 			} else {
@@ -326,6 +330,8 @@ static void lpm_cpuidle_state_info_init(void)
 		}
 	} while (node);
 	nr_states = i;
+
+	return 0;
 }
 
 static int lpm_topology_init(void)
@@ -379,6 +385,13 @@ void lpm_cpuidle_state_init(void)
 		return;
 	}
 
+	ret = lpm_cpuidle_state_info_init();
+	if (ret) {
+		pr_info("[name:mtk_lpm][P] - lpm_cpuidle_state_info_init error (%s:%d)\n",
+		__func__, __LINE__);
+		return;
+	}
+
 	mtk_cpuidle_sysfs_sub_entry_add("state", MTK_CPUIDLE_SYS_FS_MODE,
 				NULL, &lpm_entry_cpuidle_state);
 
@@ -405,6 +418,4 @@ void lpm_cpuidle_state_init(void)
 					&state_residency.op,
 					&lpm_entry_cpuidle_state,
 					&state_residency.handle);
-
-	lpm_cpuidle_state_info_init();
 }
