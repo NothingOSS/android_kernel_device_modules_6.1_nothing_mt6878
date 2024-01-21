@@ -1165,6 +1165,10 @@ void fpsgo_delete_render_info(int pid,
 		data->linger = 1;
 		fpsgo_add_linger(data);
 	}
+
+	fpsgo_fstb2other_info_update(data->pid,
+		data->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
+
 	fpsgo_thread_unlock(&data->thr_mlock);
 
 	fpsgo_delete_hwui_info(data->pid);
@@ -1752,6 +1756,8 @@ static void fpsgo_check_adpf_render_status(void)
 		} else {
 			rb_erase(rbn, &render_pid_tree);
 			total_render_info_num--;
+			fpsgo_fstb2other_info_update(iter->pid,
+				iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 			fpsgo_thread_unlock(&iter->thr_mlock);
 			vfree(iter);
 			rbn = rb_first(&render_pid_tree);
@@ -2016,6 +2022,9 @@ void fpsgo_clear(void)
 			iter->linger = 1;
 			fpsgo_add_linger(iter);
 		}
+
+		fpsgo_fstb2other_info_update(iter->pid,
+			iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 
 		fpsgo_thread_unlock(&iter->thr_mlock);
 
