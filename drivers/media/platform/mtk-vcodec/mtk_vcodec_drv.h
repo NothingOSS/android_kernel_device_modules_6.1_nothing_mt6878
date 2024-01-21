@@ -84,6 +84,24 @@ enum mtk_mmdvfs_type {
 };
 
 /**
+ * @par Enumeration
+ *   VENC_SCENARIO
+ * @par Description
+ *   This is the scenario for VENC scenario
+ */
+enum VENC_SCENARIO_T {
+	VENC_SCENARIO_CAMERA_REC             = 0, /* /< Camera recording */
+	VENC_SCENARIO_LIVEPHOTO_CAPTURE      = 1, /* /< LivePhoto recording */
+	VENC_SCENARIO_LIVEPHOTO_EFFECT       = 2, /* /< LivePhoto effect transcoding */
+	VENC_SCENARIO_CAMERA_REC_SLOW_MOTION = 3, /* /< Camera recording with slow motion */
+	VENC_SCENARIO_SCREEN_REC             = 4, /* /< Screen recording */
+	VENC_SCENARIO_VILTE_REC              = 5, /* /< VILTE recording */
+	VENC_SCENARIO_WECHAT_REC             = 6, /* /< WeChat recording */
+	VENC_SCENARIO_HDR_REC                = 7, /* /< HDR recording */
+	VENC_SCENARIO_HDR10Plus_REC          = 8, /* /< HDR10+ recording */
+};
+
+/**
  * enum mtk_instance_state - The state of an MTK Vcodec instance.
  * @MTK_STATE_NULL - just for mean null
  * @MTK_STATE_FREE - default state when instance is created
@@ -197,6 +215,13 @@ enum venc_yuv_fmt {
 	VENC_YUV_FORMAT_NV12_AFBC = 27,
 	VENC_YUV_FORMAT_NV12_10B_AFBC = 28,
 	VENC_YUV_FORMAT_NV21_AFBC = 29,
+};
+
+/** * enum mtk_cpu_hint_mode - CPU hint mode for VDEC */
+enum mtk_cpu_hint_mode {
+	MTK_UCLAMP_MODE		= 0,
+	MTK_GRP_AWARE_MODE	= 1,
+	MTK_CPU_UNSUPPORT	= 2,
 };
 
 /**
@@ -714,6 +739,7 @@ struct mtk_vcodec_ctx {
 	bool resched;
 	struct mutex resched_lock;
 	unsigned char is_active;
+	int cpu_hint;
 };
 
 /*
@@ -832,6 +858,7 @@ struct mtk_vcodec_dev {
 	struct mutex enc_qos_mutex;  /* only for SWRGO, need to remove in mp branch */
 	struct mutex cpu_hint_mutex;
 	unsigned int cpu_hint_ref_cnt;
+	int cpu_hint_mode;
 
 	struct mtk_vcodec_pm pm;
 	struct notifier_block pm_notifier;

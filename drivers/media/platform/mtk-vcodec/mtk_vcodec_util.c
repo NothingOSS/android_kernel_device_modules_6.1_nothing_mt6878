@@ -14,6 +14,7 @@
 #include <uapi/linux/dma-heap.h>
 #include <mtk_heap.h>
 #include <linux/sched.h>
+#include <uapi/linux/sched/types.h>
 
 #include "mtk_vcodec_fence.h"
 #include "mtk_vcodec_drv.h"
@@ -488,6 +489,49 @@ void mtk_vcodec_dump_ctx_list(struct mtk_vcodec_dev *dev, unsigned int debug_lev
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_dump_ctx_list);
 
+static void mtk_vcodec_set_uclamp(bool enable, int ctx_id, int pid)
+{
+	struct task_struct *p, *task_child;
+	struct sched_attr attr = {};
+
+	int ret = -1;
+
+	attr.sched_policy = -1;
+	attr.sched_flags =
+		SCHED_FLAG_KEEP_ALL |
+		SCHED_FLAG_UTIL_CLAMP |
+		SCHED_FLAG_RESET_ON_FORK;
+	attr.sched_util_max = -1;
+
+	if(enable)
+		attr.sched_util_min = 370;
+	else
+		attr.sched_util_min = -1;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+
+	if (likely(p)) {
+		get_task_struct(p);
+		attr.sched_policy = p->policy;
+		if(p->policy == SCHED_FIFO || p->policy == SCHED_RR)
+			attr.sched_priority = p->rt_priority;
+		ret = sched_setattr_nocheck(p, &attr);
+		for_each_thread(p, task_child) {
+			if(task_child) {
+				get_task_struct(task_child);
+				if(try_get_task_stack(task_child))
+					ret = sched_setattr_nocheck(task_child, &attr);
+				put_task_struct(task_child);
+			}
+		}
+		put_task_struct(p);
+		if(ret != 0)
+			mtk_v4l2_err("[VDVFS][%d] set uclamp fail, pid: %d, ret: %d", ctx_id, pid, ret);
+	}
+	rcu_read_unlock();
+};
+
 void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 	enum mtk_instance_type type, int ctx_id, int cpu_caller_pid, const char *debug_str)
 {
@@ -495,27 +539,39 @@ void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 
 	mutex_lock(&dev->cpu_hint_mutex);
 	if (enable) {
-		if (dev->cpu_hint_ref_cnt == 0) {
+		if (dev->cpu_hint_mode & (1 << MTK_GRP_AWARE_MODE)) { // cpu grp awr mode
+			if (dev->cpu_hint_ref_cnt == 0) {
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
-			set_top_grp_aware(1, 0);
-			set_grp_awr_min_opp_margin(0, 0, 2048);
-			set_grp_awr_thr(0, 0, 800000);
-			set_grp_awr_min_opp_margin(1, 0, 2048);
-			set_grp_awr_thr(1, 0, 1100000);
+				set_top_grp_aware(1, 0);
+				set_grp_awr_min_opp_margin(0, 0, 2048);
+				set_grp_awr_thr(0, 0, 800000);
+				set_grp_awr_min_opp_margin(1, 0, 2048);
+				set_grp_awr_thr(1, 0, 1100000);
 #endif
+			}
 		}
+		if (dev->cpu_hint_mode & (1 << MTK_UCLAMP_MODE)) // uclamp mode
+			mtk_vcodec_set_uclamp(enable, ctx_id, cpu_caller_pid);
+
 		dev->cpu_hint_ref_cnt++;
-		mtk_v4l2_debug(0, "[%d][%s] enable CPU top group aware by %s (ref cnt %d)",
-			ctx_id, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", debug_str, dev->cpu_hint_ref_cnt);
+		mtk_v4l2_debug(0, " [VDVFS][%d][%s] enable CPU hint by %s (ref cnt %d, mode %d)",
+			ctx_id, (type == MTK_INST_DECODER) ? "VDEC" : "VENC",
+			debug_str, dev->cpu_hint_ref_cnt, dev->cpu_hint_mode);
 	} else {
 		dev->cpu_hint_ref_cnt--;
-		if (dev->cpu_hint_ref_cnt == 0) {
+		if (dev->cpu_hint_mode & (1 << MTK_GRP_AWARE_MODE)) {
+			if (dev->cpu_hint_ref_cnt == 0) {
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
-			set_top_grp_aware(0, 0);
+				set_top_grp_aware(0, 0);
 #endif
+			}
 		}
-		mtk_v4l2_debug(0, "[%d][%s] disable CPU top grp aware by %s (ref cnt %d)",
-			ctx_id, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", debug_str, dev->cpu_hint_ref_cnt);
+		if (dev->cpu_hint_mode & (1 << MTK_UCLAMP_MODE))
+			mtk_vcodec_set_uclamp(enable, ctx_id, cpu_caller_pid);
+
+		mtk_v4l2_debug(0, "[VDVFS][%d][%s] disable CPU hint by %s (ref cnt %d mode %d)",
+			ctx_id, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", debug_str,
+			dev->cpu_hint_ref_cnt, dev->cpu_hint_mode);
 	}
 	mutex_unlock(&dev->cpu_hint_mutex);
 

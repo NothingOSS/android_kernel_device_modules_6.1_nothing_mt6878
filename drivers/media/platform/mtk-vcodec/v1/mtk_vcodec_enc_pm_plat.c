@@ -297,7 +297,7 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 	int ret;
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
-	int i = 0, venc_req = 0;
+	int i = 0, venc_req = 0, flag = 0;
 	bool tput_ret;
 	struct platform_device *pdev = 0;
 
@@ -313,6 +313,14 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 	if (ret)
 		mtk_v4l2_debug(0, "[VENC] no need venc-mmdvfs-in-adaptive");
 	dev->venc_dvfs_params.mmdvfs_in_adaptive = venc_req;
+
+	ret = of_property_read_s32(pdev->dev.of_node, "venc-cpu-hint-mode", &flag);
+	if (ret) {
+		mtk_v4l2_debug(0, "[VENC] no need venc-cpu-hint-mode");
+		dev->cpu_hint_mode = (1 << MTK_CPU_UNSUPPORT);
+	} else
+		dev->cpu_hint_mode = flag;
+
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
 	if (ret < 0) {
@@ -463,10 +471,10 @@ void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 
 	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT))
 		return;
-	mtk_v4l2_debug(0, "[VDVFS][%d] sync vsi: (%d, %d)",
-		ctx->id, dev->venc_dvfs_params.target_freq, inst->vsi->config.target_freq);
+
 	dev->venc_dvfs_params.target_freq = inst->vsi->config.target_freq;
 	dev->venc_dvfs_params.target_bw_factor = inst->vsi->config.target_bw_factor;
+	mtk_vcodec_cpu_adaptive_ctrl(ctx, inst->vsi->config.cpu_hint);
 }
 
 void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
@@ -783,7 +791,7 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 {
 	unsigned int cur_in_timestamp, time_diff, threshold = 20;
 	unsigned int prev_op, cur_op, tmp_op; /* monitored op in the prev interval */
-	bool need_update = false;
+	bool update_op = false;
 	struct vcodec_inst *inst = 0;
 	struct mtk_vcodec_dev *dev = ctx->dev;
 
@@ -816,30 +824,33 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 
 		tmp_op = MAX(ctx->last_monitor_op, prev_op);
 
-		need_update = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
+		update_op = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
 			mtk_dvfs_check_op_diff(cur_op, tmp_op, threshold, -1);
 
-		need_update |= (dev->venc_dvfs_params.init_boost == 1) && (prev_op > 0) && (ctx->last_monitor_op > 0);
+		update_op |= (dev->venc_dvfs_params.init_boost == 1) && (prev_op > 0) && (ctx->last_monitor_op > 0);
 
-		if (need_update) {
+		if (update_op) {
 			mutex_lock(&dev->enc_dvfs_mutex);
 			ctx->op_rate_adaptive = tmp_op;
 			mtk_v4l2_debug(0, "[VDVFS][VENC][ADAPTIVE][%d] op: user:%d, adaptive:%d->%d",
 				ctx->id, ctx->enc_params.operationrate, cur_op, tmp_op);
+
+			ctx->enc_params.operationrate_adaptive = ctx->op_rate_adaptive;
 			// update venc freq in kernel
 			if(!dev->venc_dvfs_params.mmdvfs_in_vcp) {
 				inst = get_inst(ctx);
 				if (inst) {
-					inst->op_rate_adaptive = tmp_op;
-					update_freq(dev, MTK_INST_ENCODER);
-					mtk_v4l2_debug(0, "[VDVFS][VENC][ADAPTIVE][%d] set freq %u",
-						ctx->id, dev->venc_dvfs_params.target_freq);
-					set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
+					if(need_update(ctx)) {
+						update_freq(dev, MTK_INST_ENCODER);
+						mtk_v4l2_debug(0, "[VDVFS][VENC][ADAPTIVE][%d] set freq %u",
+							ctx->id, dev->venc_dvfs_params.target_freq);
+						set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
+						dev->venc_dvfs_params.init_boost = 0;
+					}
 				}
 			} else
-				ctx->enc_params.operationrate_adaptive = ctx->op_rate_adaptive;
+				dev->venc_dvfs_params.init_boost = 0;
 
-			dev->venc_dvfs_params.init_boost = 0;
 			mutex_unlock(&dev->enc_dvfs_mutex);
 			return true;
 		}

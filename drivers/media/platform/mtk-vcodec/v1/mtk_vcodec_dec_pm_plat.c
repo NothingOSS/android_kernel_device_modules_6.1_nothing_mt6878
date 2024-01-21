@@ -283,7 +283,7 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	int ret;
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
-	int i = 0, vdec_req = 0;
+	int i = 0, vdec_req = 0, flag = 0;
 	struct platform_device *pdev = 0;
 
 	pdev = dev->plat_dev;
@@ -298,6 +298,14 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	if (ret)
 		mtk_v4l2_debug(0, "[VDEC] no need vdec-mmdvfs-in-adaptive");
 	dev->vdec_dvfs_params.mmdvfs_in_adaptive = vdec_req;
+
+	ret = of_property_read_s32(pdev->dev.of_node, "vdec-cpu-hint-mode", &flag);
+	if (ret) {
+		mtk_v4l2_debug(0, "[VDEC] no need vdec-cpu-hint-mode");
+		dev->cpu_hint_mode = (1 << MTK_CPU_UNSUPPORT);
+	} else
+		dev->cpu_hint_mode = flag;
+
 
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
@@ -428,6 +436,7 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 
 	dev->vdec_dvfs_params.target_freq = inst->vsi->target_freq;
 	ctx->dec_params.operating_rate = inst->vsi->op_rate;
+	mtk_vcodec_cpu_adaptive_ctrl(ctx, inst->vsi->cpu_hint);
 }
 
 void mtk_vdec_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)

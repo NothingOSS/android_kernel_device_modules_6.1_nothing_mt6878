@@ -1588,7 +1588,7 @@ void mtk_vdec_error_handle(struct mtk_vcodec_ctx *ctx, char *debug_str)
 	vdec_check_release_lock(ctx);
 
 	mutex_lock(&ctx->dev->dec_dvfs_mutex);
-	mtk_vcodec_cpu_grp_aware_hint(ctx, false);
+	mtk_vcodec_cpu_adaptive_ctrl(ctx, false);
 	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++)

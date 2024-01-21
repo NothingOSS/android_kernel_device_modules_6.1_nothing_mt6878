@@ -129,9 +129,12 @@ int add_inst(struct mtk_vcodec_ctx *ctx)
 		(ctx->enc_params.framerate_num / ctx->enc_params.framerate_denom);
 	new_inst->priority = (new_inst->codec_type == MTK_INST_ENCODER) ?
 		ctx->enc_params.priority : ctx->dec_params.priority;
-	if (new_inst->op_rate == 0)
-		new_inst->is_transcode = (new_inst->codec_type == MTK_INST_ENCODER) ?
-		1 : 0; // only support user init-op-zero transcoding
+	if (new_inst->codec_type == MTK_INST_ENCODER) {
+		if ((new_inst->op_rate_user == 0 || new_inst->op_rate_user >= 120) &&
+			ctx->enc_params.scenario == VENC_SCENARIO_CAMERA_REC)
+			new_inst->is_transcode = 1; // only support user init-op-zero transcoding
+	} else
+		new_inst->is_transcode = 0;
 	new_inst->width = (new_inst->codec_type == MTK_INST_ENCODER) ?
 		ctx->q_data[MTK_Q_DATA_SRC].visible_width :
 		ctx->q_data[MTK_Q_DATA_DST].coded_width;
@@ -152,8 +155,8 @@ int add_inst(struct mtk_vcodec_ctx *ctx)
 	mtk_v4l2_debug(4, "[VDVFS] New inst id %d, type %u, fmt %u, cfg %d, ccnt %u, op_rate %d, priority %d",
 			new_inst->id, new_inst->codec_type, new_inst->codec_fmt, new_inst->config,
 			new_inst->core_cnt, new_inst->op_rate, new_inst->priority);
-	mtk_v4l2_debug(4, "[VDVFS] width %u, height %u, is_encoder %d",
-			new_inst->width, new_inst->height,
+	mtk_v4l2_debug(4, "[VDVFS] width %u, height %u, fps %d, is_encoder %d",
+			new_inst->width, new_inst->height, new_inst->fps,
 			new_inst->codec_type == MTK_INST_ENCODER);
 
 	if (new_inst->codec_type == MTK_INST_ENCODER)
@@ -234,6 +237,8 @@ bool remove_update(struct mtk_vcodec_ctx *ctx)
 	inst = get_inst(ctx);
 	if (!inst)
 		return false;
+
+	mtk_vcodec_cpu_adaptive_ctrl(inst->ctx, false);
 
 	list_del(&inst->list);
 	vfree(inst);
@@ -449,13 +454,6 @@ u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 				inst->b_frame == 0 ? perf->cy_per_mb_1 : perf->cy_per_mb_2);
 		} else
 			freq = 100000000;
-
-		// Transcode Scenario:
-		// 1. Init user-defined op rate == 0
-		// 2. Monitor/user dynamic-setting op > output fps
-		// 3. Exist active decode instance (check oprate_sum of active instances)
-		if (inst->is_transcode && (inst->op_rate > (inst->fps*11/10)))
-			dev->venc_dvfs_params.trans_inst = 1;
 	}
 
 	mtk_v4l2_debug(6, "[VDVFS] freq = %llu", freq);
@@ -659,6 +657,16 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 			inst = list_entry(item, struct vcodec_inst, list);
 			freq = calc_freq(inst, dev);
 
+			// Transcode Scenario:
+			// 1. Init user-defined op rate == 0
+			// 2. Monitor/user dynamic-setting op > output fps
+			// 3. Exist active decode instance (check oprate_sum of active instances)
+			if (inst->is_transcode && (inst->op_rate > (inst->fps*11/10))) {
+				freq = dev->venc_dvfs_params.normal_max_freq;
+				mtk_v4l2_debug(0, "[VDVFS] has trans inst: hint cpu & venc max freq");
+				mtk_vcodec_cpu_adaptive_ctrl(inst->ctx, true);
+			}
+
 			if (freq > dev->venc_dvfs_params.normal_max_freq)
 				dev->venc_dvfs_params.allow_oc = 1;
 
@@ -760,36 +768,22 @@ bool mtk_dvfs_check_op_diff(int op1, int op2, int threshold, int compare)
 }
 
 // This func should be around dvfs mutex
-void mtk_vcodec_cpu_grp_aware_hint(struct mtk_vcodec_ctx *ctx, int enable)
+void mtk_vcodec_cpu_adaptive_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 {
 	struct mtk_vcodec_dev *dev = ctx->dev;
-	struct dvfs_params *cur_dvfs_param = NULL;
-	char type = ctx->type;
 
-	if (type == MTK_INST_DECODER)
-		cur_dvfs_param = &dev->vdec_dvfs_params;
-	else if (type == MTK_INST_ENCODER)
-		cur_dvfs_param = &dev->venc_dvfs_params;
-	else {
-		mtk_v4l2_debug(0, "[VDVFS] unknown ctx type!\n");
-		return;
-	}
-
-	if (cur_dvfs_param->cpu_top_grp_aware < 0)
+	if (dev->cpu_hint_mode & (1 << MTK_CPU_UNSUPPORT))
 		return;
 
 	if (enable) {
-		if(cur_dvfs_param->cpu_top_grp_aware == 0) {
-			cur_dvfs_param->cpu_top_grp_aware = 1;
+		if (ctx->cpu_hint == 0) {
+			ctx->cpu_hint = 1;
 			mtk_vcodec_set_cpu_hint(dev, enable, ctx->type, ctx->id, ctx->cpu_caller_pid, __func__);
 		}
 	} else {
-		if(cur_dvfs_param->cpu_top_grp_aware == 1) {
-			cur_dvfs_param->cpu_top_grp_aware = 0;
+		if (ctx->cpu_hint == 1) {
+			ctx->cpu_hint = 0;
 			mtk_vcodec_set_cpu_hint(dev, enable, ctx->type, ctx->id, ctx->cpu_caller_pid, __func__);
 		}
 	}
-	mtk_v4l2_debug(4, "%s [VDVFS][%s][%d] cpu_grp_aware ref cnt %d (%s)!\n",
-		__func__, (type == MTK_INST_DECODER) ? "VDEC" : "VENC",  ctx->id,
-		cur_dvfs_param->cpu_top_grp_aware, enable ? "enable" : "disable");
 }

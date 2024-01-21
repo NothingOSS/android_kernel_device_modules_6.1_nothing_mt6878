@@ -1625,7 +1625,7 @@ static void mtk_venc_error_handle(struct mtk_vcodec_ctx *ctx)
 {
 	mtk_vcodec_set_state(ctx, MTK_STATE_ABORT);
 	mutex_lock(&ctx->dev->enc_dvfs_mutex);
-	mtk_vcodec_cpu_grp_aware_hint(ctx, false);
+	mtk_vcodec_cpu_adaptive_ctrl(ctx, false);
 	mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 	mtk_venc_queue_error_event(ctx);
 }
@@ -2914,6 +2914,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_venc_dvfs_begin_inst(ctx);
 		mtk_venc_pmqos_begin_inst(ctx);
 		mtk_venc_pmqos_monitor_reset(ctx->dev);
+		mtk_venc_init_boost(ctx);
 		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 	}
 

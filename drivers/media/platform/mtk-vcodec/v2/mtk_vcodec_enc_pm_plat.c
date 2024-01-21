@@ -315,11 +315,13 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 		mtk_v4l2_debug(0, "[VENC] no need venc-mmdvfs-in-adaptive");
 	dev->venc_dvfs_params.mmdvfs_in_adaptive = venc_req;
 
-	ret = of_property_read_s32(pdev->dev.of_node, "venc-cpu-grp-aware", &flag);
+	ret = of_property_read_s32(pdev->dev.of_node, "venc-cpu-hint-mode", &flag);
 	if (ret) {
-		mtk_v4l2_debug(0, "[VENC] no need venc-cpu-gpr-aware");
-		dev->venc_dvfs_params.cpu_top_grp_aware = -1;
-	}
+		mtk_v4l2_debug(0, "[VENC] no need venc-cpu-hint-mode");
+		dev->cpu_hint_mode = (1 << MTK_CPU_UNSUPPORT);
+	} else
+		dev->cpu_hint_mode = flag;
+
 
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
@@ -472,12 +474,10 @@ void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 
 	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT))
 		return;
-	mtk_v4l2_debug(0, "[VDVFS][%d] sync vsi: (%d, %d)",
-		ctx->id, dev->venc_dvfs_params.target_freq, inst->vsi->config.target_freq);
+
 	dev->venc_dvfs_params.target_freq = inst->vsi->config.target_freq;
 	dev->venc_dvfs_params.target_bw_factor = inst->vsi->config.target_bw_factor;
-	mtk_vcodec_cpu_grp_aware_hint(ctx, inst->vsi->config.cpu_top_grp_aware);
-	inst->vsi->config.cpu_top_grp_aware = 0;
+	mtk_vcodec_cpu_adaptive_ctrl(ctx, inst->vsi->config.cpu_hint);
 }
 
 void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
@@ -514,7 +514,7 @@ void mtk_venc_init_boost(struct mtk_vcodec_ctx *ctx)
 {
 	ctx->dev->venc_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
 	ctx->dev->venc_dvfs_params.init_boost = 1;
-	mtk_vcodec_cpu_grp_aware_hint(ctx, true);
+	mtk_vcodec_cpu_adaptive_ctrl(ctx, true);
 }
 
 void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
