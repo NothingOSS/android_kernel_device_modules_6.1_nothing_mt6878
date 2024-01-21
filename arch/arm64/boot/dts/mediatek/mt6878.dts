@@ -10438,8 +10438,8 @@
 		interrupt-names = "mbox0", "mbox1";
 		adsp-rsv-logger-a = <0x180000>;
 		adsp-rsv-ipidma-a = <0x200000>;
-		adsp-rsv-xhci = <0x80000>;
 		adsp-rsv-audio = <0x5c0000>;
+		adsp-rsv-xhci = <0x80000>;
 	};
 
 	mtee_svp: mtee-svp {
