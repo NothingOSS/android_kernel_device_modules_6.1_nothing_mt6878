@@ -40,8 +40,6 @@ static unsigned int group_list_size;
 static spinlock_t group_lock;
 
 
-
-
 void mtk_vcodec_check_alive(struct timer_list *t)
 {
 	struct dvfs_params *params;
@@ -485,6 +483,41 @@ void mtk_vcodec_dump_ctx_list(struct mtk_vcodec_dev *dev, unsigned int debug_lev
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_dump_ctx_list);
+
+void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
+	enum mtk_instance_type type, int ctx_id, int cpu_caller_pid, const char *debug_str)
+{
+	vcodec_trace_begin("%s(%d)(%s)", __func__, enable, debug_str);
+
+	mutex_lock(&dev->cpu_hint_mutex);
+	if (enable) {
+		if (dev->cpu_hint_ref_cnt == 0) {
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+			set_top_grp_aware(1, 0);
+			set_grp_awr_min_opp_margin(0, 0, 2048);
+			set_grp_awr_thr(0, 0, 800000);
+			set_grp_awr_min_opp_margin(1, 0, 2048);
+			set_grp_awr_thr(1, 0, 1100000);
+#endif
+		}
+		dev->cpu_hint_ref_cnt++;
+		mtk_v4l2_debug(0, "[%d][%s] enable CPU top group aware by %s (ref cnt %d)",
+			ctx_id, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", debug_str, dev->cpu_hint_ref_cnt);
+	} else {
+		dev->cpu_hint_ref_cnt--;
+		if (dev->cpu_hint_ref_cnt == 0) {
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+			set_top_grp_aware(0, 0);
+#endif
+		}
+		mtk_v4l2_debug(0, "[%d][%s] disable CPU top grp aware by %s (ref cnt %d)",
+			ctx_id, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", debug_str, dev->cpu_hint_ref_cnt);
+	}
+	mutex_unlock(&dev->cpu_hint_mutex);
+
+	vcodec_trace_end();
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_set_cpu_hint);
 
 void mtk_vcodec_init_slice_info(struct mtk_vcodec_ctx *ctx, struct mtk_video_dec_buf *dst_buf_info)
 {

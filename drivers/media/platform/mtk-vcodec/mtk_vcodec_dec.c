@@ -4651,6 +4651,9 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VDEC_SLICE_COUNT:
 		ctx->dec_params.slice_count = ctrl->val;
 		break;
+	case V4L2_CID_MPEG_MTK_CALLING_PID:
+		ctx->cpu_caller_pid = ctrl->val;
+		break;
 	case V4L2_CID_VDEC_TRICK_MODE:
 	case V4L2_CID_VDEC_NO_REORDER:
 	case V4L2_CID_VDEC_HDR10_INFO: {
@@ -5032,6 +5035,18 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.name = "VDEC set slice count";
 	cfg.min = 0;
 	cfg.max = 256, // max 256 slice in a frame according to HW DE
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_CALLING_PID;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video Caller Proccess ID";
+	cfg.min = 0;
+	cfg.max = 0x7fffffff;
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.ops = ops;

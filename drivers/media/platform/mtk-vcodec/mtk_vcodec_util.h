@@ -394,4 +394,13 @@ void mtk_vcodec_check_alive(struct timer_list *t);
 void mtk_vcodec_config_group_list(void);
 void mtk_vcodec_init_group_list_lock(void);
 
+void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
+	enum mtk_instance_type type, int ctx_id, int caller_pid, const char *debug_str);
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+extern void set_top_grp_aware(int val, int force_ctrl);
+extern void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val);
+extern void set_grp_awr_thr(int gear_id, int group_id, int opp);
+#endif
+
 #endif /* _MTK_VCODEC_UTIL_H_ */

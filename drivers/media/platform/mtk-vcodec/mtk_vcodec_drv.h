@@ -587,6 +587,7 @@ struct mtk_vcodec_ctx {
 	struct mtk_vcodec_dev *dev;
 	struct list_head list;
 	unsigned int add_list_cnt;
+	int cpu_caller_pid;
 
 	struct v4l2_fh fh;
 	struct v4l2_m2m_ctx *m2m_ctx;
@@ -818,6 +819,8 @@ struct mtk_vcodec_dev {
 	struct mutex dec_dvfs_mutex;
 	struct mutex enc_dvfs_mutex;
 	struct mutex enc_qos_mutex;  /* only for SWRGO, need to remove in mp branch */
+	struct mutex cpu_hint_mutex;
+	unsigned int cpu_hint_ref_cnt;
 
 	struct mtk_vcodec_pm pm;
 	struct notifier_block pm_notifier;

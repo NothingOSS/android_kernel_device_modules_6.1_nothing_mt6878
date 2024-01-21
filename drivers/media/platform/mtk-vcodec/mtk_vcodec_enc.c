@@ -951,6 +951,9 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		sizeof(struct mtk_venc_frame_qp_range));
 		ctx->param_change |= MTK_ENCODE_PARAM_FRAMEQP_RANGE;
 		break;
+	case V4L2_CID_MPEG_MTK_CALLING_PID:
+		ctx->cpu_caller_pid = ctrl->val;
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
 		ret = -EINVAL;
@@ -4277,6 +4280,18 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.dims[0] = 2;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_CALLING_PID;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video Caller Proccess ID";
+	cfg.min = 0;
+	cfg.max = 0x7fffffff;
+	cfg.step = 1;
+	cfg.def = 0;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
