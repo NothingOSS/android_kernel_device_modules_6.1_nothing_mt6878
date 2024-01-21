@@ -217,18 +217,6 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		DDPINFO("M_ULOCK_NST[%d]:%s[%d] -\n", i, name, line);	\
 	} while (0)
 
-#define check_and_try_commit_lock(__priv, __crtc_idx)				\
-	while (atomic_read(&__priv->need_wound_crtc[(__crtc_idx)])) {		\
-		int __ret;							\
-		DDP_MUTEX_UNLOCK(&__priv->commit.lock, __func__, __LINE__);	\
-		__ret = wait_event_interruptible(__priv->wound_wq[(__crtc_idx)],	\
-			atomic_read(&__priv->need_wound_crtc[(__crtc_idx)]) == 0);	\
-		if (__ret < 0)							\
-			DDPMSG("%s:%u wait event unexcepted return: %d\n",	\
-				 __func__, __LINE__, __ret);			\
-		DDP_MUTEX_LOCK(&__priv->commit.lock, __func__, __LINE__);		\
-	}
-
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define DDPAEE(string, args...)                                                \
 	do {                                                                   \

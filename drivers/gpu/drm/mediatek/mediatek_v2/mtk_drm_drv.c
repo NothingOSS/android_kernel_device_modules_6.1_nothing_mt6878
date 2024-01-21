@@ -2075,7 +2075,6 @@ static int mtk_atomic_commit(struct drm_device *drm,
 	unsigned int pf = 0;
 	struct drm_crtc_state *new_crtc_state = NULL;
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
-	unsigned int async_ctrl_flag = 0;
 
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 
@@ -2127,18 +2126,11 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		}
 	}
 
-	if (mtk_drm_helper_get_opt(private->helper_opt,
-					   MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL))
-		async_ctrl_flag = 1;
-
 	flush_work(&private->commit.work);
 
 	for (i = 0; i < MAX_CRTC; i++) {
 		if (!(crtc_mask >> i & 0x1))
 			continue;
-		/* light weight wound wait make sure crtc_lock & commit_lock not dead lock */
-		if (async_ctrl_flag)
-			check_and_try_commit_lock(private, i);
 		crtc = private->crtc[i];
 		mtk_crtc = to_mtk_crtc(crtc);
 
@@ -7852,8 +7844,6 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	for (i = 0; i < MAX_CRTC ; ++i) {
 		atomic_set(&private->crtc_present[i], 0);
 		atomic_set(&private->crtc_rel_present[i], 0);
-		init_waitqueue_head(&private->wound_wq[i]);
-		atomic_set(&private->need_wound_crtc[i], 0);
 	}
 	atomic_set(&private->rollback_all, 0);
 

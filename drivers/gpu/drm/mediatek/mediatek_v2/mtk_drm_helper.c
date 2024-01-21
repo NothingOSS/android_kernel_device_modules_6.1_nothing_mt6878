@@ -116,8 +116,6 @@ static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_VBLANK_CONFIG_REC, 0, "MTK_DRM_OPT_VBLANK_CONFIG_REC"},
 	{MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE, 0, "MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE"},
 	{MTK_DRM_OPT_PER_LARB_PORT_PEAK, 0, "MTK_DRM_OPT_PER_LARB_PORT_PEAK"},
-	/* Let CRTC's atomic commit perform while another CRTC enable/disable connector */
-	{MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL, 0, "MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL"},
 };
 
 enum DISP_HELPER_STAGE disp_helper_get_stage(void)

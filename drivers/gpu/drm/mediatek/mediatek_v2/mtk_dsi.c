@@ -3976,7 +3976,6 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 	int index = drm_crtc_index(crtc);
 	int data = MTK_DISP_BLANK_POWERDOWN;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	unsigned int async_ctrl_flag = 0;
 
 	//Temp workaround for MT6855 suspend/resume issue
 	switch (priv->data->mmsys_id) {
@@ -3987,9 +3986,6 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 		break;
 	}
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL))
-		async_ctrl_flag = 1;
-
 	CRTC_MMP_EVENT_START(index, dsi_suspend,
 			(unsigned long)crtc, index);
 
@@ -3997,12 +3993,6 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	CRTC_MMP_MARK(index, dsi_suspend, 1, 0);
-
-	if (async_ctrl_flag) {
-		/* release commit lock during DSI connector disable */
-		atomic_set(&priv->need_wound_crtc[index], 1);
-		DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, __LINE__);
-	}
 
 	/* TODO: assume DSI0 would use for primary display so far */
 	if (comp->id == DDP_COMPONENT_DSI0)
@@ -4025,13 +4015,6 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 		mtk_disp_sub_notifier_call_chain(MTK_DISP_EVENT_BLANK,
 					&data);
 
-	if (async_ctrl_flag) {
-		/* regain commit lock after disable done and wake up wound wait queue */
-		DDP_MUTEX_LOCK(&priv->commit.lock, __func__, __LINE__);
-		atomic_set(&priv->need_wound_crtc[index], 0);
-		wake_up(&priv->wound_wq[index]);
-	}
-
 	CRTC_MMP_EVENT_END(index, dsi_suspend,
 			(unsigned long)dsi->output_en, 0);
 }
@@ -4040,25 +4023,14 @@ static void mtk_dsi_encoder_enable(struct drm_encoder *encoder)
 {
 	struct mtk_dsi *dsi = encoder_to_dsi(encoder);
 	struct drm_crtc *crtc = encoder->crtc;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 	int index = drm_crtc_index(crtc);
 	int data = MTK_DISP_BLANK_UNBLANK;
-	unsigned int async_ctrl_flag = 0;
 
 	CRTC_MMP_EVENT_START(index, dsi_resume,
 			(unsigned long)crtc, index);
 
 	DDPINFO("%s\n", __func__);
-
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL))
-		async_ctrl_flag = 1;
-
-	if (async_ctrl_flag) {
-		/* release commit lock during DSI connector enable */
-		atomic_set(&priv->need_wound_crtc[index], 1);
-		DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, __LINE__);
-	}
 
 	/* TODO: assume DSI0 would use for primary display so far */
 	if (comp->id == DDP_COMPONENT_DSI0) {
@@ -4089,13 +4061,6 @@ static void mtk_dsi_encoder_enable(struct drm_encoder *encoder)
 		mtk_disp_sub_notifier_call_chain(MTK_DISP_EVENT_BLANK,
 					&data);
 		DDP_PROFILE("[PROFILE] %s after notify end\n", __func__);
-	}
-
-	if (async_ctrl_flag) {
-		/* regain commit lock after enable done and wake up wound wait queue */
-		DDP_MUTEX_LOCK(&priv->commit.lock, __func__, __LINE__);
-		atomic_set(&priv->need_wound_crtc[index], 0);
-		wake_up(&priv->wound_wq[index]);
 	}
 
 	CRTC_MMP_EVENT_END(index, dsi_resume,
