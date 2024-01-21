@@ -10165,8 +10165,13 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			&& panel_ext->params->dyn.vfp_lp_dyn)
 			vfp_low_power = panel_ext->params->dyn.vfp_lp_dyn;
 		else if (panel_ext && panel_ext->params
-			&& panel_ext->params->vfp_low_power)
+			&& panel_ext->params->vfp_low_power) {
 			vfp_low_power = panel_ext->params->vfp_low_power;
+			if (priv->data->mmsys_id == MMSYS_MT6878 &&
+				dsi->ext->params->is_cphy &&
+				vfp_low_power >= 4560)
+				vfp_low_power = 4560;
+		}
 		if (vfp_low_power) {
 			DDPINFO("vfp_low_power=%d\n", vfp_low_power);
 			mtk_dsi_porch_setting(comp, handle, DSI_VFP,
