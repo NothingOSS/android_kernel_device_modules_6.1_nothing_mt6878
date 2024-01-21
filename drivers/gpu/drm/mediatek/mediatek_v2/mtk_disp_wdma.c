@@ -1414,7 +1414,7 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 	mtk_ddp_write_mask(comp, 0xe0000000,
 			DISP_REG_WDMA_CFG, WDMA_DEBUG_SEL, handle);
 
-	if (comp->mtk_crtc->cur_usage == DISP_OPENING)
+	if (priv->usage[crtc_idx] == DISP_OPENING)
 		mtk_wdma_blank_output(comp, handle, 1);
 	else
 		mtk_wdma_blank_output(comp, handle, 0);

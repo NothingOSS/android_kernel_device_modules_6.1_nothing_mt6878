@@ -110,6 +110,12 @@ struct mtk_drm_lyeblob_ids {
 	struct list_head list;
 };
 
+enum disp_hrt_usage {
+	DISP_DISABLE,
+	DISP_ENABLE,
+	DISP_OPENING,
+};
+
 enum MTK_CONNECTOR_PROP {
 	CONNECTOR_PROP_CAPS_BLOB_ID,
 	CONNECTOR_PROP_CSC_BL,        /* csc bylayer backlight */
@@ -157,7 +163,6 @@ struct mtk_drm_private {
 	unsigned int req_hrt[MAX_CRTC];
 	unsigned int num_pipes;
 
-	struct mutex res_usage_lock;
 	unsigned int session_id[MAX_SESSION_COUNT];
 	unsigned int num_sessions;
 	enum MTK_DRM_SESSION_MODE session_mode;

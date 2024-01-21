@@ -1518,7 +1518,7 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 			|| mtk_crtc_is_dc_mode(crtc)
 			|| mtk_crtc->sec_on
 			|| !mtk_crtc->already_first_config
-			|| !(mtk_crtc->cur_usage == DISP_ENABLE)) {
+			|| !(priv->usage[crtc_id] == DISP_ENABLE)) {
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 			continue;
 		}

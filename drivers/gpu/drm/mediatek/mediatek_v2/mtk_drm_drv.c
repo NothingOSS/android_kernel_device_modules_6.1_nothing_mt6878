@@ -2141,10 +2141,6 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		DDP_MUTEX_LOCK_NESTED(&mtk_crtc->lock, i, __func__, __LINE__);
 		CRTC_MMP_EVENT_START((int)drm_crtc_index(crtc), atomic_commit, 0, 0);
 		drm_trace_tag_mark_bycrtc("atomic_commit", drm_crtc_index(crtc));
-		/* configure this crtc's cur_usage at once */
-		mutex_lock(&private->res_usage_lock);
-		mtk_crtc->cur_usage = private->usage[i];
-		mutex_unlock(&private->res_usage_lock);
 	}
 	mutex_nested_time_start = sched_clock();
 
@@ -7836,7 +7832,6 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	mutex_init(&private->cmdq_prepare_instr_lock);
 	mutex_init(&private->path_modify_lock);
 	mutex_init(&private->set_mmclk_lock);
-	mutex_init(&private->res_usage_lock);
 
 	init_waitqueue_head(&private->repaint_data.wq);
 	INIT_LIST_HEAD(&private->repaint_data.job_queue);
