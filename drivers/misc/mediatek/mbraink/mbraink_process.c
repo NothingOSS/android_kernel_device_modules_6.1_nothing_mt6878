@@ -357,6 +357,11 @@ void mbraink_processname_to_pid(unsigned short monitor_process_count,
 	int count = 0;
 	unsigned short processlist_temp[MAX_MONITOR_PROCESS_NUM];
 	unsigned long flags;
+	unsigned int process_num = 0;
+	unsigned int i = 0;
+	unsigned int boundary = 0;
+	bool find = false;
+	pid_t pid_tmp = 0;
 
 	if (is_binder) {
 		spin_lock_irqsave(&monitor_binder_pidlist_lock, flags);
@@ -378,36 +383,59 @@ void mbraink_processname_to_pid(unsigned short monitor_process_count,
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
-		if (t->mm) {
-			if (count >= MAX_MONITOR_PROCESS_NUM)
-				break;
+		if (t->mm)
+			++process_num;
+	}
+	read_unlock(&tasklist_lock);
 
-			get_task_struct(t);
-			read_unlock(&tasklist_lock);
-			/*This function might sleep*/
-			cmdline = kstrdup_quotable_cmdline(t, GFP_KERNEL);
-			read_lock(&tasklist_lock);
-			put_task_struct(t);
-
-			if (!cmdline) {
-				pr_info("cmdline is NULL\n");
-				continue;
-			}
-
-			for (index = 0; index < monitor_process_count; index++) {
-				if (strcasestr(cmdline,
-					processname_inputlist->process_name[index])) {
-					if (count < MAX_MONITOR_PROCESS_NUM) {
-						processlist_temp[count] = (unsigned short)(t->pid);
-						count++;
-					}
+	for (boundary = 0; boundary < process_num; boundary++) {
+		i = 0;
+		find = false;
+		read_lock(&tasklist_lock);
+		for_each_process(t) {
+			task_lock(t);
+			if (t->mm) {
+				if (i < boundary)
+					++i;
+				else {
+					get_task_struct(t);
+					pid_tmp = t->pid;
+					task_unlock(t);
+					find = true;
 					break;
 				}
 			}
-			kfree(cmdline);
+			task_unlock(t);
 		}
+		read_unlock(&tasklist_lock);
+
+		if (find == false)
+			break;
+
+		/*This function might sleep*/
+		cmdline = kstrdup_quotable_cmdline(t, GFP_KERNEL);
+		put_task_struct(t);
+
+		if (!cmdline) {
+			pr_info("%s: cmdline is NULL\n", __func__);
+			continue;
+		}
+
+		for (index = 0; index < monitor_process_count; index++) {
+			if (strcasestr(cmdline,
+				processname_inputlist->process_name[index])) {
+				if (count < MAX_MONITOR_PROCESS_NUM) {
+					processlist_temp[count] = (unsigned short)(pid_tmp);
+					count++;
+				}
+				break;
+			}
+		}
+		kfree(cmdline);
+
+		if (count >= MAX_MONITOR_PROCESS_NUM)
+			break;
 	}
-	read_unlock(&tasklist_lock);
 
 setting:
 	if (is_binder) {
