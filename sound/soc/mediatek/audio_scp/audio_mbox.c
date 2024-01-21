@@ -88,7 +88,6 @@ static long adspscp_driver_ioctl(
 		}
 
 		t.cmd1.flag = is_scp_ready(SCP_A_ID);
-		pr_info("%s(), AUDIO_DSP_IOCTL_ADSP_QUERY_STATUS: %d\n", __func__, t.cmd1.flag);
 
 		if (copy_to_user((void __user *)arg, &t, sizeof(t))) {
 			ret = -EFAULT;
