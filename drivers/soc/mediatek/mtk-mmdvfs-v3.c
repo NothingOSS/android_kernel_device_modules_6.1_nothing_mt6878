@@ -153,6 +153,8 @@ int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx)
 	if (enable) {
 		if (!vcp_power) {
 			ret = vcp_register_feature_ex(MMDVFS_FEATURE_ID);
+			MMDVFS_DBG("ret:%d enable:%d vcp_power:%d idx:%hhu usage:%d",
+				ret, enable, vcp_power, idx, vcp_pwr_usage[idx]);
 			if (ret)
 				goto enable_vcp_end;
 		}
