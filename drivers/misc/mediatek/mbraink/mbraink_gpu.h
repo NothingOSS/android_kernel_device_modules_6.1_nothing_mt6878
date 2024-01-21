@@ -12,6 +12,10 @@ int mbraink_gpu_init(void);
 int mbraink_gpu_deinit(void);
 void mbraink_gpu_setQ2QTimeoutInNS(unsigned long long q2qTimeoutInNS);
 unsigned long long mbraink_gpu_getQ2QTimeoutInNS(void);
+int mbraink_gpu_getOppInfo(struct mbraink_gpu_opp_info *gOppInfo);
+int mbraink_gpu_getStateInfo(struct mbraink_gpu_state_info *gStateInfo);
+int mbraink_gpu_getLoadingInfo(struct mbraink_gpu_loading_info *gLoadingInfo);
+
 
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
 

@@ -43,7 +43,9 @@
 #define VCORE_VOTE_INFO			'p'
 #define POWER_SPM_L2_INFO		'q'
 #define POWER_SCP_INFO			'r'
-
+#define GPU_OPP_INFO			's'
+#define GPU_STATE_INFO			't'
+#define GPU_LOADING_INFO		'u'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -100,6 +102,14 @@
 #define RO_POWER_SCP_INFO	_IOR(IOC_MAGIC, POWER_SCP_INFO, \
 						struct mbraink_power_scp_raw*)
 
+#define RO_GPU_OPP_INFO	_IOR(IOC_MAGIC, GPU_OPP_INFO, \
+						struct mbraink_gpu_opp_info*)
+
+#define RO_GPU_STATE_INFO	_IOR(IOC_MAGIC, GPU_STATE_INFO, \
+						struct mbraink_gpu_state_info*)
+
+#define RO_GPU_LOADING_INFO	_IOR(IOC_MAGIC, GPU_LOADING_INFO, \
+						struct mbraink_gpu_loading_info*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

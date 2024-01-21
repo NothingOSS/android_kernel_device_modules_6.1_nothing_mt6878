@@ -4,12 +4,16 @@
  */
 
 #include <linux/module.h>
+#include <linux/vmalloc.h>
 #include "mbraink_gpu.h"
 
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
 #include <fpsgo_common.h>
 #include <fstb.h>
 #endif
+
+#include <ged_dvfs.h>
+#include <gpufreq_v2.h>
 
 #define Q2QTIMEOUT 500000000 //500ms
 #define Q2QTIMEOUT_HIST 70000000 //70ms
@@ -109,5 +113,76 @@ void mbraink_gpu_setQ2QTimeoutInNS(unsigned long long q2qTimeoutInNS)
 unsigned long long mbraink_gpu_getQ2QTimeoutInNS(void)
 {
 	return gq2qTimeoutInNs;
+}
+
+int mbraink_gpu_getOppInfo(struct mbraink_gpu_opp_info *gOppInfo)
+{
+	int i = 0;
+	int ret = 0;
+	unsigned int u32Count = 0;
+	unsigned int u32Level = 0;
+	struct GED_DVFS_OPP_STAT *report = NULL;
+	u64 u64ts = 0;
+
+	if (gOppInfo == NULL) {
+		pr_info("Null gOppInfo\n");
+		return -1;
+	}
+
+	u32Count = ged_dvfs_get_real_oppfreq_num();
+
+	if (u32Count)
+		report = vmalloc(sizeof(struct GED_DVFS_OPP_STAT) * u32Count);
+
+	if ((report != NULL) &&
+		ged_dvfs_query_opp_cost(report, u32Count, false, &u64ts) == 0) {
+		gOppInfo->data1 = u64ts;
+		for (i = 0; i < u32Count; i++) {
+			u32Level = gpufreq_get_freq_by_idx(TARGET_DEFAULT, i)/1000;
+			if (i < MAX_GPU_OPP_INFO_SZ) {
+				gOppInfo->raw[i].data1 = u32Level;
+				gOppInfo->raw[i].data2 = report[i].ui64Active;
+				gOppInfo->raw[i].data3 = report[i].ui64Idle;
+			}
+		}
+	} else {
+		pr_info("can't allocate ged dvfs opp stat memory\n");
+		ret = -1;
+	}
+
+	if (report != NULL)
+		vfree(report);
+
+	return ret;
+}
+
+int mbraink_gpu_getStateInfo(struct mbraink_gpu_state_info *gStateInfo)
+{
+	int ret = 0;
+
+	if (gStateInfo != NULL) {
+		ret = ged_dvfs_query_power_state_time(&gStateInfo->data1,
+							&gStateInfo->data2,
+							&gStateInfo->data3,
+							&gStateInfo->data4);
+	} else {
+		pr_info("gStateInfo is Null\n");
+		ret = -1;
+	}
+	return ret;
+}
+
+int mbraink_gpu_getLoadingInfo(struct mbraink_gpu_loading_info *gLoadingInfo)
+{
+	int ret = 0;
+
+	if (gLoadingInfo != NULL) {
+		ret = ged_dvfs_query_loading(&gLoadingInfo->data1,
+						&gLoadingInfo->data2);
+	} else {
+		pr_info("gLoadingInfo is Null\n");
+		ret = -1;
+	}
+	return ret;
 }
 

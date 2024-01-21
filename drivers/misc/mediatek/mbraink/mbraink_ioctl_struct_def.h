@@ -20,8 +20,9 @@
 #define MAX_NOTIFY_CPUFREQ_NUM			8
 #define MAX_FREQ_SZ				64
 #define MAX_WAKEUP_SOURCE_NUM			12
-#define MAX_NAME_SZ						64
-#define MAX_MDV_SZ						6
+#define MAX_NAME_SZ				64
+#define MAX_MDV_SZ				6
+#define MAX_GPU_OPP_INFO_SZ			64
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -285,4 +286,28 @@ struct mbraink_voting_struct_data {
 	int voting_num;
 	unsigned int mbraink_voting_data[MAX_STRUCT_SZ];
 };
+
+struct mbraink_gpu_opp_raw {
+	uint32_t data1;
+	uint64_t data2;
+	uint64_t data3;
+};
+
+struct mbraink_gpu_opp_info {
+	struct mbraink_gpu_opp_raw raw[MAX_GPU_OPP_INFO_SZ];
+	uint64_t data1;
+};
+
+struct mbraink_gpu_state_info {
+	uint64_t data1;
+	uint64_t data2;
+	uint64_t data3;
+	uint64_t data4;
+};
+
+struct mbraink_gpu_loading_info {
+	uint64_t data1;
+	uint64_t data2;
+};
+
 #endif

@@ -776,6 +776,54 @@ static long mbraink_ioctl(struct file *filp,
 		}
 		break;
 	}
+	case RO_GPU_OPP_INFO:
+	{
+		struct mbraink_gpu_opp_info gpu_opp_info_buffer;
+
+		memset(&gpu_opp_info_buffer,
+				0x00,
+				sizeof(gpu_opp_info_buffer));
+		mbraink_gpu_getOppInfo(&gpu_opp_info_buffer);
+		if (copy_to_user((struct mbraink_gpu_opp_info *) arg,
+					&gpu_opp_info_buffer,
+					sizeof(gpu_opp_info_buffer))) {
+			pr_notice("Copy gpu_opp_info_buffer to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
+	case RO_GPU_STATE_INFO:
+	{
+		struct mbraink_gpu_state_info gpu_state_info_buffer;
+
+		memset(&gpu_state_info_buffer,
+				0x00,
+				sizeof(gpu_state_info_buffer));
+		mbraink_gpu_getStateInfo(&gpu_state_info_buffer);
+		if (copy_to_user((struct mbraink_gpu_state_info *) arg,
+					&gpu_state_info_buffer,
+					sizeof(gpu_state_info_buffer))) {
+			pr_notice("Copy gpu_state_info_buffer to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
+	case RO_GPU_LOADING_INFO:
+	{
+		struct mbraink_gpu_loading_info gpu_loading_info_buffer;
+
+		memset(&gpu_loading_info_buffer,
+				0x00,
+				sizeof(gpu_loading_info_buffer));
+		mbraink_gpu_getLoadingInfo(&gpu_loading_info_buffer);
+		if (copy_to_user((struct mbraink_gpu_loading_info *) arg,
+					&gpu_loading_info_buffer,
+					sizeof(gpu_loading_info_buffer))) {
+			pr_notice("Copy gpu_loading_info_buffer to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;
