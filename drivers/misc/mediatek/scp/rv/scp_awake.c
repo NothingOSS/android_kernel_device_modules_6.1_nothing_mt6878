@@ -130,7 +130,8 @@ int scp_awake_lock(void *_scp_id)
 		 * recovery machine already consider the race condition
 		 * of "scp_reset_status".
 		 */
-		if (scp_set_reset_status() == RESET_STATUS_STOP) {
+		if (atomic_read(&scp_reset_status) == RESET_STATUS_STOP) {
+			scp_set_reset_status();
 			/*
 			 * Since SCP may not be accessible in bus hang issue,
 			 * then we backup some information before APMCU halt SCP.
@@ -253,7 +254,8 @@ int scp_awake_unlock(void *_scp_id)
 		 * recovery machine already consider the race condition
 		 * of "scp_reset_status".
 		 */
-		if (scp_set_reset_status() == RESET_STATUS_STOP) {
+		if (atomic_read(&scp_reset_status) == RESET_STATUS_STOP) {
+			scp_set_reset_status();
 			/*
 			 * Since SCP may not be accessible in bus hang issue,
 			 * then we backup some information before APMCU halt SCP.
