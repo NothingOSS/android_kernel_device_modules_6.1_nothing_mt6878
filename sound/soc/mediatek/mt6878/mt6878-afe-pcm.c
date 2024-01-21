@@ -2720,9 +2720,6 @@ static const struct snd_soc_dapm_route mt6878_memif_routes[] = {
 	{"UL24", NULL, "UL24_CH2"},
 	{"UL24_CH1", "ADDA_UL_CH1", "ADDA_UL_Mux"},
 
-	{"UL25", NULL, "UL25_CH1"},
-	{"UL25", NULL, "UL25_CH2"},
-
 	{"DL_TO_DSP", NULL, "Hostless_DSP_DL DL"},
 	{"Hostless_DSP_DL DL", NULL, "DSP_DL"},
 

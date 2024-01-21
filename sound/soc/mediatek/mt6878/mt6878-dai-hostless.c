@@ -99,7 +99,6 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"PCM_1_PB_CH4", "HW_SRC_2_OUT_CH1", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_1_PB_CH5", "HW_SRC_2_OUT_CH2", "Hostless_Sph_Echo_Ref_DL"},
 
-	{"Hostless_Sph_Echo_Ref_UL", NULL, "I2SIN0"},
 	{"Hostless_Sph_Echo_Ref_UL", NULL, "I2SIN1"},
 	{"Hostless_Sph_Echo_Ref_UL", NULL, "I2SIN4"},
 

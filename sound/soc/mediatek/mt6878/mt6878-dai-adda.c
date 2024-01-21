@@ -1389,9 +1389,6 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl0_dac_clk"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl0_dac_hires_clk"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl0_dac_predis_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl1_dac_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl1_dac_hires_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl1_dac_predis_clk"),
 
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_ul0_adc_clk"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_ul0_adc_hires_clk"),
@@ -1523,14 +1520,6 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA_DL_CH3", "DL24_CH1", "DL24"},
 	{"ADDA_DL_CH4", "DL24_CH2", "DL24"},
 
-	{"ADDA CH34 Playback", NULL, "ADDA_DL_CH3"},
-	{"ADDA CH34 Playback", NULL, "ADDA_DL_CH4"},
-
-	{"ADDA CH34 Playback", NULL, "ADDA Enable"},
-	{"ADDA CH34 Playback", NULL, "ADDA CH34 Playback Enable"},
-	{"ADDA CH34 Playback", NULL, "AUD_PAD_TOP"},
-	{"ADDA CH34 Playback", NULL, "VS1_VOTER_DL"},
-
 	/* capture */
 	{"ADDA_UL_Mux", "MTKAIF", "ADDA Capture"},
 	{"ADDA_UL_Mux", "AP_DMIC", "AP DMIC Capture"},
@@ -1583,11 +1572,6 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA Playback", NULL, "aud_dl0_dac_hires_clk",
 	 mtk_afe_dac_hires_connect},
 
-	{"ADDA CH34 Playback", NULL, "aud_dl1_dac_clk"},
-	{"ADDA CH34 Playback", NULL, "aud_dl1_dac_predis_clk"},
-	{"ADDA CH34 Playback", NULL, "aud_dl1_dac_hires_clk",
-	 mtk_afe_dac_hires_connect},
-
 	{"ADDA Capture Enable", NULL, "aud_ul0_adc_clk"},
 	{"ADDA Capture Enable", NULL, "aud_ul0_adc_hires_clk",
 	 mtk_afe_adc_hires_connect},
@@ -1599,7 +1583,6 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"top_mux_audio_h", NULL, APLL2_W_NAME},
 
 	{"aud_dl0_dac_hires_clk", NULL, "top_mux_audio_h"},
-	{"aud_dl1_dac_hires_clk", NULL, "top_mux_audio_h"},
 	{"aud_ul0_adc_hires_clk", NULL, "top_mux_audio_h"},
 	{"aud_ul1_adc_hires_clk", NULL, "top_mux_audio_h"},
 #endif
