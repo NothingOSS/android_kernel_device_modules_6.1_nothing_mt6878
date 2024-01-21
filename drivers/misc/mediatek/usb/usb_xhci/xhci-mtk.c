@@ -781,8 +781,6 @@ static int xhci_mtk_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	xhci_mtk_procfs_init(mtk);
-
 	pm_runtime_set_active(dev);
 	pm_runtime_use_autosuspend(dev);
 	pm_runtime_set_autosuspend_delay(dev, 4000);
@@ -899,7 +897,7 @@ static int xhci_mtk_probe(struct platform_device *pdev)
 		dev_info(dev, "wakeup irq %d\n", wakeup_irq);
 	}
 
-	WARN_ON(register_trace_android_vh_audio_usb_offload_connect(xhci_mtk_sound_usb_connect, NULL));
+	xhci_mtk_procfs_init(mtk);
 
 	device_enable_async_suspend(dev);
 	pm_runtime_mark_last_busy(dev);
@@ -967,11 +965,12 @@ static int xhci_mtk_remove(struct platform_device *pdev)
 
 	xhci_mtk_procfs_exit(mtk);
 
-	unregister_trace_android_vh_audio_usb_offload_connect(xhci_mtk_sound_usb_connect, NULL);
 
 	pm_runtime_disable(dev);
 	pm_runtime_put_noidle(dev);
 	pm_runtime_set_suspended(dev);
+
+	xhci_mtk_trace_deinit(dev);
 
 	return 0;
 }
