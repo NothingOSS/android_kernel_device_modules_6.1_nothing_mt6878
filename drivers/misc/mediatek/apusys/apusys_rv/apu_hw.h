@@ -44,5 +44,6 @@
 
 /* apu_rpc register definition */
 #define APU_RPC_STATUS_1 (0x34)
+#define APU_RPC_INTF_PWR_RDY (0x44)
 
 #endif /* APU_HW_H_ */

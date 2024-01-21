@@ -583,7 +583,7 @@ static int mt6989_polling_rpc_status(struct mtk_apu *apu, u32 pwr_stat, u32 time
 	uint32_t val = 0;
 
 	if (pwr_stat == 0)
-		addr = apu->apu_rpc + 0x44;
+		addr = apu->apu_rpc + APU_RPC_INTF_PWR_RDY;
 	else
 		addr = apu->apu_mbox + MBOX_RV_PWR_STA_FLG;
 
@@ -615,7 +615,7 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 {
 	int ret = 0;
 	struct device *dev = apu->dev;
-	uint32_t rpc_state = 0;
+	uint32_t rpc_state = 0, pwr_ready = 0;
 	struct timespec64 ts, te;
 
 	if (on == 1 && off == 0) {
@@ -635,14 +635,18 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 
 			if (apu->local_pwr_ref_cnt == 1) {
 				profile_start(&ts);
+				pwr_ready = ioread32(apu->apu_rpc + APU_RPC_INTF_PWR_RDY) & 0x1;
 				rpc_state = ioread32(apu->apu_rpc + APU_RPC_STATUS_1) & 0x1;
 				/* rpc_state == 1 means in lp mode, need to retry
 				 * only APU_IPI_SCP_NP_RECOVER can bypass the check
 				 */
-				if (id != APU_IPI_SCP_NP_RECOVER && rpc_state == 1) {
+				if (pwr_ready == 1 && id != APU_IPI_SCP_NP_RECOVER && rpc_state == 1) {
 					dev_info(dev, "%s(%d): APU_RPC_STATUS_1 = 0x%x\n",
 						__func__, ret,
 						ioread32(apu->apu_rpc + APU_RPC_STATUS_1));
+					mt6989_apu_pwr_wake_unlock(apu, id);
+					apu->ipi_pwr_ref_cnt[id]--;
+					apu->local_pwr_ref_cnt--;
 					return -EBUSY;
 				}
 				apu->sub_latency[1] = profile_end(&ts, &te);
@@ -1035,7 +1039,7 @@ static void apu_polling_on_work_func(struct work_struct *p_work)
 		dev_info(dev, "%s: APU_RPC_TOP_CON = 0x%x\n",
 			__func__, ioread32(apu->apu_rpc + 0x0));
 		dev_info(dev, "%s: APU_RPC_INTF_PWR_RDY = 0x%x\n",
-			__func__, ioread32(apu->apu_rpc + 0x44));
+			__func__, ioread32(apu->apu_rpc + APU_RPC_INTF_PWR_RDY));
 		dev_info(dev, "%s: MBOX0_RV_PWR_STA = 0x%x\n",
 			__func__, ioread32(apu->apu_mbox + MBOX_RV_PWR_STA_FLG));
 
