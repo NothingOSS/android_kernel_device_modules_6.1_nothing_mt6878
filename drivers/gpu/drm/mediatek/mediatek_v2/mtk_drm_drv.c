@@ -999,11 +999,13 @@ static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) && index < MAX_CRTC) {
-		if ((index == 3) && (mtk_crtc->cur_usage == DISP_OPENING)) {
+		if ((index == 3) && ((mtk_crtc->cur_usage == DISP_OPENING) || (!mtk_crtc->enabled))) {
 			mtk_crtc->pending_update_pq = true;
 			mtk_crtc->backup_bypass_pq = bypass;
-			DDPINFO("%s %d wait for opening, backup bypass:%d\n",
-				__func__, index, mtk_crtc->backup_bypass_pq);
+			DDPINFO(
+				"%s %d wait for opening or enabled, disp_state:%d, crtc_enabled:%d, backup bypass:%d\n",
+				__func__, index, mtk_crtc->cur_usage, mtk_crtc->enabled,
+				mtk_crtc->backup_bypass_pq);
 			return;
 		}
 	}
