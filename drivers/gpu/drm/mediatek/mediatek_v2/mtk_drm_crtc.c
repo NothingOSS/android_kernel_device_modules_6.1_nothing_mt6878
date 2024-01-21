@@ -16167,11 +16167,6 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	if (priv->dpc_dev)
 		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
-	/* Temp debug patch for MT6878 dual display issue */
-	if ((priv->data->mmsys_id == MMSYS_MT6878) && (index == 3))
-		DDPINFO("%s, MT6878_MMSYS_OVL_CON:0x%x\n",
-			__func__, readl_relaxed(mtk_crtc->config_regs + 0xC08));
-
 #ifndef DRM_CMDQ_DISABLE
 #ifdef MTK_DRM_CMDQ_ASYNC
 	ret = mtk_crtc_gce_flush(crtc, ddp_cmdq_cb, cb_data, cmdq_handle);
