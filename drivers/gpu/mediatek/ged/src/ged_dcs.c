@@ -176,6 +176,7 @@ int dcs_get_cur_core_num(void)
 {
 	return g_cur_core_num;
 }
+EXPORT_SYMBOL(dcs_get_cur_core_num);
 
 int dcs_get_max_core_num(void)
 {

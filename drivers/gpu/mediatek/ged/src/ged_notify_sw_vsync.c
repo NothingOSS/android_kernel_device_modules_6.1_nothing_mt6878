@@ -13,6 +13,7 @@
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
 #include <linux/mutex.h>
+#include <linux/timekeeping.h>
 
 #include <asm/div64.h>
 
@@ -48,6 +49,8 @@
 #endif /* GED_DVFS_TIMER_TIMEOUT */
 
 static u64 g_fallback_time_out = GED_DVFS_FB_TIMER_TIMEOUT;
+static u64 g_last_pwr_ts;
+static u64 g_last_pwr_update_ts_ms;
 
 static struct hrtimer g_HT_hwvsync_emu;
 
@@ -65,6 +68,17 @@ struct GED_NOTIFY_SW_SYNC {
 	unsigned long ul3DFenceDoneTime;
 	bool bUsed;
 };
+
+struct ged_gpu_power_state_time {
+	//Unit: ns
+	u64 start_ts;
+	u64 end_ts;
+	//Unit: ms
+	u64 accumulate_time;
+};
+
+u32 g_curr_pwr_state;
+static struct ged_gpu_power_state_time pwr_state_time[3];
 
 #define MAX_NOTIFY_CNT 125
 struct GED_NOTIFY_SW_SYNC loading_base_notify[MAX_NOTIFY_CNT];
@@ -254,7 +268,6 @@ static void ged_notify_sw_sync_work_handle(struct work_struct *psWork)
 static unsigned long long hw_vsync_ts;
 #endif
 
-static unsigned long long g_ns_gpu_on_ts;
 static unsigned long long g_ns_gpu_off_ts;
 
 static bool g_timer_on;
@@ -828,6 +841,40 @@ unsigned long long ged_get_power_on_timestamp(void)
 	return g_ns_gpu_on_ts;
 }
 
+static void ged_dvfs_update_power_state_time(
+		enum ged_gpu_power_state power_state)
+{
+	u64 delta_time = 0;
+	struct timespec64 tv = {0};
+
+	g_last_pwr_ts = ged_get_time();
+	pwr_state_time[g_curr_pwr_state].end_ts = g_last_pwr_ts;
+
+	ktime_get_real_ts64(&tv);
+	g_last_pwr_update_ts_ms = tv.tv_sec * 1000 + tv.tv_nsec / 1000000;
+
+	// Check to prevent overflow error
+	if (pwr_state_time[g_curr_pwr_state].end_ts >=
+		pwr_state_time[g_curr_pwr_state].start_ts) {
+		delta_time = pwr_state_time[g_curr_pwr_state].end_ts -
+			pwr_state_time[g_curr_pwr_state].start_ts;
+		pwr_state_time[g_curr_pwr_state].accumulate_time +=
+			(delta_time / 1000000);
+	} else {
+		delta_time = (ULLONG_MAX -
+			pwr_state_time[g_curr_pwr_state].start_ts) +
+			pwr_state_time[g_curr_pwr_state].end_ts;
+		pwr_state_time[g_curr_pwr_state].accumulate_time +=
+			(delta_time / 1000000);
+	}
+
+	// Reset power state timestamps
+	pwr_state_time[g_curr_pwr_state].start_ts = 0;
+	pwr_state_time[power_state].start_ts =
+		pwr_state_time[g_curr_pwr_state].end_ts;
+	g_curr_pwr_state = power_state;
+}
+
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 {
 	enum gpu_dvfs_policy_state policy_state;
@@ -890,8 +937,28 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 	}
 	// Update power on/off state
 	trace_tracing_mark_write(5566, "gpu_state", power_state);
+
+	ged_dvfs_update_power_state_time(power_state);
 }
 EXPORT_SYMBOL(ged_dvfs_gpu_clock_switch_notify);
+
+int ged_dvfs_query_power_state_time(u64 *off_time, u64 *idle_time,
+		u64 *on_time, u64 *last_ts)
+{
+	if (off_time == NULL || idle_time == NULL || on_time == NULL ||
+		last_ts == NULL) {
+		WARN(1, "Invalid parameters");
+		return -EINVAL;
+	}
+
+	*last_ts = g_last_pwr_update_ts_ms;
+	*off_time = pwr_state_time[GED_POWER_OFF].accumulate_time;
+	*idle_time = pwr_state_time[GED_SLEEP].accumulate_time;
+	*on_time = pwr_state_time[GED_POWER_ON].accumulate_time;
+
+	return 0;
+}
+EXPORT_SYMBOL(ged_dvfs_query_power_state_time);
 
 #define GED_TIMER_BACKUP_THRESHOLD 3000
 
@@ -933,6 +1000,10 @@ GED_ERROR ged_notify_sw_vsync_system_init(void)
 
 	spin_lock_init(&g_sApoLock);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
+
+	//Initialize current power state timestamp
+	g_curr_pwr_state = (u32) gpufreq_get_power_state();
+	pwr_state_time[g_curr_pwr_state].start_ts = ged_get_time();
 
 	return GED_OK;
 }

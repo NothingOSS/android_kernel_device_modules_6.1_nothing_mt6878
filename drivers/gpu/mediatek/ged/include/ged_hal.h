@@ -11,6 +11,8 @@
 #define	GED_GPU_INFO_CAPABILITY 20
 #define GED_GPU_INFO_RUNTIME 21
 
+extern int g_real_oppfreq_num;
+extern int g_real_minfreq_idx;
 
 GED_ERROR ged_hal_init(void);
 

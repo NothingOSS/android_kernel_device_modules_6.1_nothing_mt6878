@@ -51,7 +51,6 @@ TRACE_EVENT(GPU_DVFS__Frequency,
 );
 
 TRACE_EVENT(GPU_DVFS__Loading,
-
 	TP_PROTO(unsigned int active, unsigned int tiler, unsigned int frag,
 		unsigned int comp, unsigned int iter, unsigned int mcu),
 
@@ -76,8 +75,8 @@ TRACE_EVENT(GPU_DVFS__Loading,
 	),
 
 	TP_printk("active=%u, tiler=%u, frag=%u, comp=%u, iter=%u, mcu=%u",
-		__entry->active, __entry->tiler, __entry->frag, __entry->comp,
-		__entry->iter, __entry->mcu)
+			__entry->active, __entry->tiler, __entry->frag, __entry->comp,
+			__entry->iter, __entry->mcu)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Common,

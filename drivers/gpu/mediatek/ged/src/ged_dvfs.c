@@ -19,6 +19,8 @@
 #include <linux/sched.h>
 #include <linux/sched/signal.h>
 #include <linux/hrtimer.h>
+#include <linux/vmalloc.h>
+#include <linux/timekeeping.h>
 
 #include "ged_dvfs.h"
 #include "ged_kpi.h"
@@ -63,6 +65,15 @@ static unsigned int gpu_power;
 static unsigned int gpu_dvfs_enable;
 static unsigned int gpu_debug_enable;
 
+static struct GED_DVFS_OPP_STAT *g_aOppStat;
+int g_real_oppfreq_num;
+int g_real_minfreq_idx;
+unsigned long long g_ns_gpu_on_ts;
+
+// MBrain
+static u64 g_sum_loading;
+static u64 g_sum_delta_time;
+
 enum MTK_GPU_DVFS_TYPE g_CommitType;
 unsigned long g_ulCommitFreq;
 
@@ -71,9 +82,11 @@ static unsigned int boost_gpu_enable;
 static unsigned int gpu_bottom_freq;
 static unsigned int gpu_cust_boost_freq;
 static unsigned int gpu_cust_upbound_freq;
+static unsigned int gpu_opp_logs_enable;
 #endif /* ENABLE_COMMON_DVFS */
 
 static unsigned int g_ui32PreFreqID;
+static unsigned int g_ui32CurFreqID;
 
 static unsigned int g_bottom_freq_id;
 static unsigned int g_last_def_commit_freq_id;
@@ -133,6 +146,9 @@ static unsigned long gL_ulCalResetTS_us;
 static unsigned long gL_ulPreCalResetTS_us;
 /* last frame half, t0 */
 static unsigned long gL_ulWorkingPeriod_us;
+//MBrain: unit: ms
+static uint64_t g_last_opp_cost_cal_ts;
+static uint64_t g_last_opp_cost_update_ts_ms;
 
 static unsigned long g_policy_tar_freq;
 static int g_mode;
@@ -513,6 +529,10 @@ static unsigned int gpu_util_history_query_loading(unsigned int window_size_us)
 	if (window_avg_loading > 100)
 		window_avg_loading = 100;
 
+	//MBrain
+	g_sum_loading += sum_loading;
+	g_sum_delta_time += sum_delta_time;
+
 	return window_avg_loading;
 }
 
@@ -638,18 +658,60 @@ unsigned long ged_query_info(GED_INFO eType)
 }
 EXPORT_SYMBOL(ged_query_info);
 
+void ged_opp_stat_step(void)
+{
+	int cur_idx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
+	int pre_idx = (g_ui32PreFreqID > g_real_minfreq_idx)? g_real_minfreq_idx: g_ui32PreFreqID;
+
+	cur_idx = (cur_idx > g_real_minfreq_idx)? g_real_minfreq_idx: cur_idx;
+
+	if (ged_kpi_enabled() && g_aOppStat != NULL && pre_idx != cur_idx)
+		g_aOppStat[pre_idx].uMem.aTrans[cur_idx]++;
+}
+
 //-----------------------------------------------------------------------------
 void (*ged_dvfs_cal_gpu_utilization_ex_fp)(unsigned int *pui32Loading,
 	unsigned int *pui32Block, unsigned int *pui32Idle,
 	void *Util_Ex) = NULL;
 EXPORT_SYMBOL(ged_dvfs_cal_gpu_utilization_ex_fp);
 //-----------------------------------------------------------------------------
+//MBrain opp cost calculation
+static void ged_dvfs_update_opp_cost(u32 loading, u32 cur_opp_idx)
+{
+	//Unit: ms
+	u64 cur_ts = 0, base_ts = 0, pwr_on_ts = 0;
+	u64 active_time = 0, diff_time = 0;
+	struct timespec64 tv = {0};
+
+	if (ged_kpi_enabled() && g_aOppStat != NULL &&
+		gpu_opp_logs_enable == 1 && g_curr_pwr_state == GED_POWER_ON) {
+		cur_opp_idx = (cur_opp_idx > g_real_minfreq_idx)? g_real_minfreq_idx: cur_opp_idx;
+		cur_ts = ged_get_time() / 1000000;
+		pwr_on_ts = g_ns_gpu_on_ts / 1000000;
+		base_ts = (g_last_opp_cost_cal_ts > pwr_on_ts)? g_last_opp_cost_cal_ts: pwr_on_ts;
+
+		ktime_get_real_ts64(&tv);
+		g_last_opp_cost_update_ts_ms = tv.tv_sec * 1000 + tv.tv_nsec / 1000000;
+
+		if (cur_ts > base_ts) {
+			diff_time = cur_ts - base_ts;
+			active_time = (diff_time * loading / 100);
+
+			/* update opp busy */
+			g_aOppStat[cur_opp_idx].ui64Active += active_time;
+			g_aOppStat[cur_opp_idx].ui64Idle += (diff_time - active_time);
+			g_last_opp_cost_cal_ts = cur_ts;
+		}
+	}
+}
 
 bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 	unsigned int *pui32Block, unsigned int *pui32Idle,
 	struct GpuUtilization_Ex *Util_Ex)
 {
-	unsigned long ui32IRQFlags;
+	unsigned long ui32IRQFlags = 0;
+	unsigned int cur_opp_idx = 0;
+	u32 opp_loading = 0;
 
 	if (ged_dvfs_cal_gpu_utilization_ex_fp != NULL) {
 		ged_dvfs_cal_gpu_utilization_ex_fp(pui32Loading, pui32Block,
@@ -662,13 +724,12 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 			sizeof(struct GpuUtilization_Ex));
 
 		if (g_ged_gpueb_support)
-			mtk_gpueb_dvfs_set_feedback_info(
-				0, g_Util_Ex, 0);
+			mtk_gpueb_dvfs_set_feedback_info(0, g_Util_Ex, 0);
 
 		if (pui32Loading) {
 			trace_GPU_DVFS__Loading(Util_Ex->util_active, Util_Ex->util_ta,
-				Util_Ex->util_3d, Util_Ex->util_compute, Util_Ex->util_iter,
-				Util_Ex->util_mcu);
+					Util_Ex->util_3d, Util_Ex->util_compute, Util_Ex->util_iter,
+					Util_Ex->util_mcu);
 
 			//use loading to decide whether early force fallback in LOADING_MAX_ITERMCU & loading base
 			if (g_max_core_num == SHADER_CORE &&
@@ -681,6 +742,13 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 
 			gpu_av_loading = *pui32Loading;
 			atomic_set(&g_gpu_loading_log, gpu_av_loading);
+
+			/* MBrain opp cost calculation */
+			cur_opp_idx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
+			opp_loading = *pui32Loading;
+			opp_loading = (opp_loading > 100)? 100: opp_loading;
+			ged_dvfs_update_opp_cost(opp_loading, cur_opp_idx);
+			/* MBrain opp cost calculation end */
 		}
 		return true;
 	}
@@ -933,12 +1001,18 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 			 * Does this fatal for precision?
 			 */
 			ged_log_buf_print2(ghLogBuf_DVFS, GED_LOG_ATTR_TIME,
-		"[GED_K] new freq ID committed: idx=%lu type=%u, g_type=%u",
-				ui32NewFreqID, eCommitType, g_CommitType);
+					"[GED_K] new freq ID committed: idx=%lu type=%u, g_type=%u",
+					ui32NewFreqID, eCommitType, g_CommitType);
 			if (bCommited == true) {
-				ged_log_buf_print(ghLogBuf_DVFS,
-					"[GED_K] committed true");
+				ged_log_buf_print(ghLogBuf_DVFS, "[GED_K] committed true");
 				g_ui32PreFreqID = ui32CurFreqID;
+
+				// For update opp logs
+				if (ged_kpi_enabled() && g_aOppStat != NULL) {
+					g_ui32CurFreqID = ged_get_cur_oppidx();
+					if (g_aOppStat)
+						ged_opp_stat_step();
+				}
 			}
 		}
 
@@ -1078,12 +1152,18 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		 * Does this fatal for precision?
 		 */
 		ged_log_buf_print2(ghLogBuf_DVFS, GED_LOG_ATTR_TIME,
-	"[GED_K] new freq ID committed: idx=%lu type=%u, g_type=%u",
-			stackNewFreqID, eCommitType, g_CommitType);
+				"[GED_K] new freq ID committed: idx=%lu type=%u, g_type=%u",
+				stackNewFreqID, eCommitType, g_CommitType);
 		if (bCommited == true) {
-			ged_log_buf_print(ghLogBuf_DVFS,
-				"[GED_K] committed true");
+			ged_log_buf_print(ghLogBuf_DVFS, "[GED_K] committed true");
 			g_ui32PreFreqID = ui32CurFreqID;
+
+			// For update opp logs
+			if (ged_kpi_enabled() && g_aOppStat != NULL) {
+				g_ui32CurFreqID = ged_get_cur_oppidx();
+				if (g_aOppStat)
+					ged_opp_stat_step();
+			}
 		}
 	}
 
@@ -3264,6 +3344,129 @@ void set_target_fps(int i32FPS)
 	g_ulvsync_period = get_ns_period_from_fps(i32FPS);
 }
 
+void ged_dvfs_reset_opp_cost(int oppsize)
+{
+	int i = 0;
+
+	if (ged_kpi_enabled() && g_aOppStat != NULL &&
+		oppsize > 0 && oppsize <= g_real_oppfreq_num) {
+		for (i = 0; i < oppsize; i++) {
+			g_aOppStat[i].ui64Active = 0;
+			g_aOppStat[i].ui64Idle = 0;
+			memset(g_aOppStat[i].uMem.aTrans, 0, sizeof(uint32_t) * oppsize);
+		}
+	}
+}
+
+int ged_dvfs_query_opp_cost(struct GED_DVFS_OPP_STAT *psReport,
+		int i32NumOpp, bool bStript, u64 *last_ts)
+{
+	int i = 0;
+	//u32 cur_opp_idx = 0, gpu_loading = 0, ui32IRQFlags;
+	u64 pwr_on_ts = g_ns_gpu_on_ts / 1000000;
+
+	if (ged_kpi_enabled() && g_aOppStat != NULL && psReport &&
+		i32NumOpp > 0 && i32NumOpp <= g_real_oppfreq_num &&
+		gpu_opp_logs_enable == 1) {
+		//Update opp cost timely before query
+		//spin_lock_irqsave(&gsGpuUtilLock, ui32IRQFlags);
+
+		//mtk_get_gpu_loading(&gpu_loading);
+		//gpu_loading = (gpu_loading > 100)? 100: gpu_loading;
+		//cur_opp_idx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
+		//ged_dvfs_update_opp_cost(gpu_loading, cur_opp_idx);
+		//*last_ts = (g_last_opp_cost_cal_ts > pwr_on_ts)? g_last_opp_cost_cal_ts: pwr_on_ts;
+		*last_ts = g_last_opp_cost_update_ts_ms;
+
+		memcpy(psReport, g_aOppStat,
+				i32NumOpp * sizeof(struct GED_DVFS_OPP_STAT));
+
+		//spin_unlock_irqrestore(&gsGpuUtilLock, ui32IRQFlags);
+
+		if (bStript)
+			for (i = 0; i < i32NumOpp; i++)
+				psReport[i].uMem.ui32Freq = ged_get_freq_by_idx(i);
+
+		return 0;
+	}
+
+	return -1;
+}
+EXPORT_SYMBOL(ged_dvfs_query_opp_cost);
+
+static void ged_dvfs_deinit_opp_cost(void)
+{
+	int i = 0, oppsize = g_real_oppfreq_num;
+
+	if (g_aOppStat == NULL)
+		return;
+
+	for (i = 0; i < oppsize; i++)
+		vfree(g_aOppStat[i].uMem.aTrans);
+
+	vfree(g_aOppStat);
+}
+
+int ged_dvfs_init_opp_cost(void)
+{
+	int i = 0, oppsize = gpufreq_get_opp_num(TARGET_DEFAULT);
+	int min_opp_idx = 0;
+	unsigned int min_gpu_freq = 0;
+
+	if (!ged_kpi_enabled())
+		return 0;
+
+	if (oppsize <= 0)
+		return -EPROBE_DEFER;
+
+	min_opp_idx = oppsize - 1;
+	min_gpu_freq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, min_opp_idx);
+	for (i = min_opp_idx - 1; i >= 0; i--) {
+		if (gpufreq_get_freq_by_idx(TARGET_DEFAULT, i) != min_gpu_freq)
+			break;
+
+		oppsize--;
+	}
+
+	g_real_oppfreq_num = oppsize;
+	g_real_minfreq_idx = g_real_oppfreq_num - 1;
+
+	if (g_aOppStat == NULL)
+		g_aOppStat = vmalloc(sizeof(struct GED_DVFS_OPP_STAT) * oppsize);
+	else
+		ged_dvfs_deinit_opp_cost();
+
+	if (g_aOppStat != NULL) {
+		for (i = 0; i < oppsize; i++)
+			g_aOppStat[i].uMem.aTrans = vmalloc(sizeof(uint32_t) * oppsize);
+
+		ged_dvfs_reset_opp_cost(oppsize);
+	} else
+		GED_LOGE("init opp cost failed!");
+
+	return 0;
+}
+
+int ged_dvfs_get_real_oppfreq_num(void)
+{
+	return g_real_oppfreq_num;
+}
+EXPORT_SYMBOL(ged_dvfs_get_real_oppfreq_num);
+
+int ged_dvfs_query_loading(u64 *sum_loading, u64 *sum_delta_time)
+{
+	if (sum_loading == NULL || sum_delta_time == NULL) {
+		WARN(1, "Invalid parameters");
+		return -EINVAL;
+	}
+
+	*sum_loading = g_sum_loading;
+	*sum_delta_time = g_sum_delta_time;
+
+	return 0;
+}
+EXPORT_SYMBOL(ged_dvfs_query_loading);
+
 GED_ERROR ged_dvfs_probe(int pid)
 {
 	if (pid == GED_VSYNC_OFFSET_NOT_SYNC) {
@@ -3530,11 +3733,18 @@ GED_ERROR ged_dvfs_system_init(void)
 	gpu_mewtwo_timer.function = gpu_mewtwo_timer_cb;
 	gpu_mewtwo_timer_expire = ms_to_ktime(GPU_MEWTWO_TIMEOUT);
 
+	// MBrain
+	// Enable opp log by default
+	gpu_opp_logs_enable = 1;
+	g_sum_loading = 0;
+	g_sum_delta_time = 0;
+
 	return GED_OK;
 }
 
 void ged_dvfs_system_exit(void)
 {
+	ged_dvfs_deinit_opp_cost();
 	mutex_destroy(&gsDVFSLock);
 	mutex_destroy(&gsPolicyLock);
 	mutex_destroy(&gsVSyncOffsetLock);
@@ -3552,5 +3762,6 @@ module_param(gpu_bottom_freq, uint, 0644);
 module_param(gpu_cust_boost_freq, uint, 0644);
 module_param(gpu_cust_upbound_freq, uint, 0644);
 module_param(g_gpu_timer_based_emu, uint, 0644);
+module_param(gpu_opp_logs_enable, uint, 0644);
 #endif /* ENABLE_COMMON_DVFS */
 
