@@ -390,6 +390,7 @@
 #define OV16A10_SENSOR_ID                       0x561641
 #define GC02M1B_SENSOR_ID                       0x02e0
 #define GC13A2_SENSOR_ID                        0x13a2
+#define S5KGN9SP_SENSOR_ID                      0x08E9
 
 /* CAMERA DRIVER NAME */
 #define CAMERA_HW_DEVNAME                       "kd_camera_hw"
@@ -640,6 +641,7 @@
 #define SENSOR_DRVNAME_OV13B10_MIPI_RAW         "ov13b10_mipi_raw"
 #define SENSOR_DRVNAME_OV02B10_MIPI_RAW         "ov02b10_mipi_raw"
 #define SENSOR_DRVNAME_GC13A2_MIPI_RAW          "gc13a2_mipi_raw"
+#define SENSOR_DRVNAME_S5KGN9SP_MIPI_RAW        "s5kgn9sp_mipi_raw"
 
 /******************************************************************************
  *
