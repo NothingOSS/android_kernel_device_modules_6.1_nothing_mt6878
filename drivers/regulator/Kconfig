@@ -189,5 +189,12 @@ config DEVICE_MODULES_REGULATOR_RT6160
 	  The wide output range is from 2025mV to 5200mV and can be used on most
 	  common application scenario.
 
+config REGULATOR_MT6878_ALPHA_SUPPORT
+	tristate "Specify Alpha REGULATOR Platform is mt6878"
+	help
+	  Select Alpha REGULATOR Platform is mt6878.
+	  To compile this dirver for used touch IC.
+	  Set Y or M to select this feature for specific platform-mt6878,
+	  and set N to disable.
 endif
 
