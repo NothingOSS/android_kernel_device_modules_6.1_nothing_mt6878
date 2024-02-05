@@ -19,26 +19,26 @@ const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 		case 0 ... 9:
 		case 22:
 		case 24 ... 25:
-			return "DISP";
+			return "MM_DISP";
 		case 16 ... 19:
-			return "MML";
+			return "MM_MML";
 		case 20 ... 21:
-			return "MDP";
+			return "MM_MDP";
 		default:
-			return "CMDQ";
+			return "MM_GCE";
 		}
 	} else if (gce_pa == GCE_M_PA) {
 		switch (thread) {
 		case 0 ... 5:
 		case 10 ... 11:
 		case 16 ... 24:
-			return "ISP";
+			return "MM_ISP";
 		case 6 ... 7:
-			return "VFMT";
+			return "MM_VFMT";
 		case 12:
-			return "VENC";
+			return "MM_VENC";
 		default:
-			return "CMDQ";
+			return "MM_GCE";
 		}
 	}
 
@@ -57,10 +57,10 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 		switch (event) {
 		case CMDQ_EVENT_MDPSYS_MDP_RDMA0_SOF
 			... CMDQ_EVENT_MDPSYS_BUF_UNDERRUN_ENG_EVENT_3:
-			return "MDP";
+			return "MM_MDP";
 		case CMDQ_EVENT_DISPSYS_DISP_OVL0_2L_SOF
 			... CMDQ_EVENT_DISPSYS_BUF_UNDERRUN_ENG_EVENT_7:
-			return "DISP";
+			return "MM_MML";
 		case CMDQ_SYNC_TOKEN_CONFIG_DIRTY:
 		case CMDQ_SYNC_TOKEN_STREAM_EOF:
 		case CMDQ_SYNC_TOKEN_ESD_EOF:
@@ -70,53 +70,53 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 			... CMDQ_SYNC_TOKEN_CABC_EOF_1:
 		case CMDQ_SYNC_TOKEN_CONFIG_DIRTY_3
 			... CMDQ_SYNC_TOKEN_CABC_EOF_3:
-			return "DISP";
+			return "MM_DISP";
 		case CMDQ_SYNC_TOKEN_MML_BUFA
 			... CMDQ_SYNC_TOKEN_MML_PIPE1_NEXT:
-			return "MML";
+			return "MM_MML";
 		default:
-			return "CMDQ";
+			return "MM_GCE";
 		}
 
 	if (gce_pa == GCE_M_PA) // GCE-M
 		switch (event) {
 		case CMDQ_EVENT_VENC_VENC_FRAME_DONE
 			... CMDQ_EVENT_VDEC_VDEC_EVENT_15:
-			return "VENC";
+			return "MM_VENC";
 		case CMDQ_EVENT_IMG_TRAW0_CQ_THR_DONE_TRAW0_0
 			... CMDQ_EVENT_IMG_TRAW0_DIP_DMA_ERR_EVENT:
-			return "TRAW";
+			return "MM_IMG_TRAW";
 		case CMDQ_EVENT_IMG_TRAW1_CQ_THR_DONE_TRAW0_0
 			... CMDQ_EVENT_IMG_TRAW1_DIP_DMA_ERR_EVENT:
-			return "LTRAW";
+			return "MM_IMG_LTRAW";
 		case CMDQ_EVENT_IMG_DIP_CQ_THR_DONE_P2_0
 			... CMDQ_EVENT_IMG_DIP_DUMMY_2:
-			return "DIP";
+			return "MM_IMG_DIP";
 		case CMDQ_EVENT_IMG_WPE_EIS_GCE_FRAME_DONE
 			... CMDQ_EVENT_IMG_WOE_EIS_CQ_THR_DONE_P2_9:
 		case CMDQ_EVENT_IMG_WPE0_DUMMY_0
 			... CMDQ_EVENT_IMG_WPE0_DUMMY_2:
-			return "WPE_EIS";
+			return "MM_IMG_WPE";
 		case CMDQ_EVENT_IMG_PQDIP_A_CQ_THR_DONE_P2_0
 			... CMDQ_EVENT_IMG_PQA_DMA_ERR_EVENT:
-			return "PQDIP_A";
+			return "MM_IMG_PQDIP";
 		case CMDQ_EVENT_IMG_WPE_TNR_GCE_FRAME_DONE
 			... CMDQ_EVENT_IMG_WOE_TNR_CQ_THR_DONE_P2_9:
-			return "WPE_TNR";
+			return "MM_IMG_WPE";
 		case CMDQ_EVENT_IMG_PQDIP_B_CQ_THR_DONE_P2_0
 			... CMDQ_EVENT_IMG_PQB_DMA_ERR_EVENT:
-			return "PQDIP_B";
+			return "MM_IMG_PQDIP";
 		case CMDQ_EVENT_IMG_WPE1_DUMMY_0
 			... CMDQ_EVENT_IMG_WPE1_DUMMY_2:
-			return "WPE_TNR";
+			return "MM_IMG_WPE";
 		case CMDQ_EVENT_IMG_IMGSYS_IPE_FDVT0_DONE:
-			return "FDVT";
+			return "MM_IMG_FDVT";
 		case CMDQ_EVENT_IMG_IMGSYS_IPE_ME_DONE:
 		case CMDQ_EVENT_IMG_IMGSYS_IPE_MMG_DONE:
-			return "ME";
+			return "MM_IMG_ME";
 		case CMDQ_EVENT_CAM_CAM_SUBA_SW_PASS1_DONE
 			... CMDQ_EVENT_CAM_CCU2GCE_VM_IRQ:
-			return "CAM";
+			return "MM_CAM";
 		case CMDQ_SYNC_TOKEN_IMGSYS_POOL_1
 			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_133:
 		case CMDQ_SYNC_TOKEN_IMGSYS_WPE_EIS
@@ -129,11 +129,11 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_250:
 		case CMDQ_SYNC_TOKEN_IMGSYS_POOL_251
 			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_300:
-			return "IMGSYS";
+			return "MM_IMGSYS";
 		case CMDQ_SYNC_TOKEN_APUSYS_APU:
-			return "APUSYS_EDMA";
+			return "MM_CAM";
 		default:
-			return "CMDQ";
+			return "MM_GCEM";
 		}
 
 	return "CMDQ";
