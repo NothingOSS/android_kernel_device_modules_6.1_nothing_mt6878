@@ -443,37 +443,33 @@ int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 #else
 	mem->heap = dma_heap_find("mtk_mm-uncached");
 	if (!mem->heap) {
-		AMMU_LOG_ERR("mtk_mm_uncached not exist\n");
+		AMMU_LOG_ERR("Cannot get mtk_mm-uncached heap\n");
 		ret = -ENOMEM;
 		goto out;
 	}
 
 	mem->priv = dma_heap_buffer_alloc(mem->heap, mem->size, O_RDWR | O_CLOEXEC, 0);
-	if (!mem->priv) {
+	if (IS_ERR_OR_NULL(mem->priv)) {
 		AMMU_LOG_ERR("dma_heap_buffer_alloc fail mem size = 0x%x\n", mem->size);
 		ret = -ENOMEM;
 		goto heap_alloc_err;
 	}
 
 	mem->attach = dma_buf_attach(mem->priv, dev);
-	if (!mem->attach) {
+	if (IS_ERR_OR_NULL(mem->attach)) {
 		AMMU_LOG_ERR("dma_buf_attach fail\n");
 		ret = -ENOMEM;
 		goto dma_buf_attach_err;
 	}
 
 	mem->sgt = dma_buf_map_attachment(mem->attach, DMA_BIDIRECTIONAL);
-	if (!mem->sgt) {
+	if (IS_ERR_OR_NULL(mem->sgt)) {
 		AMMU_LOG_ERR("dma_buf_map_attachment fail\n");
 		ret = -ENOMEM;
 		goto dbuf_map_attachment_err;
 	}
 
 	mem->iova = sg_dma_address(mem->sgt->sgl);
-
-	// kva = dma_alloc_coherent(dev, mem->size, &iova, GFP_KERNEL);
-	// if (!kva) {
-	// AMMU_LOG_ERR("dma_alloc_coherent fail (0x%x)\n", mem->size);
 #endif
 
 	AMMU_LOG_INFO("DRAM alloc mem(0x%llx/0x%x)\n",
