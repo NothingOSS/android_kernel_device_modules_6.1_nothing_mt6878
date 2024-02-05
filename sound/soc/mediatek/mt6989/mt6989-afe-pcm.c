@@ -1691,7 +1691,8 @@ static int ul_cm1_event(struct snd_soc_dapm_widget *w,
 		mt6989_set_cm(afe, CM1, 0x1, false, channels);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		mt6989_enable_cm_bypass(afe, CM1, 0x1);
+		/* remove so we fix in normal mode */
+		/* mt6989_enable_cm_bypass(afe, CM1, 0x1); */
 		break;
 	default:
 		break;
@@ -2617,7 +2618,7 @@ static const struct snd_soc_dapm_widget mt6989_memif_widgets[] = {
 			SND_SOC_DAPM_PRE_PMD),
 
 	SND_SOC_DAPM_SUPPLY("CM1_Enable",
-			AFE_CM1_CON0, AFE_CM0_ON_SFT, 0,
+			SND_SOC_NOPM, 0, 0,
 			ul_cm1_event,
 			SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_PRE_PMD),
@@ -4779,6 +4780,8 @@ static bool mt6989_is_volatile_reg(struct device *dev, unsigned int reg)
 	case AFE_VUL_CM0_END_MSB:
 	case AFE_VUL_CM0_END:
 	case AFE_VUL_CM0_CON0:
+	/* case AFE_CM0_CON0: */
+	/* case AFE_CM1_CON0: */
 		return true;
 	default:
 		return false;
