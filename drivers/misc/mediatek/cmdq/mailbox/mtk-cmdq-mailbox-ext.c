@@ -3316,6 +3316,7 @@ void cmdq_mbox_disable(void *chan)
 	if (!thd_usage && !list_empty(&cmdq->thread[i].task_busy_list)) {
 		cmdq_err("hwid:%u idx:%d usage:%d still has tasks",
 			cmdq->hwid, i, thd_usage);
+		dump_stack();
 	} else if (thd_usage == 0) {
 		thread = &cmdq->thread[i];
 		thread->mbox_dis = sched_clock();
