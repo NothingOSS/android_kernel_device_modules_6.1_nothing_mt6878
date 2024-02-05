@@ -25,6 +25,14 @@
 #define DEBUG_BUFFER_SIZE 10240
 #endif
 
+enum MTK_DRM_DEBUG_LOG_SWITCH_OPS {
+	MTK_DRM_OTHER = 0,
+	MTK_DRM_MOBILE_LOG,
+	MTK_DRM_DETAIL_LOG,
+	MTK_DRM_FENCE_LOG,
+	MTK_DRM_IRQ_LOG,
+};
+
 extern int mtk_disp_hrt_bw_dbg(void);
 
 struct cb_data_store {
@@ -149,6 +157,7 @@ enum GCE_COND_REVERSE_COND {
 #define GCE_DO(act, name) cmdq_pkt_##act(_cond_pkt, mtk_crtc->gce_obj.event[name])
 
 #define GCE_SLEEP(us) cmdq_pkt_sleep(_cond_pkt, us, _gpr)
-
+int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
+	struct drm_file *file_priv);
 
 #endif

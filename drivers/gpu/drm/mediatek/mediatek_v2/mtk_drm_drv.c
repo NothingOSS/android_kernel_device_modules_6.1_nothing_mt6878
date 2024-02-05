@@ -8129,6 +8129,8 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 				  DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_HWVSYNC_ON, mtk_drm_hwvsync_on_ioctl,
 				  DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(MTK_DEBUG_LOG, mtk_disp_ioctl_debug_log_switch,
+					DRM_UNLOCKED),
 };
 
 static const struct file_operations mtk_drm_fops = {

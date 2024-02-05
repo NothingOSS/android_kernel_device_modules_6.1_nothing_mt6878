@@ -490,6 +490,8 @@ struct DISP_AAL_TRIG_STATE {
 #define DRM_MTK_HDMI_AUDIO_CONFIG	0x3C
 #define DRM_MTK_HDMI_GET_CAPABILITY	0x3D
 
+#define DRM_MTK_DEBUG_LOG			0x3E
+
 /* C3D */
 #define DRM_MTK_C3D_GET_BIN_NUM     0x40
 #define DRM_MTK_C3D_GET_IRQ         0x41
@@ -1894,6 +1896,9 @@ struct mtk_pixel_type_fence {
 
 #define DRM_IOCTL_MTK_HWVSYNC_ON DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_HWVSYNC_ON, unsigned int)
+
+#define DRM_IOCTL_MTK_DEBUG_LOG     DRM_IOWR(DRM_COMMAND_BASE + \
+			DRM_MTK_DEBUG_LOG, int)
 
 /* AAL IOCTL */
 #define AAL_HIST_BIN            33	/* [0..32] */
