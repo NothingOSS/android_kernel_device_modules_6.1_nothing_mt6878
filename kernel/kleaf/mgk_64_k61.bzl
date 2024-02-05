@@ -831,6 +831,7 @@ mgk_64_k61_device_eng_modules = [
     "drivers/misc/mediatek/locking/locking_aee.ko",
     "drivers/misc/mediatek/mtprof/irq_monitor.ko",
     "drivers/misc/mediatek/selinux_warning/mtk_selinux_aee_warning.ko",
+    "drivers/regulator/k6878v1_64_alpha/wl2864c.ko",
 ]
 
 mgk_64_k61_platform_device_eng_modules = {
@@ -841,6 +842,7 @@ mgk_64_k61_device_userdebug_modules = [
     "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
     "drivers/misc/mediatek/mtprof/irq_monitor.ko",
     "drivers/misc/mediatek/selinux_warning/mtk_selinux_aee_warning.ko",
+    "drivers/regulator/k6878v1_64_alpha/wl2864c.ko",
 ]
 
 mgk_64_k61_platform_device_userdebug_modules = {
@@ -848,6 +850,7 @@ mgk_64_k61_platform_device_userdebug_modules = {
 
 
 mgk_64_k61_device_user_modules = [
+    "drivers/regulator/k6878v1_64_alpha/wl2864c.ko",
 ]
 
 mgk_64_k61_platform_device_user_modules = {
