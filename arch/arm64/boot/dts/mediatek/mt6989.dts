@@ -10257,9 +10257,9 @@
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L26_P0_MRAW1_CQI_M1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L26_P0_MRAW1_CQI_M1)
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P1_MRAW1_IMGBO_M1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L26_P0_MRAW1_CQI_M1)
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P13_MRAW1_IMGO_M1)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 				"l26_cqi_m1_1",
