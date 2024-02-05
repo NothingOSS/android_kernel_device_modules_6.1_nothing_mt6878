@@ -102,10 +102,10 @@ int audio_mbox_pin_cb(unsigned int id, void *prdata, void *buf, unsigned int len
 	if (recv_queue_callback != NULL)
 		ret = recv_queue_callback(0, id, buf, len, ipi_descs[id].handler);
 
-	if (ret != 0) {
-		pr_info("ipi recv_queue not ready(%d), directly handle ipi %d", ret, id);
+	// When recv queue is not ready, call handler directly
+	if (ret != 0)
 		ipi_descs[id].handler(id, buf, len);
-	}
+
 	return SCP_IPI_DONE;
 }
 
