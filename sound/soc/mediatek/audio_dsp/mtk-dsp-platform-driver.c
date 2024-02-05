@@ -50,6 +50,12 @@ static struct wakeup_source *adsp_audio_wakelock;
 static int ktv_status;
 static struct mtk_base_dsp *dsp_priv;
 
+
+static DECLARE_WAIT_QUEUE_HEAD(waitq);
+static int dsp_standby_flag;
+
+static int wait_dsp_ready(void);
+
 //#define DEBUG_VERBOSE
 //#define DEBUG_VERBOSE_IRQ
 
@@ -942,12 +948,16 @@ static int mtk_dsp_pcm_open(struct snd_soc_component *component,
 	memcpy((void *)(&(runtime->hw)), (void *)dsp->mtk_dsp_hardware,
 	       sizeof(struct snd_pcm_hardware));
 
+	if (get_task_attr(id, ADSP_TASK_ATTR_DEFAULT) <= 0) {
+		pr_info("%s(), %s not enable", __func__, task_name);
+		return -EBADR;
+	}
+
 	ret = mtk_dsp_register_feature(dsp_feature_id);
 	if (ret) {
 		pr_info("%s(), %s register feature fail", __func__, task_name);
-		return -1;
+		return -EFAULT;
 	}
-
 RETRY:
 	/* send to task with open information */
 	ret = mtk_scp_ipi_send(get_dspscene_by_dspdaiid(id), AUDIO_IPI_MSG_ONLY,
@@ -958,10 +968,11 @@ RETRY:
 			wait_dsp_ready();
 			retry_flag = true;
 			goto RETRY;
-		} else {
-			mtk_dsp_deregister_feature(dsp_feature_id);
-			goto END;
 		}
+
+		mtk_dsp_deregister_feature(dsp_feature_id);
+		pr_info("%s(), fail %s(%d) ret[%d]", __func__, task_name, id, ret);
+		return -ECOMM;
 	}
 
 	/* set the wait_for_avail to 2 sec*/
@@ -970,10 +981,7 @@ RETRY:
 	dsp->dsp_mem[id].substream = substream;
 	dsp->dsp_mem[id].underflowed = 0;
 
-END:
-	pr_info("%s(), %s(%d) ret[%d] retry[%d]\n", __func__,
-		task_name, id, ret, retry_flag);
-	return ret;
+	return 0;
 }
 
 static int mtk_dsp_pcm_close(struct snd_soc_component *component,
@@ -1607,53 +1615,58 @@ static int adsp_mbox_recv_handler(unsigned int id,
 	return 0;
 }
 
-#ifdef CFG_RECOVERY_SUPPORT
+static int wait_dsp_ready(void)
+{
+	/* should not call this in atomic or interrupt level */
+	if (!wait_event_timeout(waitq, dsp_standby_flag == 0 && is_adsp_ready(ADSP_A_ID),
+				msecs_to_jiffies(700)))
+		return -EBUSY;
+
+	return 0;
+}
+
 static int audio_send_reset_event(void)
 {
 	int ret = 0, i;
+	unsigned int rst_scenes[] = {TASK_SCENE_FAST, TASK_SCENE_VOIP, TASK_SCENE_PRIMARY,
+				     TASK_SCENE_DEEPBUFFER, TASK_SCENE_SPATIALIZER,
+				     TASK_SCENE_CAPTURE_RAW, TASK_SCENE_UL_PROCESS};
 
-	for (i = 0; i < TASK_SCENE_SIZE; i++) {
-		if ((i == TASK_SCENE_DEEPBUFFER) ||
-			(i == TASK_SCENE_VOIP) ||
-			(i == TASK_SCENE_PRIMARY) ||
-			(i == TASK_SCENE_FAST) ||
-			(i == TASK_SCENE_SPATIALIZER) ||
-			(i == TASK_SCENE_CAPTURE_RAW) ||
-			(i == TASK_SCENE_UL_PROCESS)) {
-			ret = mtk_scp_ipi_send(i, AUDIO_IPI_MSG_ONLY,
-			AUDIO_IPI_MSG_BYPASS_ACK, AUDIO_DSP_TASK_RESET,
-			ADSP_EVENT_READY, 0, NULL);
-			pr_info("%s scene = %d\n", __func__, i);
-		}
+	for (i = 0; i < ARRAY_SIZE(rst_scenes); i++) {
+		ret = mtk_scp_ipi_send(rst_scenes[i], AUDIO_IPI_MSG_ONLY,
+				       AUDIO_IPI_MSG_BYPASS_ACK,
+				       AUDIO_DSP_TASK_RESET,
+				       ADSP_EVENT_READY, 0, NULL);
+		pr_info("%s scene = %d", __func__, rst_scenes[i]);
 	}
+
 	return ret;
 }
 
-static int audio_event_receive(struct notifier_block *this, unsigned long event,
-			    void *ptr)
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
+static int audio_dsp_event_receive(struct notifier_block *this, unsigned long event, void *ptr)
 {
-	int ret = 0;
-
 	switch (event) {
 	case ADSP_EVENT_STOP:
-		pr_info("%s event[%lu]\n", __func__, event);
+		dsp_standby_flag = 1;
 		break;
-	case ADSP_EVENT_READY: {
+	case ADSP_EVENT_READY:
+		mtk_reinit_adsp();
 		audio_send_reset_event();
-		pr_info("%s event[%lu]\n", __func__, event);
+		dsp_standby_flag = 0;
+		wake_up(&waitq);
+		break;
+	default:
 		break;
 	}
-	default:
-		pr_info("%s event[%lu]\n", __func__, event);
-	}
-	return ret;
+	pr_info("%s: ADSP_EVENT: %lu, standby: %d", __func__, event, dsp_standby_flag);
+	return 0;
 }
 
-static struct notifier_block adsp_audio_notifier = {
-	.notifier_call = audio_event_receive,
-	.priority = PRIMARY_FEATURE_PRI,
+struct notifier_block mtk_audio_dsp_notifier = {
+	.notifier_call = audio_dsp_event_receive,
+	.priority = AUDIO_PLAYBACK_FEATURE_PRI,
 };
-
 #endif
 
 void mtk_dsp_reset_afe_sharemem(void)
@@ -1674,25 +1687,26 @@ void mtk_dsp_reset_afe_sharemem(void)
 	}
 }
 
-static int rv_adsp_event_receive(struct notifier_block *this, unsigned long event,
-			    void *ptr)
+static int rv_adsp_event_receive(struct notifier_block *this, unsigned long event, void *ptr)
 {
 	int ret = 0;
 
 	switch (event) {
 	case SCP_EVENT_STOP:
-		pr_info("%s SCP_EVENT_STOP[%lu]\n", __func__, event);
+		dsp_standby_flag = 1;
 		mtk_dsp_reset_afe_sharemem();
 		break;
 	case SCP_EVENT_READY: {
 		mtk_reinit_adsp();
 		audio_send_reset_event();
-		pr_info("%s SCP_EVENT_READY[%lu]\n", __func__, event);
+		dsp_standby_flag = 0;
+		wake_up(&waitq);
 		break;
 	}
 	default:
-		pr_info("%s event[%lu]\n", __func__, event);
+		break;
 	}
+	pr_info("%s: SCP_EVENT: %lu, standby: %d", __func__, event, dsp_standby_flag);
 	return ret;
 }
 
@@ -1700,7 +1714,6 @@ static int rv_adsp_event_receive(struct notifier_block *this, unsigned long even
 static struct notifier_block rv_adsp_audio_notifier = {
 	.notifier_call = rv_adsp_event_receive,
 };
-
 
 static int rv_adsp_user_event_notify(struct notifier_block *nb,
 				 unsigned long event, void *ptr)
@@ -1734,7 +1747,6 @@ static int rv_adsp_user_event_notify(struct notifier_block *nb,
 struct notifier_block rv_adsp_uevent_notifier = {
 	.notifier_call = rv_adsp_user_event_notify,
 };
-
 
 static int mtk_dsp_probe(struct snd_soc_component *component)
 {
@@ -1786,15 +1798,16 @@ static int mtk_dsp_probe(struct snd_soc_component *component)
 
 		scp_A_register_notify(&rv_adsp_audio_notifier);
 		scp_A_register_notify(&rv_adsp_uevent_notifier);
+	} else { /* HIFI */
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
+		adsp_register_notify(&mtk_audio_dsp_notifier);
+#endif
 	}
 
 	ret = mtk_init_adsp_latency(dsp);
 	if (ret)
 		pr_info("init latency fail\n");
 
-#ifdef CFG_RECOVERY_SUPPORT
-	adsp_register_notify(&adsp_audio_notifier);
-#endif
 	register_vp_notifier();
 	return ret;
 }

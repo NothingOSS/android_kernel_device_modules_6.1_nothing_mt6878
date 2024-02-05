@@ -26,9 +26,6 @@
 
 #include "mtk-sp-spk-amp.h"
 
-static int adsp_standby_flag;
-static struct wait_queue_head waitq;
-
 /* don't use this directly if not necessary */
 static struct mtk_base_dsp *local_base_dsp;
 static struct mtk_base_afe *local_dsp_afe;
@@ -160,21 +157,19 @@ int mtk_scp_ipi_send(int task_scene, int data_type, int ack_type,
 		     uint16_t msg_id, uint32_t param1, uint32_t param2,
 		     char *payload)
 {
-	struct ipi_msg_t ipi_msg;
+	struct ipi_msg_t ipi_msg = {0};
 	int send_result = 0;
-
-	memset((void *)&ipi_msg, 0, sizeof(struct ipi_msg_t));
 
 	if (!is_audio_task_dsp_ready(task_scene)) {
 		pr_info("%s(), is_adsp_ready send false\n", __func__);
-		return -1;
+		return -EAGAIN;
 	}
 
 	if (get_task_attr(get_dspdaiid_by_dspscene(task_scene),
 			  ADSP_TASK_ATTR_DEFAULT) <= 0) {
 		pr_info("%s() task_scene[%d] not enable\n",
 			__func__, task_scene);
-		return -1;
+		return -EBADR;
 	}
 
 	send_result = audio_send_ipi_msg(
@@ -476,58 +471,9 @@ int mtk_dsp_deregister_feature(int id)
 	return adsp_deregister_feature(id);
 }
 
-int wait_dsp_ready(void)
-{
-	/* should not call this in atomic or interrupt level */
-	if (!wait_event_timeout(waitq, adsp_standby_flag == 0 && is_adsp_ready(ADSP_A_ID),
-				msecs_to_jiffies(200)))
-		return -EBUSY;
-
-	return 0;
-}
-
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
-static int mtk_audio_dsp_event_receive(
-	struct notifier_block *this,
-	unsigned long event,
-	void *ptr)
-{
-	switch (event) {
-	case ADSP_EVENT_STOP:
-		adsp_standby_flag = 1;
-		break;
-	case ADSP_EVENT_READY:
-		mtk_reinit_adsp();
-		adsp_standby_flag = 0;
-		wake_up(&waitq);
-		break;
-	default:
-		pr_info("event %lu err", event);
-	}
-	return 0;
-}
-
-static struct notifier_block mtk_audio_dsp_notifier = {
-	.notifier_call = mtk_audio_dsp_event_receive,
-	.priority = AUDIO_PLAYBACK_FEATURE_PRI,
-};
-#endif
-
-int mtk_audio_register_notify(void)
-{
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
-	adsp_register_notify(&mtk_audio_dsp_notifier);
-#endif
-	init_waitqueue_head(&waitq);
-	return 0;
-}
-
 int mtk_get_ipi_buf_scene_adsp(void)
 {
 	int task_scene = -1;
-
-	if (adsp_standby_flag)
-		return task_scene;
 
 	if (get_task_attr(AUDIO_TASK_CALL_FINAL_ID,
 			  ADSP_TASK_ATTR_RUNTIME) > 0)
@@ -540,7 +486,7 @@ int mtk_get_ipi_buf_scene_adsp(void)
 			__func__);
 	}
 
-	return task_scene;
+	return is_audio_task_dsp_ready(task_scene) ? task_scene : -1;
 }
 EXPORT_SYMBOL(mtk_get_ipi_buf_scene_adsp);
 

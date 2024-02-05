@@ -225,8 +225,6 @@ static int dsp_pcm_dev_probe(struct platform_device *pdev)
 		goto err_platform;
 	}
 
-	mtk_audio_register_notify();
-
 err_platform:
 	return 0;
 }

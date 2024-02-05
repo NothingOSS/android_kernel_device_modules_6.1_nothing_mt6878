@@ -110,9 +110,6 @@ struct mtk_base_afe *get_afe_base(void);
 int mtk_dsp_register_feature(int id);
 int mtk_dsp_deregister_feature(int id);
 
-int wait_dsp_ready(void);
-int mtk_audio_register_notify(void);
-
 int mtk_get_ipi_buf_scene_adsp(void);
 int register_vp_notifier(void);
 void hook_has_video_cb(has_video_cb_t cb);
