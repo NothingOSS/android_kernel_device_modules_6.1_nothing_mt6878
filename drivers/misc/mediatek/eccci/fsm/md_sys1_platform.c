@@ -12,6 +12,10 @@
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
+#include <linux/of_platform.h>
+#include <linux/regmap.h>
+#include <linux/regulator/consumer.h> /* for MD PMIC */
+
 #include "ccci_config.h"
 #include "ccci_common_config.h"
 #include <linux/clk.h>
@@ -24,8 +28,6 @@
 #ifdef FEATURE_INFORM_NFC_VSIM_CHANGE
 #include <mach/mt6605.h>
 #endif
-
-#include <linux/regulator/consumer.h> /* for MD PMIC */
 
 #include "ccci_core.h"
 #include "modem_sys.h"
@@ -55,10 +57,7 @@ static struct ccci_md_regulator md_reg_table[] = {
 	{ NULL, "md-vdigrf", 700000, 700000},
 };
 
-static struct regulator *vsram_ref;
-static struct regulator *vcore_ref;
 static void __iomem *dpsw_reg;
-
 static unsigned int ap_plat_info;
 
 static struct ccci_plat_val md_cd_plat_val_ptr;
@@ -139,54 +138,6 @@ static int md_cd_io_remap_md_side_register(struct ccci_modem *md)
 	return 0;
 }
 
-void md_cd_lock_modem_clock_src(int locked)
-{
-	int settle;
-	struct arm_smccc_res res = {0};
-
-	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
-		MD_REG_AP_MDSRC_REQ, locked, 0, 0, 0, 0, &res);
-	if (res.a0) {
-		if (locked)
-			CCCI_ERROR_LOG(-1, TAG,
-				"md source requeset fail (0x%lX)\n", res.a0);
-		else
-			CCCI_ERROR_LOG(-1, TAG,
-				"md source release fail (0x%lX)\n", res.a0);
-	}
-
-	if (locked) {
-		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
-			MD_REG_AP_MDSRC_SETTLE, 0, 0, 0, 0, 0, &res);
-
-		CCCI_MEM_LOG_TAG(-1, TAG,
-			"a0 = 0x%lX; a1 = 0x%lX\n", res.a0, res.a1);
-
-		if (res.a1 == 0 && res.a0 > 0 && res.a0 < 10)
-			settle = res.a0; /* ATF */
-		else if (res.a0 == 0 && res.a1 > 0 && res.a1 < 10)
-			settle = res.a1; /* TF-A */
-		else {
-			settle = 3;
-			CCCI_ERROR_LOG(-1, TAG,
-				"md source settle fail (0x%lX, 0x%lX) set = %d\n",
-				res.a0, res.a1, settle);
-		}
-		mdelay(settle);
-
-		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
-			MD_REG_AP_MDSRC_ACK, 0, 0, 0, 0, 0, &res);
-		if (res.a0)
-			CCCI_ERROR_LOG(-1, TAG,
-				"md source ack fail (0x%lX)\n", res.a0);
-
-		CCCI_MEM_LOG_TAG(-1, TAG,
-			"settle = %d; ret = 0x%lX\n", settle, res.a0);
-		CCCI_NOTICE_LOG(-1, TAG,
-			"settle = %d; ret = 0x%lX\n", settle, res.a0);
-	}
-}
-
 static void md_cd_get_md_bootup_status(
 	unsigned int *buff, int length)
 {
@@ -242,25 +193,6 @@ u32 get_expected_boot_status_val(void)
 	return boot_status_val;
 }
 
-static void md_pmic_info_dump(void)
-{
-	if (in_interrupt())
-		CCCI_MEM_LOG_TAG(0, TAG, "In interrupt, skip dump vsram/vcore info\n");
-	else {
-		if (vsram_ref != NULL)
-			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vsram get_voltage %d uV\n",
-				regulator_get_voltage(vsram_ref));
-		else
-			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vsram_ref = NULL !\n");
-
-		if (vcore_ref != NULL)
-			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vcore_ref get_voltage %d uV\n",
-				regulator_get_voltage(vcore_ref));
-		else
-			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vcore_ref = NULL !\n");
-	}
-}
-
 /* MD team need md_regulator pmic dump, so add it as general flow */
 static void ccci_md_regulator_dump(void)
 {
@@ -291,8 +223,257 @@ static void ccci_md_regulator_dump(void)
 				continue;
 			}
 		} else
-			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]pmic get_voltage %s=%d uV\n",
-				md_reg_table[idx].reg_name, regulator_get_voltage(md_reg_table[idx].reg_ref));
+			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP] %s=%d uV, enable state: %d\n",
+				md_reg_table[idx].reg_name,
+				regulator_get_voltage(md_reg_table[idx].reg_ref),
+				regulator_is_enabled(md_reg_table[idx].reg_ref));
+	}
+}
+
+static void md_hw_status_dump(void)
+{
+	void __iomem *sequencer;
+	char buf[512];
+	u32 i = 0;
+	struct ccci_modem *md;
+
+	md = ccci_get_modem();
+
+	if (md == NULL) {
+		CCCI_ERROR_LOG(-1, TAG, "[%s] get md info fail\n", __func__);
+		return;
+	}
+	sequencer = md->hw_info->sequencer_base;
+	if (sequencer == NULL) {
+		CCCI_ERROR_LOG(-1, TAG, "[%s] sequencer_base is NULL\n", __func__);
+		return;
+	}
+
+	CCCI_NORMAL_LOG(0, TAG, "hw_status base: 0x1CC03000\n");
+	for (i = 0; i < 0x317 - 0x2c; i += 0x30) {
+		memset(buf, 0, sizeof(buf));
+		scnprintf(buf, sizeof(buf),
+			"%03x: %08x %08x %08x %08x  %08x %08x %08x %08x  %08x %08x %08x %08x",
+			i,
+			ccci_read32(sequencer, i),
+			ccci_read32(sequencer, i + 0x4),
+			ccci_read32(sequencer, i + 0x8),
+			ccci_read32(sequencer, i + 0xC),
+			ccci_read32(sequencer, i + 0x10),
+			ccci_read32(sequencer, i + 0x14),
+			ccci_read32(sequencer, i + 0x18),
+			ccci_read32(sequencer, i + 0x1C),
+			ccci_read32(sequencer, i + 0x20),
+			ccci_read32(sequencer, i + 0x24),
+			ccci_read32(sequencer, i + 0x28),
+			ccci_read32(sequencer, i + 0x2C));
+		CCCI_NORMAL_LOG(0, TAG, "%s\n", buf);
+	}
+	memset(buf, 0, sizeof(buf));
+	scnprintf(buf, sizeof(buf), "%03x:", i);
+	for (; i <= 0x317; i += 0x4)
+		scnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), " %08x",
+		ccci_read32(sequencer, i));
+	CCCI_NORMAL_LOG(0, TAG, "%s\n", buf);
+
+}
+
+static void md_32k_clock_gating_dump(void)
+{
+	void __iomem *top_sys_32k_cg;
+	unsigned int reg_value;
+	int ret;
+
+	top_sys_32k_cg = md_cd_plat_val_ptr.topckgen_clk_base;
+	if (top_sys_32k_cg == NULL) {
+		CCCI_ERROR_LOG(0, TAG, "[%s] topckgen_clk_base is NULL\n", __func__);
+		return;
+	}
+
+	ret = regmap_read(md_cd_plat_val_ptr.topckgen_clk_base, 0, &reg_value);
+	if (ret) {
+		CCCI_ERROR_LOG(0, TAG, "[%s] read topckgen_clk_base fail,ret=%d\n",
+			__func__, ret);
+		return;
+	}
+
+	CCCI_NORMAL_LOG(0, TAG, "top_sys_32k_cg 0x10000000: 0x%x\n", reg_value);
+}
+
+static void md_32k_driving_dump(void)
+{
+	struct device_node *np = NULL;
+	struct platform_device *pmic_pdev = NULL;
+	struct regmap *map;
+	u32 val = 0;
+	int ret;
+
+	np = of_find_node_by_name(NULL, "pmic");
+	if (!np) {
+		CCCI_ERROR_LOG(-1, TAG, "[%s] find pmic node fail\n", __func__);
+		return;
+	}
+	pmic_pdev = of_find_device_by_node(np->child);
+	if (!pmic_pdev) {
+		CCCI_ERROR_LOG(-1, TAG, "[%s] find pmic_pdev dev fail\n", __func__);
+		return;
+	}
+
+	map = dev_get_regmap(pmic_pdev->dev.parent, NULL);
+	if (map) {
+		ret = regmap_read(map, 0xa7, &val);
+		if (ret < 0) {
+			CCCI_ERROR_LOG(-1, TAG, "[%s] regmap_read 0xa7 fail, ret: %d\n",
+				__func__, ret);
+			return;
+		}
+		CCCI_NORMAL_LOG(0, TAG, "32k driving RG 0xa7: 0x%x\n", val);
+	} else
+		CCCI_ERROR_LOG(-1, TAG, "[%s] regmap fail\n", __func__);
+}
+
+static void md_spmi_driving_dump(void)
+{
+	void __iomem *spmi_driving;
+	char buf[128];
+	u32 spmi_base, i;
+
+	if (ap_plat_info == 6989)
+		spmi_base = 0x11F50010;
+	else if (ap_plat_info == 6878)
+		spmi_base = 0x11EC0000;
+	else if (ap_plat_info == 6897)
+		spmi_base = 0x11C00010;
+	else
+		return;
+
+	spmi_driving = ioremap_wc(spmi_base, 0x20);
+	if (spmi_driving) {
+		memset(buf, 0, sizeof(buf));
+		scnprintf(buf, sizeof(buf), "spmi driving:");
+		for (i = 0; i < 0x20; i += 0x10) {
+			if (i == 0x10 && ap_plat_info == 6989)
+				break;
+			scnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "0x%x: 0x%x  ",
+				spmi_base + i, ccci_read32(spmi_driving, i));
+		}
+		CCCI_NORMAL_LOG(0, TAG, "%s\n", buf);
+	} else {
+		CCCI_ERROR_LOG(-1, TAG, "%s ioremap 0x%x fail\n", __func__, spmi_base);
+		return;
+	}
+
+	iounmap(spmi_driving);
+}
+
+static void md_gpio_driving_dump(void)
+{
+	void __iomem *gpio_driving;
+	char buf[128];
+	u32 gpio_base, i;
+
+	if (ap_plat_info == 6989)
+		gpio_base = 0x11F50000;
+	else if (ap_plat_info == 6878)
+		gpio_base = 0x11D50000;
+	else if (ap_plat_info == 6897)
+		gpio_base = 0x11F20000;
+	else
+		return;
+
+	gpio_driving = ioremap_wc(gpio_base, 0x30);
+	if (gpio_driving) {
+		memset(buf, 0, sizeof(buf));
+		scnprintf(buf, sizeof(buf), "gpio driving:");
+		for (i = 0; i < 0x30; i += 0x10) {
+			if (i == 0x10 && ap_plat_info == 6989)
+				continue;
+			else if (i == 0x20 && ap_plat_info == 6878)
+				break;
+			scnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+				"0x%x: 0x%x ", gpio_base + i, ccci_read32(gpio_driving, i));
+		}
+		CCCI_NORMAL_LOG(0, TAG, "%s\n",buf);
+	} else {
+		CCCI_ERROR_LOG(-1, TAG, "%s ioremap 0x%x fail\n", __func__, gpio_base);
+		return;
+	}
+
+	iounmap(gpio_driving);
+}
+
+/* when ack md source fail, MD need these info to check
+ * all the dump flow and reg info provited by MD PCT
+ * Any questions that arise in this flow should be the responsibility of MD PCT
+ */
+static void md_source_info_dump(void)
+{
+	/*step1. md hw status only 6989 need */
+	if (ap_plat_info == 6989)
+		md_hw_status_dump();
+
+	/*step2. md 32k clock gating status */
+	md_32k_clock_gating_dump();
+
+	/*step3. 32k driving */
+	md_32k_driving_dump();
+
+	/*step4. spmi driving */
+	md_spmi_driving_dump();
+
+	/*step5. gpio driving */
+	md_gpio_driving_dump();
+
+	/*step6. pmic regulator */
+	ccci_md_regulator_dump();
+}
+
+void md_cd_lock_modem_clock_src(int locked)
+{
+	int settle;
+	struct arm_smccc_res res = {0};
+
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
+		MD_REG_AP_MDSRC_REQ, locked, 0, 0, 0, 0, &res);
+	if (res.a0) {
+		if (locked)
+			CCCI_ERROR_LOG(-1, TAG,
+				"md source requeset fail (0x%lX)\n", res.a0);
+		else
+			CCCI_ERROR_LOG(-1, TAG,
+				"md source release fail (0x%lX)\n", res.a0);
+	}
+
+	if (locked) {
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
+			MD_REG_AP_MDSRC_SETTLE, 0, 0, 0, 0, 0, &res);
+
+		CCCI_MEM_LOG_TAG(-1, TAG,
+			"a0 = 0x%lX; a1 = 0x%lX\n", res.a0, res.a1);
+
+		if (res.a1 == 0 && res.a0 > 0 && res.a0 < 10)
+			settle = res.a0; /* ATF */
+		else if (res.a0 == 0 && res.a1 > 0 && res.a1 < 10)
+			settle = res.a1; /* TF-A */
+		else {
+			settle = 3;
+			CCCI_ERROR_LOG(-1, TAG,
+				"md source settle fail (0x%lX, 0x%lX) set = %d\n",
+				res.a0, res.a1, settle);
+		}
+		mdelay(settle);
+
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
+			MD_REG_AP_MDSRC_ACK, 0, 0, 0, 0, 0, &res);
+		if (res.a0) {
+			CCCI_ERROR_LOG(-1, TAG, "md source ack fail (0x%lX)\n", res.a0);
+			/* only there platforms support this feature */
+			if (ap_plat_info == 6989 || ap_plat_info == 6878 ||
+				ap_plat_info == 6897)
+				md_source_info_dump();
+		}
+		CCCI_MEM_LOG_TAG(-1, TAG, "settle = %d; ret = 0x%lX\n", settle, res.a0);
+		CCCI_NOTICE_LOG(-1, TAG, "settle = %d; ret = 0x%lX\n", settle, res.a0);
 	}
 }
 
@@ -342,7 +523,6 @@ static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 			CCCI_MEM_LOG_TAG(0, TAG, "[DPSW DUMP] reg 0x1c0013b8 = 0x%x\n",
 				ccci_read32(dpsw_reg, 0));
 	}
-	md_pmic_info_dump();
 	ccci_md_regulator_dump();
 
 	md_cd_lock_modem_clock_src(1);
@@ -395,43 +575,8 @@ static void md1_pmic_setting_init(struct platform_device *plat_dev)
 				md_reg_table[idx].reg_vol0, md_reg_table[idx].reg_vol1);
 		}
 	}
-	/* get regulator vsram*/
-	vsram_ref = devm_regulator_get_optional(&plat_dev->dev, "mt6363_vbuck4");
-	if (IS_ERR(vsram_ref)) {
-		ret = PTR_ERR(vsram_ref);
-		if (ret != -ENODEV)
-			CCCI_ERROR_LOG(-1, TAG,
-				"%s:get regulator vsram_ref fail, ret = %d\n", __func__, ret);
-		vsram_ref = NULL;
-	} else
-		CCCI_NORMAL_LOG(0, TAG,
-			"%s:get regulator vsram_ref mt6363_vbuck4 suc\n", __func__);
-
-	/* get regulator vcore*/
-	vcore_ref = devm_regulator_get_optional(&plat_dev->dev, "8_vbuck1");
-	if (IS_ERR(vcore_ref)) {
-		ret = PTR_ERR(vcore_ref);
-		if (ret != -ENODEV)
-			CCCI_ERROR_LOG(-1, TAG,
-				"%s:get regulator vcore_ref fail, ret = %d\n", __func__, ret);
-		vcore_ref = NULL;
-	} else
-		CCCI_NORMAL_LOG(0, TAG,
-			"%s:get regulator vcore_ref 8_vbuck1 suc\n", __func__);
-
-	if (vsram_ref != NULL)
-		CCCI_NORMAL_LOG(0, TAG, "[PMIC DUMP first]vsram get_voltage %d uV\n",
-			regulator_get_voltage(vsram_ref));
-	else
-		CCCI_ERROR_LOG(-1, TAG, "[PMIC DUMP first]vsram_ref is null\n");
-
-	if (vcore_ref != NULL)
-		CCCI_NORMAL_LOG(-1, TAG,
-			"[PMIC DUMP first]vcore_ref get_voltage %d uV\n",
-			regulator_get_voltage(vcore_ref));
-	else
-		CCCI_ERROR_LOG(-1, TAG, "[PMIC DUMP first]vcore_ref is null\n");
 }
+
 static void dpsw_io_remap(void)
 {
 	dpsw_reg = ioremap_wc(0x1c0013B8, 0x4);
