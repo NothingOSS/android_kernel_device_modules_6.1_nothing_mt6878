@@ -1285,6 +1285,11 @@ static void mtk_ufbc_wdma_config(struct mtk_ddp_comp *comp,
 	size_t size_header;
 	u32 val;
 
+	struct drm_crtc *crtc;
+	struct mtk_crtc_state *state;
+	unsigned long long temp_bw, temp_peak_bw;
+	u32 vrefresh;
+
 	if (comp->fb->modifier != DRM_FORMAT_MOD_ARM_AFBC(
 			AFBC_FORMAT_MOD_BLOCK_SIZE_32x8 | AFBC_FORMAT_MOD_SPARSE))
 		DDPPR_ERR("%s:%d ufbc_wdma not support non AFBC\n", __func__, __LINE__);
@@ -1318,6 +1323,42 @@ static void mtk_ufbc_wdma_config(struct mtk_ddp_comp *comp,
 		      addon_config->addon_wdma_config.wdma_dst_roi.width,
 		      DISP_REG_UFBC_WDMA_TILE_SIZE, handle);
 	write_dst_addr(comp, handle, 0, addon_config->addon_wdma_config.addr);
+
+	//calculate qos_bw
+	crtc = &comp->mtk_crtc->base;
+	state = to_mtk_crtc_state(crtc->state);
+	temp_bw = (unsigned long long)w * h;
+	temp_bw *= mtk_get_format_bpp(comp->fb->format->format);
+	vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	/* COMPRESS ratio */
+	if (comp->fb->modifier == DRM_FORMAT_MOD_ARM_AFBC(
+	    AFBC_FORMAT_MOD_BLOCK_SIZE_32x8 | AFBC_FORMAT_MOD_SPARSE)) {
+		temp_bw *= 7;
+		do_div(temp_bw, 10);
+	}
+	do_div(temp_bw, 1000);
+	temp_bw *= 125;
+	do_div(temp_bw, 100);
+	temp_bw = temp_bw * vrefresh;
+	do_div(temp_bw, 1000);
+	comp->qos_bw = temp_bw;
+
+	//calculate hrt_bw
+	if (crtc->state) {
+		temp_peak_bw = (unsigned long long)crtc->state->adjusted_mode.vdisplay *
+				crtc->state->adjusted_mode.hdisplay;
+	} else {
+		temp_peak_bw = (unsigned long long)w * h;
+	}
+
+	temp_peak_bw *= mtk_get_format_bpp(comp->fb->format->format);
+
+	do_div(temp_peak_bw, 1000);
+	temp_peak_bw *= 125;
+	do_div(temp_peak_bw, 100);
+	temp_peak_bw = temp_peak_bw * vrefresh;
+	do_div(temp_peak_bw, 1000);
+	comp->hrt_bw = temp_peak_bw;
 }
 
 static void mtk_wdma_config(struct mtk_ddp_comp *comp,
@@ -2026,10 +2067,107 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_ddp_write(comp, inten, DISP_REG_WDMA_INTEN, handle);
 		break;
 	}
+
+	//tempory solution: only for ufbc
+	case PMQOS_UPDATE_BW: {
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+		unsigned int force_update = 0; /* force_update repeat last qos BW */
+		unsigned int update_pending = 0;
+		unsigned int per_larb_peak_bw = 0;
+		struct mtk_drm_private *priv;
+		struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
+
+		if (!wdma->info_data->is_support_ufbc)
+			break;
+
+		priv = comp->mtk_crtc->base.dev->dev_private;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
+			break;
+
+		/* per_larb_peak_bw decide MMQOS SRT report peak BW or not */
+		per_larb_peak_bw = mtk_drm_helper_get_opt(priv->helper_opt,
+							  MTK_DRM_OPT_PER_LARB_PORT_PEAK);
+
+		mtk_crtc = comp->mtk_crtc;
+		crtc = &mtk_crtc->base;
+
+		/* process FBDC */
+		/* qos BW only has one port for one device, no need to separate */
+		//__mtk_disp_set_module_srt(comp->fbdc_qos_req, comp->id, comp->fbdc_bw,
+		//			    DISP_BW_FBDC_MODE);
+
+		if (params) {
+			force_update = *(unsigned int *)params;
+			/* tricky way use variable force update */
+			update_pending = (force_update == DISP_BW_UPDATE_PENDING);
+			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
+		}
+
+		/* should skip PMQOS UPDATE in update_pending case if per_larb_peak_bw not enable */
+		if (update_pending && !per_larb_peak_bw)
+			break;
+
+		if (!force_update && !update_pending) {
+			mtk_crtc->total_srt += comp->qos_bw;
+			if (!IS_ERR_OR_NULL(comp->qos_req_other))
+				mtk_crtc->total_srt += comp->qos_bw_other;
+		}
+
+		/* process normal */
+		if (!force_update && comp->last_qos_bw == comp->qos_bw &&
+		    (!per_larb_peak_bw || (comp->last_hrt_bw == comp->hrt_bw))) {
+			if (IS_ERR(comp->qos_req_other) ||
+			    ((comp->last_qos_bw_other == comp->qos_bw_other) &&
+			     (!per_larb_peak_bw || (comp->last_hrt_bw_other == comp->hrt_bw_other))))
+				break;
+			goto other;
+		}
+		if (per_larb_peak_bw) {
+			if ((comp->last_hrt_bw <= comp->hrt_bw) ||
+			    (update_pending && comp->last_hrt_bw > comp->hrt_bw)) {
+				__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw,
+							  comp->hrt_bw, DISP_BW_NORMAL_MODE);
+				comp->last_qos_bw = comp->qos_bw;
+				comp->last_hrt_bw = comp->hrt_bw;
+			}
+		} else {
+			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
+						  DISP_BW_NORMAL_MODE);
+			comp->last_qos_bw = comp->qos_bw;
+			comp->last_hrt_bw = comp->hrt_bw;
+			DDPINFO("ufbc update wdma %s qos %u %u, peak %u %u\n", mtk_dump_comp_str(comp),
+				comp->qos_bw, comp->qos_bw_other, comp->hrt_bw, comp->hrt_bw_other);
+		}
+other:
+		if (!IS_ERR_OR_NULL(comp->qos_req_other)) {
+			if (per_larb_peak_bw) {
+				if ((comp->last_hrt_bw_other <= comp->hrt_bw_other) ||
+				    (update_pending &&
+				     comp->last_hrt_bw_other > comp->hrt_bw_other)) {
+					__mtk_disp_set_module_srt(comp->qos_req_other, comp->id,
+								  comp->qos_bw_other,
+								  comp->hrt_bw_other,
+								  DISP_BW_NORMAL_MODE);
+					comp->last_qos_bw_other = comp->qos_bw_other;
+					comp->last_hrt_bw_other = comp->hrt_bw_other;
+				}
+			} else {
+				__mtk_disp_set_module_srt(comp->qos_req_other,
+							  comp->id, comp->qos_bw_other, 0,
+							  DISP_BW_NORMAL_MODE);
+				comp->last_qos_bw_other = comp->qos_bw_other;
+				comp->last_hrt_bw_other = comp->hrt_bw_other;
+			}
+		}
+		DDPINFO("update wdma %s qos %u %u, peak %u %u\n", mtk_dump_comp_str(comp),
+			comp->qos_bw, comp->qos_bw_other, comp->hrt_bw, comp->hrt_bw_other);
+		break;
+	}
 	default:
 		break;
 	}
-
 	return 0;
 }
 
@@ -2050,6 +2188,8 @@ static int mtk_disp_wdma_bind(struct device *dev, struct device *master,
 	struct mtk_disp_wdma *priv = dev_get_drvdata(dev);
 	struct drm_device *drm_dev = data;
 	int ret;
+	char buf[50];
+	struct mtk_drm_private *private = drm_dev->dev_private;
 
 	DDPINFO("%s\n", __func__);
 	ret = mtk_ddp_comp_register(drm_dev, &priv->ddp_comp);
@@ -2057,6 +2197,12 @@ static int mtk_disp_wdma_bind(struct device *dev, struct device *master,
 		dev_err(dev, "Failed to register component %s: %d\n",
 			dev->of_node->full_name, ret);
 		return ret;
+	}
+
+	if (mtk_drm_helper_get_opt(private->helper_opt,
+	    MTK_DRM_OPT_MMQOS_SUPPORT)) {
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf), &priv->ddp_comp, "qos");
+		priv->ddp_comp.qos_req = of_mtk_icc_get(dev, buf);
 	}
 
 	return 0;

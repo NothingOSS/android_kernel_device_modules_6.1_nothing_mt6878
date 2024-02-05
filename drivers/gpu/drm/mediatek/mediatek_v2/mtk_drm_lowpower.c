@@ -2270,6 +2270,7 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 	dma_addr_t status_pad;
 	int gce_event, i;
 	unsigned int fmt = DRM_FORMAT_XBGR2101010;//DRM_FORMAT_XBGR2101010,DRM_FORMAT_XBGR8888;
+	unsigned int flag = DISP_BW_FORCE_UPDATE;
 
 	DDPFUNC();
 
@@ -2355,11 +2356,16 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 	addon_module = &addon_data->module_data[0];
 	path_data = mtk_addon_module_get_path(addon_module->module);
 	gce_event = get_comp_wait_event(mtk_crtc, priv->ddp_comp[path_data->path[path_data->path_len - 1]]);
+
+	mtk_ddp_comp_io_cmd(priv->ddp_comp[path_data->path[path_data->path_len - 1]], NULL, PMQOS_UPDATE_BW, &flag);
 	cmdq_pkt_wfe(cmdq_handle, gce_event);
 	if (mtk_crtc->is_dual_pipe) {
 		addon_module = &addon_data_dual->module_data[0];
 		path_data = mtk_addon_module_get_path(addon_module->module);
 		gce_event = get_comp_wait_event(mtk_crtc, priv->ddp_comp[path_data->path[path_data->path_len - 1]]);
+
+		mtk_ddp_comp_io_cmd(priv->ddp_comp[path_data->path[path_data->path_len - 1]],
+				    NULL, PMQOS_UPDATE_BW, &flag);
 		cmdq_pkt_wfe(cmdq_handle, gce_event);
 	}
 	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 1);
