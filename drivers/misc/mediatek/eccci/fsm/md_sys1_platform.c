@@ -193,6 +193,74 @@ u32 get_expected_boot_status_val(void)
 	return boot_status_val;
 }
 
+#define MDCLKSW_CKMON_VALID_CLK (0x13)  // MDCORESYS
+#define MDCLKSW_FREQ_METER_32K_INDEX (0x17) // MD 32K
+#define NUM_26M 0x1FF
+#define NUM_26M_FOR_32K 0x1E000
+void md_pll_hw_info_dump(void)
+{
+	unsigned int index;
+	unsigned int row_index, col_index;
+	unsigned int window = 0;
+	unsigned int window_max = 5;
+	unsigned int clock_value = 0, clock_rate = 8;
+	unsigned int md_clock_value[64] = {0};
+	void __iomem *mdclksw_reg;
+	char buf[128];
+	int len = 0, pos = 0;
+
+	if (ap_plat_info != 6989 || in_interrupt()) {
+		CCCI_ERROR_LOG(-1, TAG, "In interrupt, skip dump pll hw info\n");
+		return;
+	}
+
+	mdclksw_reg = ioremap(0x0D113400, 0x100);
+	if (mdclksw_reg == NULL) {
+		CCCI_ERROR_LOG(-1, TAG,"%s: mdclksw_reg remap fail!\n",__func__);
+		return;
+	}
+	for (index = 0; index < 64; index++) {
+		ccci_write32(mdclksw_reg, 0x0, MDCLKSW_CKMON_VALID_CLK); //reset CKMON
+		ccci_write32(mdclksw_reg, 0x4, 0x0); // reset freq meter
+		udelay(10);
+		if (index == MDCLKSW_FREQ_METER_32K_INDEX) {
+			ccci_write32(mdclksw_reg, 0x0, index);
+			ccci_write32(mdclksw_reg, 0x8, NUM_26M_FOR_32K);
+		} else {
+			ccci_write32(mdclksw_reg, 0x0, (index | 0x300));
+			ccci_write32(mdclksw_reg, 0x8, NUM_26M);
+		}
+		ccci_write32(mdclksw_reg, 0x4, 0x1); // enable freq meter
+		window = 0;
+		udelay(10);
+		while ((ccci_read32(mdclksw_reg, 0x4) & 0x2) == 0) {
+			if (window == window_max)
+				break;
+			window += 1;
+			udelay(10);
+		}
+		clock_value = ccci_read32(mdclksw_reg, 0xC);
+		if (index == MDCLKSW_FREQ_METER_32K_INDEX)
+			md_clock_value[index] = (clock_value * 26 * 0x3E8) / (NUM_26M_FOR_32K + 3);
+		else
+			md_clock_value[index] = (clock_value * 26 * clock_rate) / (NUM_26M + 3);
+	}
+
+	CCCI_MEM_LOG_TAG(0, TAG, "MD Frequency Result:\n");
+	for (row_index = 0; row_index < 8; row_index ++) {
+		pos = 0;
+		memset(buf, 0, sizeof(buf));
+		for (col_index = 0; col_index < 8; col_index += 1) {
+			len = scnprintf(buf + pos, sizeof(buf)- pos, "%d ",
+				md_clock_value[row_index * 8 + col_index]);
+			pos += len;
+		}
+		ccci_dump_write(CCCI_DUMP_MEM_DUMP, 0, "%s\n", buf);
+	}
+
+	iounmap(mdclksw_reg);
+}
+
 /* MD team need md_regulator pmic dump, so add it as general flow */
 static void ccci_md_regulator_dump(void)
 {
@@ -526,6 +594,7 @@ static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 	ccci_md_regulator_dump();
 
 	md_cd_lock_modem_clock_src(1);
+	md_pll_hw_info_dump();
 	md_dump_reg(md);
 	md_cd_lock_modem_clock_src(0);
 
