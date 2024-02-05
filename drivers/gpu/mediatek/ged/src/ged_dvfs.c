@@ -1870,7 +1870,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	gpu_freq_overdue_max = (ged_get_max_freq_in_opp() * 1000) / OVERDUE_FREQ_TH;
 
 	/* DVFS is not enabled */
-	if (gpu_dvfs_enable == 0) {
+	if (gpu_dvfs_enable == 0 || g_is_freq_notify_enabled == 0) {
 		ged_log_buf_print(ghLogBuf_DVFS,
 			"[GED_K][FB_DVFS] skip %s due to gpu_dvfs_enable=%u",
 			__func__, gpu_dvfs_enable);
@@ -3137,7 +3137,7 @@ void ged_dvfs_run(
 
 	mutex_lock(&gsDVFSLock);
 
-	if (gpu_dvfs_enable == 0) {
+	if (gpu_dvfs_enable == 0 || g_is_freq_notify_enabled == 0) {
 		gpu_power = 0;
 		gpu_loading = 0;
 		gpu_block = 0;
@@ -3738,6 +3738,10 @@ GED_ERROR ged_dvfs_system_init(void)
 	gpu_opp_logs_enable = 1;
 	g_sum_loading = 0;
 	g_sum_delta_time = 0;
+
+	g_ged_dvfs_commit_idx = gpufreq_get_opp_num(TARGET_DEFAULT) - 1;
+	g_ged_dvfs_commit_top_idx = gpufreq_get_opp_num(TARGET_GPU) - 1;
+	g_ged_dvfs_commit_dual = (g_ged_dvfs_commit_top_idx << 8) | g_ged_dvfs_commit_idx;
 
 	return GED_OK;
 }

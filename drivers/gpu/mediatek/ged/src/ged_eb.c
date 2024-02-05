@@ -49,6 +49,7 @@ uint32_t fdvfs_event_ipi_rcv_msg[4];
 
 int g_is_fastdvfs_enable;
 int g_is_fulltrace_enable;
+int g_is_freq_notify_enabled;
 
 int g_is_stability_enable;
 unsigned int fastdvfs_mode;
@@ -92,6 +93,9 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 
 	switch (psEBEvent->cmd) {
 	case GPUFDVFS_IPI_EVENT_CLK_CHANGE:
+		if (g_is_freq_notify_enabled == 0)
+			g_is_freq_notify_enabled = 1;
+
 		GPUFDVFS_LOGD("%s@%d top clock:%d(KHz)\n",
 			__func__, __LINE__, psEBEvent->freq_new);
 		mtk_notify_gpu_freq_change(0, psEBEvent->freq_new);
