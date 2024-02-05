@@ -448,6 +448,25 @@ int init_sram_info(void)
 	return 0;
 }
 
+inline void update_thermal_pressure_capacity(unsigned int current_thermal_freq, unsigned int this_cpu)
+{
+	unsigned int gear_id, cpu;
+	unsigned long max_capacity, capacity, th_pressure;
+	unsigned long last_th_pressure = READ_ONCE(per_cpu(thermal_pressure, this_cpu));
+	struct cpumask *cpus;
+
+	capacity = pd_get_freq_util(this_cpu, current_thermal_freq);
+	max_capacity = arch_scale_cpu_capacity(this_cpu);
+	th_pressure = max_capacity - capacity;
+	if (th_pressure == last_th_pressure)
+		return;
+
+	gear_id = topology_cluster_id(this_cpu);
+	cpus = get_gear_cpumask(gear_id);
+	for_each_cpu(cpu, cpus)
+		WRITE_ONCE(per_cpu(thermal_pressure, cpu), th_pressure);
+}
+
 void mtk_tick_entry(void *data, struct rq *rq)
 {
 
@@ -514,9 +533,10 @@ void mtk_tick_entry(void *data, struct rq *rq)
 	gear_id = topology_cluster_id(this_cpu);
 	irq_log_store();
 	freq_thermal = get_cpu_ceiling_freq (gear_id);
-	arch_update_thermal_pressure(to_cpumask(pd->cpus), freq_thermal);
+	update_thermal_pressure_capacity(freq_thermal, this_cpu);
 
-	trace_sched_frequency_limits(this_cpu, freq_thermal);
+	if (trace_sched_frequency_limits_enabled())
+		trace_sched_frequency_limits(this_cpu, freq_thermal);
 	irq_log_store();
 }
 
