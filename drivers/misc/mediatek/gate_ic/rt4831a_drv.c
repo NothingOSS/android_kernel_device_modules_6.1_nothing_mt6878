@@ -152,7 +152,6 @@ int _gate_ic_i2c_type_backlight_set(unsigned int hw_level, enum led_i2c_type i2c
 	char cmd_buf[3] = { 0x00, 0x00, 0x00 };
 	int ret = 0;
 
-	pr_debug("leds %s i2c_type: %d hw_level: %d\n", __func__, i2c_type, hw_level);
 	level_h = (hw_level >> BRIGHTNESS_HIGN_OFFSET) & BRIGHTNESS_HIGN_MASK;
 	level_l = (hw_level >> BRIGHTNESS_LOW_OFFSET) & BRIGHTNESS_LOW_MASK;
 
@@ -174,12 +173,9 @@ int _gate_ic_backlight_set(unsigned int hw_level)
 {
 	int ret = 0;
 
-	pr_debug("leds %s hw_level: %d i2c_double: %d\n", __func__, hw_level, i2c_double);
 	ret |= _gate_ic_i2c_type_backlight_set(hw_level, LED_I2C_6);
-	if(i2c_double) {
+	if(i2c_double)
 		ret |= _gate_ic_i2c_type_backlight_set(hw_level, LED_I2C_0);
-		pr_debug("leds1 %s hw_level: %d i2c_double: %d\n", __func__, hw_level, i2c_double);
-	}
 	return ret;
 }
 EXPORT_SYMBOL_GPL(_gate_ic_backlight_set);
