@@ -384,5 +384,4 @@ void mtk_gpueb_set_power_state(enum ged_gpu_power_state power_state);
 extern int fastdvfs_proc_init(void);
 extern void fastdvfs_proc_exit(void);
 
-extern int g_is_freq_notify_enabled;
 #endif // __GED_EB_H__
