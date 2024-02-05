@@ -15478,6 +15478,11 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		return ret;
 	}
 
+	if (!mtk_crtc->panel_ext->funcs->lcm_update_roi_cmdq) {
+		//DDPMSG("LCM does not support partial update!\n");
+		return ret;
+	}
+
 	if (!(mtk_crtc->enabled))
 		DDPINFO("Sleep State set partial update enable --crtc not ebable\n");
 
@@ -15610,13 +15615,13 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	rsz_comp = priv->ddp_comp[DDP_COMPONENT_RSZ0];
 	mtk_ddp_comp_partial_update(rsz_comp, cmdq_handle, partial_roi, partial_enable);
 
+	dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+	mtk_ddp_comp_partial_update(dsc_comp, cmdq_handle, partial_roi, partial_enable);
+
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (mtk_ddp_comp_get_type(comp->id) != MTK_DISP_RSZ)
 			mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, partial_enable);
 	}
-
-	dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
-	mtk_ddp_comp_partial_update(dsc_comp, cmdq_handle, partial_roi, partial_enable);
 
 	return ret;
 
@@ -17632,7 +17637,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_EXT_LAYER;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_CWB;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MSYNC20;
-			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_OVL_BW_MONITOR))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_BW_MONITOR;
