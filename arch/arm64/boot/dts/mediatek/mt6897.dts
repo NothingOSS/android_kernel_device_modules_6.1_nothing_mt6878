@@ -8790,6 +8790,10 @@
 			mediatek,larb = <&smi_larb32>;
 			mediatek,smi-id = <32>;
 			iommus = <&disp_iommu M4U_L32_P6_DISP_UFBC_WDMA1>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L32_P6_DISP_UFBC_WDMA1)
+						&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "DDP_COMPONENT_UFBC_WDMA1_qos";
 		};
 
 		disp1_wdma0: disp1-wdma0@14608000 {
@@ -8858,6 +8862,10 @@
 			mediatek,larb = <&smi_larb33>;
 			mediatek,smi-id = <33>;
 			iommus = <&disp_iommu M4U_L33_P6_DISP_UFBC_WDMA1>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L33_P6_DISP_UFBC_WDMA1)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_UFBC_WDMA3_qos";
 		};
 
 		disp_rsz0: disp-rsz0@14016000 {
