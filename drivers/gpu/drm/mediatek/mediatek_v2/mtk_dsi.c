@@ -3605,10 +3605,15 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		return;
 	}
 
+	crtc_idx = drm_crtc_index(crtc);
+	CRTC_MMP_EVENT_START(crtc_idx, dsi_enable,
+				(unsigned long)crtc, crtc_idx);
+
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)) {
-		crtc_idx = drm_crtc_index(crtc);
 		if (priv && crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_OPENING) {
-			DDPINFO("%s %d skip due to still opening\n", __func__, crtc_idx);
+			DDPMSG("%s %d skip due to still opening\n", __func__, crtc_idx);
+			CRTC_MMP_EVENT_END(crtc_idx, dsi_enable,
+				(unsigned long)dsi->output_en, 1);
 			return;
 		}
 	}
@@ -3620,6 +3625,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 			mtk_dsi_post_cmd(dsi, crtc);
 		} else
 			DDPINFO("dsi is initialized\n");
+		CRTC_MMP_EVENT_END(crtc_idx, dsi_enable,
+			(unsigned long)dsi->output_en, 2);
 		return;
 	}
 
@@ -3627,6 +3634,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		ret = mtk_preconfig_dsi_enable(dsi->slave_dsi);
 		if (ret < 0) {
 			dev_err(dsi->dev, "config slave dsi fail: %d", ret);
+			CRTC_MMP_EVENT_END(crtc_idx, dsi_enable,
+				(unsigned long)dsi->output_en, 3);
 			return;
 		}
 	}
@@ -3634,6 +3643,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	ret = mtk_preconfig_dsi_enable(dsi);
 	if (ret < 0) {
 		dev_err(dsi->dev, "config dsi fail: %d", ret);
+		CRTC_MMP_EVENT_END(crtc_idx, dsi_enable,
+				(unsigned long)dsi->output_en, 4);
 		return;
 	}
 
@@ -3642,6 +3653,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		if (((!dsi->doze_enabled && !dsi->pending_switch) || force_lcm_update)
 			&& drm_panel_prepare(dsi->panel)) {
 			DDPPR_ERR("failed to prepare the panel\n");
+			CRTC_MMP_EVENT_END(crtc_idx, dsi_enable,
+				(unsigned long)dsi->output_en, 5);
 			return;
 		}
 		DDP_PROFILE("[PROFILE] %s panel init end\n", __func__);
@@ -3754,10 +3767,15 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	dsi->output_en = true;
 	dsi->doze_enabled = new_doze_state;
 
+	CRTC_MMP_EVENT_END(crtc_idx, dsi_enable,
+		(unsigned long)dsi->output_en, 0);
+
 	return;
 err_dsi_power_off:
 	mtk_dsi_stop(dsi);
 	mtk_dsi_poweroff(dsi);
+	CRTC_MMP_EVENT_END(crtc_idx, dsi_enable,
+		(unsigned long)dsi->output_en, 6);
 }
 
 static int mtk_dsi_stop_vdo_mode(struct mtk_dsi *dsi, void *handle);
@@ -3829,12 +3847,19 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 	struct drm_crtc *crtc = dsi->encoder.crtc;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	unsigned int crtc_idx = 0;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
 	bool skip_panel_switch = mtk_dsi_skip_panel_switch(dsi);
 
 	DDPINFO("%s+ doze_enabled:%d\n", __func__, new_doze_state);
-	if (!dsi->output_en)
+
+	CRTC_MMP_EVENT_START(crtc_idx, dsi_disable,
+				(unsigned long)crtc, crtc_idx);
+
+	if (!dsi->output_en) {
+		CRTC_MMP_EVENT_END(crtc_idx, dsi_disable,
+			(unsigned long)dsi->output_en, 1);
 		return;
+	}
 
 	mtk_drm_crtc_wait_blank(mtk_crtc);
 
@@ -3842,15 +3867,16 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 	if (dsi->panel && ((!new_doze_state && !skip_panel_switch) || force_lcm_update)) {
 		if (drm_panel_disable(dsi->panel)) {
 			DRM_ERROR("failed to disable the panel\n");
+			CRTC_MMP_EVENT_END(crtc_idx, dsi_disable,
+				(unsigned long)dsi->output_en, 2);
 			return;
 		}
 	}
 	dsi->pending_switch = skip_panel_switch;
 
-	crtc_idx = drm_crtc_index(crtc);
 	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)
 			&& crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_OPENING) {
-		DDPINFO("%s %d wait for opening\n", __func__, drm_crtc_index(crtc));
+		DDPMSG("%s %d wait for opening\n", __func__, crtc_idx);
 		if (cmdq_handle)
 			cmdq_pkt_destroy(cmdq_handle);
 		goto SKIP_WAIT_FRAME_DONE;
@@ -3909,6 +3935,8 @@ SKIP_WAIT_FRAME_DONE:
 	dsi->output_en = false;
 	dsi->doze_enabled = new_doze_state;
 	DDPINFO("%s-\n", __func__);
+	CRTC_MMP_EVENT_END(crtc_idx, dsi_disable,
+				(unsigned long)dsi->output_en, 0);
 }
 
 static void mtk_dsi_encoder_destroy(struct drm_encoder *encoder)

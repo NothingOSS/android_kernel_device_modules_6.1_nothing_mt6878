@@ -4722,10 +4722,15 @@ static void process_dbg_opt(const char *opt)
 		else if (strncmp(opt + 10, "2", 1) == 0)
 			crtc_idx = 2;
 
-		if (strncmp(opt + 11, "1", 1) == 0)
+		if (strncmp(opt + 11, "1", 1) == 0) {
 			priv->usage[crtc_idx] = DISP_OPENING;
-		else if (strncmp(opt + 11, "0", 1) == 0)
+			CRTC_MMP_MARK(crtc_idx, crtc_usage,
+				priv->usage[crtc_idx], 2);
+		} else if (strncmp(opt + 11, "0", 1) == 0) {
 			priv->usage[crtc_idx] = DISP_ENABLE;
+			CRTC_MMP_MARK(crtc_idx, crtc_usage,
+				priv->usage[crtc_idx], 2);
+		}
 		DDPMSG("set crtc %d usage to %d", crtc_idx, priv->usage[crtc_idx]);
 	} else if (strncmp(opt, "spr_ip_cfg:", 11) == 0) {
 		struct drm_crtc *crtc;

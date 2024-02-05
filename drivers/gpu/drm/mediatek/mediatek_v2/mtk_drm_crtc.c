@@ -7993,9 +7993,11 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		DDPDBG("%s usage_list %u\n", __func__, old_mtk_state->pending_usage_list);
 		for (i = 0 ; i < MAX_CRTC ; ++i) {
 			if (priv && priv->usage[i] == DISP_OPENING &&
-					((old_mtk_state->pending_usage_list >> i) & 0x1))
+					((old_mtk_state->pending_usage_list >> i) & 0x1)) {
 				priv->usage[i] = DISP_ENABLE;
-				DDPINFO("%s priv->usage[%d] = %d\n", __func__, i, priv->usage[i]);
+				CRTC_MMP_MARK(i, crtc_usage, priv->usage[i], 1);
+			}
+				DDPMSG("%s priv->usage[%d] = %d\n", __func__, i, priv->usage[i]);
 		}
 	}
 	mtk_crtc_release_input_layer_fence(crtc, session_id);
@@ -11732,15 +11734,20 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 		if (priv->usage[index] == DISP_ENABLE || priv->usage[index] == DISP_OPENING) {
 			DDPPR_ERR("%s usage control exception crtc%d cur usage %u\n",
 				__func__, index, priv->usage[index]);
+			CRTC_MMP_EVENT_END((int) index, resume,
+				mtk_crtc->enabled, 1);
 			return;
 		}
 
 		priv->usage[index] = mtk_drm_crtc_usage_enable(priv, index);
+		CRTC_MMP_MARK(index, crtc_usage, priv->usage[index], 0);
 
 		if (priv->usage[index] == DISP_OPENING) {
-			DDPINFO("%s %d wait for opening\n", __func__, index);
+			DDPMSG("%s %d wait for opening\n", __func__, index);
 			if (!(output_comp &&
 				mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_WDMA))
+				CRTC_MMP_EVENT_END((int) index, resume,
+					mtk_crtc->enabled, 2);
 				return;
 		}
 	}
@@ -12561,8 +12568,10 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 #endif
 	atomic_set(&mtk_crtc->already_config, 0);
 
-	if (index >= 0 && index < MAX_CRTC)
+	if (index >= 0 && index < MAX_CRTC) {
 		priv->usage[index] = DISP_DISABLE;
+		CRTC_MMP_MARK(index, crtc_usage, priv->usage[index], 3);
+	}
 
 	if (index != 0)
 		if (vdisp_func.vlp_disp_vote)
@@ -13689,7 +13698,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)) {
 		if (priv->usage[crtc_idx] == DISP_OPENING) {
 			if (!(comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA)) {
-				DDPINFO("%s %d skip due to still opening\n", __func__, crtc_idx);
+				DDPMSG("%s %d skip due to still opening\n", __func__, crtc_idx);
 				CRTC_MMP_MARK(index, atomic_begin, 0, 0xF);
 			} else {
 				/* only create CMDQ handle for WDMA blank output */
@@ -13700,6 +13709,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 			}
 			goto end;
 		} else if (mtk_crtc->enabled == 0 && priv->usage[crtc_idx] == DISP_ENABLE) {
+			CRTC_MMP_MARK(index, atomic_begin, 0, __LINE__);
 			mtk_drm_crtc_enable(crtc);
 			if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA) {
 				/* top clk/CG  have been enabledprepared while DISP_OPENNING,
@@ -13713,10 +13723,12 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				DDPFENCE("%s:%d power_state = false\n", __func__, __LINE__);
 				mtk_drm_top_clk_disable_unprepare(crtc->dev);
 			}
+			CRTC_MMP_MARK(index, atomic_begin, 1, __LINE__);
 			if (comp)
 				mtk_ddp_comp_io_cmd(comp, NULL, CONNECTOR_PANEL_ENABLE, NULL);
 			else
 				DDPPR_ERR("%s %d invalid output_comp\n", __func__, __LINE__);
+			CRTC_MMP_MARK(index, atomic_begin, 2, __LINE__);
 			mtk_crtc_hw_block_ready(crtc);
 		}
 	}
@@ -15940,7 +15952,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 		if (!(output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_WDMA)) {
-			DDPINFO("%s: %d skip in opening\n", __func__, index);
+			DDPMSG("%s: %d skip in opening\n", __func__, index);
 			CRTC_MMP_MARK((int) index, atomic_flush, 0, __LINE__);
 			/* release all fence when opening CRTC */
 			mtk_drm_crtc_release_fence(crtc);

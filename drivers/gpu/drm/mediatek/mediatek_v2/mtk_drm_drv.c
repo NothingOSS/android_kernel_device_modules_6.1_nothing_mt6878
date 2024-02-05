@@ -750,7 +750,7 @@ static bool mtk_atomic_need_force_doze_switch(struct drm_crtc *crtc)
 	    drm_atomic_crtc_needs_modeset(crtc->state))
 		return false;
 
-	DDPINFO("%s crtc%d, active:%d, doze_active:%llu\n", __func__,
+	DDPMSG("%s crtc%d, active:%d, doze_active:%llu\n", __func__,
 		drm_crtc_index(crtc), crtc->state->active,
 		mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
 	return true;
@@ -769,6 +769,7 @@ static void mtk_atomic_force_doze_switch(struct drm_device *dev,
 #ifndef DRM_CMDQ_DISABLE
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 #endif
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	/*
 	 * If CRTC doze_active state change but the active state
@@ -823,6 +824,15 @@ static void mtk_atomic_force_doze_switch(struct drm_device *dev,
 	 * the encorder should be enabled for register controlling
 	 * purpose.
 	 */
+
+	if (priv && priv->data &&
+		(priv->data->mmsys_id == MMSYS_MT6878) &&
+		!mtk_crtc->enabled) {
+		DDPMSG("%s, crtc is disabled, can't enable encoder\n",
+			__func__);
+		return;
+	}
+
 	if (!funcs)
 		return;
 	if (funcs->enable)
