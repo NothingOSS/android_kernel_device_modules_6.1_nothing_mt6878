@@ -416,10 +416,12 @@ void apummu_mem_free(struct device *dev, struct apummu_mem *mem)
 
 	dma_buf_put(mem->dbuf);
 #else
-	dma_buf_unmap_attachment(mem->attach, mem->sgt, DMA_BIDIRECTIONAL);
-	dma_buf_detach(mem->priv, mem->attach);
-	dma_heap_buffer_free(mem->priv);
-	dma_heap_put(mem->heap);
+	if (mem->iova != 0) { // To handle dma_heap_buffer_alloc fail by signal
+		dma_buf_unmap_attachment(mem->attach, mem->sgt, DMA_BIDIRECTIONAL);
+		dma_buf_detach(mem->priv, mem->attach);
+		dma_heap_buffer_free(mem->priv);
+		dma_heap_put(mem->heap);
+	}
 	// dma_free_coherent(dev, mem->size, (void *)mem->kva, mem->iova);
 #endif
 }
@@ -450,8 +452,12 @@ int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 
 	mem->priv = dma_heap_buffer_alloc(mem->heap, mem->size, O_RDWR | O_CLOEXEC, 0);
 	if (IS_ERR_OR_NULL(mem->priv)) {
-		AMMU_LOG_ERR("dma_heap_buffer_alloc fail mem size = 0x%x\n", mem->size);
-		ret = -ENOMEM;
+		if (!mem->priv || mem->priv != ERR_PTR(-EINTR)) {
+			AMMU_LOG_ERR("dma_heap_buffer_alloc fail mem size = 0x%x\n", mem->size);
+			ret = -ENOMEM;
+		} else {
+			AMMU_LOG_WRN("APUMMU mem alloc fail trigger by signal...\n");
+		}
 		goto heap_alloc_err;
 	}
 
