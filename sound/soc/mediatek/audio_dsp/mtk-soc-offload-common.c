@@ -1023,6 +1023,8 @@ static int mtk_compr_offload_stop(struct snd_compr_stream *stream)
 				 AUDIO_IPI_MSG_NEED_ACK,
 				 AUDIO_DSP_TASK_STOP, 1,
 				 0, NULL);
+	pr_debug("%s(), send AUDIO_DSP_TASK_STOP\n",
+				__func__);
 	afe_offload_block.transferred       = 0;
 	afe_offload_block.copied_total      = 0;
 	afe_offload_block.write_blocked_idx = 0;
