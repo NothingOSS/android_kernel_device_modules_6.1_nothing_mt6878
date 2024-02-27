@@ -636,6 +636,25 @@ void mtk_uart_get_apdma_rpt(struct dma_chan *chan, unsigned int *rpt)
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_rpt);
 
+static dma_addr_t is_tx_addr_valid(struct mtk_uart_apdma_desc *d)
+{
+	struct uart_8250_port *p = NULL;
+	struct uart_8250_dma *dma = NULL;
+	dma_addr_t tx_addr;
+
+	if(d == NULL)
+		return 0;
+	p = (struct uart_8250_port *)d->vd.tx.callback_param;
+	if(p == NULL)
+		return 0;
+	dma = p->dma;
+	if(dma == NULL)
+		return 0;
+	tx_addr = dma->tx_addr;
+
+	return tx_addr;
+}
+
 static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 {
 	struct mtk_uart_apdmadev *mtkd =
@@ -661,9 +680,9 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 		poll_cnt--;
 	}
 
-	if ((poll_cnt == 0) || (c->chan_desc_count <= 0)) {
-		pr_info("[WARN] %s, c->chan_desc_count[%d], poll_cnt[%d]\n",
-			__func__, c->chan_desc_count, poll_cnt);
+	if ((poll_cnt == 0) || (c->chan_desc_count <= 0) || (is_tx_addr_valid(d) == 0)) {
+		pr_info("[WARN] %s, c->chan_desc_count[%d], poll_cnt[%d],tx_addr[%llu]\n",
+			__func__, c->chan_desc_count, poll_cnt,is_tx_addr_valid(d));
 		return;
 	}
 	wpt = mtk_uart_apdma_read(c, VFF_ADDR);
