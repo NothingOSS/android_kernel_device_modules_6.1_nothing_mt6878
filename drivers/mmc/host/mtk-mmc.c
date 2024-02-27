@@ -3456,6 +3456,10 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	mmc_dev(mmc)->dma_mask = &host->dma_mask;
 
 	host->timeout_clks = 3 * 1048576;
+
+	if(dma_set_coherent_mask(&pdev->dev, host->dma_mask))
+		pr_info("mmc%d dma set mask fail\n", host->id);
+
 	host->dma.gpd = dma_alloc_coherent(&pdev->dev,
 				2 * sizeof(struct mt_gpdma_desc),
 				&host->dma.gpd_addr, GFP_KERNEL);
