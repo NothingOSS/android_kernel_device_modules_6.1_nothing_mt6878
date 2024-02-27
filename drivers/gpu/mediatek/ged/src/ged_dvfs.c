@@ -93,6 +93,10 @@ static unsigned int g_last_def_commit_freq_id;
 static unsigned int g_cust_upbound_freq_id;
 static unsigned int g_cust_boost_freq_id;
 
+//On boot flag
+static u8 g_is_onboot;
+#define FPS_LOW_THRESHOLD_ONBOOT 20
+
 #define LIMITER_FPSGO 0
 #define LIMITER_APIBOOST 1
 #define ENABLE_ASYNC_RATIO 1
@@ -1865,6 +1869,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	static int margin_low_bound;
 	int ultra_high_step_size = (dvfs_step_mode & 0xff);
 	int cur_opp_id = ged_get_cur_oppidx();
+	int cur_fps = 0;
 
 	gpu_freq_pre = ged_get_cur_freq();
 	gpu_freq_overdue_max = (ged_get_max_freq_in_opp() * 1000) / OVERDUE_FREQ_TH;
@@ -1875,6 +1880,14 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 			"[GED_K][FB_DVFS] skip %s due to gpu_dvfs_enable=%u",
 			__func__, gpu_dvfs_enable);
 		is_fb_dvfs_triggered = 0;
+		return gpu_freq_pre;
+	}
+
+	/* Skip DVFS on boot */
+	cur_fps = ged_kpi_get_cur_fps();
+	if (g_is_onboot) {
+		g_is_onboot = (cur_fps < FPS_LOW_THRESHOLD_ONBOOT)? 1: 0;
+
 		return gpu_freq_pre;
 	}
 
@@ -3738,6 +3751,12 @@ GED_ERROR ged_dvfs_system_init(void)
 	gpu_opp_logs_enable = 1;
 	g_sum_loading = 0;
 	g_sum_delta_time = 0;
+
+	g_ged_dvfs_commit_idx = gpufreq_get_opp_num(TARGET_DEFAULT) - 1;
+	g_ged_dvfs_commit_top_idx = gpufreq_get_opp_num(TARGET_GPU) - 1;
+	g_ged_dvfs_commit_dual = (g_ged_dvfs_commit_top_idx << 8) | g_ged_dvfs_commit_idx;
+	g_last_def_commit_freq_id = g_ged_dvfs_commit_idx;
+	g_is_onboot = 1;
 
 	return GED_OK;
 }
