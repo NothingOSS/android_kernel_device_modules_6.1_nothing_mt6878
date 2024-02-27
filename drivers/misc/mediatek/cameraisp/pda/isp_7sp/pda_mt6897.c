@@ -161,7 +161,7 @@ void pda_mmqos_bw_set(struct PDA_Data_t *pda_Pdadata)
 	unsigned int Mach_Frame_Size_Height = 192;
 
 	unsigned int Freqency = 360;
-	unsigned int FOV = 200;
+	unsigned int FOV = 0;
 	unsigned int ROI_Number = PDA_MAXROI_PER_ROUND;
 	unsigned int Frame_Rate = 30;
 	unsigned int Search_Range = 40;
@@ -192,6 +192,13 @@ void pda_mmqos_bw_set(struct PDA_Data_t *pda_Pdadata)
 	Inter_Frame_Size_Height = pda_Pdadata->PDA_FrameSetting.PDA_CFG_0.Bits.PDA_HEIGHT;
 	B_N = pda_Pdadata->PDA_FrameSetting.PDA_CFG_254.Bits.PDA_B_N;
 
+	if (Inter_Frame_Size_Width == 0 || Inter_Frame_Size_Height == 0) {
+		LOG_INF("Frame size is zero WIDTH/HEIGHT: %d/%d\n",
+			Inter_Frame_Size_Width,
+			Inter_Frame_Size_Height);
+		return;
+	}
+
 #ifdef FOR_DEBUG
 	LOG_INF("roi_num:%d\n", pda_Pdadata->ROInumber);
 #endif
@@ -203,6 +210,10 @@ void pda_mmqos_bw_set(struct PDA_Data_t *pda_Pdadata)
 	}
 
 	FOV = total_area * 100 / (Inter_Frame_Size_Width*Inter_Frame_Size_Height);
+	if (FOV > ((B_N > 0) ? 100 : 200)) {
+		LOG_INF("FOV(%d) is out of range, max FOV is %d\n", FOV, (B_N > 0) ? 100 : 200);
+		FOV = (B_N > 0) ? 100 : 200;
+	}
 #ifdef FOR_DEBUG
 	LOG_INF("FOV:%d, total_area:%d\n", FOV, total_area);
 	LOG_INF("Frame WIDTH/HEIGHT/B_N: %d/%d/%d\n",
@@ -221,8 +232,6 @@ void pda_mmqos_bw_set(struct PDA_Data_t *pda_Pdadata)
 #endif
 		return;
 	}
-
-	//FOV = (B_N > 0) ? 100 : 200;
 
 	Inter_Frame_Size = Inter_Frame_Size_Width * Inter_Frame_Size_Height;
 #ifdef FOR_DEBUG
