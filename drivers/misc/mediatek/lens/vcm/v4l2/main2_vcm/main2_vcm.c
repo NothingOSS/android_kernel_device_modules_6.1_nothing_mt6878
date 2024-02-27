@@ -361,15 +361,6 @@ static int main2_vcm_power_on(struct main2_vcm_device *main2_vcm)
 		ret = pinctrl_select_state(main2_vcm->vcamaf_pinctrl,
 					main2_vcm->vcamaf_on);
 
-	if (ret < 0)
-		return ret;
-
-	/*
-	 * TODO(b/139784289): Confirm hardware requirements and adjust/remove
-	 * the delay.
-	 */
-	usleep_range(g_vcmconfig.ctrl_delay_us, g_vcmconfig.ctrl_delay_us + 100);
-
 	return ret;
 }
 
@@ -439,6 +430,9 @@ static long main2_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 			ret = -EFAULT;
 			break;
 		}
+
+		// Confirm hardware requirements and adjust/remove the delay.
+		usleep_range(g_vcmconfig.ctrl_delay_us, g_vcmconfig.ctrl_delay_us + 100);
 
 		LOG_INF("slave_addr: 0x%x\n", g_vcmconfig.slave_addr);
 
