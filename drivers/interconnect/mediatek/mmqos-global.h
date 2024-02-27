@@ -44,6 +44,7 @@ enum mmqos_state_level {
 	VMMRC_ENABLE = BIT(8),
 	VMMRC_VCP_ENABLE = BIT(9),
 	CAM_NO_MAX_OSTDL = BIT(10),
+	DYNA_URATE_ENABLE = BIT(11),
 };
 extern u32 mmqos_state;
 

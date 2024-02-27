@@ -124,10 +124,13 @@ TRACE_EVENT(mmqos__larb_peak_bw,
 #define TYPE_IS_ON		0
 #define TYPE_IS_OFF		1
 #define TYPE_IS_VCP		2
+#define TYPE_IS_URATE	3
+#define TYPE_IS_MAX		4
+#define TYPE_IS_MAX_URATE		5
 
 TRACE_EVENT(mmqos__chn_bw,
-	TP_PROTO(int comm_id, int chn_id, int s_r, int s_w, int h_r, int h_w, int type),
-	TP_ARGS(comm_id, chn_id, s_r, s_w, h_r, h_w, type),
+	TP_PROTO(int comm_id, int chn_id, int s_r, int s_w, int h_r, int h_w, int max, int type, int type_max),
+	TP_ARGS(comm_id, chn_id, s_r, s_w, h_r, h_w, max, type, type_max),
 	TP_STRUCT__entry(
 		__field(int, comm_id)
 		__field(int, chn_id)
@@ -135,7 +138,9 @@ TRACE_EVENT(mmqos__chn_bw,
 		__field(int, s_w)
 		__field(int, h_r)
 		__field(int, h_w)
+		__field(int, max)
 		__field(int, type)
+		__field(int, type_max)
 	),
 	TP_fast_assign(
 		__entry->comm_id = comm_id;
@@ -144,25 +149,36 @@ TRACE_EVENT(mmqos__chn_bw,
 		__entry->s_w = s_w;
 		__entry->h_r = h_r;
 		__entry->h_w = h_w;
+		__entry->max = max;
 		__entry->type = type;
+		__entry->type_max = type_max;
 	),
-	TP_printk("%s_comm%d_%d_s_r=%d, %s_comm%d_%d_s_w=%d, %s_comm%d_%d_h_r=%d, %s_comm%d_%d_h_w=%d",
-		((int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" : "vcp")),
+
+	TP_printk("%s_comm%d_%d_s_r=%d, %s_comm%d_%d_s_w=%d, %s_comm%d_%d_h_r=%d, %s_comm%d_%d_h_w=%d, %s_comm%d_%d=%d",
+		(int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" :
+			((int)__entry->type == 2 ? "vcp" : "urate")),
 		(int)__entry->comm_id,
 		(int)__entry->chn_id,
 		(int)__entry->s_r,
-		((int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" : "vcp")),
+		(int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" :
+			((int)__entry->type == 2 ? "vcp" : "urate")),
 		(int)__entry->comm_id,
 		(int)__entry->chn_id,
 		(int)__entry->s_w,
-		((int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" : "vcp")),
+		(int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" :
+			((int)__entry->type == 2 ? "vcp" : "urate")),
 		(int)__entry->comm_id,
 		(int)__entry->chn_id,
 		(int)__entry->h_r,
-		((int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" : "vcp")),
+		(int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" :
+			((int)__entry->type == 2 ? "vcp" : "urate")),
 		(int)__entry->comm_id,
 		(int)__entry->chn_id,
-		(int)__entry->h_w)
+		(int)__entry->h_w,
+		((int)__entry->type_max == 4 ? "max" : "max_urate"),
+		(int)__entry->comm_id,
+		(int)__entry->chn_id,
+		(int)__entry->max)
 );
 TRACE_EVENT(mmqos__bw_to_emi,
 	TP_PROTO(int comm_id, int avg_bw, int peak_bw),

@@ -177,6 +177,10 @@ static u32 disp_srt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 static u32 disp_hrt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 static u32 disp_hrt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 
+static u32 emi_chn_hrt_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 emi_chn_srt_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 dramc_freq_mapping_table[MMQOS_MAX_DVFS_STEP_NUM][MMQOS_DVFS_VALUE_NUM];
+
 u32 on_bw_value[MAX_BW_VALUE_NUM];
 u32 old_on_bw_value[MAX_BW_VALUE_NUM];
 u32 off_bw_value[MAX_BW_VALUE_NUM];
@@ -326,7 +330,7 @@ static bool is_disp_comm_port(u8 hrt_type)
 	return false;
 }
 
-static void set_total_bw_to_emi(struct common_node *comm_node)
+static void set_total_bw_to_emi(struct common_node *comm_node, u32 peak_emi_bw)
 {
 	u32 avg_bw = 0, peak_bw = 0, total_bw_to_vcp = 0;
 	u64 normalize_peak_bw;
@@ -369,30 +373,167 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 			icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
 
 	if (log_level & 1 << log_bw)
-		MMQOS_DBG("comm%d avg %d peak %d",
-			comm_id, icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
+		MMQOS_DBG("comm%d avg %d peak_emi_bw %u peak %d",
+			comm_id, icc_to_MBps(avg_bw), peak_emi_bw, icc_to_MBps(peak_bw));
 	if (MEM_BASE != NULL) {
 		writel(total_bw_to_vcp, MEM_APMCU_TOTAL_BW);
 		if (log_level & 1 << log_bw)
 			MMQOS_DBG("total_bw_to_vcp:%d", total_bw_to_vcp);
 	}
 
-	MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak %d\n",
-		icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
-	icc_set_bw(comm_node->icc_path, avg_bw, 0);
+	MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak_emi_bw %u peak %d\n",
+		icc_to_MBps(avg_bw), peak_emi_bw, icc_to_MBps(peak_bw));
+	icc_set_bw(comm_node->icc_path, avg_bw, MBps_to_icc(peak_emi_bw));
 	icc_set_bw(comm_node->icc_hrt_path, peak_bw, 0);
 	MMQOS_SYSTRACE_END();
+}
+
+static u32 get_dyna_urate_from_chnn_diff(u32 chn0_bw, u32 chn1_bw)
+{
+	u32 urate = 70;
+
+	if (chn0_bw > chn1_bw * 2 || chn1_bw > chn0_bw * 2)
+		urate = 60;
+	else if (chn0_bw > chn1_bw * 15 / 10 || chn1_bw > chn0_bw * 15 / 10)
+		urate = 65;
+
+	return urate;
 }
 
 static u32 get_max_channel_bw_in_common(u32 comm_id)
 {
 	u32 max_bw = 0, i;
+	u32 final_h_r_bw, final_h_w_bw, final_s_r_bw, final_s_w_bw;
 
 	for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
 		max_bw = max_t(u32, max_bw, chn_hrt_r_bw[comm_id][i] * 10 / 7);
 		max_bw = max_t(u32, max_bw, chn_srt_r_bw[comm_id][i]);
 		max_bw = max_t(u32, max_bw, chn_hrt_w_bw[comm_id][i] * 10 / 7);
 		max_bw = max_t(u32, max_bw, chn_srt_w_bw[comm_id][i]);
+
+		if (log_level & 1 << log_comm_freq)
+			MMQOS_DBG("comm(%d) chn=%d without urate max_bw=%u s_r=%u h_r=%u, s_w=%u h_w=%u\n",
+				comm_id, i, max_bw, chn_srt_r_bw[comm_id][i], chn_hrt_r_bw[comm_id][i] * 10 / 7,
+				chn_srt_w_bw[comm_id][i], chn_hrt_w_bw[comm_id][i] * 10 / 7);
+
+		if (mmqos_met_enabled())
+			trace_mmqos__chn_bw(comm_id, i,
+				icc_to_MBps(chn_srt_r_bw[comm_id][i] * 10 / 7),
+				icc_to_MBps(chn_srt_w_bw[comm_id][i]),
+				icc_to_MBps(chn_hrt_r_bw[comm_id][i] * 10 / 7),
+				icc_to_MBps(chn_hrt_w_bw[comm_id][i]),
+				icc_to_MBps(max_bw),
+				TYPE_IS_ON,
+				TYPE_IS_MAX);
+	}
+
+	if (mmqos_state & DYNA_URATE_ENABLE) {
+		u32 hrt_r_urate, hrt_w_urate, srt_r_urate, srt_w_urate;
+
+		max_bw = 0;
+
+		hrt_r_urate = get_dyna_urate_from_chnn_diff(
+			chn_hrt_r_bw[comm_id][0], chn_hrt_r_bw[comm_id][1]);
+		hrt_w_urate = get_dyna_urate_from_chnn_diff(
+			chn_hrt_w_bw[comm_id][0], chn_hrt_w_bw[comm_id][1]);
+		// change srt from occupied bw to data bw (/1.33)
+		chn_srt_r_bw[comm_id][0] = chn_srt_r_bw[comm_id][0] * 75 / 100;
+		chn_srt_r_bw[comm_id][1] = chn_srt_r_bw[comm_id][1] * 75 / 100;
+		chn_srt_w_bw[comm_id][0] = chn_srt_w_bw[comm_id][0] * 75 / 100;
+		chn_srt_w_bw[comm_id][1] = chn_srt_w_bw[comm_id][1] * 75 / 100;
+
+		srt_r_urate = get_dyna_urate_from_chnn_diff(
+			chn_srt_r_bw[comm_id][0], chn_srt_r_bw[comm_id][1]);
+		srt_w_urate = get_dyna_urate_from_chnn_diff(
+			chn_srt_w_bw[comm_id][0], chn_srt_w_bw[comm_id][1]);
+
+		if (log_level & 1 << log_comm_freq) {
+			MMQOS_DBG("comm(%d) original data bw s_r[chn0]=%u s_r[chn1]=%u, s_w[chn0]=%u s_w[chn1]=%u\n",
+				comm_id, chn_srt_r_bw[comm_id][0], chn_srt_r_bw[comm_id][1],
+				chn_srt_w_bw[comm_id][0], chn_srt_w_bw[comm_id][1]);
+			MMQOS_DBG("comm(%d) h_r[chn0]=%u h_r[chn1]=%u, h_w[chn0]=%u h_w[chn1]=%u\n",
+				comm_id, chn_hrt_r_bw[comm_id][0], chn_hrt_r_bw[comm_id][1],
+				chn_hrt_w_bw[comm_id][0], chn_hrt_w_bw[comm_id][1]);
+			MMQOS_DBG("comm(%d) srt_r_urate=%d srt_w_urate=%d hrt_r_urate=%d hrt_w_urate=%d\n",
+				comm_id, srt_r_urate, srt_w_urate, hrt_r_urate, hrt_w_urate);
+		}
+		for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
+			final_h_r_bw = chn_hrt_r_bw[comm_id][i] * 100 / hrt_r_urate;
+			final_h_w_bw = chn_hrt_w_bw[comm_id][i] * 100 / hrt_w_urate;
+			final_s_r_bw = chn_srt_r_bw[comm_id][i] * 100 / srt_r_urate;
+			final_s_w_bw = chn_srt_w_bw[comm_id][i] * 100 / srt_w_urate;
+
+			emi_chn_hrt_bw[comm_id][i] = chn_hrt_r_bw[comm_id][i] + chn_hrt_w_bw[comm_id][i];
+			emi_chn_srt_bw[comm_id][i] = chn_srt_r_bw[comm_id][i] + chn_srt_w_bw[comm_id][i];
+
+			max_bw = max_t(u32, max_bw, final_h_r_bw);
+			max_bw = max_t(u32, max_bw, final_s_r_bw);
+			max_bw = max_t(u32, max_bw, final_h_w_bw);
+			max_bw = max_t(u32, max_bw, final_s_w_bw);
+			if (log_level & 1 << log_comm_freq)
+				MMQOS_DBG("comm(%d) chn=%d max_bw=%u apply urate s_r=%u h_r=%u, s_w=%u h_w=%u\n",
+					comm_id, i, max_bw, final_s_r_bw, final_h_r_bw,
+					final_s_w_bw, final_h_w_bw);
+			if (mmqos_met_enabled())
+				trace_mmqos__chn_bw(comm_id, i,
+					icc_to_MBps(final_s_r_bw),
+					icc_to_MBps(final_s_w_bw),
+					icc_to_MBps(final_h_r_bw),
+					icc_to_MBps(final_h_w_bw),
+					icc_to_MBps(max_bw),
+					TYPE_IS_URATE,
+					TYPE_IS_MAX_URATE);
+		}
+	}
+
+	return max_bw;
+}
+
+static u32 get_peak_emi_freq(u32 emi_bw)
+{
+	u32 step, emi_freq = 0;
+
+	if (emi_bw == 0)
+		return 0;
+
+	emi_freq = emi_bw * 8 / 128 / 1000; //MHZ
+
+	for (step = 0; step < MMQOS_MAX_DVFS_STEP_NUM; step++) {
+		if (emi_freq > dramc_freq_mapping_table[step][1] || !dramc_freq_mapping_table[step][1])
+			break;
+	}
+
+	if (step > 0)
+		return dramc_freq_mapping_table[step - 1][0];
+	return dramc_freq_mapping_table[step][0];
+}
+
+static u32 get_max_channel_bw_in_emi(u32 comm_id)
+{
+	u32 i, hrt_urate, srt_urate, final_h_bw, final_s_bw, max_bw = 0;
+
+	hrt_urate = get_dyna_urate_from_chnn_diff(
+		emi_chn_hrt_bw[comm_id][0], emi_chn_hrt_bw[comm_id][1]);
+	srt_urate = get_dyna_urate_from_chnn_diff(
+		emi_chn_srt_bw[comm_id][0], emi_chn_srt_bw[comm_id][1]);
+
+	if (log_level & 1 << log_comm_freq) {
+		pr_notice("%s comm(%d) emi_h[chn0]=%u emi_h[chn1]=%u, emi_s[chn0]=%u emi_s[chn1]=%u\n",
+			__func__, comm_id, emi_chn_hrt_bw[comm_id][0], emi_chn_hrt_bw[comm_id][1],
+			emi_chn_srt_bw[comm_id][0], emi_chn_srt_bw[comm_id][1]);
+		pr_notice("%s comm(%d) hrt_urate=%d srt_urate=%d\n",
+			__func__, comm_id, hrt_urate, srt_urate);
+	}
+	for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
+		final_h_bw = emi_chn_hrt_bw[comm_id][i] * 100 / hrt_urate;
+		final_s_bw = emi_chn_srt_bw[comm_id][i] * 100 / srt_urate;
+
+		if (log_level & 1 << log_comm_freq)
+			pr_notice("%s comm(%d) chn=%d apply urate h_bw=%u s_bw=%u (KB/s)\n",
+				__func__, comm_id, i, final_h_bw, final_s_bw);
+
+		max_bw = max_t(u32, max_bw, final_h_bw);
+		max_bw = max_t(u32, max_bw, final_s_bw);
 	}
 
 	return max_bw;
@@ -410,6 +551,7 @@ static u32 get_max_channel_bw(u32 comm_id, u32 freq_mode)
 		comm_bw = get_max_channel_bw_in_common(i);
 		max_bw = max_t(u32, max_bw, comm_bw);
 	}
+
 	return max_bw;
 }
 
@@ -660,7 +802,9 @@ static void set_freq_by_vmmrc(const u32 comm_id)
 				icc_to_MBps(off_s_w_bw),
 				icc_to_MBps(off_h_r_bw),
 				icc_to_MBps(off_h_w_bw),
-				TYPE_IS_OFF);
+				0,
+				TYPE_IS_OFF,
+				TYPE_IS_MAX);
 	}
 
 	if (is_bw_value_changed(IS_ON_TABLE)) {
@@ -677,13 +821,11 @@ static void set_freq_by_vmmrc(const u32 comm_id)
 
 static void set_comm_icc_bw(struct common_node *comm_node)
 {
-	u32 max_bw = 0;
+	u32 max_bw = 0, emi_freq = 0, peak_emi_freq = 0, emi_bw = 0;
 	unsigned long smi_clk = 0;
 	u32 comm_id, i, j;
 
 	MMQOS_SYSTRACE_BEGIN("%s %s\n", __func__, comm_node->base->icc_node->name);
-
-	set_total_bw_to_emi(comm_node);
 
 	comm_id = MASK_8(comm_node->base->icc_node->id);
 
@@ -699,16 +841,21 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 
 	if (freq_mode == BY_REGULATOR || freq_mode == BY_MMDVFS) {
 		max_bw = get_max_channel_bw(comm_id, freq_mode);
+		if (mmqos_state & DYNA_URATE_ENABLE) {
+			emi_bw = get_max_channel_bw_in_emi(comm_id);
+			peak_emi_freq = get_peak_emi_freq(emi_bw);
+		}
 
 		if (max_bw)
 			smi_clk = SHIFT_ROUND(max_bw, 4) * 1000;
 		else
 			smi_clk = 0;
 
-		if (log_level & 1 << log_comm_freq)
+		if (log_level & 1 << log_comm_freq) {
 			dev_notice(comm_node->comm_dev,
-				"comm(%d) max_bw=%u smi_clk=%lu freq_mode=%d\n",
-				comm_id, max_bw, smi_clk, freq_mode);
+				"comm(%d) max_bw=%u smi_clk=%lu freq_mode=%d emi_freq=%u peak_emi_bw=%u\n",
+				comm_id, max_bw, smi_clk, freq_mode, emi_freq, peak_emi_freq);
+		}
 
 		if (comm_node->comm_dev && smi_clk != comm_node->smi_clk) {
 			if (freq_mode == BY_REGULATOR)
@@ -721,6 +868,8 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 	} else if (freq_mode == BY_VMMRC) {
 		set_freq_by_vmmrc(comm_id);
 	}
+
+	set_total_bw_to_emi(comm_node, peak_emi_freq);
 
 	MMQOS_SYSTRACE_END();
 }
@@ -893,6 +1042,7 @@ void update_channel_bw(const u32 comm_id, const u32 chnn_id,
 			 v2_chn_srt_r_bw[comm_id][chnn_id]);
 	}
 #endif
+
 	chn_hrt_w_bw[comm_id][chnn_id] = v2_chn_hrt_w_bw[comm_id][chnn_id];
 	chn_srt_w_bw[comm_id][chnn_id] = v2_chn_srt_w_bw[comm_id][chnn_id];
 	chn_hrt_r_bw[comm_id][chnn_id] = v2_chn_hrt_r_bw[comm_id][chnn_id];
@@ -948,7 +1098,9 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 					icc_to_MBps(chn_srt_w_bw[comm_id][chnn_id]),
 					icc_to_MBps(chn_hrt_r_bw[comm_id][chnn_id]),
 					icc_to_MBps(chn_hrt_w_bw[comm_id][chnn_id]),
-					TYPE_IS_ON);
+					0,
+					TYPE_IS_ON,
+					TYPE_IS_MAX);
 		}
 #endif
 		if (!comm_node)
@@ -1620,6 +1772,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	struct larb_port_node *larb_port_node;
 	struct mtk_iommu_data *smi_imu;
 	int i, j, id, num_larbs = 0, ret, ddr_type, max_freq, chn_cnt;
+	int step, dram_freq;
 	const struct mtk_mmqos_desc *mmqos_desc;
 	const struct mtk_node_desc *node_desc;
 	struct device *larb_dev;
@@ -1933,6 +2086,20 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	else
 		MMQOS_ERR("dramc or emi not ready, cannot get max frequency or channel count");
 	MMQOS_DBG("max_freq:%d, channel count:%d", max_freq, chn_cnt);
+
+	for (step = 0; step < MMQOS_MAX_DVFS_STEP_NUM; step++) {
+		dram_freq = mtk_dramc_get_steps_freq(step);
+		dramc_freq_mapping_table[step][0] = dram_freq;
+		if (dram_freq < 0) {
+			dramc_freq_mapping_table[step - 1][1] *= 2;
+			dramc_freq_mapping_table[step][1] = 0;
+		} else if (dram_freq > 6000)
+			dramc_freq_mapping_table[step][1] = 728;
+		else
+			dramc_freq_mapping_table[step][1] = dram_freq / 8;
+		MMQOS_DBG("dram_opp_table step %d: DRAM freq:%d emiclk:%d",
+			step, dramc_freq_mapping_table[step][0], dramc_freq_mapping_table[step][1]);
+	}
 #endif
 	MMQOS_DBG("hrt_total_bw: %d", hrt->hrt_total_bw);
 
@@ -2049,6 +2216,8 @@ void clear_chnn_bw(void)
 			disp_srt_w_bw[i][j] = 0;
 			disp_hrt_r_bw[i][j] = 0;
 			disp_hrt_w_bw[i][j] = 0;
+			emi_chn_hrt_bw[i][j] = 0;
+			emi_chn_srt_bw[i][j] = 0;
 		}
 	}
 }
@@ -2145,25 +2314,33 @@ static int mmqos_dbg_ftrace_thread(void *data)
 				MASK_16(readl(MEM_SMI_COMM0_CHN0_BW)),
 				0,
 				0,
-				TYPE_IS_VCP);
+				0,
+				TYPE_IS_VCP,
+				TYPE_IS_MAX);
 		trace_mmqos__chn_bw(0, 1,
 				RSH_16(readl(MEM_SMI_COMM0_CHN1_BW)),
 				MASK_16(readl(MEM_SMI_COMM0_CHN1_BW)),
 				0,
 				0,
-				TYPE_IS_VCP);
+				0,
+				TYPE_IS_VCP,
+				TYPE_IS_MAX);
 		trace_mmqos__chn_bw(1, 0,
 				RSH_16(readl(MEM_SMI_COMM1_CHN0_BW)),
 				MASK_16(readl(MEM_SMI_COMM1_CHN0_BW)),
 				0,
 				0,
-				TYPE_IS_VCP);
+				0,
+				TYPE_IS_VCP,
+				TYPE_IS_MAX);
 		trace_mmqos__chn_bw(1, 1,
 				RSH_16(readl(MEM_SMI_COMM1_CHN1_BW)),
 				MASK_16(readl(MEM_SMI_COMM1_CHN1_BW)),
 				0,
 				0,
-				TYPE_IS_VCP);
+				0,
+				TYPE_IS_VCP,
+				TYPE_IS_MAX);
 		trace_mmqos__larb_avg_bw(
 			"r", "vdec", RSH_16(readl(MEM_SMI_VDEC_COMM0_CHN0_BW)), 0, 0);
 		trace_mmqos__larb_avg_bw(
