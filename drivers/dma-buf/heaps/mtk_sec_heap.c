@@ -1033,8 +1033,8 @@ static void mtk_sec_heap_unmap_dma_buf(struct dma_buf_attachment *attachment,
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(attachment->dev);
 
 	if (!fwspec) {
-		pr_info("%s, non-iommu-dev unmap, dev:%s\n", __func__,
-			dev_name(attachment->dev));
+		pr_debug("%s, non-iommu-dev unmap, dev:%s\n", __func__,
+			 dev_name(attachment->dev));
 		dma_unmap_sgtable(attachment->dev, table, direction, attr);
 	}
 	a->mapped = false;
