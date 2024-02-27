@@ -102,7 +102,7 @@ struct tfa_debug_info {
 	struct proc_dir_entry *proc_dir;
 	phys_addr_t debug_buf_paddr;
 	phys_addr_t total_size;
-	void __iomem *vaddr;
+	void *vaddr;
 	/* Debug buffer entry */
 	struct tfa_debug_entry_info runtime;
 	atomic_t release_log;
@@ -196,7 +196,7 @@ static ssize_t raw_read(struct file *file,
 	if (count > remain_len)
 		copy_len = remain_len;
 	else
-		copy_len = round_down(count, 4);
+		copy_len = count;
 
 	if (copy_to_user(buf,
 		(void *)(inst_p->vaddr + inst_p->read_offset), copy_len))
@@ -417,8 +417,8 @@ static int lookup_reserved_memory(void)
 		info.debug_buf_paddr, info.total_size);
 		return -EINVAL;
 	}
-	/* remap reserved memory as non-cacheable */
-	info.vaddr = ioremap(info.debug_buf_paddr, info.total_size);
+
+	info.vaddr = memremap(info.debug_buf_paddr, info.total_size, MEMREMAP_WC);
 	if (IS_ERR(info.vaddr)) {
 		pr_notice("Fail to remap debug buf vaddr:%ld\n",
 			PTR_ERR(info.vaddr));
@@ -569,7 +569,7 @@ static int tfa_debug_remove(struct platform_device *pdev)
 	remove_proc_entry(DEBUG_BUF_TOTAL_RAW_PROC_NAME,
 		info.proc_dir);
 	remove_proc_entry(DEBUG_BUF_PROC_FOLDER_NAME, NULL);
-	iounmap(info.vaddr);
+	memunmap(info.vaddr);
 	return 0;
 }
 
