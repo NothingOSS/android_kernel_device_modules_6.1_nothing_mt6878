@@ -220,7 +220,7 @@ static int is_skb_gro(struct sk_buff *skb)
 	if (protocol == IPPROTO_TCP) {
 		return g_tcp_is_need_gro;
 	} else if (protocol == IPPROTO_UDP) {
-		if (g_cur_dl_speed > 500000000LL) //>500Mbps
+		if (g_cur_dl_speed > 300000000LL) //>300Mbps
 			return 1;
 	}
 
