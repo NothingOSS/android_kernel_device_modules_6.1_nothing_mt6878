@@ -7864,7 +7864,11 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	unsigned int is_vfp_period = 0;
 	unsigned int _dsi_state_dbg7 = 0;
 	unsigned int _dsi_state_dbg7_2 = 0;
+	unsigned int fps_src = 0;
+	unsigned int fps_dst = 0;
 
+	fps_src = drm_mode_vrefresh(&old_crtc_state->mode);
+	fps_dst = drm_mode_vrefresh(&crtc->state->mode);
 
 	if (unlikely(!mtk_crtc)) {
 		DDPPR_ERR("%s:%d invalid pointer mtk_crtc\n",
@@ -8048,7 +8052,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMDVFS_SUPPORT) &&
 		((id == 0) || (id == 3)) && (!mtk_crtc->rpo_params.need_rpo_en) &&
 		(!atomic_read(&mtk_crtc->force_high_step)) && priv->data->need_rpo_ratio_for_mmclk &&
-		mtk_crtc->rpo_params.rpo_status_changed && mtk_crtc->enabled) {
+		mtk_crtc->rpo_params.rpo_status_changed && mtk_crtc->enabled && (fps_dst <= fps_src)) {
 		struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 		int en = 1;
 
@@ -15939,6 +15943,11 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 			mtk_drm_get_lcm_ext_params(crtc);
 	bool need_disable = false;
 	bool only_output = false;
+	unsigned int fps_src = 0;
+	unsigned int fps_dst = 0;
+
+	fps_src = drm_mode_vrefresh(&old_crtc_state->mode);
+	fps_dst = drm_mode_vrefresh(&crtc->state->mode);
 
 	CRTC_MMP_EVENT_START((int) index, atomic_flush, (unsigned long)crtc_state,
 			(unsigned long)old_crtc_state);
@@ -16163,7 +16172,8 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RPO) &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMDVFS_SUPPORT) &&
 		(!atomic_read(&mtk_crtc->force_high_step)) && ((index == 0) || (index == 3)) &&
-		mtk_crtc->rpo_params.need_rpo_en && mtk_crtc->enabled && priv->data->need_rpo_ratio_for_mmclk) {
+		mtk_crtc->rpo_params.need_rpo_en && mtk_crtc->enabled && (fps_dst >= fps_src) &&
+		priv->data->need_rpo_ratio_for_mmclk) {
 		struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 		int en = 1;
 
