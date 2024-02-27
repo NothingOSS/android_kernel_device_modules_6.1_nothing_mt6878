@@ -30,7 +30,7 @@
 		status = "ok";
 		compatible = "wl2864c";
 		reg = <0x29>;
-		enable-gpio = <&pio 59 0x0>;
+		//enable-gpio = <&pio 59 0x0>;
 		semi,cs-gpios = <&pio 64 0x0>;
 		regulator-nb = "ldo1", "ldo2",
 				"ldo3", "ldo4",
