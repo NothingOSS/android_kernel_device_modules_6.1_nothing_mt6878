@@ -3533,7 +3533,7 @@
 					&smi_larb28 &smi_larb29 &smi_larb30
 					&smi_larb33 &smi_larb34 &smi_larb38>;
 		mediatek,commons-supply = <&smi_disp_common>;
-		mmqos-state = <0x48d>;
+		mmqos-state = <0xc8d>;
 		mmqos-log-level = <0>;
 		clocks = <&topckgen_clk CLK_TOP_MMINFRA_SEL>;
 		clock-names = "mm";
