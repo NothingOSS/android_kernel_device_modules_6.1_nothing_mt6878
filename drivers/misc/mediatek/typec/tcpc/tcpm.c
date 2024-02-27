@@ -77,8 +77,7 @@ int tcpm_shutdown(struct tcpc_device *tcpc)
 
 	if (tcpc->ops->deinit)
 		tcpc->ops->deinit(tcpc);
-	/* Not to unlock for preventing further actions */
-	/* tcpci_unlock_typec(tcpc); */
+	tcpci_unlock_typec(tcpc);
 
 	return 0;
 }
