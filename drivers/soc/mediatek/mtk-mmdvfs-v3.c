@@ -599,8 +599,11 @@ static int mtk_mmdvfs_enable_vmm(const bool enable)
 			ret = -EINVAL;
 			goto enable_vmm_end;
 		}
-		if (vmm_power == 1)
-			pm_runtime_put_sync(mmdvfs_v3_dev);
+		if (vmm_power == 1) {
+			ret = pm_runtime_put_sync(mmdvfs_v3_dev);
+			if (ret)
+				goto enable_vmm_end;
+		}
 		vmm_power -= 1;
 	}
 
@@ -1482,6 +1485,16 @@ static void mmdvfs_v3_release_step(bool enable_vcp)
 				mtk_mmdvfs_v3_set_force_step_ipi(i, -1);
 			last_force_step[i] = last;
 		}
+	}
+
+	if (vmm_power) {
+		MMDVFS_ERR("enable:%d vmm_power:%d should be zero", false, vmm_power);
+		if (vmm_power > 1) {
+			mutex_lock(&mmdvfs_vmm_pwr_mutex);
+			vmm_power = 1;
+			mutex_unlock(&mmdvfs_vmm_pwr_mutex);
+		}
+		mtk_mmdvfs_enable_vmm(false);
 	}
 }
 
