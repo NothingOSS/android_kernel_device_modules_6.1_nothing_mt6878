@@ -51,6 +51,14 @@
 
 struct ccci_modem *modem_sys;
 
+/* used to save wdt key time
+ * id setting:
+ * 0: wdt isr time
+ * 1: disable wdt irq time
+ * 2: enable wdt irq time
+ */
+unsigned long long wdt_time[3];
+
 #ifdef CCCI_KMODULE_ENABLE
 bool spm_is_md1_sleep(void)
 {
@@ -74,6 +82,7 @@ void wdt_enable_irq(struct ccci_modem *md)
 {
 	if (atomic_cmpxchg(&md->wdt_enabled, 0, 1) == 0) {
 		enable_irq(md->md_wdt_irq_id);
+		wdt_time[2] = local_clock();
 		CCCI_NORMAL_LOG(0, TAG, "enable wdt irq\n");
 	}
 }
@@ -86,6 +95,7 @@ void wdt_disable_irq(struct ccci_modem *md)
 		 * if use disable_irq in isr, system will hang
 		 */
 		disable_irq_nosync(md->md_wdt_irq_id);
+		wdt_time[1] = local_clock();
 		/*CCCI_NORMAL_LOG(0, TAG, "disable wdt irq\n");*/
 	}
 }
@@ -94,6 +104,7 @@ static irqreturn_t md_cd_wdt_isr(int irq, void *data)
 {
 	struct ccci_modem *md = (struct ccci_modem *)data;
 
+	wdt_time[0] = local_clock();
 	//CCCI_ERROR_LOG(0, TAG, "MD WDT IRQ\n");
 	//ccci_event_log("md: MD WDT IRQ\n");
 	ccci_hif_md_exception((1<<CCIF_HIF_ID), HIF_EX_STOP_EE_NOTIFY);

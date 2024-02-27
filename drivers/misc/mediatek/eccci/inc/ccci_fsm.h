@@ -10,6 +10,7 @@ enum MD_IRQ_TYPE {
 	MD_IRQ_WDT,
 	MD_IRQ_CCIF_EX,
 };
+extern unsigned long long wdt_time[3];
 
 int ccci_fsm_init(void);
 int ccci_fsm_recv_control_packet(struct sk_buff *skb);

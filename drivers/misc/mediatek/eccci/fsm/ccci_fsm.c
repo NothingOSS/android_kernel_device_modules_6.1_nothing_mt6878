@@ -1500,6 +1500,8 @@ static void fsm_routine_stop(struct ccci_fsm_ctl *ctl,
 	struct ccci_modem *md = ccci_get_modem();
 	unsigned long flags;
 	int ret;
+	unsigned long long ns_0, ns_1, ns_2;
+	char buf[128] = {0};
 
 	/* 1. state sanity check */
 	if (ctl->curr_state == CCCI_FSM_GATED)
@@ -1547,12 +1549,19 @@ success:
 	/* Cleare MD WDT pending bit */
 	ret = irq_set_irqchip_state(md->md_wdt_irq_id,
 			IRQCHIP_STATE_PENDING, false);
-	if (ret)
-		CCCI_ERROR_LOG(0, FSM,
-			"clear md wdt pending irq fail %d\n", ret);
-	else
-		CCCI_NORMAL_LOG(0, FSM,
-			"clear md wdt irq(%d) success\n", md->md_wdt_irq_id);
+	ns_0 = do_div(wdt_time[0], NSEC_PER_SEC);
+	ns_1 = do_div(wdt_time[1], NSEC_PER_SEC);
+	ns_2 = do_div(wdt_time[2], NSEC_PER_SEC);
+	scnprintf(buf, sizeof(buf),
+		"last md wdt isr: %llu.%06llu, disable time: %llu.%06llu, enable time: %llu.%06llu",
+		wdt_time[0], ns_0/1000, wdt_time[1], ns_1/1000, wdt_time[2], ns_2/1000);
+	CCCI_NORMAL_LOG(0, FSM, "clear md wdt irq(%d) ret: %d, %s\n",
+		md->md_wdt_irq_id, ret, buf);
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_DBG)
+	CCCI_NORMAL_LOG(0, FSM, "Dump md WDT IRQ status\n");
+	mt_irq_dump_status(md->md_wdt_irq_id);
+#endif
 
 	ctl->last_state = ctl->curr_state;
 	ctl->curr_state = CCCI_FSM_GATED;
