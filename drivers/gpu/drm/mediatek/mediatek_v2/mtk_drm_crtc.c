@@ -14945,10 +14945,16 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	mtk_crtc->skip_frame = false;
 
 	if (atomic_read(&mtk_crtc->singal_for_mode_switch)) {
+		int ret;
 		DDPINFO("Wait event from mode_switch\n");
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 3, 0);
-		wait_event_interruptible(mtk_crtc->mode_switch_end_wq,
+		ret = wait_event_interruptible(mtk_crtc->mode_switch_end_wq,
 			(atomic_read(&mtk_crtc->singal_for_mode_switch) == 0));
+		if (ret < 0) {
+			DDPPR_ERR("%s:interrupted unexpected = %d", __func__, ret);
+			cmdq_pkt_destroy(cmdq_handle);
+			return -EINVAL;
+		}
 	}
 #ifdef MTK_DRM_CMDQ_ASYNC
 #ifdef MTK_DRM_ASYNC_HANDLE
