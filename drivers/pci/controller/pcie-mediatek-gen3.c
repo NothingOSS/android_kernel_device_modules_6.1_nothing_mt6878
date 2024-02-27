@@ -103,6 +103,8 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_CFG_OFFSET_ADDR		0x1000
 #define PCIE_CFG_HEADER(bus, devfn) \
 	(PCIE_CFG_BUS(bus) | PCIE_CFG_DEVFN(devfn))
+#define PCIE_RC_CFG \
+	(PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) | PCIE_CFG_HEADER(0, 0))
 
 #define PCIE_RST_CTRL_REG		0x148
 #define PCIE_MAC_RSTB			BIT(0)
@@ -167,6 +169,8 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_MSI_SET_ADDR_HI_BASE	0xc80
 #define PCIE_MSI_SET_ADDR_HI_OFFSET	0x04
 
+#define PCIE_ERR_DEBUG_LANE0		0xd40
+
 #define PCIE_MSI_GRP2_SET_OFFSET	0xDC0
 #define PCIE_MSI_GRPX_PER_SET_OFFSET	4
 #define PCIE_MSI_GRP3_SET_OFFSET	0xDE0
@@ -230,6 +234,8 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_AER_CO_STATUS		0x1210
 #define AER_CO_RE			BIT(0)
 #define AER_CO_BTLP			BIT(6)
+#define PCIE_VENDOR_STS_0		0x1488
+#define PCIE_VENDOR_STS_1		0x148c
 
 /* vlpcfg register */
 #define PCIE_VLPCFG_BASE		0x1C00C000
@@ -1028,11 +1034,19 @@ static void mtk_pcie_irq_handler(struct irq_desc *desc)
 	struct mtk_pcie_port *port = irq_desc_get_handler_data(desc);
 	struct irq_chip *irqchip = irq_desc_get_chip(desc);
 	unsigned long status;
+	unsigned int val;
 	irq_hw_number_t irq_bit = PCIE_INTX_SHIFT;
 
 	chained_irq_enter(irqchip, desc);
 
 	status = readl_relaxed(port->base + PCIE_INT_STATUS_REG);
+	if (status & PCIE_AER_EVT) {
+		writel_relaxed(PCIE_RC_CFG, port->base + PCIE_CFGNUM_REG);
+		val = readl_relaxed(port->base  + PCIE_AER_CO_STATUS);
+		if (val & AER_CO_RE)
+			mtk_pcie_dump_link_info(port->port_num);
+	}
+
 	for_each_set_bit_from(irq_bit, &status, PCI_NUM_INTX +
 			      PCIE_INTX_SHIFT)
 		generic_handle_domain_irq(port->intx_domain,
@@ -1462,6 +1476,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x80, 0x81, 0x82, 0x87));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x3, 0x3, 0x3, 0x3));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x00, 0x01, 0x07, 0x16));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x42, 0x43, 0x54, 0x55));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x4, 0x4, 0x4, 0x4));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xc9, 0xca, 0xcb, 0xcd));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x5, 0x5, 0x5, 0x5));
@@ -1472,7 +1487,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, PHY_err(d40)=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
@@ -1487,7 +1502,17 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 			      PCIE_MSI_SET_STATUS_OFFSET),
 		readl_relaxed(port->base + PCIE_AXI0_ERR_ADDR_L),
 		readl_relaxed(port->base + PCIE_AXI0_ERR_INFO),
-		readl_relaxed(port->base + PCIE_RES_STATUS));
+		readl_relaxed(port->base + PCIE_RES_STATUS),
+		readl_relaxed(port->base + PCIE_ERR_DEBUG_LANE0));
+
+	/* Dump RC configuration space */
+	writel_relaxed(PCIE_RC_CFG, port->base + PCIE_CFGNUM_REG);
+	pr_info("aer_cor(1204)=%#x, aer_unc(1210)=%#x, hw_sta(1488)=%#x, fw_sta(148c)=%#x\n",
+		readl_relaxed(port->base + PCIE_AER_UNC_STATUS),
+		readl_relaxed(port->base + PCIE_AER_CO_STATUS),
+		readl_relaxed(port->base + PCIE_VENDOR_STS_0),
+		readl_relaxed(port->base + PCIE_VENDOR_STS_1));
+
 	pr_info("clock gate:%#x, PCIe HW MODE BIT:%#x, Modem HW MODE BIT:%#x, PEXTP_PWRCTL_3:%#x, slp ready:%#x, SPM ready:%#x, BBCK2:%#x\n",
 		readl_relaxed(port->pextpcfg + PCIE_PEXTP_CG_0),
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_0),
