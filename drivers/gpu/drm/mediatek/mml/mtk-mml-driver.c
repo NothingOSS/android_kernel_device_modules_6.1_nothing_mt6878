@@ -1074,7 +1074,8 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 
 			if (mtk_mml_hrt_mode == MML_HRT_OSTD_MAX) {
 				srt_icc = MBps_to_icc(bandwidth);
-				hrt_icc = hrt_bw <= mml_hrt_bound ?
+				hrt_icc = (hrt_bw <= mml_hrt_bound ||
+					(hrt_bw >= 3200 && cfg->panel_w >= 1440)) ?
 					MTK_MMQOS_MAX_BW : MBps_to_icc(hrt_bw);
 			} else if (mtk_mml_hrt_mode == MML_HRT_OSTD_ONLY) {
 				srt_icc = 0;

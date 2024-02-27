@@ -1500,6 +1500,8 @@ void mml_drm_set_panel_pixel(struct mml_drm_ctx *ctx, u32 panel_width, u32 panel
 {
 	struct mml_frame_config *cfg;
 
+	mml_msg("%s size %u %u", __func__, panel_width, panel_height);
+
 	ctx->panel_width = panel_width;
 	ctx->panel_height = panel_height;
 	mutex_lock(&ctx->config_mutex);
