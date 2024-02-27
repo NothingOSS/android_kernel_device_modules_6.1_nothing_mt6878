@@ -36,7 +36,7 @@
 #define PDA_WR32(addr, data) mt_reg_sync_writel(data, addr)
 #define PDA_RD32(addr) ioread32(addr)
 
-static unsigned int g_Frame_Width, g_Frame_Height, g_B_N;
+static unsigned int g_Frame_Width, g_Frame_Height, g_B_N, g_FOV;
 
 /*******************************************************************************
  *                               Porting Part
@@ -148,7 +148,7 @@ void pda_mmqos_init(struct device *pdev)
 	}
 }
 
-void pda_mmqos_bw_set(struct _pda_a_reg_t_ *PDA_FrameSetting)
+void pda_mmqos_bw_set(struct PDA_Data_t *pda_Pdadata)
 {
 	int i = 0;
 	unsigned int Inter_Frame_Size_Width = 0;
@@ -185,28 +185,44 @@ void pda_mmqos_bw_set(struct _pda_a_reg_t_ *PDA_FrameSetting)
 	unsigned int IMAGE_IMAGE_RDMA_PEAK_BW = 0;
 	unsigned int IMAGE_IMAGE_RDMA_AVG_BW = 0;
 
-	// -------------------------- parameter estimate ------------------------
-	Inter_Frame_Size_Width = PDA_FrameSetting->PDA_CFG_0.Bits.PDA_WIDTH;
-	Inter_Frame_Size_Height = PDA_FrameSetting->PDA_CFG_0.Bits.PDA_HEIGHT;
-	B_N = PDA_FrameSetting->PDA_CFG_254.Bits.PDA_B_N;
+	unsigned int total_area = 0;
 
-	if (g_Frame_Width == Inter_Frame_Size_Width &&
-		g_Frame_Height == Inter_Frame_Size_Height &&
-		g_B_N == B_N) {
+	// -------------------------- parameter estimate ------------------------
+	Inter_Frame_Size_Width = pda_Pdadata->PDA_FrameSetting.PDA_CFG_0.Bits.PDA_WIDTH;
+	Inter_Frame_Size_Height = pda_Pdadata->PDA_FrameSetting.PDA_CFG_0.Bits.PDA_HEIGHT;
+	B_N = pda_Pdadata->PDA_FrameSetting.PDA_CFG_254.Bits.PDA_B_N;
+
 #ifdef FOR_DEBUG
-		LOG_INF("Frame WIDTH/HEIGHT/B_N no change, no need to set qos\n");
+	LOG_INF("roi_num:%d\n", pda_Pdadata->ROInumber);
 #endif
-		return;
+	for (i = 0; i < pda_Pdadata->ROInumber; ++i) {
+#ifdef FOR_DEBUG
+		LOG_INF("ROI:%d, w:%d, h:%d\n", i, pda_Pdadata->rgn_w[i], pda_Pdadata->rgn_h[i]);
+#endif
+		total_area += pda_Pdadata->rgn_w[i] * pda_Pdadata->rgn_h[i];
 	}
 
-	FOV = (B_N > 0) ? 100 : 200;
-
+	FOV = total_area * 100 / (Inter_Frame_Size_Width*Inter_Frame_Size_Height);
 #ifdef FOR_DEBUG
+	LOG_INF("FOV:%d, total_area:%d\n", FOV, total_area);
 	LOG_INF("Frame WIDTH/HEIGHT/B_N: %d/%d/%d\n",
 		Inter_Frame_Size_Width,
 		Inter_Frame_Size_Height,
 		B_N);
 #endif
+	// ----------------------------------------------------------------------
+
+	if (g_Frame_Width == Inter_Frame_Size_Width &&
+		g_Frame_Height == Inter_Frame_Size_Height &&
+		g_B_N == B_N &&
+		g_FOV == FOV) {
+#ifdef FOR_DEBUG
+		LOG_INF("Frame WIDTH/HEIGHT/B_N/FOV no change, no need to set qos\n");
+#endif
+		return;
+	}
+
+	//FOV = (B_N > 0) ? 100 : 200;
 
 	Inter_Frame_Size = Inter_Frame_Size_Width * Inter_Frame_Size_Height;
 #ifdef FOR_DEBUG
@@ -308,6 +324,7 @@ void pda_mmqos_bw_set(struct _pda_a_reg_t_ *PDA_FrameSetting)
 	g_Frame_Width = Inter_Frame_Size_Width;
 	g_Frame_Height = Inter_Frame_Size_Height;
 	g_B_N = B_N;
+	g_FOV = FOV;
 }
 
 void pda_mmqos_bw_reset(void)

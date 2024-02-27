@@ -2182,7 +2182,7 @@ static long PDA_Ioctl(struct file *a_pstFile,
 		}
 
 #ifdef PDA_MMQOS
-		pda_mmqos_bw_set(&g_pda_Pdadata.PDA_FrameSetting);
+		pda_mmqos_bw_set(&g_pda_Pdadata);
 #endif
 
 		if (Get_Input_Addr_From_DMABUF(&g_pda_Pdadata) < 0) {
