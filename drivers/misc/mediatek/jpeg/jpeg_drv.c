@@ -668,10 +668,16 @@ static int jpeg_hybrid_dec_ioctl(unsigned int cmd, unsigned long arg,
 					timeout_jiff);
 				if (ret == 0) {
 					JPEG_LOG(0, "JPEG Hybrid Dec Wait timeout!");
-					jpeg_drv_hybrid_dec_dump_register_setting(hwid);
+					mutex_lock(&jpeg_hybrid_dec_lock);
+					if (dec_hwlocked[hwid]) {
+						jpeg_drv_hybrid_dec_dump_register_setting(hwid);
 
-					/*trigger smi dump to get more info.*/
-					mtk_smi_dbg_hang_detect("JPEG DEC");
+						/*trigger smi dump to get more info.*/
+						mtk_smi_dbg_hang_detect("JPEG DEC");
+					} else {
+						JPEG_LOG(0, "wait dec_hwlocked hw: %d", hwid);
+					}
+					mutex_unlock(&jpeg_hybrid_dec_lock);
 				}
 				if (ret < 0) {
 					waitfailcnt++;
