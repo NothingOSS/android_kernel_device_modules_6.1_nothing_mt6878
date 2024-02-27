@@ -302,8 +302,8 @@ void _gate_ic_Power_off(void)
 {
 	pr_debug("leds1  %s\n", __func__);
 	if(i2c_double)
-		_i2c_Power_on(LED_I2C_0);
-	_i2c_Power_on(LED_I2C_6);
+		_i2c_Power_off(LED_I2C_0);
+	_i2c_Power_off(LED_I2C_6);
 }
 EXPORT_SYMBOL_GPL(_gate_ic_Power_off);
 
