@@ -173,23 +173,7 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 			}
 
 			cmdq_pkt_set_event(pkt, mml_ir_get_mml_ready_event(task->config->mml));
-
-			if (task->config->dpc && mutex->dpc_base &&
-			    (mml_dl_dpc & MML_DLDPC_VOTE)) {
-				cmdq_pkt_write(pkt, NULL, mutex->dpc_base + VLP_VOTE_CLR,
-					BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-				cmdq_pkt_write(pkt, NULL, mutex->dpc_base + VLP_VOTE_CLR,
-					BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-
-				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(task->config->mml));
-
-				cmdq_pkt_write(pkt, NULL, mutex->dpc_base + VLP_VOTE_SET,
-					BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-				cmdq_pkt_write(pkt, NULL, mutex->dpc_base + VLP_VOTE_SET,
-					BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-			} else {
-				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(task->config->mml));
-			}
+			cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(task->config->mml));
 		} else {
 			cmdq_pkt_set_event(pkt, mutex->event_pipe1_mml);
 			cmdq_pkt_wfe(pkt, mutex->event_pipe0_mml);
