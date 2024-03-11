@@ -2701,7 +2701,6 @@ static int mt6375_chg_get_pdata(struct device *dev)
 static int mt6375_chg_init_setting(struct mt6375_chg_data *ddata)
 {
 	int ret;
-	u32 val;
 	struct mt6375_chg_platform_data *pdata = dev_get_platdata(ddata->dev);
 
 	mt_dbg(ddata->dev, "%s: entry. Init setting now.\n", __func__);
@@ -2748,12 +2747,7 @@ static int mt6375_chg_init_setting(struct mt6375_chg_data *ddata)
 		dev_err(ddata->dev, "failed to disable WDT\n");
 		return ret;
 	}
-
-	/* if get failed, just ignore it */
-	ret = mt6375_chg_field_get(ddata, F_PP_PG_FLAG, &val);
-	if (ret >= 0 && val)
-		dev_warn(ddata->dev, "BATSYSUV occurred\n");
-	return mt6375_chg_field_set(ddata, F_PP_PG_FLAG, 1);
+	return 0;
 }
 
 static int mt6375_chg_get_iio_adc(struct mt6375_chg_data *ddata)
