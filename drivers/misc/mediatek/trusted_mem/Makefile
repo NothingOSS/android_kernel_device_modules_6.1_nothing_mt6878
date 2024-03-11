@@ -47,6 +47,12 @@ tmem_ffa-y += ssheap/ssheap_lib.o
 ifneq ($(filter y m,$(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)),)
 tmem_ffa-y += tmemperf/tmemperf.o
 endif # !CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ
+
+
+obj-m += ffa_v10.o
+ffa_v10-y += ffa_v10/bus.o
+ffa_v10-y += ffa_v10/driver.o
+ffa_v10-y += ffa_v10/smccc.o
 endif # CONFIG_ARM_FFA_TRANSPORT
 
 ifeq ($(TCORE_PROFILING_SUPPORT),y)
