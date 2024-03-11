@@ -4900,7 +4900,7 @@
 			mpu-base-clear = <1>;
 		};
 
-		slc-parity@10342000 {
+		slcparity: slc-parity@10342000 {
 			compatible = "mediatek,common-slc-parity";
 			reg = <0 0x10342000 0 0x1000>,
 				<0 0x10343000 0 0x1000>;
@@ -4910,6 +4910,7 @@
 			cs-num = <2>;
 			chn-num = <2>;
 			clear = <0x014>;
+			assert = <0>;
 		};
 
 		ktf-emislc-test {
