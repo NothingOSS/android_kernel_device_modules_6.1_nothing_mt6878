@@ -483,79 +483,6 @@ static void mtk_dmdp_aal_backup(struct mtk_ddp_comp *comp)
 	atomic_set(&aal_data->primary_data->initialed, 1);
 }
 
-static void ddp_aal_dre3_restore(struct mtk_ddp_comp *comp)
-{
-	struct mtk_dmdp_aal *dmdp_aal = comp_to_dmdp_aal(comp);
-	struct mtk_disp_mdp_primary *prim_data = dmdp_aal->primary_data;
-
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_BLOCK_INFO_01,
-		prim_data->backup.DRE_BLOCK_INFO_01, ~0);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_BLOCK_INFO_02,
-		prim_data->backup.DRE_BLOCK_INFO_02, ~0);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_BLOCK_INFO_04,
-		prim_data->backup.DRE_BLOCK_INFO_04 & (0x3FF << 13), 0x3FF << 13);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_CHROMA_HIST_00,
-		prim_data->backup.DRE_CHROMA_HIST_00, ~0);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_CHROMA_HIST_01,
-		prim_data->backup.DRE_CHROMA_HIST_01 & 0x1FFFFFFF, 0x1FFFFFFF);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_ALPHA_BLEND_00,
-		prim_data->backup.DRE_ALPHA_BLEND_00, ~0);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_BLOCK_INFO_05,
-		prim_data->backup.DRE_BLOCK_INFO_05, ~0);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_BLOCK_INFO_06,
-		prim_data->backup.DRE_BLOCK_INFO_06, ~0);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_BLOCK_INFO_07,
-		prim_data->backup.DRE_BLOCK_INFO_07, ~0);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_SRAM_CFG,
-		prim_data->backup.SRAM_CFG, 0x1);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DUAL_PIPE_INFO_00,
-		prim_data->backup.DUAL_PIPE_INFO_00, ~0);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DUAL_PIPE_INFO_01,
-		prim_data->backup.DUAL_PIPE_INFO_01, ~0);
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_TILE_02,
-		prim_data->backup.TILE_02, ~0);
-
-	if (comp->mtk_crtc->is_dual_pipe) {
-		if (!dmdp_aal->is_right_pipe) {
-			mtk_aal_write_mask(comp->regs + DMDP_AAL_TILE_00,
-				prim_data->backup.DRE0_TILE_00, ~0);
-			mtk_aal_write_mask(comp->regs + DMDP_AAL_TILE_01,
-				prim_data->backup.DRE0_TILE_01, ~0);
-			mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_ROI_00,
-				prim_data->backup.DRE0_ROI_00, ~0);
-			mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_BLOCK_INFO_00,
-				prim_data->backup.DRE0_BLOCK_INFO_00 &
-				(dmdp_aal->data->block_info_00_mask),
-				dmdp_aal->data->block_info_00_mask);
-		} else {
-			mtk_aal_write_mask(comp->regs + DMDP_AAL_TILE_00,
-				prim_data->backup.DRE1_TILE_00, ~0);
-			mtk_aal_write_mask(comp->regs + DMDP_AAL_TILE_01,
-				prim_data->backup.DRE1_TILE_01, ~0);
-			mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_ROI_00,
-				prim_data->backup.DRE1_ROI_00, ~0);
-			mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_BLOCK_INFO_00,
-				prim_data->backup.DRE1_BLOCK_INFO_00 &
-				(dmdp_aal->data->block_info_00_mask),
-				dmdp_aal->data->block_info_00_mask);
-		}
-	} else {
-		mtk_aal_write_mask(comp->regs + DMDP_AAL_TILE_00,
-			prim_data->backup.TILE_00, ~0);
-		mtk_aal_write_mask(comp->regs + DMDP_AAL_TILE_01,
-			prim_data->backup.TILE_01, ~0);
-		mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_ROI_00,
-				prim_data->backup.DRE_ROI_00, ~0);
-		mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_BLOCK_INFO_00,
-			prim_data->backup.DRE_BLOCK_INFO_00 &
-			(dmdp_aal->data->block_info_00_mask),
-			dmdp_aal->data->block_info_00_mask);
-	}
-
-	mtk_aal_write_mask(comp->regs + DMDP_AAL_DRE_ROI_01,
-		prim_data->backup.DRE_ROI_01, ~0);
-}
-
 static void ddp_aal_dre_restore(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dmdp_aal *dmdp_aal = comp_to_dmdp_aal(comp);
@@ -575,7 +502,6 @@ static void mtk_dmdp_aal_restore(struct mtk_ddp_comp *comp)
 
 	DDPINFO("%s\n", __func__);
 	ddp_aal_dre_restore(comp);
-	ddp_aal_dre3_restore(comp);
 }
 
 static void mtk_dmdp_aal_prepare(struct mtk_ddp_comp *comp)

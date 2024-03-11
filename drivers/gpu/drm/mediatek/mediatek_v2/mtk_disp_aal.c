@@ -105,6 +105,11 @@ static void mtk_aal_write_mask(void __iomem *address, u32 data, u32 mask)
 	writel(value, address);
 }
 
+static inline void mtk_aal_write(void __iomem *address, u32 data)
+{
+	writel(data, address);
+}
+
 #define AALERR(fmt, arg...) pr_notice("[ERR]%s:" fmt, __func__, ##arg)
 
 static bool debug_flow_log;
@@ -695,6 +700,108 @@ static void mtk_disp_aal_config_overhead_v(struct mtk_ddp_comp *comp,
 	aal_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
 }
 
+static void disp_aal_config_mdp_aal(struct mtk_ddp_comp *comp, const struct DISP_AAL_INITREG *init_regs)
+{
+	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	void __iomem *dre3_va = mtk_aal_dre3_va(comp);
+	int retry = 1;
+	bool need_retry = false;
+	uint32_t val = 0, temp;
+
+	AALFLOW_LOG("start, bitShift: %d  compId%d\n", aal_data->data->bitShift, comp->id);
+
+	if (init_regs->dre_blk_x_num != 8 || init_regs->dre_blk_y_num !=16) {
+		mtk_aal_write_mask(dre3_va + DISP_AAL_DRE_MAPPING_00, 1 << 4, 1 << 4);
+		AALERR("init setting invalid! set curve bypass\n");
+		return;
+	}
+	do {
+		mtk_aal_write_mask(dre3_va + DISP_AAL_DRE_MAPPING_00, 0, 1 << 4);
+		mtk_aal_write(dre3_va + DISP_AAL_DRE_BLOCK_INFO_01,
+			(init_regs->dre_blk_y_num << 5) | init_regs->dre_blk_x_num);
+		mtk_aal_write(dre3_va + DISP_AAL_DRE_BLOCK_INFO_02,
+			(init_regs->dre_blk_height << (aal_data->data->bitShift)) |
+			init_regs->dre_blk_width);
+		mtk_aal_write(dre3_va + DISP_AAL_DRE_BLOCK_INFO_04,
+			(init_regs->dre_flat_length_slope << 13) |
+			init_regs->dre_flat_length_th);
+		mtk_aal_write(dre3_va + DISP_AAL_DRE_CHROMA_HIST_00,
+			(init_regs->dre_s_upper << 24) |
+			(init_regs->dre_s_lower << 16) |
+			(init_regs->dre_y_upper << 8) | init_regs->dre_y_lower);
+		mtk_aal_write(dre3_va + DISP_AAL_DRE_CHROMA_HIST_01,
+			(init_regs->dre_h_slope << 24) |
+			(init_regs->dre_s_slope << 20) |
+			(init_regs->dre_y_slope << 16) |
+			(init_regs->dre_h_upper << 8) | init_regs->dre_h_lower);
+		mtk_aal_write(dre3_va + DISP_AAL_DRE_ALPHA_BLEND_00,
+			(init_regs->dre_y_alpha_shift_bit << 25) |
+			(init_regs->dre_y_alpha_base << 16) |
+			(init_regs->dre_x_alpha_shift_bit << 9) |
+			init_regs->dre_x_alpha_base);
+		mtk_aal_write(dre3_va + DISP_AAL_DRE_BLOCK_INFO_05,
+			init_regs->dre_blk_area);
+		mtk_aal_write(dre3_va + DISP_AAL_DRE_BLOCK_INFO_06,
+			init_regs->dre_blk_area_min);
+		mtk_aal_write(dre3_va + DISP_AAL_DRE_BLOCK_INFO_07,
+			(init_regs->height - 1) << (aal_data->data->bitShift));
+		mtk_aal_write(dre3_va + MDP_AAL_TILE_02,
+			(init_regs->blk_cnt_y_end << (aal_data->data->bitShift)) |
+			init_regs->blk_cnt_y_start);
+		if (comp->mtk_crtc->is_dual_pipe) {
+			if (!aal_data->is_right_pipe) {
+				val = (0x0 << 23) | (0x1 << 22) |
+					(0x1 << 21) | (0x1 << 20) |
+					(init_regs->dre0_blk_num_x_end << 15) |
+					(init_regs->dre0_blk_num_x_start << 10) |
+					(init_regs->blk_num_y_end << 5) |
+					init_regs->blk_num_y_start;
+				mtk_aal_write(dre3_va + MDP_AAL_TILE_00, val);
+				mtk_aal_write(dre3_va + MDP_AAL_TILE_01,
+					(init_regs->dre0_blk_cnt_x_end << (aal_data->data->bitShift)) |
+					init_regs->dre0_blk_cnt_x_start);
+				mtk_aal_write(dre3_va + DISP_AAL_DRE_BLOCK_INFO_00,
+					(init_regs->dre0_act_win_x_end << (aal_data->data->bitShift)) |
+					init_regs->dre0_act_win_x_start);
+			} else {
+				val = (0x1 << 23) | (0x0 << 22) |
+					(0x1 << 21) | (0x1 << 20) |
+					(init_regs->dre1_blk_num_x_end << 15) |
+					(init_regs->dre1_blk_num_x_start << 10) |
+					(init_regs->blk_num_y_end << 5) |
+					init_regs->blk_num_y_start;
+				mtk_aal_write(dre3_va + MDP_AAL_TILE_00, val);
+				mtk_aal_write(dre3_va + MDP_AAL_TILE_01,
+					(init_regs->dre1_blk_cnt_x_end << (aal_data->data->bitShift)) |
+					init_regs->dre1_blk_cnt_x_start << 0);
+				mtk_aal_write(dre3_va + DISP_AAL_DRE_BLOCK_INFO_00,
+					(init_regs->dre1_act_win_x_end << (aal_data->data->bitShift)) |
+					init_regs->dre1_act_win_x_start);
+			}
+		} else {
+			val = (0x1 << 21) | (0x1 << 20) |
+				(init_regs->blk_num_x_end << 15) |
+				(init_regs->blk_num_x_start << 10) |
+				(init_regs->blk_num_y_end << 5) |
+				init_regs->blk_num_y_start;
+			mtk_aal_write(dre3_va + MDP_AAL_TILE_00, val);
+			mtk_aal_write(dre3_va + MDP_AAL_TILE_01,
+				(init_regs->blk_cnt_x_end << (aal_data->data->bitShift)) |
+				init_regs->blk_cnt_x_start << 0);
+			mtk_aal_write(dre3_va + DISP_AAL_DRE_BLOCK_INFO_00,
+				(init_regs->act_win_x_end << (aal_data->data->bitShift)) |
+				init_regs->act_win_x_start);
+		}
+
+		temp = readl(dre3_va + MDP_AAL_TILE_00);
+		if (val != temp) {
+			need_retry = true;
+			AALERR("dre config failed %x, need retry\n", val);
+		}
+		retry--;
+	} while (need_retry && retry > 0);
+}
+
 static bool debug_bypass_alg_mode;
 static void mtk_aal_config(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
@@ -823,6 +930,8 @@ static void mtk_aal_config(struct mtk_ddp_comp *comp,
 	}
 
 	mtk_aal_init(comp, cfg, handle);
+	if (atomic_read(&aal_data->primary_data->change_to_dre30) == 0x3)
+		disp_aal_config_mdp_aal(comp, &aal_data->primary_data->init_regs);
 
 	AALWC_LOG("AAL_CFG=0x%x  compid:%d\n",
 		readl(comp->regs + DISP_AAL_CFG), comp->id);
@@ -1182,7 +1291,14 @@ static void disp_aal_dre3_config(struct mtk_ddp_comp *comp,
 	int dre_alg_mode = 1;
 
 	AALFLOW_LOG("start, bitShift: %d  compId%d\n", aal_data->data->bitShift, comp->id);
-
+	if (init_regs->dre_blk_x_num != 8 || init_regs->dre_blk_y_num !=16) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			dre3_pa + DISP_AAL_DRE_MAPPING_00, 1 << 4, 1 << 4);
+		AALERR("init setting invalid! set curve bypass\n");
+		return;
+	}
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		dre3_pa + DISP_AAL_DRE_MAPPING_00, 0, 1 << 4);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		dre3_pa + DISP_AAL_DRE_BLOCK_INFO_01,
 		(init_regs->dre_blk_y_num << 5) | init_regs->dre_blk_x_num,
