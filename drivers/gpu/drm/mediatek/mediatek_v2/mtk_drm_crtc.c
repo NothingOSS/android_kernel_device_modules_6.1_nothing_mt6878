@@ -10279,6 +10279,7 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 	if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] ||
 		(mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] &&
 		atomic_read(&mtk_crtc->already_config))) {
+		CRTC_MMP_MARK(index, check_trigger, 0, __LINE__);
 		mtk_crtc_set_dirty(mtk_crtc);
 	} else
 		DDPINFO("%s skip mtk_crtc_set_dirty\n", __func__);
@@ -14923,6 +14924,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			if (!mtk_crtc->path_data->is_discrete_path)
 				cmdq_pkt_set_event(cmdq_handle,
 					   mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+			CRTC_MMP_MARK(crtc_index, atomic_flush, 2, __LINE__);
 		}
 	} else {
 		/* DL without trigger loop */

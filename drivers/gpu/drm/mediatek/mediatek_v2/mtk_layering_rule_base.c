@@ -2451,7 +2451,8 @@ static int _calc_hrt_num(struct drm_device *dev,
 				    hrt_type)
 					continue;
 			}
-			overlap_w = get_layer_weight(dev, disp_idx, layer_info, 0, false, false);
+			if (dev)
+				overlap_w = get_layer_weight(dev, disp_idx, layer_info, 0, false, false);
 			if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on) {
 				overlap_w_of_bwm = get_layer_weight(dev, disp_idx, layer_info,
 					disp_info->frame_idx[disp], false, false);
@@ -2550,8 +2551,9 @@ static int _calc_hrt_num(struct drm_device *dev,
 	}
 
 	if (has_dal_layer && (disp_idx == HRT_PRIMARY)) {
-		DDPINFO("%s 1, overlap_num=%d,%d, (%d)\n", __func__, sum_overlap_w,
-			sum_overlap_w_of_bwm, get_layer_weight(dev, disp_idx, NULL, 0, false, has_dal_layer));
+		if (dev)
+			DDPINFO("%s 1, overlap_num=%d,%d, (%d)\n", __func__, sum_overlap_w, sum_overlap_w_of_bwm,
+				get_layer_weight(dev, disp_idx, NULL, 0, false, has_dal_layer));
 		overlap_w = get_layer_weight(dev, disp_idx, NULL, 0, false, has_dal_layer);
 		sum_overlap_w += overlap_w;
 		if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on) {
@@ -3514,7 +3516,7 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 		int gles_head_old, gles_head_new, gles_tail_old, gles_tail_new, weight;
 		struct drm_mtk_layer_config *layer_info_new = NULL;
 
-		if (priv->data->mmsys_id == MMSYS_MT6878 &&
+		if (priv && priv->data->mmsys_id == MMSYS_MT6878 &&
 			(disp == 0) && l_rule_info->dal_enable &&
 			!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_LAYERING_RULE_BY_LARB))
