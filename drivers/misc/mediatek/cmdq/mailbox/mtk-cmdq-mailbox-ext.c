@@ -279,6 +279,7 @@ struct cmdq {
 	u32			axid;
 	u32			tbu;
 	bool		smmu_v3_enabled;
+	bool		check_tf_enabled;
 	bool		err_irq;
 	void __iomem	*dram_pwr_base;
 	bool		error_irq_sw_req;
@@ -1397,7 +1398,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	if (cmdq->error_irq_sw_req && (irq_flag & CMDQ_THR_IRQ_ERROR)) {
 		//dump smmu rg
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
-		if (cmdq->smmu_v3_enabled) {
+		if (cmdq->smmu_v3_enabled && cmdq->check_tf_enabled) {
 			axid[0] = cmdq->axid;
 			ret = cmdq_util_controller->check_tf(cmdq->mbox.dev,
 				cmdq->sid, cmdq->tbu, axid);
@@ -1470,7 +1471,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 		cmdq_thread_dump_pkt_by_pc(thread, curr_pa, true);
 	}
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
-	if (cmdq->smmu_v3_enabled) {
+	if (cmdq->smmu_v3_enabled && cmdq->check_tf_enabled) {
 		axid[0] = cmdq->axid;
 		ret = cmdq_util_controller->check_tf(cmdq->mbox.dev,
 			cmdq->sid, cmdq->tbu, axid);
@@ -3045,7 +3046,10 @@ static int cmdq_probe(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 	cmdq->smmu_v3_enabled = smmu_v3_enabled();
-	cmdq_msg("%s smmu_v3_enable:%d", __func__, cmdq->smmu_v3_enabled);
+	if (of_property_read_bool(dev->of_node, "check-tf-enabled"))
+		cmdq->check_tf_enabled = true;
+	cmdq_msg("%s smmu_v3_enable:%d check_tf_enabled:%d",
+		__func__, cmdq->smmu_v3_enabled, cmdq->check_tf_enabled);
 #endif
 	if (!of_parse_phandle_with_args(
 		cmdq->share_dev->of_node, "iommus", "#iommu-cells", 0, &args))
