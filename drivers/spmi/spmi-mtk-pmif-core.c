@@ -1391,8 +1391,19 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 			pr_notice("%s 6363 CID/VIO18_SWITCH 0x%x/0x%x\n", __func__, rdata, rdata1);
 		}
 		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x3, SPMI_REC_CTRL);
-	} else
+	} else {
+		pr_notice("%s SPMI_REC0 m/p:0x%x/0x%x, SPMI_REC1 m/p:0x%x/0x%x\n",
+			__func__, spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
+		pr_notice("%s SPMI_REC_CMD_DEC m/p:0x%x/0x%x\n", __func__,
+			spmi_rcs_nack, spmi_p_rcs_nack);
+		pr_notice("%s SPMI_DEC_DBG m/p:0x%x/0x%x\n", __func__,
+			spmi_debug_nack, spmi_p_debug_nack);
+		pr_notice("%s SPMI_MST_DBG m/p:0x%x/0x%x\n", __func__,
+			spmi_mst_nack, spmi_p_mst_nack);
+		mtk_spmi_writel(arb->spmimst_base[0], arb, 0x3, SPMI_REC_CTRL);
+		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x3, SPMI_REC_CTRL);
 		pr_notice("%s IRQ not cleared\n", __func__);
+	}
 
 	mutex_unlock(&arb->pmif_m_mutex);
 	__pm_relax(arb->pmif_m_Thread_lock);
