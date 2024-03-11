@@ -3213,7 +3213,8 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info,
 		for (i = disp_info->layer_num[di] - 1; i >= g_head; i--) {
 			c = &disp_info->input_config[di][i];
 			if (mtk_has_layer_cap(c, MTK_LAYERING_OVL_ONLY) &&
-			    mtk_has_layer_cap(c, MTK_CLIENT_CLEAR_LAYER)) {
+			    mtk_has_layer_cap(c, MTK_CLIENT_CLEAR_LAYER) &&
+			    (!c->wcg_force_gpu)) {
 				top = i;
 				break;
 			}
