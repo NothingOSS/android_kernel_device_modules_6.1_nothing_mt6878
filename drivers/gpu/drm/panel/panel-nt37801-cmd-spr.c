@@ -381,22 +381,45 @@ static void lcm_panel_init(struct lcm *ctx)
 	pr_info("%s current_fps:%d\n", __func__, current_fps);
 	switch (current_fps) {
 	case 120:
-		mode_switch_to_120(&ctx->panel);
+		lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
 		break;
 	case 90:
-		mode_switch_to_90(&ctx->panel);
+		lcm_dcs_write_seq_static(ctx, 0x2F, 0x01);
+		lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x6F, 0x07);
+		lcm_dcs_write_seq_static(ctx, 0xBA, 0x00, 0x4f);
 		break;
 	case 60:
-		mode_switch_to_60(&ctx->panel);
+		lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
+		lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
 		break;
 	case 30:
-		mode_switch_to_30(&ctx->panel);
+		lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
+		lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x03, 0x03, 0x00, 0x01, 0x03, 0x03, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
 		break;
 	case 24:
-		mode_switch_to_24(&ctx->panel);
+		lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
+		lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x04, 0x04, 0x00, 0x01, 0x04, 0x04, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
 		break;
 	case 10:
-		mode_switch_to_10(&ctx->panel);
+		lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
+		lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x0B, 0x0B, 0x00, 0x01, 0x0B, 0x0B, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
 		break;
 	default:
 		pr_info("%s current_fps mismatch:%d\n", __func__, current_fps);
