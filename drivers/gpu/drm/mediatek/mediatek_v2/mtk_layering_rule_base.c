@@ -2346,6 +2346,13 @@ static int _calc_hrt_num(struct drm_device *dev,
 	unsigned int disp_list;
 	unsigned int disp_idx = disp;
 
+	if (dev)
+		priv = dev->dev_private;
+	else {
+		DDPPR_ERR("%s, dev poninter is NULL, return\n", __func__);
+		return -EINVAL;
+	}
+
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		disp_idx = disp_info->disp_idx;
 
@@ -2425,9 +2432,6 @@ static int _calc_hrt_num(struct drm_device *dev,
 			layerset_head, layerset_tail);
 	}
 
-	if (dev)
-		priv = dev->dev_private;
-
 	for (i = 0; i < disp_info->layer_num[disp]; i++) {
 		int ovl_idx;
 		int skipped = 0;
@@ -2451,8 +2455,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 				    hrt_type)
 					continue;
 			}
-			if (dev)
-				overlap_w = get_layer_weight(dev, disp_idx, layer_info, 0, false, false);
+			overlap_w = get_layer_weight(dev, disp_idx, layer_info, 0, false, false);
 			if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on) {
 				overlap_w_of_bwm = get_layer_weight(dev, disp_idx, layer_info,
 					disp_info->frame_idx[disp], false, false);
@@ -2551,8 +2554,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 	}
 
 	if (has_dal_layer && (disp_idx == HRT_PRIMARY)) {
-		if (dev)
-			DDPINFO("%s 1, overlap_num=%d,%d, (%d)\n", __func__, sum_overlap_w, sum_overlap_w_of_bwm,
+		DDPINFO("%s 1, overlap_num=%d,%d, (%d)\n", __func__, sum_overlap_w, sum_overlap_w_of_bwm,
 				get_layer_weight(dev, disp_idx, NULL, 0, false, has_dal_layer));
 		overlap_w = get_layer_weight(dev, disp_idx, NULL, 0, false, has_dal_layer);
 		sum_overlap_w += overlap_w;
