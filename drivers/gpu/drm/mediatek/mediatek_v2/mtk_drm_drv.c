@@ -1074,8 +1074,10 @@ static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 		DDPPR_ERR("failed to flush user_cmd\n");
 
 #ifndef DRM_CMDQ_DISABLE
-	if (bypass)
+	if (bypass) {
+		cmdq_mbox_stop(client); /* Before power off need stop first */
 		cmdq_mbox_disable(client->chan); /* GCE clk refcnt - 1 */
+	}
 #endif
 }
 
