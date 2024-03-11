@@ -213,7 +213,6 @@ static irqreturn_t slc_parity_violation_irq(int irq, void *dev_id)
 	enum error_type partial_error_type = no_error;
 	enum error_type total_error_type = no_error;
 
-
 	for (emi_id = 0; emi_id < slc->slc_parity_cnt; emi_id++) {
 		slc_parity_base = slc->slc_parity_base[emi_id];
 		slc->parity_err.value = readl(slc_parity_base + slc->parity_err.offset);
@@ -225,16 +224,18 @@ static irqreturn_t slc_parity_violation_irq(int irq, void *dev_id)
 				"\n%u:%x,%x\n", emi_id, slc->parity_err.value, slc->parity_err_ext.value);
 			msg_len += (msg_len+n < MTK_SLC_PARITY_MAX_LEN) ? (ssize_t)n : MTK_SLC_PARITY_MAX_LEN-msg_len;
 
-			pr_info("emi_id %u\n", emi_id);
-			pr_info("%x, %x\n",
-				slc->parity_err.offset, slc->parity_err.value);
-			pr_info("%x, %x\n",
-				slc->parity_err_ext.offset, slc->parity_err_ext.value);
-
 			parity_err_tol = slc->parity_err.value + ((unsigned long long)slc->parity_err_ext.value << 32);
-
 			get_ecc_sram(slc, parity_err_tol);
+
 			partial_error_type = get_ecc_info(slc, slc_parity_base, emi_id, &msg_len);
+			if (partial_error_type == uncorrectable_error) {
+				pr_info("emi_id %u\n", emi_id);
+				pr_info("%x, %x\n",
+					slc->parity_err.offset, slc->parity_err.value);
+				pr_info("%x, %x\n",
+					slc->parity_err_ext.offset, slc->parity_err_ext.value);
+			}
+
 			if (total_error_type < partial_error_type)
 				total_error_type = partial_error_type;
 		}
@@ -243,9 +244,10 @@ static irqreturn_t slc_parity_violation_irq(int irq, void *dev_id)
 
 	if (msg_len) {
 		ECC_LOG("%s\n", slc->vio_msg);
-		pr_info("error type: %d bit error\n", total_error_type);
-		if (total_error_type == uncorrectable_error)
+		if (total_error_type == uncorrectable_error) {
+			pr_info("error type: %d bit error\n", total_error_type);
 			schedule_work(&slc_parity_work);
+		}
 	}
 
 	if (slc->assert)
