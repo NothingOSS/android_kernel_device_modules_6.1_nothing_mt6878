@@ -2885,6 +2885,11 @@ static void mtk_crtc_cwb_set_sec(struct drm_crtc *crtc)
 			cwb_info->is_sec = true;
 		}
 	}
+	if (mtk_crtc->sec_on) {
+		DDPINFO("%s:%d skip cwb addon connect due to sec on\n",
+				__func__, __LINE__);
+		cwb_info->is_sec = true;
+	}
 }
 
 static bool mtk_crtc_check_fb_secure(struct drm_crtc *crtc)
