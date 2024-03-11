@@ -8326,6 +8326,7 @@ static void trig_done_cb(struct cmdq_cb_data data)
 
 static void event_done_cb(struct cmdq_cb_data data)
 {
+	CRTC_MMP_MARK((unsigned long)data.data, event_loop_done, 0, 0);
 	drm_trace_tag_mark("event_loop_done");
 }
 #endif
@@ -17110,13 +17111,16 @@ static int mtk_drm_mode_switch_thread(void *data)
 
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 1, 1);
 
-		if (mtk_crtc_with_event_loop(crtc) &&
+		if (mtk_crtc_with_event_loop(crtc) && mtk_crtc_with_trigger_loop(crtc) &&
 				mtk_crtc_is_frame_trigger_mode(crtc)) {
+			mtk_crtc_stop_trig_loop(crtc);
 			mtk_crtc_stop_event_loop(crtc);
 
 			mtk_crtc_skip_merge_trigger(mtk_crtc);
 
 			mtk_crtc_start_event_loop(crtc);
+			mtk_crtc_start_trig_loop(crtc);
+			CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 1, 4);
 		}
 
 		/* TODO: set proper DT with corresponding CRTC */

@@ -164,6 +164,8 @@ void init_crtc_mmp_event(void)
 		/* init CRTC mmp events */
 		g_CRTC_MMP_Events[i].trig_loop_done = mmprofile_register_event(
 			crtc_mmp_root, "trig_loop_done");
+		g_CRTC_MMP_Events[i].event_loop_done = mmprofile_register_event(
+			crtc_mmp_root, "event_loop_done");
 		g_CRTC_MMP_Events[i].enable =
 			mmprofile_register_event(crtc_mmp_root, "enable");
 		g_CRTC_MMP_Events[i].disable =

@@ -75,6 +75,7 @@ struct DRM_MMP_Events {
 /* if changed, need to update init_crtc_mmp_event() */
 struct CRTC_MMP_Events {
 	mmp_event trig_loop_done;
+	mmp_event event_loop_done;
 	mmp_event enable;
 	mmp_event disable;
 	mmp_event release_fence;
