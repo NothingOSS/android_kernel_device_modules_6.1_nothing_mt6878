@@ -343,6 +343,7 @@ void mt6681_InitSetting(struct mt6681_pmic_info *mpi)
 	regmap_write(mpi->regmap, MT6681_LDO_VAUD18_CON2, 0x1c);
 	regmap_write(mpi->regmap, MT6681_PLT_CON0, 0x3a);
 	regmap_write(mpi->regmap, MT6681_PLT_CON1, 0x0c);
+	regmap_write(mpi->regmap, MT6681_LDO_VAUD18_MULTI_SW_0, 0x1);
 }
 
 static const unsigned short mt6681_slave_addr = MT6681_PMIC_SLAVEID;
