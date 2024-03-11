@@ -52,7 +52,7 @@ struct slc_parity {
 
 	/* debugging log for EMI MPU violation */
 	char *vio_msg;
-
+	int assert;
 };
 
 /* global pointer for exported functions */
@@ -248,6 +248,9 @@ static irqreturn_t slc_parity_violation_irq(int irq, void *dev_id)
 			schedule_work(&slc_parity_work);
 	}
 
+	if (slc->assert)
+		BUG_ON(1);
+
 	return IRQ_HANDLED;
 }
 
@@ -367,6 +370,14 @@ static int slc_parity_probe(struct platform_device *pdev)
 	}
 //clear end
 
+//assert
+	ret = of_property_read_u32(slc_parity_node, "assert",
+		&(slc->assert));
+	if (ret) {
+		pr_info("No assert\n");
+		return -ENXIO;
+	}
+//assert end
 
 //irq
 	slc->irq = irq_of_parse_and_map(slc_parity_node, 0);
