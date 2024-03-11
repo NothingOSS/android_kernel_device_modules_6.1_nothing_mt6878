@@ -790,14 +790,19 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 				| (color_reg->S_GAIN_BY_Y_EN << 15)
 				| (wide_gamut_en << 8)
 				| (0 << 7),
-				0x003081FF | drecolor_unmask);
+				0x00308100 | drecolor_unmask);
 		} else {
 			/* disable wide_gamut */
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_COLOR_CFG_MAIN,
-				(0 << 8) | (0 << 7), 0x00001FF);
+				(0 << 8), 0x0000100);
 		}
 
+		if (!primary_data->color_reg_valid) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_COLOR_CFG_MAIN,
+				(0 << 7), 0xFF); /* resume all */
+		}
 		/* color start */
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_START(color), 0x1, 0x3);
