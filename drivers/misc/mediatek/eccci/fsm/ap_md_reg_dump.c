@@ -869,6 +869,16 @@ void md_dump_reg(struct ccci_modem *md)
 			break;
 		case DUMP_DELAY_us:
 			/* delay a3 */
+			if (res.a3 > 0 && res.a3 < 100)
+				udelay(res.a3);
+			else
+				CCCI_MEM_LOG_TAG(0, TAG, "invalid delay data: %ld us\n", res.a3);
+			if (!res.a1)
+				break;
+			ret = md_dump_mem_once(buff_src, res.a1);
+			if (ret < 0)
+				goto DUMP_END;
+			total_len += ret;
 			break;
 		default:
 			break;
