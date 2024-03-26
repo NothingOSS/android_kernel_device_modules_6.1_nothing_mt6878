@@ -1534,10 +1534,13 @@
 		interrupt-names = "rcs_irq","rcs_irq_p","pmif_irq","spmi_nack_irq","pmif_p_irq","spmi_p_nack_irq";
 		interrupt-controller;
 		#interrupt-cells = <1>;
-		irq-event-en = <0xc0000000 0x0 0x0 0x1f800000 0x0>;
+		irq-event-en = <0xc0000000 0x200 0x0 0x1f800000 0x0>;
+		irq-event-en-p = <0xc0000000 0x130c 0x0 0x0 0x0>;
 		spmi-dev-mask = <0x85e0>;
 		#address-cells = <2>;
 		#size-cells = <0>;
+		hwinf-err-irq-idx = <0x20 0x2e>;
+		swinf-err-irq-idx = <0x6b 0x70>;
 	};
 
 	spmi_pmif_mpu: spmi-pmif-mpu@1cc04900 {
