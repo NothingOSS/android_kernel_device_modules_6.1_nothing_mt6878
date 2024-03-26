@@ -178,6 +178,30 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 	irq_log_store();
 }
 
+#define for_each_sched_entity(se) \
+	for (; se; se = se->parent)
+
+static void sched_after_queue_task_hook(void *data, struct rq *rq, struct task_struct *p, int flags)
+{
+	int cpu = rq->cpu;
+	struct cfs_rq *rq_cfs = &rq->cfs;
+	int nr_running = rq_cfs->nr_running;
+	struct sched_entity *se = &p->se;
+	u64 parent_vruntime;
+	u64 cur_vruntime = se->vruntime;
+
+	if (p->prio < MAX_RT_PRIO)
+		return;
+
+	if (trace_sched_after_queue_task_enabled()) {
+		for_each_sched_entity(se) {
+			if (rq_cfs == se->cfs_rq)
+				break;
+		}
+		parent_vruntime = se->vruntime;
+		trace_sched_after_queue_task(cpu, p->pid, nr_running,cur_vruntime, parent_vruntime);
+	}
+}
 
 #if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
 
@@ -377,7 +401,9 @@ static void mtk_sched_trace_init(void)
 	ret = register_trace_android_rvh_dequeue_task(sched_queue_task_hook, &dequeue);
 	if (ret)
 		pr_info("register android_rvh_dequeue_task failed!\n");
-
+	ret = register_trace_android_rvh_after_enqueue_task(sched_after_queue_task_hook, NULL);
+	if (ret)
+		pr_info("register android_rvh_after_enqueue_task failed!\n");
 	ret = register_trace_pelt_se_tp(sched_task_util_hook, NULL);
 	if (ret)
 		pr_info("register sched_task_util_hook failed!\n");

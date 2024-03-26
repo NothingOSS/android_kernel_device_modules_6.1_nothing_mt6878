@@ -338,6 +338,33 @@ TRACE_EVENT(sched_queue_task,
 		__entry->tsk_mask)
 );
 
+TRACE_EVENT(sched_after_queue_task,
+	TP_PROTO(int cpu, int pid,int nr_running,
+		u64 cur_vruntime, u64 parent_vruntime),
+	TP_ARGS(cpu, pid, nr_running, cur_vruntime, parent_vruntime),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, pid)
+		__field(int, nr_running)
+		__field(u64, cur_vruntime)
+		__field(u64, parent_vruntime)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pid = pid;
+		__entry->nr_running = nr_running;
+		__entry->cur_vruntime = cur_vruntime;
+		__entry->parent_vruntime = parent_vruntime;
+	),
+	TP_printk(
+		"cpu=%d pid=%d nr_running=%d cur_vruntime=%llu parent_vruntime=%llu",
+		__entry->cpu,
+		__entry->pid,
+		__entry->nr_running,
+		__entry->cur_vruntime,
+		__entry->parent_vruntime)
+);
+
 TRACE_EVENT(sched_task_util,
 	TP_PROTO(int pid,
 		unsigned long util,
