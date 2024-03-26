@@ -11566,6 +11566,7 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 	.bubble_rate = 115,
 	.n_verion = VER_N4,
 	.require_phy_reset = true,
+	.support_pre_urgent = true,
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {
