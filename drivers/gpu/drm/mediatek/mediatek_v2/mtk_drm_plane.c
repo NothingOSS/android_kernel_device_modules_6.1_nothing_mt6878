@@ -462,7 +462,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	if ((!fb) || (mtk_crtc->ddp_mode == DDP_NO_USE))
 		return;
 
-	if (priv && crtc_index < MAX_CRTC && priv->usage[crtc_index] == DISP_OPENING) {
+	if (mtk_crtc->cur_usage == DISP_OPENING) {
 		DDPINFO("%s: skip in opening\n", __func__);
 		return;
 	}
@@ -712,10 +712,8 @@ static void mtk_plane_atomic_disable(struct drm_plane *plane,
 	struct mtk_plane_state *mtk_plane_state = to_mtk_plane_state(plane->state);
 	struct drm_plane_state *old_state = drm_atomic_get_old_plane_state(state,
 									   plane);
-	struct mtk_drm_private *priv = plane->dev->dev_private;
 	struct drm_crtc *crtc = (old_state && old_state->crtc) ?
 		old_state->crtc : NULL;
-	unsigned int crtc_index;
 
 	mtk_plane_state->pending.enable = false;
 	wmb(); /* Make sure the above parameter is set before update */
@@ -723,9 +721,9 @@ static void mtk_plane_atomic_disable(struct drm_plane *plane,
 
 #ifdef MTK_DRM_ADVANCE
 	if (crtc) {
-		crtc_index = drm_crtc_index(crtc);
+		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
-		if (priv && crtc_index < MAX_CRTC && priv->usage[crtc_index] == DISP_OPENING) {
+		if (mtk_crtc->cur_usage == DISP_OPENING) {
 			DDPINFO("%s: skip in opening\n", __func__);
 			return;
 		}

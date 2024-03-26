@@ -339,6 +339,7 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 	struct cmdq_pkt *cmdq_handle = NULL;
 	int layer_id = 0;
 	int ret = 0;
+	unsigned int crtc_idx, async_ctrl_flag = 0;
 
 	if ((crtc == NULL) || (crtc->dev == NULL)) {
 		DDPPR_ERR("%s: crtc is null\n", __func__);
@@ -363,13 +364,21 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 		return 0;
 	}
 
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL))
+		async_ctrl_flag = 1;
+
 	layer_id = mtk_ovl_layer_num(ovl_comp) - 1;
 	if (layer_id < 0) {
 		DDPPR_ERR("%s invalid layer id:%d\n", __func__, layer_id);
 		return 0;
 	}
+	crtc_idx = drm_crtc_index(crtc);
 
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, __LINE__);
+	/* light weight wound wait make sure crtc_lock & commit_lock not dead lock */
+	if (async_ctrl_flag)
+		check_and_try_commit_lock(priv, crtc_idx);
+
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	if (!mtk_crtc->enabled) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
