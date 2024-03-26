@@ -43,8 +43,6 @@ struct fifo_t {
 	atomic_t w;
 	atomic_t r;
 	void *buf[DL_POOL_LEN];
-
-	u32 dp_cnt;
 };
 
 static u32 s_q_num;
@@ -178,18 +176,6 @@ _free_sk:
 	}
 
 	dev_kfree_skb_any(skb);
-
-	/* ensure free skb is completed before proceeding to the next flow */
-	wmb();
-
-	if (!fifo)
-		return;
-
-	if ((fifo->dp_cnt & 0xFF) == 0)
-		CCCI_ERROR_LOG(0, TAG, "[%s] qno: %u; dp_cnt: %u\n",
-			__func__, qno, fifo->dp_cnt);
-
-	fifo->dp_cnt++;
 }
 
 inline void *ccci_dl_dequeue(u32 qno)
@@ -209,16 +195,4 @@ inline u32 ccci_dl_queue_len(u32 qno)
 		return 0;
 
 	return fifo_len(&s_dl_pools[qno]);
-}
-
-u32 ccci_get_dl_queue_dp_cnt(u32 qno)
-{
-	struct fifo_t *fifo = NULL;
-
-	if ((!s_dl_pools) || (qno >= s_q_num))
-		return 0;
-
-	fifo = &s_dl_pools[qno];
-
-	return fifo->dp_cnt;
 }
