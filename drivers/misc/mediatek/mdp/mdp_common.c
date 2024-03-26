@@ -381,10 +381,12 @@ static void cmdq_mdp_common_clock_disable(u64 engine_flag)
 	CMDQ_LOG_CLOCK("%s MDP SMI clock disable %d, engine_flag:%llx\n",
 		__func__, smi_ref, engine_flag);
 
-	if (cmdq_mdp_get_func()->mdpGetLarbCount() == 1)
-		cmdq_mdp_enable_common_clock(false, engine_flag);
-	else
-		cmdq_mdp_get_func()->mdpEnableCommonClock(false, engine_flag);
+	if (smi_ref >= 0) {
+		if (cmdq_mdp_get_func()->mdpGetLarbCount() == 1)
+			cmdq_mdp_enable_common_clock(false, engine_flag);
+		else
+			cmdq_mdp_get_func()->mdpEnableCommonClock(false, engine_flag);
+	}
 
 	CMDQ_PROF_MMP(mdp_mmp_get_event()->MDP_clock_smi,
 		MMPROFILE_FLAG_PULSE, smi_ref, 0);

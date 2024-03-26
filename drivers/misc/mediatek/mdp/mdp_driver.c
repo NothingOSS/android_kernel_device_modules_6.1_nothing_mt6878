@@ -1233,6 +1233,13 @@ static int cmdq_probe(struct platform_device *pDevice)
 			cmdq_mdp_get_func()->endISPTask);
 	}
 
+	/* register pm notifier */
+	status = register_pm_notifier(&cmdq_pm_notifier_block);
+	if (status != 0) {
+		CMDQ_ERR("Failed to register_pm_notifier(%d)\n", status);
+		return -ENODEV;
+	}
+
 	CMDQ_LOG("MDP driver probe end\n");
 
 	return 0;
@@ -1299,13 +1306,6 @@ static int __init cmdq_init(void)
 	status = platform_driver_register(&gCmdqDriver);
 	if (status != 0) {
 		CMDQ_ERR("Failed to register the CMDQ driver(%d)\n", status);
-		return -ENODEV;
-	}
-
-	/* register pm notifier */
-	status = register_pm_notifier(&cmdq_pm_notifier_block);
-	if (status != 0) {
-		CMDQ_ERR("Failed to register_pm_notifier(%d)\n", status);
 		return -ENODEV;
 	}
 
