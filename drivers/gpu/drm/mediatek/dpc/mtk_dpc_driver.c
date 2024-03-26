@@ -9,6 +9,7 @@
 #include <linux/interrupt.h>
 #include <linux/iopoll.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/notifier.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
@@ -98,6 +99,8 @@ static spinlock_t dpc_lock;
 static enum mtk_panel_type g_panel_type = PANEL_TYPE_COUNT;
 static unsigned int g_te_duration; //us
 static unsigned int g_vb_duration; //us
+static unsigned int g_vdisp_level;
+static DEFINE_MUTEX(dvfs_lock);
 
 static const char *mtk_dpc_vidle_cap_name[DPC_VIDLE_CAP_COUNT] = {
 	"MTCMOS_OFF",
@@ -2314,6 +2317,7 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level,
 		DPCERR("subsys(%d) wait vdisp dvfsrc idle timeout", subsys);
 
 	writel(level, dpc_base + addr);
+	g_vdisp_level = level;
 
 	return ret;
 }
@@ -2360,10 +2364,7 @@ void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 	if (dpc_pm_ctrl(true))
 		return;
 
-	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
-		mmdvfs_state = false;
-
-	spin_lock_irqsave(&dpc_lock, flags);
+	mutex_lock(&dvfs_lock);
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
 		addr = DISP_REG_DPC_DISP_VDISP_DVFS_CFG;
 		g_priv->dvfs_bw.disp_level = level;
@@ -2375,6 +2376,20 @@ void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 	max_level = dpc_max_dvfs_level();
 	if (max_level < level)
 		max_level = level;
+
+	if (max_level == g_vdisp_level) {
+		spin_lock_irqsave(&dpc_lock, flags);
+		/* switch vdisp to SW or HW mode */
+		avail = mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS);
+		writel((force || !avail)? 1 : 0, dpc_base + addr);
+		spin_unlock_irqrestore(&dpc_lock, flags);
+		goto out;
+	}
+
+	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
+		mmdvfs_state = false;
+
+	spin_lock_irqsave(&dpc_lock, flags);
 	vdisp_level_set_vcp(subsys, max_level, mmdvfs_state);
 
 	/* switch vdisp to SW or HW mode */
@@ -2397,6 +2412,9 @@ void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
 		mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
+
+out:
+	mutex_unlock(&dvfs_lock);
 	dpc_pm_ctrl(false);
 }
 EXPORT_SYMBOL(dpc_dvfs_set);
@@ -2423,10 +2441,7 @@ void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
 	if (dpc_pm_ctrl(true))
 		return;
 
-	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
-		mmdvfs_state = false;
-
-	spin_lock_irqsave(&dpc_lock, flags);
+	mutex_lock(&dvfs_lock);
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys))
 		g_priv->dvfs_bw.disp_bw = bw_in_mb * 10 / 7;
 	else if (MTK_DPC_OF_MML_SUBSYS(subsys))
@@ -2448,6 +2463,13 @@ void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
 	g_priv->dvfs_bw.bw_level = level;
 
 	max_level = dpc_max_dvfs_level();
+	if (max_level == g_vdisp_level)
+		goto out;
+
+	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
+		mmdvfs_state = false;
+
+	spin_lock_irqsave(&dpc_lock, flags);
 	vdisp_level_set_vcp(subsys, max_level, mmdvfs_state);
 
 	if (unlikely(debug_dvfs))
@@ -2462,6 +2484,9 @@ void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
 		mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
+
+out:
+	mutex_unlock(&dvfs_lock);
 	dpc_pm_ctrl(false);
 }
 EXPORT_SYMBOL(dpc_dvfs_bw_set);
@@ -2495,10 +2520,7 @@ void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, bool fo
 	if (dpc_pm_ctrl(true))
 		return;
 
-	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
-		mmdvfs_state = false;
-
-	spin_lock_irqsave(&dpc_lock, flags);
+	mutex_lock(&dvfs_lock);
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
 		addr = DISP_REG_DPC_DISP_VDISP_DVFS_CFG;
 		g_priv->dvfs_bw.disp_level = level;
@@ -2525,6 +2547,19 @@ void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, bool fo
 	max_level = dpc_max_dvfs_level();
 	if (max_level < level)
 		max_level = level;
+	if (max_level == g_vdisp_level) {
+		spin_lock_irqsave(&dpc_lock, flags);
+		/* switch vdisp to SW or HW mode */
+		avail = mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS);
+		writel((force || !avail) ? 1 : 0, dpc_base + addr);
+		spin_unlock_irqrestore(&dpc_lock, flags);
+		goto out;
+	}
+
+	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
+		mmdvfs_state = false;
+
+	spin_lock_irqsave(&dpc_lock, flags);
 	vdisp_level_set_vcp(subsys, max_level, mmdvfs_state);
 
 	/* switch vdisp to SW or HW mode */
@@ -2551,6 +2586,9 @@ void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, bool fo
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
 		mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
+
+out:
+	mutex_unlock(&dvfs_lock);
 	dpc_pm_ctrl(false);
 }
 EXPORT_SYMBOL(dpc_dvfs_both_set);
