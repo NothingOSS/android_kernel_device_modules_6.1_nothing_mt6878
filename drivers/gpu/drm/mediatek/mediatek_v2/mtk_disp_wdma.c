@@ -766,7 +766,10 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 		break;
 	}
 
-	gs[GS_WDMA_BUF_CON1] += (fifo_size_uv << 10) + fifo_size;
+	if (priv->data->mmsys_id == MMSYS_MT6897)
+		gs[GS_WDMA_BUF_CON1] += (fifo_size_uv << 12) + fifo_size;
+	else
+		gs[GS_WDMA_BUF_CON1] += (fifo_size_uv << 10) + fifo_size;
 
 	/* WDMA_BUF_CON5 */
 	tmp = DIV_ROUND_UP(consume_rate * Bpp * preultra_low_us, FP);

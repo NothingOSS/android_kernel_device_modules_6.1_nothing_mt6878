@@ -3147,6 +3147,8 @@ int get_addon_path_wait_event(struct drm_crtc *crtc,
 			return mtk_crtc->gce_obj.event[EVENT_WDMA1_EOF];
 	if (comp->id == DDP_COMPONENT_WDMA0)
 		return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
+	else if (comp->id == DDP_COMPONENT_WDMA1)
+		return mtk_crtc->gce_obj.event[EVENT_WDMA1_EOF];
 	else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA0)
 		return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF];
 	else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA1)
@@ -3155,6 +3157,8 @@ int get_addon_path_wait_event(struct drm_crtc *crtc,
 	DDPPR_ERR("The output component has not frame done event\n");
 	return -EINVAL;
 }
+
+unsigned int wb_l_w, wb_r_w;
 
 int mtk_crtc_wb_addon_get_event(struct drm_crtc *crtc)
 {
@@ -3190,6 +3194,51 @@ int mtk_crtc_wb_addon_get_event(struct drm_crtc *crtc)
 	}
 	return -EINVAL;
 }
+
+
+int mtk_crtc_wb_addon_get_dual_event(struct drm_crtc *crtc)
+{
+	int i;
+	const struct mtk_addon_scenario_data *addon_data, *addon_data_dual;
+	const struct mtk_addon_module_data *addon_module;
+	const struct mtk_addon_path_data *path_data;
+	int index = drm_crtc_index(crtc);
+	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
+	enum addon_scenario scn;
+	int gce_event;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+
+	if (index != 0 || mtk_crtc_is_dc_mode(crtc))
+		return -EINVAL;
+
+	if (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO] == 0)
+		scn = WDMA_WRITE_BACK_OVL;
+	else
+		scn = WDMA_WRITE_BACK;
+
+	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
+	if (!addon_data)
+		return -EINVAL;
+
+	if (mtk_crtc->is_dual_pipe) {
+		addon_data_dual = mtk_addon_get_scenario_data_dual(__func__, crtc, scn);
+
+		if (!addon_data_dual)
+			return -EINVAL;
+	}
+
+	for (i = 0; i < addon_data->module_num; i++) {
+		addon_module = &addon_data_dual->module_data[i];
+		path_data = mtk_addon_module_get_path(addon_module->module);
+
+		gce_event = get_addon_path_wait_event(crtc, path_data);
+		if (gce_event < 0)
+			continue;
+		return gce_event;
+	}
+	return -EINVAL;
+}
+
 
 void _mtk_crtc_wb_addon_module_disconnect(
 	struct drm_crtc *crtc, unsigned int ddp_mode,
@@ -3247,12 +3296,15 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			addon_module->module == DISP_WDMA1_v3)) {
 			if (mtk_crtc->is_dual_pipe) {
 				/* disconnect left pipe */
-				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
+				if (wb_l_w > 0 && scn == WDMA_WRITE_BACK)
+					mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
 							  &addon_config, cmdq_handle);
 				/* disconnect right pipe */
-				addon_module = &addon_data_dual->module_data[i];
-				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
+				if (wb_r_w > 0 && scn == WDMA_WRITE_BACK) {
+					addon_module = &addon_data_dual->module_data[i];
+					mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
 							  &addon_config, cmdq_handle);
+				}
 			} else {
 				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
 								  &addon_config,
@@ -3670,22 +3722,26 @@ _mtk_crtc_wb_addon_module_connect(
 					dst_roi_r.width = dst_roi.width - dst_roi_l.width;
 					r_buff_off = dst_roi_l.width;
 				}
+				wb_l_w = dst_roi_l.width;
+				wb_r_w = dst_roi_r.width;
+				if (dst_roi_l.width > 0 && scn == WDMA_WRITE_BACK) {
+					addon_config.addon_wdma_config.wdma_src_roi = src_roi_l;
+					addon_config.addon_wdma_config.wdma_dst_roi = dst_roi_l;
 
-				addon_config.addon_wdma_config.wdma_src_roi = src_roi_l;
-				addon_config.addon_wdma_config.wdma_dst_roi = dst_roi_l;
-
-				/* connect left pipe */
-				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
+					/* connect left pipe */
+					mtk_addon_connect_after(crtc, ddp_mode, addon_module,
 							  &addon_config, cmdq_handle);
-
-				addon_module = &addon_data_dual->module_data[i];
-				addon_config.addon_wdma_config.wdma_src_roi = src_roi_r;
-				addon_config.addon_wdma_config.wdma_dst_roi = dst_roi_r;
-				Bpp = mtk_drm_format_plane_cpp(fb->format->format, 0);
-				addon_config.addon_wdma_config.addr += r_buff_off * Bpp;
-				/* connect right pipe */
-				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
+				}
+				if (dst_roi_r.width > 0 && scn == WDMA_WRITE_BACK) {
+					addon_module = &addon_data_dual->module_data[i];
+					addon_config.addon_wdma_config.wdma_src_roi = src_roi_r;
+					addon_config.addon_wdma_config.wdma_dst_roi = dst_roi_r;
+					Bpp = mtk_drm_format_plane_cpp(fb->format->format, 0);
+					addon_config.addon_wdma_config.addr += r_buff_off * Bpp;
+					/* connect right pipe */
+					mtk_addon_connect_after(crtc, ddp_mode, addon_module,
 							  &addon_config, cmdq_handle);
+				}
 			} else {
 				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
 							  &addon_config, cmdq_handle);
@@ -7929,6 +7985,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	}
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
 	if ((id == 0) && (priv && priv->power_state)) {
 		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_OVL_STATUS);
@@ -9913,10 +9970,10 @@ void mtk_crtc_connect_addon_module(struct drm_crtc *crtc)
 		return;
 	}
 
+	mtk_crtc_addon_connector_connect(crtc, handle);
+
 	_mtk_crtc_atmoic_addon_module_connect(crtc, mtk_crtc->ddp_mode,
 					      &crtc_state->lye_state, handle);
-
-	mtk_crtc_addon_connector_connect(crtc, handle);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
@@ -15065,7 +15122,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			return 0;
 		}
 
-		event = mtk_crtc_wb_addon_get_event(crtc);
 		mtk_crtc_pkt_create(&handle, crtc, client);
 
 		if (!handle) {
@@ -15073,7 +15129,18 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			return -EINVAL;
 		}
 
-		cmdq_pkt_wfe(handle, event);
+		if (mtk_crtc->is_dual_pipe) {
+			if (wb_l_w > 0) {
+				event = mtk_crtc_wb_addon_get_event(crtc);
+				cmdq_pkt_wfe(handle, event);
+			} else {
+				event = mtk_crtc_wb_addon_get_dual_event(crtc);
+				cmdq_pkt_wfe(handle, event);
+			}
+		} else {
+			event = mtk_crtc_wb_addon_get_event(crtc);
+			cmdq_pkt_wfe(handle, event);
+		}
 		_mtk_crtc_wb_addon_module_disconnect(crtc, mtk_crtc->ddp_mode, handle);
 		mtk_crtc->capturing = false;
 		wb_cb_data->cmdq_handle = handle;
