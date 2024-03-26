@@ -656,6 +656,17 @@ static void scp_A_notify_ws(struct work_struct *ws)
 	while (IS_ERR_OR_NULL((void const *) scpreg.scpsys))
 		msleep(100);
 
+#if SCP_RECOVERY_SUPPORT
+	if (atomic_read(&scp_reset_status) == RESET_STATUS_START_WDT) {
+		pr_notice("[SCP] recovery fail, recovery again\n");
+		atomic_set(&scp_reset_status, RESET_STATUS_START);
+		scp_send_reset_wq(RESET_TYPE_WDT);
+		return;
+	}
+	pr_notice("[SCP] recovery success\n");
+	atomic_set(&scp_reset_status, RESET_STATUS_STOP);
+#endif
+
 	if (scp_notify_flag) {
 		scp_recovery_flag[SCP_A_ID] = SCP_A_RECOVERY_OK;
 
@@ -720,20 +731,10 @@ static void scp_A_notify_ws(struct work_struct *ws)
 	if (scp_dvfs_feature_enable())
 		scp_resource_req(SCP_REQ_RELEASE);
 
-	/* register scp dvfs*/
-	msleep(2000);
 	__pm_relax(scp_reset_lock);
+
+	/* register scp dvfs*/
 	scp_register_feature(RTOS_FEATURE_ID);
-#if SCP_RECOVERY_SUPPORT
-	if (atomic_read(&scp_reset_status) == RESET_STATUS_START_WDT) {
-		pr_notice("[SCP] recovery fail, recovery again\n");
-		atomic_set(&scp_reset_status, RESET_STATUS_START);
-		scp_send_reset_wq(RESET_TYPE_WDT);
-	} else {
-		pr_notice("[SCP] recovery success\n");
-		atomic_set(&scp_reset_status, RESET_STATUS_STOP);
-	}
-#endif
 }
 
 
