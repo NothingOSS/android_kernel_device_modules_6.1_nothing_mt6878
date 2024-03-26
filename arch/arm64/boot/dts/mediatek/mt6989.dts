@@ -6070,6 +6070,8 @@
 			compatible = "mediatek,mmdvfs-debug";
 			debug-version = <2>; /* OR operation of (1 << MMDVFS_DBG_VERx) */
 			vcore-supply = <&mt6316_8_vbuck1>;
+			vmm-pmic-supply = <&mt6363_vbuck2>;
+			vdisp-pmic-supply = <&mt6363_vbuck1>;
 			fmeter-id =	/bits/ 8 <15 16 17 19 20 23 26 27 28 2>;
 			fmeter-type =	/bits/ 8 < 5  5  5  5  5  5  5  5  5 4>;
 			clk-base = <0x10000000>;
@@ -18569,6 +18571,14 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	};
 };
 
+&mt6363_vbuck1 {
+	regulator-always-on;
+};
+
+&mt6363_vbuck2 {
+	regulator-always-on;
+};
+
 &mt6363_vbuck4 {
 	regulator-always-on;
 };
@@ -18625,8 +18635,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	regulator-min-microvolt = <0>;
 };
 
-/delete-node/ &mt6363_vbuck1;
-/delete-node/ &mt6363_vbuck2;
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
