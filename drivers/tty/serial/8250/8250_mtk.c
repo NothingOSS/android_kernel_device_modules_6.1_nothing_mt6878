@@ -813,9 +813,11 @@ void mtk8250_uart_start_record(struct tty_struct *tty)
 #endif
 
 #ifdef CONFIG_SERIAL_8250_DMA
+	mutex_lock(&data->uart_mutex);
 	if ((up->dma == NULL) || (up->dma->rxchan == NULL) ||
 		(up->dma->txchan == NULL)) {
 		pr_info("[%s] para error. up->dma,rx,tx is NULL\n", __func__);
+		mutex_unlock(&data->uart_mutex);
 		return;
 	}
 	if (data->support_wakeup) {
@@ -830,6 +832,7 @@ void mtk8250_uart_start_record(struct tty_struct *tty)
 		KERNEL_mtk_uart_set_apdma_clk(false);
 		#endif
 	}
+	mutex_unlock(&data->uart_mutex);
 #endif
 }
 EXPORT_SYMBOL(mtk8250_uart_start_record);
@@ -894,9 +897,11 @@ void mtk8250_uart_end_record(struct tty_struct *tty)
 #endif
 
 #ifdef CONFIG_SERIAL_8250_DMA
+	mutex_lock(&data->uart_mutex);
 	if ((up->dma == NULL) || (up->dma->rxchan == NULL) ||
 		(up->dma->txchan == NULL)) {
 		pr_info("[%s] para error. up->dma,rx,tx is NULL\n", __func__);
+		mutex_unlock(&data->uart_mutex);
 		return;
 	}
 
@@ -912,6 +917,7 @@ void mtk8250_uart_end_record(struct tty_struct *tty)
 		KERNEL_mtk_uart_set_apdma_clk(false);
 		#endif
 	}
+	mutex_unlock(&data->uart_mutex);
 #endif
 }
 EXPORT_SYMBOL(mtk8250_uart_end_record);
@@ -1038,6 +1044,7 @@ static int mtk8250_polling_rx_handle_complete(unsigned int count)
 	bool dma_flag_state = false;
 	u64 polling_start_time = 0;
 	u64 polling_end_time = 0;
+	int ret = 0;
 
 	polling_start_time = sched_clock();
 	while (count) {
@@ -1055,11 +1062,13 @@ static int mtk8250_polling_rx_handle_complete(unsigned int count)
 		}
 	}
 	polling_end_time = sched_clock();
-	if (count == 0)
+	if (count == 0) {
 		pr_info("%s: Error: dma_state[%d], polling_time[%lld]!!\n",
 			 __func__, dma_state,
 			 polling_end_time - polling_start_time);
-	return count;
+		ret = -1;
+	}
+	return ret;
 }
 
 int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
@@ -1067,7 +1076,8 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 #if defined(KERNEL_UARTHUB_dev0_clear_rx_request)
 	int ret = 0;
 	int count = DMA_RX_POLLING_CNT;
-	int dma_state = 0;
+	int dma_tx_state = 0;
+	int dma_rx_state = 0;
 
 	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 0)
 		/*clear ap uart*/
@@ -1087,8 +1097,8 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 		}
 		/*polling tx dma finish*/
 		#if defined(KERNEL_mtk_uart_apdma_polling_tx_finish)
-		ret = KERNEL_mtk_uart_apdma_polling_tx_finish();
-		if (ret)
+		dma_tx_state = KERNEL_mtk_uart_apdma_polling_tx_finish();
+		if (dma_tx_state)
 			pr_info("%s polling tx fail but still run the clear rx flow!\n", __func__);
 		#endif
 	}
@@ -1119,9 +1129,9 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 			KERNEL_mtk_uart_apdma_polling_rx_finish();
 		#endif
 		/*polling check dma rx complete*/
-		dma_state = mtk8250_polling_rx_handle_complete(count);
+		dma_rx_state = mtk8250_polling_rx_handle_complete(count);
 		/*polling fail error handler*/
-		if (!dma_state) {
+		if (dma_rx_state || dma_tx_state) {
 		/*set tx res status*/
 		#if defined(KERNEL_mtk_uart_set_rx_res_status)
 			KERNEL_mtk_uart_set_rx_res_status(1);
@@ -1579,6 +1589,7 @@ static int mtk8250_startup(struct uart_port *port)
 
 static void mtk8250_shutdown(struct uart_port *port)
 {
+	int errflag_config = 0;
 #ifdef CONFIG_SERIAL_8250_DMA
 	struct uart_8250_port *up = up_to_u8250p(port);
 	struct mtk8250_data *data = port->private_data;
@@ -1589,6 +1600,7 @@ static void mtk8250_shutdown(struct uart_port *port)
 
 	mutex_lock(&data->clk_mutex);
 	mutex_lock(&data->uart_mutex);
+	errflag_config = 0;
 #if defined(KERNEL_UARTHUB_close)
 	if (data->support_hub == 1) {
 		KERNEL_UARTHUB_close();
@@ -1597,10 +1609,7 @@ static void mtk8250_shutdown(struct uart_port *port)
 			/* polling fail error handler */
 			if (atomic_read(&data->errflag_state) == 1) {
 				pr_info("%s: disable apdma clk in shutdown flow\n",__func__);
-				#if defined(KERNEL_mtk_uart_set_apdma_clk)
-					KERNEL_mtk_uart_set_apdma_clk(false);
-				#endif
-				atomic_set(&hub_uart_data->errflag_state, 0);
+				errflag_config = 1;
 			}
 		} else {
 			mtk8250_clear_wakeup();
@@ -1609,6 +1618,12 @@ static void mtk8250_shutdown(struct uart_port *port)
 #endif
 
 	serial8250_do_shutdown(port);
+	if (errflag_config) {
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(false);
+		#endif
+		atomic_set(&hub_uart_data->errflag_state, 0);
+	}
 	mutex_unlock(&data->uart_mutex);
 	mutex_unlock(&data->clk_mutex);
 	return;
@@ -2438,7 +2453,6 @@ static int mtk8250_probe(struct platform_device *pdev)
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
 		return irq;
-
 	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!regs) {
 		dev_err(&pdev->dev, "no registers defined\n");
@@ -2547,7 +2561,6 @@ static int mtk8250_probe(struct platform_device *pdev)
 		data->rx_wakeup_irq = platform_get_irq_optional(pdev, 2);
 	else
 		data->rx_wakeup_irq = platform_get_irq_optional(pdev, 1);
-
 	return 0;
 
 err_pm_disable:
