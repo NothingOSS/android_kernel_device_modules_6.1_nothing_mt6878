@@ -66,6 +66,8 @@ struct pmif {
 	int spmi_nack_irq;
 	int spmi_p_nack_irq;
 	u32 caps;
+	u32 swintf_err_idx[2];
+	u32 hwintf_err_idx[2];
 };
 
 struct spmi_dev {
@@ -108,7 +110,7 @@ extern void spmi_dump_pmic_acc_vio_reg(void);
 extern void spmi_dump_pmif_busy_reg(void);
 extern void spmi_dump_pmif_swinf_reg(void);
 extern void spmi_dump_pmif_all_reg(void);
-extern void spmi_dump_pmif_record_reg(void);
+extern void spmi_dump_pmif_record_reg(int irq_m, int irq_p);
 /* spmi debug API declaration */
 extern void spmi_dump_spmimst_all_reg(void);
 /* pmic debug API declaration */

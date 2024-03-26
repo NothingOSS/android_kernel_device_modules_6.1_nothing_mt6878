@@ -1837,58 +1837,63 @@ static void spmi_dump_pmif_all_reg_d(struct seq_file *m)
 	seq_puts(m, "\n");
 }
 
-void spmi_dump_pmif_record_reg(void)
+void spmi_dump_pmif_record_reg(int irq_m, int irq_p)
 {
 	struct pmif *arb = spmi_controller_get_drvdata(dbg_ctrl);
-	unsigned int i = 0, step, offset, tmp_dat;
+	unsigned int i = 0, step, offset, tmp_dat, dump = 0;
 	unsigned int chan, cmd, is_write, slvid, bytecnt, addr;
 	unsigned int wd_31_0, log_size = 0;
 
-	/* disable monitor channel 0 before dump */
-	tmp_dat = readl(arb->pmif_base[0] + arb->dbgregs[PMIF_MONITOR_CTRL]);
-	writel(tmp_dat & (~BIT(2)), arb->pmif_base[0] + arb->dbgregs[PMIF_MONITOR_CTRL]);
+	if ((irq_m == 0) && (irq_p == 0))
+		dump = 1;
 
-	step = arb->dbgregs[PMIF_MONITOR_RECORD_1_0] -
-		arb->dbgregs[PMIF_MONITOR_RECORD_0_0];
+	if (irq_m || dump) {
+		/* disable monitor channel 0 before dump */
+		tmp_dat = readl(arb->pmif_base[0] + arb->dbgregs[PMIF_MONITOR_CTRL]);
+		writel(tmp_dat & (~BIT(2)), arb->pmif_base[0] + arb->dbgregs[PMIF_MONITOR_CTRL]);
 
-	log_size += sprintf(wp, "");
-	for (i = 0; i < 32; i++) {
-		offset = arb->dbgregs[PMIF_MONITOR_RECORD_0_0] + i * step;
-		tmp_dat = readl(arb->pmif_base[0] + offset);
-		chan = (tmp_dat & (0x1f << 27)) >> 27;
-		cmd = (tmp_dat & (0x3 << 25)) >> 25;
-		is_write = (tmp_dat & (0x1 << 24)) >> 24;
-		slvid = (tmp_dat & (0xf << 20)) >> 20;
-		bytecnt = (tmp_dat & (0xf << 16)) >> 16;
-		addr = (tmp_dat & (0xffff << 0)) >> 0;
+		step = arb->dbgregs[PMIF_MONITOR_RECORD_1_0] -
+			arb->dbgregs[PMIF_MONITOR_RECORD_0_0];
 
-		offset = arb->dbgregs[PMIF_MONITOR_RECORD_0_1] + i * step;
-		wd_31_0 = readl(arb->pmif_base[0] + offset);
-		if (!bytecnt)
-			wd_31_0 &= 0xff;
+		log_size += sprintf(wp, "");
+		for (i = 0; i < 32; i++) {
+			offset = arb->dbgregs[PMIF_MONITOR_RECORD_0_0] + i * step;
+			tmp_dat = readl(arb->pmif_base[0] + offset);
+			chan = (tmp_dat & (0x1f << 27)) >> 27;
+			cmd = (tmp_dat & (0x3 << 25)) >> 25;
+			is_write = (tmp_dat & (0x1 << 24)) >> 24;
+			slvid = (tmp_dat & (0xf << 20)) >> 20;
+			bytecnt = (tmp_dat & (0xf << 16)) >> 16;
+			addr = (tmp_dat & (0xffff << 0)) >> 0;
 
-		log_size += sprintf(wp + log_size,
-			"[PMIF] (%d)[chan:%d, cmd:0x%x, rw:0x%x, slvid:%d, bytecnt:%d, ",
-			i, chan, cmd, is_write, slvid, bytecnt);
-		if (is_write)
-			log_size += sprintf(wp + log_size, "(addr 0x%x=0x%x)]\n", addr, wd_31_0);
-		else
-			log_size += sprintf(wp + log_size, "(addr 0x%x)]\n", addr);
+			offset = arb->dbgregs[PMIF_MONITOR_RECORD_0_1] + i * step;
+			wd_31_0 = readl(arb->pmif_base[0] + offset);
+			if (!bytecnt)
+				wd_31_0 &= 0xff;
 
-		if ((i + 1) % 8 == 0) {
-			pr_info("\n%s", wp);
-			log_size = 0;
+			log_size += sprintf(wp + log_size,
+				"[PMIF] (%d)[chan:%d, cmd:0x%x, rw:0x%x, slvid:%d, bytecnt:%d, ",
+				i, chan, cmd, is_write, slvid, bytecnt);
+			if (is_write)
+				log_size += sprintf(wp + log_size, "(addr 0x%x=0x%x)]\n", addr, wd_31_0);
+			else
+				log_size += sprintf(wp + log_size, "(addr 0x%x)]\n", addr);
+
+			if ((i + 1) % 8 == 0) {
+				pr_info("\n%s", wp);
+				log_size = 0;
+			}
 		}
+		/* logging mode no need to clear record */
+		if (log_size < 0)
+			pr_notice("sprintf failed\n");
+
+		/* enable monitor channel 0 after dump */
+		tmp_dat = readl(arb->pmif_base[0] + arb->dbgregs[PMIF_MONITOR_CTRL]);
+		writel(tmp_dat | BIT(2), arb->pmif_base[0] + arb->dbgregs[PMIF_MONITOR_CTRL]);
 	}
-	/* logging mode no need to clear record */
-	if (log_size < 0)
-		pr_notice("sprintf failed\n");
 
-	/* enable monitor channel 0 after dump */
-	tmp_dat = readl(arb->pmif_base[0] + arb->dbgregs[PMIF_MONITOR_CTRL]);
-	writel(tmp_dat | BIT(2), arb->pmif_base[0] + arb->dbgregs[PMIF_MONITOR_CTRL]);
-
-	if (!IS_ERR(arb->pmif_base[1])) {
+	if ((!IS_ERR(arb->pmif_base[1])) && (irq_p || dump)) {
 		/* disable monitor channel 0 before dump */
 		tmp_dat = readl(arb->pmif_base[1] + arb->dbgregs[PMIF_MONITOR_CTRL]);
 		writel(tmp_dat & (~BIT(2)), arb->pmif_base[1] + arb->dbgregs[PMIF_MONITOR_CTRL]);
@@ -2085,7 +2090,7 @@ static const struct file_operations dump_pmif_all_reg_proc_fops = {
 static int proc_dump_pmif_record_reg_show(struct seq_file *m, void *v)
 {
 	seq_puts(m, "********** PMIF dump record register**********\n");
-	spmi_dump_pmif_record_reg();
+	spmi_dump_pmif_record_reg(0, 0);
 	spmi_dump_pmif_record_reg_d(m);
 
 	return 0;
