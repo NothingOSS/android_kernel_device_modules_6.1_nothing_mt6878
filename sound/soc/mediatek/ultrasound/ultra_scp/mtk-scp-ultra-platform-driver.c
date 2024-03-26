@@ -165,16 +165,6 @@ static int ultra_stop_memif_and_irq(struct mtk_base_scp_ultra *scp_ultra)
 			 __func__);
 		return 0;
 	}
-	// stop scp
-	if (scp_ultra->usnd_state == SCP_ULTRA_STATE_START) {
-		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_STOP,
-			       true,
-			       0,
-			       NULL,
-			       ULTRA_IPI_NEED_ACK);
-		scp_ultra->usnd_state = SCP_ULTRA_STATE_STOP;
-	}
-
 	// stop dl memif
 	ultra_memif_set_disable_hw_sema(afe, ultra_mem->ultra_dl_memif_id);
 	// stop ul memif
@@ -201,6 +191,15 @@ static int ultra_stop_memif_and_irq(struct mtk_base_scp_ultra *scp_ultra)
 	set_afe_dl_irq_target(false);
 	set_afe_ul_irq_target(false);
 
+	// stop scp
+	if (scp_ultra->usnd_state == SCP_ULTRA_STATE_START) {
+		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_STOP,
+			       true,
+			       0,
+			       NULL,
+			       ULTRA_IPI_NEED_ACK);
+		scp_ultra->usnd_state = SCP_ULTRA_STATE_STOP;
+	}
 	return 0;
 }
 
