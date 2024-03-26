@@ -29,6 +29,7 @@
 
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 #include "adsp_helper.h"
+#include "audio_ipi_platform.h"
 #endif
 
 /* scp relate */
@@ -749,8 +750,13 @@ unsigned int is_afe_need_triggered(struct mtk_base_afe_memif *memif)
 	/* memif and irq enable control of SCP and ADSP
 	 * features will be set in ADSP and SCP side.
 	 */
-
-	if (memif->use_adsp_share_mem ||
+	bool flag = true;
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
+	// for SCP audio platform, should check SCP status
+	if (get_adsp_type() == ADSP_TYPE_RV55 && !is_audio_task_dsp_ready(TASK_SCENE_AUD_DAEMON_A))
+		flag = false;
+#endif
+	if ((memif->use_adsp_share_mem && flag) ||
 	    memif->vow_barge_in_enable ||
 #if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	    memif->use_scp_share_mem ||
