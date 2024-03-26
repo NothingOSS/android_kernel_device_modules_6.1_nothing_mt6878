@@ -71,6 +71,7 @@ struct mmdvfs_debug {
 	/* regulator and fmeter */
 	struct regulator *reg_vcore;
 	struct regulator *reg_vmm;
+	struct regulator *reg_vdisp;
 	u8 fmeter_count;
 	u8 *fmeter_id;
 	u8 *fmeter_type;
@@ -591,6 +592,10 @@ static void mmdvfs_debug_work(struct work_struct *work)
 	if (!IS_ERR_OR_NULL(g_mmdvfs->reg_vmm))
 		MMDVFS_DBG("vmm enabled:%d voltage:%d", regulator_is_enabled(g_mmdvfs->reg_vmm),
 			regulator_get_voltage(g_mmdvfs->reg_vmm));
+
+	if (!IS_ERR_OR_NULL(g_mmdvfs->reg_vdisp))
+		MMDVFS_DBG("vdisp enabled:%d voltage:%d", regulator_is_enabled(g_mmdvfs->reg_vdisp),
+			regulator_get_voltage(g_mmdvfs->reg_vdisp));
 }
 
 static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, void *data)
@@ -817,6 +822,12 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 		MMDVFS_DBG("devm_regulator_get vmm-pmic failed:%ld", PTR_ERR(reg));
 	else
 		g_mmdvfs->reg_vmm = reg;
+
+	reg = devm_regulator_get(g_mmdvfs->dev, "vdisp-pmic");
+	if (IS_ERR_OR_NULL(reg))
+		MMDVFS_DBG("devm_regulator_get vdisp-pmic failed:%ld", PTR_ERR(reg));
+	else
+		g_mmdvfs->reg_vdisp = reg;
 
 	g_mmdvfs->smi_dbg_nb.notifier_call = mmdvfs_debug_smi_cb;
 	mtk_smi_dbg_register_notifier(&g_mmdvfs->smi_dbg_nb);
