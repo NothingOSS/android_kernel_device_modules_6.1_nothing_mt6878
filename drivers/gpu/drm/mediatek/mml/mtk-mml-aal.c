@@ -1080,8 +1080,9 @@ exit:
 		/* 26-16 r2y_c22_s, 10-0 r2y_c21_s */
 		r2y_05 = (1963 << 16) | (1610 << 0);
 
-		/* relay_mode(bit 0) = 0, AAL_HIST_EN(bit 2) = 0, alpha_en(bit 8) = 1 */
-		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG], 0x102, 0x107);
+		/* relay_mode(bit 0) = 0, AAL_HIST_EN(bit 2) = 0 */
+		/* BLK_HIST_EN(bit 5) = 0, alpha_en(bit 8) = 1 */
+		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG], 0x102, 0x127);
 		/* dre_map_bypass(bit 4) = 1 */
 		cmdq_pkt_write(pkt, NULL, base_pa + 0x3b4, 0x18, U32_MAX);
 		/* bilateral_flt_en(bit 1) = 0 */
