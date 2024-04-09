@@ -925,7 +925,7 @@ static irqreturn_t pmif_event_1_irq_handler(int irq, void *data)
 	}
 	for (idx = 0; idx < 32; idx++) {
 		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
-			if ((idx >= (arb->swintf_err_idx[0] % 32)) && (idx <= (arb->swintf_err_idx[1] % 32))) {
+			if ((idx >= (arb->hwintf_err_idx[0] % 32)) && (idx <= (arb->hwintf_err_idx[1] % 32))) {
 				pmif_hwinf_err_irq_handler(irq_f, irq_f_p, data, idx);
 			} else {
 				switch (idx) {
