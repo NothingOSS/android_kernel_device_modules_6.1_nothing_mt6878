@@ -3206,7 +3206,6 @@ int mtk_crtc_wb_addon_get_dual_event(struct drm_crtc *crtc)
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 	enum addon_scenario scn;
 	int gce_event;
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc))
 		return -EINVAL;
@@ -3220,12 +3219,9 @@ int mtk_crtc_wb_addon_get_dual_event(struct drm_crtc *crtc)
 	if (!addon_data)
 		return -EINVAL;
 
-	if (mtk_crtc->is_dual_pipe) {
-		addon_data_dual = mtk_addon_get_scenario_data_dual(__func__, crtc, scn);
-
-		if (!addon_data_dual)
-			return -EINVAL;
-	}
+	addon_data_dual = mtk_addon_get_scenario_data_dual(__func__, crtc, scn);
+	if (!addon_data_dual)
+		return -EINVAL;
 
 	for (i = 0; i < addon_data->module_num; i++) {
 		addon_module = &addon_data_dual->module_data[i];
