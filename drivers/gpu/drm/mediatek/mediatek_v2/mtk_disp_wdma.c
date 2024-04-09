@@ -1332,7 +1332,7 @@ static void mtk_ufbc_wdma_config(struct mtk_ddp_comp *comp,
 	state = to_mtk_crtc_state(crtc->state);
 	temp_bw = (unsigned long long)w * h;
 	temp_bw *= mtk_get_format_bpp(comp->fb->format->format);
-	vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	vrefresh = crtc->state ? drm_mode_vrefresh(&crtc->state->adjusted_mode) : 60;
 	/* COMPRESS ratio */
 	if (comp->fb->modifier == DRM_FORMAT_MOD_ARM_AFBC(
 	    AFBC_FORMAT_MOD_BLOCK_SIZE_32x8 | AFBC_FORMAT_MOD_SPARSE)) {
