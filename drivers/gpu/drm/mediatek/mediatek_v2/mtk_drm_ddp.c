@@ -16711,13 +16711,6 @@ static int mtk_ddp_mout_en_MT6897(const struct mtk_mmsys_reg_data *data,
 		*addr = MT6985_OVL_BLEND_CROSSBAR3_MOUT_EN;
 		value = DISP_OVL3_2L_TO_WDMA0;
 	} else if ((cur == DDP_COMPONENT_PQ0_IN_CB0 &&
-		next == DDP_COMPONENT_RSZ0) ||
-		(cur == DDP_COMPONENT_PQ1_IN_CB0 &&
-		next == DDP_COMPONENT_RSZ1)) {
-		/* PQ_IN_CROSSBAR */
-		*addr = MT6985_PQ_IN_CROSSBAR0_MOUT_EN;
-		value = DISP_DLI_RELAY0_TO_RSZ0;
-	} else if ((cur == DDP_COMPONENT_PQ0_IN_CB0 &&
 		next == DDP_COMPONENT_PQ0_OUT_CB4) ||
 		(cur == DDP_COMPONENT_PQ1_IN_CB0 &&
 		next == DDP_COMPONENT_PQ1_OUT_CB4)) {
