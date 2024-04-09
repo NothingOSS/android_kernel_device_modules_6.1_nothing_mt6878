@@ -3547,6 +3547,14 @@
 		vmmrc-on-table = <0x2e788>;
 		vmmrc-off-table = <0x2e7a8>;
 		mminfra-base = <0x1e800000>;
+		dvfsrc-level-base = <0x1c00f000>;
+		required-opps = <&dvfsrc_freq_opp0>,
+				<&dvfsrc_freq_opp1>,
+				<&dvfsrc_freq_opp2>,
+				<&dvfsrc_freq_opp3>,
+				<&dvfsrc_freq_opp4>,
+				<&dvfsrc_freq_opp5>,
+				<&dvfsrc_freq_opp6>;
 	};
 
 	ccucammain: ccucammain {
