@@ -39,7 +39,7 @@
 #define DT_TE_360 2650
 #define DT_TE_SAFEZONE 650
 #define DT_OFF0 240
-#define DT_OFF1 200
+#define DT_OFF1 500
 #define DT_PRE_DISP1_OFF 100
 #define DT_POST_DISP1_OFF 100
 #define DT_PRE_MMINFRA_OFF 100
