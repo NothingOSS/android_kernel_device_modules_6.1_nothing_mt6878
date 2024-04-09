@@ -918,7 +918,8 @@ static int mmdvfs_force_step_by_vcp_ipi(const u8 pwr_idx, const s8 opp)
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
 		(opp < 0 || opp >= dpsw_thr) && *last >= 0 && *last < dpsw_thr)
 		mtk_mmdvfs_enable_vmm(false);
-	*last = opp;
+	if (!ret)
+		*last = opp;
 
 	MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd",
 		pwr_idx, idx, mux->id, opp);
@@ -979,7 +980,8 @@ static int mtk_mmdvfs_v3_set_force_step_ipi(const u16 pwr_idx, const s16 opp)
 	if (dpsw_thr > 0 && *last >= 0 && *last < dpsw_thr &&
 		(opp < 0 || opp >= dpsw_thr) && pwr_idx == PWR_MMDVFS_VMM)
 		mtk_mmdvfs_enable_vmm(false);
-	*last = opp;
+	if (!ret)
+		*last = opp;
 
 	MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
 	return ret;
@@ -1014,6 +1016,25 @@ int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp, const bool cm
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_v3_set_force_step);
 
+int mtk_mmdvfs_v3_get_force_step(const u16 pwr_idx)
+{
+	return last_force_step[pwr_idx];
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_v3_get_force_step);
+
+static int mmdvfs_get_force_step(char *buf, const struct kernel_param *kp)
+{
+	int len = 0, i;
+
+	if (!mmdvfs_is_init_done())
+		return 0;
+
+	for (i = 0; i < PWR_MMDVFS_NUM; i++)
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d", last_force_step[i]);
+
+	return len;
+}
+
 static int mmdvfs_set_force_step(const char *val, const struct kernel_param *kp)
 {
 	u16 idx = 0;
@@ -1035,6 +1056,7 @@ static int mmdvfs_set_force_step(const char *val, const struct kernel_param *kp)
 
 static const struct kernel_param_ops mmdvfs_force_step_ops = {
 	.set = mmdvfs_set_force_step,
+	.get = mmdvfs_get_force_step,
 };
 module_param_cb(force_step, &mmdvfs_force_step_ops, NULL, 0644);
 MODULE_PARM_DESC(force_step, "force mmdvfs to specified step");

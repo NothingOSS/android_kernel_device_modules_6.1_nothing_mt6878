@@ -102,6 +102,24 @@ void mtk_mmdvfs_debug_release_step0(void)
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_release_step0);
 
+static int mmdvfs_debug_get_force_step(char *buf, const struct kernel_param *kp)
+{
+	int len = 0, i;
+
+	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
+		if (i == PWR_MMDVFS_VCORE && (!g_mmdvfs->debug_version ||
+			g_mmdvfs->debug_version & MMDVFS_DBG_VER1)) {
+			len += snprintf(buf + len, PAGE_SIZE - len, "not_support ");
+			continue;
+		}
+		if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
+			len += snprintf(buf + len, PAGE_SIZE - len,
+				"%d ", mtk_mmdvfs_v3_get_force_step(i));
+	}
+
+	return len;
+}
+
 static int mmdvfs_debug_set_force_step(const char *val,
 	const struct kernel_param *kp)
 {
@@ -129,6 +147,7 @@ static int mmdvfs_debug_set_force_step(const char *val,
 
 static struct kernel_param_ops mmdvfs_debug_set_force_step_ops = {
 	.set = mmdvfs_debug_set_force_step,
+	.get = mmdvfs_debug_get_force_step,
 };
 module_param_cb(force_step, &mmdvfs_debug_set_force_step_ops, NULL, 0644);
 MODULE_PARM_DESC(force_step, "force mmdvfs to specified step");

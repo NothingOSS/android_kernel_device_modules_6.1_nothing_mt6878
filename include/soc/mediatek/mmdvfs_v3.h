@@ -100,6 +100,7 @@ int mtk_mmdvfs_set_avs(const u8 idx, const u32 aging, const u32 fresh);
 int mtk_mmdvfs_camsv_dc_enable(const u8 idx, const bool enable);
 
 int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp, const bool cmd);
+int mtk_mmdvfs_v3_get_force_step(const u16 pwr_idx);
 int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp, const bool cmd);
 int mtk_mmdvfs_fmeter_register_notifier(struct notifier_block *nb);
 
@@ -128,6 +129,7 @@ static inline int mtk_mmdvfs_set_avs(const u8 idx, const u32 aging, const u32 fr
 static inline int mtk_mmdvfs_camsv_dc_enable(const u8 idx, const bool enable) { return 0; }
 
 static inline int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp, const bool cmd) { return 0; }
+static inline int mtk_mmdvfs_v3_get_force_step(const u16 pwr_idx) { return 0; }
 static inline int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp, const bool cmd) { return 0; }
 static inline int mtk_mmdvfs_fmeter_register_notifier(struct notifier_block *nb) { return 0; }
 
