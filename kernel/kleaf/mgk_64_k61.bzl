@@ -177,6 +177,7 @@ mgk_64_k61_device_modules = [
     "drivers/gpu/drm/panel/panel-boe-ts127qfmll1dkp0-120hz.ko",
     "drivers/gpu/drm/panel/panel-nt37707-667-fhdp-dphy-cmd.ko",
     "drivers/gpu/drm/panel/panel-nt37705-1056-1068-dphy-cmd.ko",
+    "drivers/gpu/drm/panel/panel-vdtr6130-fhdp-dsi-cmd-dphy-120hz-csot.ko",
     "drivers/gpu/mediatek/ged/ged.ko",
     "drivers/gpu/mediatek/gpu_bm/mtk_gpu_qos.ko",
     "drivers/gpu/mediatek/gpueb/gpueb.ko",
