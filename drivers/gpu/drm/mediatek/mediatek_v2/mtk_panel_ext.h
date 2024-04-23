@@ -501,6 +501,7 @@ struct mtk_panel_params {
 	unsigned int data_rate;
 	unsigned int data_rate_khz;
 	unsigned int vdo_per_frame_lp_enable; /* Enable video mode per frame lp */
+	unsigned int change_fps_by_vfp_send_cmd;
 	struct mtk_dsi_phy_timcon phy_timcon;
 	unsigned int vfp_low_power;
 	struct dynamic_mipi_params dyn;
