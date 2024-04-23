@@ -1342,6 +1342,7 @@
 	mcupm: mcupm@c070000 {
 		compatible = "mediatek,mcupm";
 		mbox-extend = <16>;
+		mpmm-node-support = <1>;
 		reg = <0 0x0c070000 0 0x50000>,
 			  <0 0x0c0df600 0 0xa0>,
 			  <0 0x0c072004 0 0x4>,
