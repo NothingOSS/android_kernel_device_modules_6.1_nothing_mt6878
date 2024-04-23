@@ -2840,6 +2840,7 @@
 		reg = <0 0x1a005000 0 0x1000>;
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <26>;
+		flow-ctrl-dbg;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>;
 		clock-names = "apb";
@@ -2851,6 +2852,7 @@
 		reg = <0 0x1a006000 0 0x1000>;
 		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <27>;
+		flow-ctrl-dbg;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>;
 		clock-names = "apb";
@@ -2862,6 +2864,7 @@
 		reg = <0 0x1b203000 0 0x1000>;
 		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <28>;
+		flow-ctrl-dbg;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_VCORE>;
 		clocks = <&cam_vcore_clk CLK_CAM_V_MM0_SUBCOMM>;
 		clock-names = "apb";
