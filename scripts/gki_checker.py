@@ -145,7 +145,7 @@ def compare_config(g_config_file, m_config_file):
         write_dict_file(m_config, True, "config/mtk_cfg.txt")
 
 def get_gki_denyfile():
-    key_str = "out_krn/kernel-5.15"
+    key_str = "out_krn/kernel-6.1"
     # remove old denyfiles.txt
     cmd = "rm -f " + options.checker_out + "file/tmp/*gki_denyfiles.txt"
     #print(cmd)
@@ -157,7 +157,7 @@ def get_gki_denyfile():
     restr1 = output.read().splitlines()[0]
     restr2 = restr1
     if key_str in restr1:
-        restr2 = restr1.replace("out_krn/kernel-5.15", "common")
+        restr2 = restr1.replace("out_krn/kernel-6.1", "common")
     restr1 = restr1.replace("/","\/")
     restr2 = restr2.replace("/","\/")
     #print(restr1)
@@ -527,15 +527,15 @@ def getExecuteOptions(self, args=[]):
 
     parser.add_option("-O", "--out", nargs=1, dest="checker_out", default=os.path.dirname(os.path.abspath(__file__))+"/checker_out/",
                       help="Checker output folder")
-    parser.add_option("-k", "--kpath", nargs=1, dest="kernel_path", default=croot+"/kernel-5.15/",
+    parser.add_option("-k", "--kpath", nargs=1, dest="kernel_path", default=croot+"/kernel-6.1/",
                       help="Kernel path")
     parser.add_option("-t", "--tcpath", nargs=1, dest="tool_chain", default="",
                       help="Extract tool chain")
     parser.add_option("-c", "--ct", nargs=1, dest="config_tool", default="",
                       help="Config extract script")
-    parser.add_option("-g", "--gv", nargs=1, dest="google_vmlinux", default=croot+"/vendor/aosp_gki/kernel-5.15/aarch64/vmlinux-userdebug",
+    parser.add_option("-g", "--gv", nargs=1, dest="google_vmlinux", default=croot+"/vendor/aosp_gki/kernel-6.1/aarch64/vmlinux-userdebug",
                       help="Google vmlinux location")
-    parser.add_option("-m", "--mv", nargs=1, dest="mtk_vmlinux", default=croot+"/out_krn/target/product/mgk_64_k515/obj/KERNEL_OBJ/kernel-5.15/vmlinux",
+    parser.add_option("-m", "--mv", nargs=1, dest="mtk_vmlinux", default=croot+"/out_krn/target/product/mgk_64_k61/obj/KERNEL_OBJ/kernel-6.1/vmlinux",
                       help="MTK vmlinux location")
     parser.add_option("-a", "--ack", nargs=1, dest="ACK_SHA", default="",
                       help="SHA align Google ack")
