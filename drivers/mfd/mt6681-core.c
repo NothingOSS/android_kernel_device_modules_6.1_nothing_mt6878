@@ -203,7 +203,7 @@ static int mt6681_check_id(struct mt6681_pmic_info *mpi)
 	ret = regmap_read(mpi->regmap, MT6681_SWCID_H, &data);
 	if (ret < 0) {
 		dev_info(mpi->dev, "device not found %d\n", ret);
-		return ret;
+		//return ret;
 	}
 	if (data != MT6681_SWCID_H_CODE) {
 		dev_info(mpi->dev, "data = %d, not mt6681 chip\n", data);
