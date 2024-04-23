@@ -2677,9 +2677,6 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		if (g_page_pool_is_on)
 			atomic_set(&g_create_another_pp, 1);
 #endif
-		if (dpmaif_ctl->support_lro == 1)
-			ccmni_set_tcp_is_need_gro(0);
-
 #ifdef DPMAIF_REDUCE_RX_FLUSH
 		g_rx_flush_pkt_cnt = 100;
 #endif
@@ -2692,9 +2689,6 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		if (g_page_pool_is_on)
 			atomic_set(&g_create_another_pp, 1);
 #endif
-		if (dpmaif_ctl->support_lro == 1)
-			ccmni_set_tcp_is_need_gro(0);
-
 #ifdef DPMAIF_REDUCE_RX_FLUSH
 		g_rx_flush_pkt_cnt = 60;
 #endif
@@ -2707,9 +2701,6 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		if (g_page_pool_is_on)
 			atomic_set(&g_create_another_pp, 1);
 #endif
-		if (dpmaif_ctl->support_lro == 1)
-			ccmni_set_tcp_is_need_gro(0);
-
 #ifdef DPMAIF_REDUCE_RX_FLUSH
 		g_rx_flush_pkt_cnt = 30;
 #endif
@@ -2722,9 +2713,6 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		if (g_page_pool_is_on)
 			atomic_set(&g_create_another_pp, 1);
 #endif
-		if (dpmaif_ctl->support_lro == 1)
-			ccmni_set_tcp_is_need_gro(1);
-
 #ifdef DPMAIF_REDUCE_RX_FLUSH
 		g_rx_flush_pkt_cnt = 20;
 #endif
@@ -2737,9 +2725,6 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		if (g_page_pool_is_on)
 			atomic_set(&g_create_another_pp, 1);
 #endif
-		if (dpmaif_ctl->support_lro == 1)
-			ccmni_set_tcp_is_need_gro(1);
-
 #ifdef DPMAIF_REDUCE_RX_FLUSH
 		g_rx_flush_pkt_cnt = 0;
 #endif
@@ -2762,9 +2747,6 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 				g_alloc_skb_tbl_threshold = MIN_ALLOC_SKB_TBL_CNT;
 			g_alloc_frg_tbl_threshold = MIN_ALLOC_FRG_TBL_CNT;
 		}
-		if (dpmaif_ctl->support_lro == 1)
-			ccmni_set_tcp_is_need_gro(1);
-
 #ifdef DPMAIF_REDUCE_RX_FLUSH
 		g_rx_flush_pkt_cnt = 0;
 #endif
@@ -2790,7 +2772,6 @@ static int dpmaif_init_cap(struct device *dev)
 		dpmaif_ctl->support_lro = 1;
 		dpmaif_ctl->support_2rxq = 1;
 		dpmaif_ctl->max_pit_seq = 0xFF;
-		ccmni_set_tcp_is_need_gro(1);
 	} else {
 		dpmaif_ctl->real_rxq_num = 1;
 		dpmaif_ctl->max_pit_seq = 0xFE;
