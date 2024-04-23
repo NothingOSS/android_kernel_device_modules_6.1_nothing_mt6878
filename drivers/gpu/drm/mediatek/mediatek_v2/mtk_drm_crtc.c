@@ -5593,8 +5593,10 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	if (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
 		mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]) {
 		if (drm_need_fisrt_invoke_fps_callbacks()) {
-			fps_dst = drm_mode_vrefresh(&crtc->state->mode);
-			drm_invoke_fps_chg_callbacks(fps_dst);
+			if (!(mtk_crtc->path_data->is_discrete_path)) {
+				fps_dst = drm_mode_vrefresh(&crtc->state->mode);
+				drm_invoke_fps_chg_callbacks(fps_dst);
+			}
 		}
 		return;
 	}
@@ -5678,7 +5680,8 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle, NOTIFY_MODE_SWITCH, &modeswitch_param);
 
-	drm_invoke_fps_chg_callbacks(fps_dst);
+	if (!(mtk_crtc->path_data->is_discrete_path))
+		drm_invoke_fps_chg_callbacks(fps_dst);
 
 	/* update framedur_ns for VSYNC report */
 	drm_calc_timestamping_constants(crtc, &crtc->state->mode);
