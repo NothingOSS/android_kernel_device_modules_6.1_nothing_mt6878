@@ -2908,6 +2908,7 @@
 			"mediatek,mt6989-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a026000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
+		mediatek,comm-port-id = <0>;
 		mediatek,larb-id = <16>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
 		clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_SUBA>,
@@ -2920,6 +2921,7 @@
 			"mediatek,mt6989-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a028000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
+		mediatek,comm-port-id = <1>;
 		mediatek,larb-id = <43>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
 		clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_SUBB>,
@@ -2932,6 +2934,7 @@
 			"mediatek,mt6989-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a02a000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
+		mediatek,comm-port-id = <1>;
 		mediatek,larb-id = <44>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
 		clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_SUBC>,
@@ -2944,6 +2947,7 @@
 			"mediatek,mt6989-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a027000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
+		mediatek,comm-port-id = <2>;
 		mediatek,larb-id = <17>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
 		clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_SUBA>,
@@ -2956,6 +2960,7 @@
 			"mediatek,mt6989-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a029000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
+		mediatek,comm-port-id = <2>;
 		mediatek,larb-id = <45>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
 		clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_SUBB>,
@@ -2968,6 +2973,7 @@
 			"mediatek,mt6989-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a02b000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm2 0>;
+		mediatek,comm-port-id = <3>;
 		mediatek,larb-id = <46>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
 		clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_SUBC>,
