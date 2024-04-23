@@ -3140,6 +3140,58 @@ out:
 	return NOTIFY_OK;
 }
 
+s32 mtk_smi_status_check(struct device *larbdev, bool log_enable)
+{
+	struct mtk_smi_larb *larb = dev_get_drvdata(larbdev);
+	int i, ret = 0;
+	u32 val;
+
+	if (unlikely(!larb))
+		return 0;
+
+	/* check larb status */
+	if (pm_runtime_get_if_in_use(larbdev)) {
+		for (i = 0; i < SMI_LARB_PORT_NR_MAX; i++) {
+			val = readl(larb->base + SMI_LARB_OSTD_MON_PORT(i));
+			if (val) {
+				pr_notice("[smi]%s:larb:%d port:%d ostd:%#x\n", __func__,
+					larb->larbid, i, val);
+				ret = 1;
+			}
+		}
+		if (log_enable)
+			pr_notice("[smi]%s:larb:%d check done.\n", __func__, larb->larbid);
+
+		pm_runtime_put(larbdev);
+	}
+
+	/* check common status */
+	for (i = 0; i < LARB_MAX_COMMON; i++) {
+		if (larb->comm_port_id[i] >= 0 && larb->smi_common_dev[i]) {
+			struct mtk_smi *common;
+
+			common = dev_get_drvdata(larb->smi_common_dev[i]);
+			if (pm_runtime_get_if_in_use(larb->smi_common_dev[i])) {
+				val = readl(common->base + SMI_DEBUG_S(larb->comm_port_id[i]));
+				if (val & 0x1ffe000) {
+					pr_notice("[smi]%s:comm:%d port:%d ostd:%#x\n", __func__,
+						common->commid, larb->comm_port_id[i], val);
+					ret = 1;
+				}
+				if (log_enable)
+					pr_notice("[smi]%s:comm:%d check done.\n",
+								__func__, common->commid);
+				pm_runtime_put(larb->smi_common_dev[i]);
+			}
+		}
+	}
+	if (log_enable)
+		pr_notice("[smi]%s:check done, ret=%d\n", __func__, ret);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_status_check);
+
 static bool is_p2_lock;
 void mtk_smi_larb_clamp_and_lock(struct device *larbdev, bool on)
 {
