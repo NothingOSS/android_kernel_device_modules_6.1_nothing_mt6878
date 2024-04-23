@@ -6,6 +6,8 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/io.h>
 
 #include "mcupm_plt.h"
 #include "mcupm_driver.h"
@@ -25,6 +27,11 @@ struct plt_ctrl_s {
 };
 #endif
 
+#define AP_TCM_MPMM_CTRL_ADDR           (0x0C0DFC40)    /* MPMM control */
+#define AP_TCM_MPMM_DISABLE_MAGICNUM    (0xF1F2F3F4)    /* MPMM disable magic number */
+#define AP_TCM_MPMM_ENABLE_MAGICNUM     (0xE1E2E3E4)    /* MPMM enable magic number */
+
+static void __iomem *mpmm_en_reg;
 
 #if MCUPM_PLT_SERV_SUPPORT
 static ssize_t mcupm_alive_show(struct device *kobj,
@@ -47,6 +54,45 @@ static ssize_t mcupm_alive_show(struct device *kobj,
 }
 DEVICE_ATTR_RO(mcupm_alive);
 
+static ssize_t mpmm_show(struct device *kobj,
+				 struct device_attribute *attr, char *buf)
+{
+	unsigned int mpmm_en_val;
+
+	if (!mpmm_en_reg)
+		mpmm_en_reg = ioremap(AP_TCM_MPMM_CTRL_ADDR, 0x4);
+
+	mpmm_en_val = ioread32(mpmm_en_reg);
+
+	return snprintf(buf, PAGE_SIZE, "%X\n", mpmm_en_val);
+}
+
+static ssize_t mpmm_store(struct device *kobj,
+	struct device_attribute *attr, const char *buf, size_t n)
+{
+	int ret = 0;
+	unsigned int mpmm_en_val;
+
+	if (!mpmm_en_reg)
+		mpmm_en_reg = ioremap(AP_TCM_MPMM_CTRL_ADDR, 0x4);
+
+	ret = kstrtou32(buf, 0, &mpmm_en_val);
+	if (ret != 0) {
+		free_page((unsigned long)buf);
+		return -EINVAL;
+	}
+	if (mpmm_en_val == AP_TCM_MPMM_ENABLE_MAGICNUM || mpmm_en_val == AP_TCM_MPMM_DISABLE_MAGICNUM) {
+		iowrite32(mpmm_en_val, mpmm_en_reg);
+		pr_info("MPMM Status: 0x%X\n", mpmm_en_val);
+	} else {
+		pr_info("Invalid MPMM control value\n");
+	}
+	return n;
+}
+
+DEVICE_ATTR_RW(mpmm);
+
+
 int mcupm_plt_module_init(void)
 {
 	phys_addr_t phys_addr, virt_addr, mem_sz;
@@ -54,15 +100,33 @@ int mcupm_plt_module_init(void)
 	struct plt_ctrl_s *plt_ctl;
 	int ret = 0;
 	unsigned int last_ofs;
+	unsigned int mpmm_support = 0;
 #if MCUPM_LOGGER_SUPPORT
 	unsigned int last_sz;
 #endif
 	unsigned int *mark;
 	unsigned char *b;
+	struct device_node *node = NULL;
+	char mcupm_desc[] = "mediatek,mcupm";
+
 
 	if (mcupm_sysfs_init()) {
 		pr_info("[MCUPM] Sysfs Init Failed\n");
 		return -1;
+	}
+
+	node = of_find_compatible_node(NULL, NULL, mcupm_desc);
+	if (!node)
+		pr_notice("of_find_compatible_node unable to find mcupm device node\n");
+
+	if (!of_property_read_u32(node, "mpmm-node-support", &mpmm_support)) {
+		if (mpmm_support) {
+			ret = mcupm_sysfs_create_file(&dev_attr_mpmm);
+			mpmm_en_reg = ioremap(AP_TCM_MPMM_CTRL_ADDR, 0x4);
+			iowrite32(0x0, mpmm_en_reg);
+		}
+	} else {
+		pr_info("Failed to get mpmm support index from dts.\n");
 	}
 
 	ret = mcupm_sysfs_create_file(&dev_attr_mcupm_alive);
