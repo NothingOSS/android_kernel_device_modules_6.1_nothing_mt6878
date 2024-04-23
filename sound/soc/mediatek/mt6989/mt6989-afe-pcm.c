@@ -17,6 +17,9 @@
 #include <linux/of_device.h>
 #include <linux/arm-smccc.h> /* for Kernel Native SMC API */
 #include <linux/soc/mediatek/mtk_sip_svc.h> /* for SMC ID table */
+#include <linux/sched.h>
+#include <linux/kernel.h>
+
 
 #include "../common/mtk-afe-debug.h"
 #include "../common/mtk-afe-platform-driver.h"
@@ -158,6 +161,10 @@ int mt6989_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
+		memif->pid = 0;
+		memif->tid = 0;
+		strscpy(memif->process_name, "NULL", sizeof(memif->process_name) - 1);
+
 		/* add delay for bt memif to avoid dl noise */
 		if (id == MT6989_MEMIF_DL23)
 			mtk_memif_set_pbuf_size(afe, id, MT6989_MEMIF_PBUF_SIZE_32_BYTES);
@@ -212,6 +219,10 @@ int mt6989_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 		return 0;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
+		memif->pid = current->pid;
+		memif->tid = current->tgid;
+		strscpy(memif->process_name, current->comm, sizeof(memif->process_name) - 1);
+
 		if (afe_priv->xrun_assert[id] > 0) {
 			if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 				int avail = snd_pcm_capture_avail(runtime);

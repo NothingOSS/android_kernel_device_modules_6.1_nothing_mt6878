@@ -11,6 +11,9 @@
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <sound/soc.h>
+#include <linux/sched.h>
+#include <linux/kernel.h>
+#include <linux/fs.h>
 #include "mtk-afe-platform-driver.h"
 #include <sound/pcm_params.h>
 #include "mtk-afe-fe-dai.h"
@@ -464,16 +467,25 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
 	struct mtk_base_afe_memif *memif = &afe->memif[cpu_dai->id];
+	int pid = current->pid;
+	int tid = current->tgid;
 
 	dev_info(afe->dev,
-		 "%s(), %s, use_adsp_share_mem %d, using_sram %d, use_dram_only %d, dma_addr %pad, dma_area %p, dma_bytes 0x%zx, vow_barge_in_enable %d\n",
+		 "%s(), %s, use_adsp_share_mem %d, using_sram %d, use_dram_only %d, dma_addr %pad, dma_area %p, dma_bytes 0x%zx, vow_barge_in_enable %d, trigger close memif pid %d, tid %d, name %s and hw free pid %d, tid %d, name %s\n",
 		 __func__, memif->data->name,
 		 memif->use_adsp_share_mem,
 		 memif->using_sram, memif->use_dram_only,
 		 &substream->runtime->dma_addr,
 		 substream->runtime->dma_area,
 		 substream->runtime->dma_bytes,
-		 memif->vow_barge_in_enable);
+		 memif->vow_barge_in_enable,
+		 memif->pid, memif->tid, memif->process_name,
+		 pid, tid, current->comm);
+
+	if (tid != memif->tid && memif->pid > 0) {
+		dev_info(afe->dev, "%s(), tid is not match\n", __func__);
+		dump_stack();
+	}
 
 	if (memif->err_close_order)
 		dump_stack();
