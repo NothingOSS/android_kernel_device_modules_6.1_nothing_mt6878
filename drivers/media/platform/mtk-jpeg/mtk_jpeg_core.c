@@ -326,6 +326,10 @@ static int mtk_jpeg_try_fmt_mplane(struct v4l2_pix_format_mplane *pix_mp,
 			pfmt->bytesperline = stride;
 			pfmt->sizeimage = round_up((block_count << 4), 1024) +
 					(block_count * round_up((block_w * block_h  * bitsPP / 8), 128));
+		} else if (pix_mp->pixelformat == V4L2_PIX_FMT_YUYV) {
+			stride = round_up(pix_mp->width * 2, 32);
+			pfmt->bytesperline = stride;
+			pfmt->sizeimage = stride * h;
 		} else {
 			pfmt->bytesperline = stride;
 			pfmt->sizeimage = stride * h;
