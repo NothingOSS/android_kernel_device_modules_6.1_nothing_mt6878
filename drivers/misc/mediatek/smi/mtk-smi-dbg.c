@@ -1331,6 +1331,21 @@ s32 mtk_smi_dbg_cg_status(void)
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_cg_status);
 
+static void mtk_smi_dbg_flow_ctrl_dump(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	struct mtk_smi_dbg_node	node;
+	s32			i;
+
+	//check COMM status
+	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
+		node = smi->comm[i];
+		if (!node.dev || !node.va)
+			continue;
+		mtk_smi_dump_last_flow_ctrl_dbg(node.dev);
+	}
+}
+
 int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
@@ -1848,6 +1863,7 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 	}
 
 	mtk_smi_dump_last_pd(user);
+	mtk_smi_dbg_flow_ctrl_dump();
 
 	if (!smi_enter_met) {
 		smi_hang_detect_bw_monitor(false);
