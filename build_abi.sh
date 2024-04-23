@@ -23,6 +23,19 @@ set -x
   tools/bazel ${KLEAF_OUT} run ${KLEAF_ARGS} //${KERNEL_VERSION}:kernel_aarch64_abi_update
 )
 
+if [[ ${MODE} == "user" && ${KLEAF_GKI_CHECKER} != "no" ]]
+then
+  KLEAF_GKI_CHECKER_COMMANDS=("${KLEAF_GKI_CHECKER_COMMANDS} \
+	  -m ${OUT_DIR}/bazel/output_user_root/output_base/execroot/__main__/bazel-out/k8-fastbuild*/bin/${DEVICE_MODULES_DIR}/${PROJECT}_kernel_aarch64.${MODE}/vmlinux")
+  set -x
+  (
+    ${KLEAF_GKI_CHECKER_COMMANDS} -o file
+    ${KLEAF_GKI_CHECKER_COMMANDS} -o config
+    ${KLEAF_GKI_CHECKER_COMMANDS} -o symbol
+  )
+  set +x
+fi
+
 else
   echo "Cannnot support ABI check for ${PROJECT}!"
   exit 1

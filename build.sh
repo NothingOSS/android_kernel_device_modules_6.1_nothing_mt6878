@@ -41,6 +41,19 @@ set -x
 )
 set +x
 
+if [[ ${MODE} == "user" && ${KLEAF_GKI_CHECKER} != "no" ]]
+then
+  KLEAF_GKI_CHECKER_COMMANDS=("${KLEAF_GKI_CHECKER_COMMANDS} \
+	  -m ${OUT_DIR}/dist/${DEVICE_MODULES_DIR}/${PROJECT}_kernel_aarch64.${MODE}/vmlinux")
+  set -x
+  (
+    ${KLEAF_GKI_CHECKER_COMMANDS} -o file
+    ${KLEAF_GKI_CHECKER_COMMANDS} -o config
+    ${KLEAF_GKI_CHECKER_COMMANDS} -o symbol
+  )
+  set +x
+fi
+
 else # run legacy build.sh
 set -x
 (

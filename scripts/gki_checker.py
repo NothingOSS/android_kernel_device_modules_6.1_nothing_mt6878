@@ -511,7 +511,7 @@ def update_white_list(filename):
     os.system("rm tmp.txt")
 
 def getClangVersion(croot):
-    with open (croot+"/kernel-5.15/build.config.constants") as f:
+    with open (croot+"/build.config.constants") as f:
         for line in f.readlines():
             if 'CLANG_VERSION' in line:
                 return line.split('=')[1]
@@ -529,9 +529,9 @@ def getExecuteOptions(self, args=[]):
                       help="Checker output folder")
     parser.add_option("-k", "--kpath", nargs=1, dest="kernel_path", default=croot+"/kernel-5.15/",
                       help="Kernel path")
-    parser.add_option("-t", "--tcpath", nargs=1, dest="tool_chain", default=croot+"/kernel/prebuilts-master/clang/host/linux-x86/clang-"+getClangVersion(croot).strip()+"/bin/",
+    parser.add_option("-t", "--tcpath", nargs=1, dest="tool_chain", default="",
                       help="Extract tool chain")
-    parser.add_option("-c", "--ct", nargs=1, dest="config_tool", default=croot+"/kernel-5.15/scripts/extract-ikconfig",
+    parser.add_option("-c", "--ct", nargs=1, dest="config_tool", default="",
                       help="Config extract script")
     parser.add_option("-g", "--gv", nargs=1, dest="google_vmlinux", default=croot+"/vendor/aosp_gki/kernel-5.15/aarch64/vmlinux-userdebug",
                       help="Google vmlinux location")
@@ -544,15 +544,19 @@ def getExecuteOptions(self, args=[]):
     parser.add_option("-o", "--opt", nargs=1, dest="opt", default="all",
                       help="check option: 'config', 'file', 'symbol' or all(default)\n'update' for update white list.")
     (options, args) = parser.parse_args()
-    return options
+    return croot, options
 
 #main function
 if __name__ == "__main__":
     start_time = datetime.datetime.now()
     curr_path = os.path.dirname(os.path.abspath(__file__))
-    options = getExecuteOptions(sys.argv[1:])
+    croot, options = getExecuteOptions(sys.argv[1:])
     options.checker_out = os.path.abspath(options.checker_out)+'/'
     #options.ACK_SHA = get_sha(options.google_vmlinux)
+    if options.tool_chain == "":
+        options.tool_chain = croot+"/prebuilts/clang/host/linux-x86/clang-"+getClangVersion(options.kernel_path).strip()+"/bin/"
+    if options.config_tool == "":
+        options.config_tool = options.kernel_path+"/scripts/extract-ikconfig"
 
     if options.opt == "update":
         os.makedirs(options.checker_out+"file/google/", exist_ok=True)
