@@ -48,7 +48,7 @@ enum npu_scp_test_status {
 };
 
 #define SCP_IPI_TIMEOUT_MS (10)
-#define TESTCASE_TIMEOUT_MS (10000)
+#define TESTCASE_TIMEOUT_MS (100)
 
 #define NPU_SCP_RET_OK			(0)
 #define NPU_SCP_RET_TEST_START_ERR	(-1)

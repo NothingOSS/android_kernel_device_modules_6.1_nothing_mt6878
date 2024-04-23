@@ -19,7 +19,7 @@ static int aov_recovery_scp_notifier_call(struct notifier_block *this,
 	if (event == SCP_EVENT_STOP) {
 		pr_info("%s receive scp stop event\n", __func__);
 		ret = aov_recovery_cb();
-		if (!ret)
+		if (ret)
 			pr_info("%s Failt to aov_recovery_cb, ret %d\n", __func__, ret);
 	} else if (event == SCP_EVENT_READY)
 		pr_info("%s receive scp ready event\n", __func__);

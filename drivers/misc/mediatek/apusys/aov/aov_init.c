@@ -416,6 +416,7 @@ static int npu_response_arrived(struct npu_scp_ipi_param *param)
 		return -ENODEV;
 	}
 
+	pr_debug("%s get response\n", __func__);
 	atomic_set(&ctx->response_arrived, 1);
 	complete(&ctx->comp);
 
@@ -438,6 +439,8 @@ int npu_scp_ipi_send(struct npu_scp_ipi_param *send_msg, struct npu_scp_ipi_para
 
 	atomic_set(&ctx->response_arrived, 0);
 
+	dev_dbg(ctx->dev, "%s send scp ipi, cmd %d, act %d\n", __func__, send_msg->cmd,
+		send_msg->act);
 	do {
 		ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_NPU_SCP, IPI_SEND_WAIT,
 				   send_msg, 4, 0);
