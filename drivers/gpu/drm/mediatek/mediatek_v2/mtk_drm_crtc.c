@@ -13976,8 +13976,11 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 			DDPDBG("partial_enable: %d\n", partial_enable);
 			if (!partial_enable &&
 				!old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE]
-				&& (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
-				mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX]))
+				&& ((old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
+				mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX]) ||
+				((old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
+				mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
+				&& !(mtk_crtc->mode_change_index & MODE_DSI_RES))))
 				DDPDBG("partial update is disable and equal to old\n");
 			else
 				/* set partial update */
