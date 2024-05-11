@@ -1227,6 +1227,23 @@ static int maxchargingcurrent_proc_show(struct seq_file *m, void *v)
 }
 PROC_FOPS_RO(maxchargingcurrent);
 
+static int ibus_now_proc_show(struct seq_file *m, void *v)
+{
+	struct nt_chg_info *nci = m->private;
+	int ibus = 0;
+
+	if (!nci){
+		pr_err("%s: nci is NULL! \n", __func__);
+		return -EINVAL;
+	}
+	ibus = chg_check_ibus(nci);
+	pr_info("%s: ibus_now: %d \n", __func__,ibus/1000);
+	seq_printf(m, "%d\n", ibus/1000);
+
+	return 0;
+}
+PROC_FOPS_RO(ibus_now);
+
 const struct nt_proc entries[] = {
 	PROC_ENTRY(usb_charger_en),
 	PROC_ENTRY(voltage_adc),
@@ -1253,6 +1270,7 @@ const struct nt_proc entries[] = {
 	PROC_ENTRY(nt_resistance),
 	PROC_ENTRY(maxchargingvoltage),
 	PROC_ENTRY(maxchargingcurrent),
+	PROC_ENTRY(ibus_now),
 };
 #endif
 
