@@ -1279,6 +1279,42 @@ static int ibus_now_proc_show(struct seq_file *m, void *v)
 }
 PROC_FOPS_RO(ibus_now);
 
+static int area_id_proc_show(struct seq_file *m, void *v)
+{
+	struct nt_chg_info *nci = m->private;
+
+	pr_info("%s: area_id: %d \n", __func__,nci->area_id);
+	seq_printf(m, "%d\n", nci->area_id);
+	return 0;
+}
+
+static ssize_t area_id_proc_write(struct file *file,
+	const char __user *buffer, size_t count, loff_t *pos)
+{
+	int area_id, len;
+	char desc[32];
+	struct nt_chg_info *nci = file_inode(file)->i_private;
+
+	if (!nci)
+		return -EINVAL;
+	if (count <= 0)
+		return -EINVAL;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return -EFAULT;
+
+	desc[len] = '\0';
+
+	if(sscanf(desc, "%d", &area_id) == 1){
+		nci->area_id = area_id;
+		pr_info("%s: area_id:%d\n",__func__, area_id);
+	}
+
+	return count;
+}
+PROC_FOPS_RW(area_id);
+
 const struct nt_proc entries[] = {
 	PROC_ENTRY(usb_charger_en),
 	PROC_ENTRY(voltage_adc),
@@ -1306,6 +1342,7 @@ const struct nt_proc entries[] = {
 	PROC_ENTRY(maxchargingvoltage),
 	PROC_ENTRY(maxchargingcurrent),
 	PROC_ENTRY(ibus_now),
+	PROC_ENTRY(area_id),
 };
 #endif
 
@@ -1888,6 +1925,7 @@ static int nt_chg_probe(struct platform_device *pdev)
 	nci->fake_ibat = FAKE_BATT_MAGIC;
 	nci->fake_vbat = FAKE_BATT_MAGIC;
 	nci->fake_tusb = FAKE_BATT_MAGIC;
+	nci->area_id = 0;
 	nt_charger_init_timer(nci);
 
 	nci->chgpsy = power_supply_get_by_name("mtk-master-charger");

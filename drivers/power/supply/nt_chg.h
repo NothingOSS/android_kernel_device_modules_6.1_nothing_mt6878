@@ -180,6 +180,7 @@ struct nt_chg_info {
 	int cam_lmt;
 	int chg_vol_max;
 	int chg_icl_max;
+	int area_id;
 };
 
 static struct notify_info g_abnormal_info[] = {

@@ -62,6 +62,7 @@
 
 static int pd_dbg_level = PD_DEBUG_LEVEL;
 #define PD_VBUS_IR_DROP_THRESHOLD 1200
+#define USB20_CURRENT_TH 500000
 
 static bool algo_waiver_test;
 module_param(algo_waiver_test, bool, 0644);
@@ -914,6 +915,11 @@ static int __pd_run(struct chg_alg_device *alg)
 		if ((pd->input_current_limit1 != -1 &&
 			pd->input_current_limit1 < cur * 1000) == false)
 			pd->input_current_limit1 = cur * 1000;
+		if ((pd_hal_get_usb_type() == POWER_SUPPLY_USB_TYPE_SDP) &&
+				(pd_hal_get_area_id() == 3)) {
+			if (pd->input_current_limit1 > USB20_CURRENT_TH)
+				pd->input_current_limit1 = USB20_CURRENT_TH;
+		}
 		__mtk_pdc_setup(alg, idx);
 	} else {
 		pd->input_current_limit1 =
