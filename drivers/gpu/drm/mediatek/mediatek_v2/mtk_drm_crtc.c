@@ -2135,8 +2135,7 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 	struct cmdq_client *client;
 	bool is_frame_mode;
 	bool state = false;
-
-	int fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	int wait_count = 2;
 	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
 	struct mtk_cmdq_cb_data *cb_data;
 
@@ -2174,7 +2173,10 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 
 	/*Wait TE, then set hbm cmd*/
 	if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
-		comp->funcs->io_cmd(comp, NULL, DSI_HBM_WAIT, NULL);
+		while (wait_count) {
+			comp->funcs->io_cmd(comp, NULL, DSI_HBM_WAIT, NULL);
+			wait_count--;
+		}
 	}
 
 	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
@@ -2209,12 +2211,6 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 
 	if (en) {
 		cmdq_pkt_flush_threaded(cmdq_handle, hbm_cmdq_cb, cb_data);
-		if (fps == 120) {
-			/* dealy one frame to wait hbm work */
-			if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
-				comp->funcs->io_cmd(comp, NULL, DSI_HBM_WAIT, NULL);
-			}
-		}
 	} else {
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
