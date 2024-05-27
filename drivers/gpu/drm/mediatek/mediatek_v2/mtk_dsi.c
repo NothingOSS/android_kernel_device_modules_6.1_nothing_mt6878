@@ -428,7 +428,7 @@ static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, unsigned int hactive);
 static void DSI_MIPI_deskew(struct mtk_dsi *dsi);
 void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle, const void *data, size_t len);
-void mipi_dsi_brightness_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle, const void *data, size_t len);
+void mipi_dsi_vfp_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle, const void *data, size_t len);
 static inline struct mtk_dsi *encoder_to_dsi(struct drm_encoder *e)
 {
 	return container_of(e, struct mtk_dsi, encoder);
@@ -6071,7 +6071,7 @@ static void build_vm_cmdq(struct mtk_dsi *dsi,
 	}
 }
 
-static void mtk_dsi_brightness_vm_cmdq(struct mtk_dsi *dsi,
+static void mtk_dsi_vfp_vm_cmdq(struct mtk_dsi *dsi,
 	const struct mipi_dsi_msg *msg, struct cmdq_pkt *handle)
 {
 	const char *tx_buf = msg->tx_buf;
@@ -6089,7 +6089,7 @@ static void mtk_dsi_brightness_vm_cmdq(struct mtk_dsi *dsi,
 	} else {
 		reg_val = (tx_buf[0] << 16) | (type << 8) | config;
 	}
-	reg_val |= (VM_CMD_EN + TS_VSA_EN + TS_VBP_EN);
+	reg_val |= (VM_CMD_EN + TS_VFP_EN);
 	if (handle == NULL)
 		writel(reg_val, dsi->regs + dsi->driver_data->reg_vm_cmd_con_ofs);
 	else
@@ -6118,7 +6118,7 @@ static void mtk_dsi_vm_cmdq(struct mtk_dsi *dsi,
 		reg_val = (tx_buf[0] << 16) | (type << 8) | config;
 	}
 
-	reg_val |= (VM_CMD_EN + TS_VFP_EN);
+	reg_val |= (VM_CMD_EN + TS_VSA_EN + TS_VBP_EN);
 
 	if (handle == NULL)
 		writel(reg_val, dsi->regs + dsi->driver_data->reg_vm_cmd_con_ofs);
@@ -6474,7 +6474,7 @@ static void mtk_dsi_cmdq_grp_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 			CMDQ_SIZE);
 }
 
-void mipi_dsi_brightness_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
+void mipi_dsi_vfp_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				  const void *data, size_t len)
 {
 	struct mipi_dsi_msg msg = {
@@ -6527,7 +6527,7 @@ void mipi_dsi_brightness_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *han
 		}
 	} else {
 		/* set BL cmd */
-		mtk_dsi_brightness_vm_cmdq(dsi, &msg, handle);
+		mtk_dsi_vfp_vm_cmdq(dsi, &msg, handle);
 		/* clear VM_CMD_DONE */
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 			dsi->ddp_comp.regs_pa + DSI_INTSTA, 0,
@@ -10833,7 +10833,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (panel_ext && panel_ext->funcs
 			&& panel_ext->funcs->set_backlight_cmdq)
 			panel_ext->funcs->set_backlight_cmdq(dsi,
-					mipi_dsi_brightness_dcs_write_gce,
+					mipi_dsi_dcs_write_gce,
 					handle, *(int *)params);
 	}
 		break;
@@ -10917,7 +10917,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			break;
 
 		panel_ext->funcs->hbm_set_cmdq(dsi->panel, dsi,
-					       mipi_dsi_dcs_write_gce, handle,
+					       mipi_dsi_vfp_dcs_write_gce, handle,
 					       *(bool *)params);
 		break;
 	}
