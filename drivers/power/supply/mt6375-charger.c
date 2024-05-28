@@ -152,7 +152,7 @@ enum mt6375_chg_reg_field {
 	/* MT6375_REG_CHG_HD_TOP1 */
 	F_FORCE_VBUS_SINK,
 	/* MT6375_REG_BC12_FUNC */
-	F_DCDT_SEL, F_SPEC_TA_EN, F_BC12_EN,
+	F_BC12_VBUS_EN_OPT, F_DCDT_SEL, F_SPEC_TA_EN, F_BC12_EN,
 	/* MT6375_REG_BC12_STAT */
 	F_PORT_STAT,
 	/* MT6375_REG_DPDM_CTRL1 */
@@ -455,6 +455,7 @@ static const struct mt6375_chg_field mt6375_chg_fields[F_MAX] = {
 	MT6375_CHG_FIELD(F_IRCMP_R, MT6375_REG_BAT_COMP, 4, 6),
 	MT6375_CHG_FIELD_RANGE(F_IC_STAT, MT6375_REG_CHG_STAT, 0, 3, false),
 	MT6375_CHG_FIELD(F_FORCE_VBUS_SINK, MT6375_REG_CHG_HD_TOP1, 6, 6),
+	MT6375_CHG_FIELD(F_BC12_VBUS_EN_OPT, MT6375_REG_BC12_FUNC, 2, 2),
 	MT6375_CHG_FIELD(F_DCDT_SEL, MT6375_REG_BC12_FUNC, 4, 5),
 	MT6375_CHG_FIELD(F_SPEC_TA_EN, MT6375_REG_BC12_FUNC, 6, 6),
 	MT6375_CHG_FIELD(F_BC12_EN, MT6375_REG_BC12_FUNC, 7, 7),
@@ -3165,6 +3166,12 @@ static int mt6375_chg_init_setting(struct mt6375_chg_data *ddata)
 	ret = mt6375_chg_field_set(ddata, F_BC12_EN, 0);
 	if (ret < 0) {
 		dev_err(ddata->dev, "failed to disable bc12\n");
+		return ret;
+	}
+
+	ret = mt6375_chg_field_set(ddata, F_BC12_VBUS_EN_OPT, 1);
+	if (ret < 0) {
+		dev_err(ddata->dev, "failed to enable BC12_VBUS_EN_OPT\n");
 		return ret;
 	}
 
