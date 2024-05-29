@@ -80,6 +80,11 @@ struct LCM_setting_table {
 	unsigned char para_list[64];
 };
 
+struct LCM_mtk_setting_table {
+	unsigned int count;
+	unsigned char para_list[256];
+};
+
 static char bl_tb0[] = {0x51, 0x03, 0xFF};
 static struct kobject *kobj = NULL;
 static struct mtk_ddic_dsi_msg *g_cmd_msg = NULL;
@@ -100,6 +105,126 @@ static struct mtk_ddic_dsi_msg *g_cmd_msg = NULL;
 static inline struct lcm *panel_to_lcm(struct drm_panel *panel)
 {
 	return container_of(panel, struct lcm, panel);
+}
+
+static int panel_send_pack_cmd(void *dsi, struct LCM_mtk_setting_table *table,
+			unsigned int lcm_cmd_count, dcs_write_gce_pack cb, void *handle)
+{
+	unsigned int i = 0;
+	struct mtk_ddic_dsi_cmd send_cmd_to_ddic;
+
+	if (lcm_cmd_count > MAX_TX_CMD_NUM_PACK) {
+		pr_info("%s,out of mtk_ddic_dsi_cmd\n", __func__);
+		return 0;
+	}
+
+	for (i = 0; i < lcm_cmd_count; i++) {
+		send_cmd_to_ddic.mtk_ddic_cmd_table[i].cmd_num = table[i].count;
+		send_cmd_to_ddic.mtk_ddic_cmd_table[i].para_list = table[i].para_list;
+	}
+	send_cmd_to_ddic.is_hs = 1;
+	send_cmd_to_ddic.is_package = 1;
+	send_cmd_to_ddic.cmd_count = lcm_cmd_count;
+
+	cb(dsi, handle, &send_cmd_to_ddic);
+
+	return 0;
+}
+
+static struct LCM_mtk_setting_table cmd_tb[] = {
+	{2, {0x53, 0x20}},
+	{3, {0x51, 0x0F, 0xFF}},
+	{2, {0xF7, 0x0B}},
+};
+
+static struct LCM_mtk_setting_table elvss_cmd_tb[] = {
+	{3, {0xF0, 0x5A, 0x5A}},
+	{4, {0xB0, 0x00, 0x0C, 0xB2}},
+	{2, {0xB2, 0x20}},
+	{3, {0xF0, 0xA5, 0xA5}},
+};
+
+static struct LCM_mtk_setting_table vdc_on_cmd_tb[] = {
+	{3, {0xF0, 0x5A, 0x5A}},
+	{4, {0xB0, 0x00, 0x89, 0xB1}},
+	{2, {0xB1, 0x0D}},
+	{3, {0xF0, 0xA5, 0xA5}},
+};
+
+static struct LCM_mtk_setting_table vdc_off_cmd_tb[] = {
+	{3, {0xF0, 0x5A, 0x5A}},
+	{4, {0xB0, 0x00, 0x89, 0xB1}},
+	{2, {0xB1, 0x2D}},
+	{3, {0xF0, 0xA5, 0xA5}},
+};
+
+static struct LCM_mtk_setting_table hbm_cmd_tb[] = {
+	{2, {0x53, 0xE0}},
+	{3, {0x51, 0x05, 0xB6}},
+	{2, {0xF7, 0x0B}},
+};
+
+static int samsung_set_backlight_pack(void *dsi, dcs_write_gce_pack cb,
+		void *handle, unsigned int level)
+{
+	int cmd_cnt = 0;
+
+	if (!cb) {
+		pr_info("[LCM]cb is null, %s return -1\n", __func__);
+		return -1;
+	}
+
+	if (level > 4096)
+		level = 4096;
+
+	if (lcm_hbmoff_state == 1) {
+		cmd_cnt = sizeof(elvss_cmd_tb) / sizeof(struct LCM_mtk_setting_table);
+		panel_send_pack_cmd(dsi, elvss_cmd_tb, cmd_cnt, cb, handle);
+		pr_info("%s set elvssdly off\n", __func__);
+		lcm_hbmoff_state = 0;
+	}
+
+	if (level > 4090 && !lcm_vdc_state) {
+		cmd_cnt = sizeof(vdc_on_cmd_tb) / sizeof(struct LCM_mtk_setting_table);
+		panel_send_pack_cmd(dsi, vdc_on_cmd_tb, cmd_cnt, cb, handle);
+		lcm_vdc_state = 1;
+		pr_info("%s set vdc_on\n", __func__);
+	} else if (lcm_vdc_state && level <= 4090) {
+		cmd_cnt = sizeof(vdc_off_cmd_tb) / sizeof(struct LCM_mtk_setting_table);
+		panel_send_pack_cmd(dsi, vdc_off_cmd_tb, cmd_cnt, cb, handle);
+		lcm_vdc_state = 0;
+		pr_info("%s set vdc_off\n", __func__);
+	}
+
+	if (level >= 417 && level <= 424)
+		level = 425;
+
+	bl_tb0[1] = (level >> 8) & 0xFF;
+	bl_tb0[2] = level & 0xFF;
+
+	g_level = level;
+
+	if (g_ctx->hbm_stat == true || g_ctx->hbm_en == true) {
+		pr_info("%s+, hbm mode set_level=%d\n", __func__, level);
+		return 0;
+	}
+
+	pr_info("%s, bl_tb0[1]=0x%x, bl_tb0[2]=0x%x, bl_level:%d\n", __func__, bl_tb0[1], bl_tb0[2], level);
+
+	if (level > 0x7FF) {
+		level = level - 0x800;
+		hbm_cmd_tb[1].para_list[1] = (level >> 8) & 0xf;
+		hbm_cmd_tb[1].para_list[2] = level & 0xff;
+		cmd_cnt = sizeof(hbm_cmd_tb) / sizeof(struct LCM_mtk_setting_table);
+		panel_send_pack_cmd(dsi, hbm_cmd_tb, cmd_cnt, cb, handle);
+	} else {
+		cmd_tb[1].para_list[1] = bl_tb0[1];
+		cmd_tb[1].para_list[2] = bl_tb0[2];
+		cmd_cnt = sizeof(cmd_tb) / sizeof(struct LCM_mtk_setting_table);
+		panel_send_pack_cmd(dsi, cmd_tb, cmd_cnt, cb, handle);
+	}
+
+	return 0;
 }
 
 static void lcm_dcs_write(struct lcm *ctx, const void *data, size_t len)
@@ -395,79 +520,16 @@ static int panel_ata_check(struct drm_panel *panel)
 static int lcm_setbacklight_cmdq(void *dsi,
 		dcs_write_gce cb, void *handle, unsigned int level)
 {
-	char hbm_buf01[] = {0xF0, 0x5A, 0x5A};
-	char hbm_buf02[] = {0x53, 0x20};
-	char hbm_buf03[] = {0xF7, 0x0B};
-	char hbm_buf04[] = {0xF0, 0xA5, 0xA5};
 
-	char hbm_buf11[] = {0x53, 0xE0};
-	char hbm_buf12[] = {0x51, 0x05, 0xB6};
-	char hbm_buf13[] = {0xF7, 0x0B};
-
-	char vdc_control[] = {0xB0, 0x00, 0x89, 0xB1};
-	char vdc_on[]  = {0xB1, 0x0D};
-	char vdc_off[] = {0xB1, 0x2D};
-
-	char elvssdly_con[] = {0xB0, 0x00, 0x0C, 0xB2};
-	char elvssoff_dlyoff [] = {0xB2, 0x20};
+	pr_info("%s\n", __func__);
 
 	if (!cb) {
 		pr_info("[LCM]cb is null, lcm_setbacklight_cmdq return -1\n");
 		return -1;
 	}
 
-	if (lcm_hbmoff_state == 1) {
-		cb(dsi, handle, hbm_buf01, ARRAY_SIZE(hbm_buf01));
-		cb(dsi, handle, elvssdly_con, ARRAY_SIZE(elvssdly_con));
-		cb(dsi, handle, elvssoff_dlyoff, ARRAY_SIZE(elvssoff_dlyoff));
-		cb(dsi, handle, hbm_buf04, ARRAY_SIZE(hbm_buf04));
-		pr_info("%s set elvssdly off\n", __func__);
-		lcm_hbmoff_state = 0;
-	}
-
-	if (level > 4090 && !lcm_vdc_state) {
-		cb(dsi, handle, hbm_buf01, ARRAY_SIZE(hbm_buf01));
-		cb(dsi, handle, vdc_control, ARRAY_SIZE(vdc_control));
-		cb(dsi, handle, vdc_on, ARRAY_SIZE(vdc_on));
-		cb(dsi, handle, hbm_buf04, ARRAY_SIZE(hbm_buf04));
-		lcm_vdc_state = 1;
-		pr_info("%s set vdc_on\n", __func__);
-	} else if (lcm_vdc_state && level <= 4090){
-		cb(dsi, handle, hbm_buf01, ARRAY_SIZE(hbm_buf01));
-		cb(dsi, handle, vdc_control, ARRAY_SIZE(vdc_control));
-		cb(dsi, handle, vdc_off, ARRAY_SIZE(vdc_off));
-		cb(dsi, handle, hbm_buf04, ARRAY_SIZE(hbm_buf04));
-		lcm_vdc_state = 0;
-		pr_info("%s set vdc_off\n", __func__);
-	}
-
-	if (level >= 417 && level <= 424)
-		level = 425;
-
 	bl_tb0[1] = (level >> 8) & 0xFF;
 	bl_tb0[2] = level & 0xFF;
-
-	g_level = level;
-	if (g_ctx->hbm_stat == true || g_ctx->hbm_en == true) {
-		pr_info("%s+, hbm mode set_level=%d\n", __func__, level);
-		return 0;
-	}
-
-	pr_info("%s, bl_tb0[1]=0x%x, bl_tb0[2]=0x%x, level=%d\n", __func__,
-			bl_tb0[1], bl_tb0[2], level);
-
-	if (level > 0x7FF) {
-		cb(dsi, handle, hbm_buf11, ARRAY_SIZE(hbm_buf11));
-		level = level - 0x800;
-		hbm_buf12[1] = (level >> 8)&0xf;
-		hbm_buf12[2] = level & 0xff;
-		cb(dsi, handle, hbm_buf12, ARRAY_SIZE(hbm_buf12));
-		cb(dsi, handle, hbm_buf13, ARRAY_SIZE(hbm_buf13));
-	} else {
-		cb(dsi, handle, hbm_buf02, ARRAY_SIZE(hbm_buf02));
-		cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
-		cb(dsi, handle, hbm_buf03, ARRAY_SIZE(hbm_buf03));
-	}
 
 	return 0;
 }
@@ -902,7 +964,7 @@ static struct mtk_panel_params ext_params_120hz = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 	},
-
+	.vdo_mix_mode_en = true,
 	.dyn_fps = {
 		.data_rate = 1140,
 		.switch_en = 1,
@@ -987,7 +1049,7 @@ static struct mtk_panel_params ext_params_60hz = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 	},
-
+	.vdo_mix_mode_en = true,
 	.dyn_fps = {
 		.data_rate = 1140,
 		.switch_en = 1,
@@ -1251,6 +1313,7 @@ static int mode_switch(struct drm_panel *panel,
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
+	.set_backlight_pack = samsung_set_backlight_pack,
 
 	.ata_check = panel_ata_check,
 	.hbm_set_cmdq = panel_hbm_set_cmdq,

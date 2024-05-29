@@ -6184,6 +6184,7 @@ static void mtk_dsi_cmdq_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	DDPINFO("set cmdqaddr %u, val:%x, mask %x\n", DSI_CMDQ_SIZE, cmdq_size,
 			CMDQ_SIZE);
 }
+
 static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				struct mtk_ddic_dsi_cmd *para_table)
 {
@@ -6197,12 +6198,14 @@ static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	unsigned int base_addr;
 
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
+	struct mtk_panel_ext *panel_ext = dsi->ext;
 	const u32 reg_cmdq_ofs = dsi->driver_data->reg_cmdq0_ofs;
 
 	DDPINFO("%s +,\n", __func__);
 
 	mtk_dsi_power_keep_gce(dsi, handle, true);
-	mtk_dsi_poll_for_idle(dsi, handle);
+	if (!panel_ext || !panel_ext->params || !panel_ext->params->vdo_mix_mode_en)
+		mtk_dsi_poll_for_idle(dsi, handle);
 
 	if (mtk_dsi_is_cmd_mode(comp) && dsi->driver_data->require_phy_reset)
 		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
@@ -6318,11 +6321,22 @@ static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	DDPINFO("total_cmdq_size = %d,DSI_CMDQ_SIZE=0x%x\n",
 		total_cmdq_size, readl(dsi->regs + DSI_CMDQ_SIZE));
 
-	mtk_ddp_write_relaxed(comp, 0x0, DSI_START, handle);
-	mtk_ddp_write_relaxed(comp, 0x1, DSI_START, handle);
-	mtk_ddp_write_relaxed(comp, 0x0, DSI_START, handle);
+	if (!panel_ext || !panel_ext->params || !panel_ext->params->vdo_mix_mode_en) {
+		mtk_ddp_write_relaxed(comp, 0x0, DSI_START, handle);
+		mtk_ddp_write_relaxed(comp, 0x1, DSI_START, handle);
+		mtk_ddp_write_relaxed(comp, 0x0, DSI_START, handle);
 
-	mtk_dsi_poll_for_idle(dsi, handle);
+		mtk_dsi_poll_for_idle(dsi, handle);
+	} else {
+		cmdq_pkt_clear_event(handle,
+			comp->mtk_crtc->gce_obj.event[EVENT_DSI_CMD_DONE]);
+		mtk_ddp_write_mask(comp, MIX_MODE, DSI_MODE_CTRL, MIX_MODE,
+				handle);
+		cmdq_pkt_wait_no_clear(handle,
+			comp->mtk_crtc->gce_obj.event[EVENT_DSI_CMD_DONE]);
+		mtk_ddp_write_mask(comp, 0, DSI_MODE_CTRL, MIX_MODE,
+				handle);
+	}
 	if (para_table->is_hs == 1)
 		mtk_ddp_write_mask(comp, 0, DSI_TXRX_CTRL, DIS_EOT,
 				handle);
@@ -10831,9 +10845,9 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		panel_ext = mtk_dsi_get_panel_ext(comp);
 		if (panel_ext && panel_ext->funcs
-			&& panel_ext->funcs->set_backlight_cmdq)
-			panel_ext->funcs->set_backlight_cmdq(dsi,
-					mipi_dsi_dcs_write_gce,
+			&& panel_ext->funcs->set_backlight_pack)
+			panel_ext->funcs->set_backlight_pack(dsi,
+					mtk_dsi_cmdq_pack_gce,
 					handle, *(int *)params);
 	}
 		break;

@@ -16696,6 +16696,11 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 					      sizeof(output_comp));
 		len = snprintf(buf, buf_len, "disp_%s_sof0", output_comp);
 		break;
+	case EVENT_DSI_CMD_DONE:
+		mtk_crtc_get_output_comp_name(mtk_crtc, output_comp,
+					      sizeof(output_comp));
+		len = snprintf(buf, buf_len, "disp_%s_cmd_done0", output_comp);
+		break;
 	/*Msync 2.0*/
 	case EVENT_SYNC_TOKEN_VFP_PERIOD:
 		len = snprintf(buf, buf_len, "disp_token_vfp_period%d",

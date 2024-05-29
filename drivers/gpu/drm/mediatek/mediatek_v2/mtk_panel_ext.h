@@ -576,6 +576,8 @@ struct mtk_panel_params {
 
 	bool dual_swap;
 	unsigned int mode_switch_delay;
+
+	bool vdo_mix_mode_en;
 };
 
 struct mtk_panel_ext {
@@ -608,6 +610,8 @@ struct mtk_panel_funcs {
 	int (*read_elvss_base_voltage)(void *dsi_drv, ddic_dsi_send_cmd send_cb,
 		dic_dsi_read_cmd read_cb, struct DISP_PANEL_BASE_VOLTAGE *base_volageg);
 	int (*set_backlight_cmdq)(void *dsi_drv, dcs_write_gce cb,
+		void *handle, unsigned int level);
+	int (*set_backlight_pack)(void *dsi_drv, dcs_write_gce_pack cb,
 		void *handle, unsigned int level);
 	int (*set_spr_cmdq)(void *dsi_drv, struct drm_panel *panel, dcs_grp_write_gce cb,
 		void *handle, unsigned int en);
