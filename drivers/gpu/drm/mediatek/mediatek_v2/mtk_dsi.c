@@ -271,8 +271,6 @@
 //#define DSI_VM_CMD_CON 0x130
 #define VM_CMD_EN BIT(0)
 #define TS_VFP_EN BIT(5)
-#define TS_VSA_EN BIT(3)
-#define TS_VBP_EN BIT(4)
 //#define DSI_VM_CMD_DATA0	0x134
 //#define DSI_VM_CMD_DATA10	0x180
 //#define DSI_VM_CMD_DATA20	0x1A0
@@ -428,7 +426,6 @@ static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, unsigned int hactive);
 static void DSI_MIPI_deskew(struct mtk_dsi *dsi);
 void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle, const void *data, size_t len);
-void mipi_dsi_vfp_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle, const void *data, size_t len);
 static inline struct mtk_dsi *encoder_to_dsi(struct drm_encoder *e)
 {
 	return container_of(e, struct mtk_dsi, encoder);
@@ -6071,32 +6068,6 @@ static void build_vm_cmdq(struct mtk_dsi *dsi,
 	}
 }
 
-static void mtk_dsi_vfp_vm_cmdq(struct mtk_dsi *dsi,
-	const struct mipi_dsi_msg *msg, struct cmdq_pkt *handle)
-{
-	const char *tx_buf = msg->tx_buf;
-	u8 config, type = msg->type;
-	u32 reg_val;
-	config = (msg->tx_len > 2) ? VM_LONG_PACKET : 0;
-	if(dsi->driver_data->vm_rgb_time_interval)
-		config |= (1 << 2);
-	if (msg->tx_len > 2) {
-		build_vm_cmdq(dsi, msg, handle);
-		reg_val = (msg->tx_len << 16) | (type << 8) | config;
-	} else if (msg->tx_len == 2) {
-		reg_val = (tx_buf[1] << 24) | (tx_buf[0] << 16) |
-			(type << 8) | config;
-	} else {
-		reg_val = (tx_buf[0] << 16) | (type << 8) | config;
-	}
-	reg_val |= (VM_CMD_EN + TS_VFP_EN);
-	if (handle == NULL)
-		writel(reg_val, dsi->regs + dsi->driver_data->reg_vm_cmd_con_ofs);
-	else
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + dsi->driver_data->reg_vm_cmd_con_ofs, reg_val, ~0);
-}
-
 static void mtk_dsi_vm_cmdq(struct mtk_dsi *dsi,
 	const struct mipi_dsi_msg *msg, struct cmdq_pkt *handle)
 {
@@ -6118,7 +6089,7 @@ static void mtk_dsi_vm_cmdq(struct mtk_dsi *dsi,
 		reg_val = (tx_buf[0] << 16) | (type << 8) | config;
 	}
 
-	reg_val |= (VM_CMD_EN + TS_VSA_EN + TS_VBP_EN);
+	reg_val |= (VM_CMD_EN + TS_VFP_EN);
 
 	if (handle == NULL)
 		writel(reg_val, dsi->regs + dsi->driver_data->reg_vm_cmd_con_ofs);
@@ -6486,86 +6457,6 @@ static void mtk_dsi_cmdq_grp_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	DDPINFO("set cmdqaddr %x, val:%d, mask %x\n", DSI_CMDQ_SIZE,
 			total_cmdq_size,
 			CMDQ_SIZE);
-}
-
-void mipi_dsi_vfp_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
-				  const void *data, size_t len)
-{
-	struct mipi_dsi_msg msg = {
-		.tx_buf = data,
-		.tx_len = len
-	};
-	switch (len) {
-	case 0:
-		return;
-	case 1:
-		msg.type = MIPI_DSI_DCS_SHORT_WRITE;
-		break;
-	case 2:
-		msg.type = MIPI_DSI_DCS_SHORT_WRITE_PARAM;
-		break;
-	default:
-		msg.type = MIPI_DSI_DCS_LONG_WRITE;
-		break;
-	}
-	mtk_dsi_power_keep_gce(dsi, handle, true);
-	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
-		mtk_dsi_poll_for_idle(dsi, handle);
-		mtk_dsi_cmdq_gce(dsi, handle, &msg);
-		if (dsi->slave_dsi) {
-			if (dsi->ext->params->lcm_cmd_if == MTK_PANEL_DUAL_PORT) {
-				mtk_dsi_cmdq_gce(dsi->slave_dsi, handle, &msg);
-				cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
-					dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL,
-					DSI_DUAL_EN, DSI_DUAL_EN);
-			} else
-				cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
-					dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL,
-					0x0, DSI_DUAL_EN);
-		}
-		if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && dsi->driver_data->require_phy_reset) {
-			/* CMD mode require phy reset only */
-			mtk_dsi_runtime_phy_reset_gce(dsi, handle);
-		}
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + DSI_START, 0x1, ~0);
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
-		mtk_dsi_poll_for_idle(dsi, handle);
-		if (dsi->slave_dsi) {
-			cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
-					dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL,
-					DSI_DUAL_EN, DSI_DUAL_EN);
-		}
-	} else {
-		/* set BL cmd */
-		mtk_dsi_vfp_vm_cmdq(dsi, &msg, handle);
-		/* clear VM_CMD_DONE */
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + DSI_INTSTA, 0,
-			VM_CMD_DONE_INT_EN);
-		/* start to send VM cmd */
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + DSI_START, 0,
-			VM_CMD_START);
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + DSI_START, VM_CMD_START,
-			VM_CMD_START);
-		/* poll VM cmd done */
-		mtk_dsi_cmdq_poll(&dsi->ddp_comp, handle,
-			dsi->ddp_comp.regs_pa + DSI_INTSTA,
-			VM_CMD_DONE_INT_EN, VM_CMD_DONE_INT_EN);
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + DSI_START, 0,
-			VM_CMD_START);
-		/* clear VM_CMD_DONE */
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + DSI_INTSTA, 0,
-			VM_CMD_DONE_INT_EN);
-	}
-	mtk_dsi_power_keep_gce(dsi, handle, false);
 }
 
 void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
@@ -10931,7 +10822,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			break;
 
 		panel_ext->funcs->hbm_set_cmdq(dsi->panel, dsi,
-					       mipi_dsi_vfp_dcs_write_gce, handle,
+					       mipi_dsi_dcs_write_gce, handle,
 					       *(bool *)params);
 		break;
 	}
