@@ -293,7 +293,6 @@ static inline int typec_norp_src_attached_entry(struct tcpc_device *tcpc)
 #if CONFIG_TYPEC_CAP_A2C_C2C
 	tcpc->typec_a2c_cable = true;
 #endif	/* CONFIG_TYPEC_CAP_A2C_C2C */
-
 	tcpci_set_cc(tcpc, TYPEC_CC_RD);
 	tcpci_report_power_control(tcpc, true);
 	tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_TYPEC, TCPC_VBUS_SINK_5V, 500);
@@ -1333,6 +1332,14 @@ static inline bool typec_is_ignore_cc_change(
 
 	return false;
 }
+int nt_cc1_connected = 0;
+int nt_cc2_connected = 0;
+
+int nt_get_cc_connected(void)
+{
+	return (nt_cc2_connected | nt_cc1_connected);
+}
+EXPORT_SYMBOL(nt_get_cc_connected);
 
 int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 {
@@ -1341,6 +1348,8 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 	ret = tcpci_get_cc(tcpc);
 	if (ret < 0)
 		return ret;
+	nt_cc1_connected = typec_get_cc1();
+	nt_cc2_connected = typec_get_cc2();
 
 	TYPEC_INFO("[CC_Alert] %d/%d\n", typec_get_cc1(), typec_get_cc2());
 
@@ -1922,7 +1931,10 @@ int tcpc_typec_change_role(
 	if (tcpc_typec_is_cc_open_state(tcpc))
 		return 0;
 
-	if (!postpone || tcpc->typec_attach_old == TYPEC_UNATTACHED)
+	//if (!postpone || tcpc->typec_attach_old == TYPEC_UNATTACHED)
+	pr_err("Check:%d,%d\n", postpone, tcpc->typec_attach_old);
+	if (!postpone || tcpc->typec_attach_old == TYPEC_UNATTACHED ||
+		tcpc->typec_attach_old == TYPEC_ATTACHED_NORP_SRC)
 		return tcpc_typec_error_recovery(tcpc);
 	else
 		return 0;

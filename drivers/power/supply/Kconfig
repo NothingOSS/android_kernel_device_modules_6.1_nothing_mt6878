@@ -119,6 +119,41 @@ config CHARGER_RT9758
 	  high voltage application. The maximum charge current is up to 5A.
 	  Say N to disable.
 
+config CHARGER_SC8541
+	tristate "Southchip SC8541 charger support"
+	depends on I2C
+	depends on MTK_CHARGER
+	help
+	  Say Y here to enable support for Southchip SC8541 charger.
+	  Southchip SC8541 is a CP charger, and can support
+	  the battery with up to 8A charging current.
+	  Say N to disable.
+
+config CHARGER_UPM6720
+	tristate "Unisemi UPM6720 charger support"
+	depends on I2C
+	depends on MTK_CHARGER
+	help
+	  Say Y here to enable support for Unisemi UPM6720 charger.
+	  Unisemi UPM6720 is a CP charger, and can support
+	  the battery with up to 8A charging current.
+	  Say N to disable.
+
+config CHARGER_NT
+	tristate "Create NT-PRI file node"
+	default n
+	depends on MTK_CHARGER
+	help
+	  Say Yes to create file node.
+	  It depends on config MTK_CHARGER
+
+config NT_USB_TS
+	tristate "USB Temperature"
+	depends on MTK_CHARGER
+	help
+	  Say Y here to enable support for check usb temperature,
+	  This driver is used for monitor usb temperature.
+
 config BATTERY_MT6359P
 	tristate "MT6359P fuel gauge support"
 	depends on DEVICE_MODULES_MFD_MT6397

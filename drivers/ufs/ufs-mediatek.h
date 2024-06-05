@@ -16,6 +16,10 @@
 #include <ufs/ufshcd.h>
 #include "ufs-mediatek-rpmb.h"
 
+#if defined(CONFIG_UFSFEATURE)
+#include "vendor/ufsfeature.h"
+#endif
+
 /*
  * MCQ define and struct
  */
@@ -91,6 +95,40 @@
 #define VS_DEBUGCLOCKENABLE         0xD0A1
 #define VS_SAVEPOWERCONTROL         0xD0A6
 #define VS_UNIPROPOWERDOWNCONTROL   0xD0A8
+
+/* manual gc */
+struct ufs_manual_gc {
+	int state;
+	bool hagc_support;
+	struct hrtimer hrtimer;
+	unsigned long delay_ms;
+	struct work_struct hibern8_work;
+	struct workqueue_struct *mgc_workq;
+};
+
+#define UFSHCD_MANUAL_GC_HOLD_HIBERN8           10000    /* 10 seconds */
+#define UFSHCD_MANUAL_GC_HOLD_HIBERN8_MAX       10000
+#define UFSHCD_MANUAL_GC_HOLD_HIBERN8_MIN       2000
+
+#define QUERY_ATTR_IDN_MANUAL_GC_CONT           0x12
+#define QUERY_ATTR_IDN_MANUAL_GC_STATUS         0x13
+
+enum {
+	MANUAL_GC_OFF = 0,
+	MANUAL_GC_ON,
+	MANUAL_GC_DISABLE,
+	MANUAL_GC_ENABLE,
+	MANUAL_GC_MAX,
+};
+
+enum {
+	MANUAL_GC_STATUS_CLEAN = 0,
+	MANUAL_GC_STATUS_PAUSE,
+	MANUAL_GC_STATUS_DIRTY,
+	MANUAL_GC_STATUS_MAX,
+};
+
+extern void init_manual_gc(struct ufs_hba *hba);
 
 /*
  * Vendor specific link state
@@ -266,6 +304,9 @@ struct ufs_mtk_host {
 #endif
 	struct device *phy_dev;
 
+	/* manual_gc */
+	struct ufs_manual_gc manual_gc;
+
 	/* RPMB */
 	struct semaphore rpmb_sem;
 	struct scsi_device *sdev_rpmb;
@@ -281,6 +322,10 @@ struct ufs_mtk_host {
 	int mcq_nr_intr;
 	struct ufs_mtk_mcq_intr_info mcq_intr_info[UFSHCD_MAX_Q_NR];
 	struct tag_ufs *atag;
+
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature ufsf;
+#endif
 };
 
 #define UFSHCD_MAX_TAG	256
@@ -392,4 +437,11 @@ static inline const void *ufs_mtk_get_boot_property(struct device_node *np,
 	return of_get_property(boot_node, name, lenp);
 }
 
+#if defined(CONFIG_UFSFEATURE)
+static inline struct ufsf_feature *ufs_mtk_get_ufsf(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	return &host->ufsf;
+}
+#endif
 #endif /* !_UFS_MEDIATEK_H */

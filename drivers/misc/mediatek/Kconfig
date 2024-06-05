@@ -255,3 +255,11 @@ config FPGA_EARLY_PORTING
 	  Say Y here if you are doing FPGA early porting.
 	  If unsure, say N
 endmenu # Misc
+
+config AUDIO_SWITCH_HL5280
+	tristate "audio switch hl5280 driver"
+
+# Add support for board id
+# @{
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/board_id/Kconfig"
+# @}

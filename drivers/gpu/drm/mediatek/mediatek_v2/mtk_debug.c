@@ -1417,6 +1417,7 @@ int mtk_ddic_dsi_send_cmd(struct mtk_ddic_dsi_msg *cmd_msg,
 
 	return ret;
 }
+EXPORT_SYMBOL(mtk_ddic_dsi_send_cmd);
 
 static void set_cwb_info_buffer(struct drm_crtc *crtc, int format)
 {
@@ -1648,6 +1649,34 @@ void ddic_dsi_send_cmd_test(unsigned int case_num)
 
 		break;
 	}
+	case 7:
+	{
+		cmd_msg->channel = 0;
+		cmd_msg->flags = 0;
+		cmd_msg->tx_cmd_num = 1;
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xF0;
+		tx[1] = 0x5A;
+		tx[2] = 0x5A;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 3;
+
+		break;
+	}
+	case 8:
+	{
+		cmd_msg->channel = 0;
+		cmd_msg->flags = 0;
+		cmd_msg->tx_cmd_num = 1;
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xF0;
+		tx[1] = 0xA5;
+		tx[2] = 0xA5;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 3;
+
+		break;
+	}
 	default:
 		DDPMSG("%s no this test case:%d\n", __func__, case_num);
 		break;
@@ -1675,6 +1704,7 @@ done:
 
 	DDPMSG("%s end -\n", __func__);
 }
+EXPORT_SYMBOL(ddic_dsi_send_cmd_test);
 
 void ddic_dsi_send_switch_pgt(unsigned int cmd_num, u8 addr,
 	u8 val1, u8 val2, u8 val3, u8 val4, u8 val5, u8 val6)
@@ -1800,6 +1830,8 @@ done:
 	DDPMSG("%s end -\n", __func__);
 }
 
+unsigned char lcm_id[3] = {0};
+EXPORT_SYMBOL(lcm_id);
 void ddic_dsi_read_cmd_test(unsigned int case_num)
 {
 	unsigned int j = 0;
@@ -1923,6 +1955,57 @@ void ddic_dsi_read_cmd_test(unsigned int case_num)
 
 		break;
 	}
+	case 7:
+	{
+		/* Read 0xe8 = 0x00,0x01,0x23,0x00 */
+		cmd_msg->channel = 0;
+		cmd_msg->tx_cmd_num = 1;
+		cmd_msg->type[0] = 0x06;
+		tx[0] = 0xDA;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 1;
+
+		cmd_msg->rx_cmd_num = 1;
+		cmd_msg->rx_buf[0] = vmalloc(8 * sizeof(unsigned char));
+		memset(cmd_msg->rx_buf[0], 0, 4);
+		cmd_msg->rx_len[0] = 4;
+
+		break;
+	}
+	case 8:
+	{
+		/* Read 0xe8 = 0x00,0x01,0x23,0x00 */
+		cmd_msg->channel = 0;
+		cmd_msg->tx_cmd_num = 1;
+		cmd_msg->type[0] = 0x06;
+		tx[0] = 0xDB;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 1;
+
+		cmd_msg->rx_cmd_num = 1;
+		cmd_msg->rx_buf[0] = vmalloc(8 * sizeof(unsigned char));
+		memset(cmd_msg->rx_buf[0], 0, 4);
+		cmd_msg->rx_len[0] = 4;
+
+		break;
+	}
+	case 9:
+	{
+		/* Read 0xe8 = 0x00,0x01,0x23,0x00 */
+		cmd_msg->channel = 0;
+		cmd_msg->tx_cmd_num = 1;
+		cmd_msg->type[0] = 0x06;
+		tx[0] = 0xDC;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 1;
+
+		cmd_msg->rx_cmd_num = 1;
+		cmd_msg->rx_buf[0] = vmalloc(8 * sizeof(unsigned char));
+		memset(cmd_msg->rx_buf[0], 0, 4);
+		cmd_msg->rx_len[0] = 4;
+
+		break;
+	}
 
 	default:
 		DDPMSG("%s no this test case:%d\n", __func__, case_num);
@@ -1942,6 +2025,13 @@ void ddic_dsi_read_cmd_test(unsigned int case_num)
 		DDPMSG("read lcm addr:0x%x--byte:%d,val:0x%x\n",
 			*(char *)(cmd_msg->tx_buf[0]), j,
 			*(char *)(cmd_msg->rx_buf[0] + j));
+		if (case_num == 7) {
+			lcm_id[0] = *(char *)(cmd_msg->rx_buf[0] + j);
+		} else if (case_num == 8) {
+			lcm_id[1] = *(char *)(cmd_msg->rx_buf[0] + j);
+		} else if (case_num == 9) {
+			lcm_id[2] = *(char *)(cmd_msg->rx_buf[0] + j);
+		}
 	}
 
 done:
@@ -1950,6 +2040,7 @@ done:
 
 	DDPMSG("%s end -\n", __func__);
 }
+EXPORT_SYMBOL(ddic_dsi_read_cmd_test);
 
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state)
 {

@@ -90,8 +90,8 @@ mgk_64_k61_kleaf_userdebug_modules = [
 mgk_64_k61_kleaf_user_modules = [
 ]
 
-
 mgk_64_k61_module_outs = [
+    "fs/ntfs3/ntfs3.ko",
 ]
 
 mgk_64_k61_common_modules = mgk_module_outs + mgk_64_k61_module_outs
@@ -111,6 +111,9 @@ mgk_64_k61_device_modules = [
     "drivers/clk/mediatek/fhctl.ko",
     "drivers/clocksource/timer-mediatek.ko",
     "drivers/cpufreq/mediatek-cpufreq-hw.ko",
+    "drivers/chino-e/hwinfo/bootinfo.ko",
+    "drivers/chino-e/hwinfo/gpio_boardid.ko",
+    "drivers/chino-e/hwinfo/hwinfo.ko",
     "drivers/devfreq/mtk-dvfsrc-devfreq.ko",
     "drivers/dma-buf/heaps/mtk_heap_debug.ko",
     "drivers/dma-buf/heaps/mtk_heap_refill.ko",
@@ -127,6 +130,7 @@ mgk_64_k61_device_modules = [
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_panel_ext.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_sync.ko",
     "drivers/gpu/drm/mediatek/mml/mtk-mml.ko",
+    "drivers/gpu/drm/panel/panel-samsung-s6e8fc3x02.ko",
     "drivers/gpu/drm/panel/k6985v1_64_alpha/panel-nt37705-alpha-cmd.ko",
     "drivers/gpu/drm/panel/k6989v1_64_alpha/panel-ili7838e-alpha-cmd.ko",
     "drivers/gpu/drm/panel/k6989v1_64_alpha/panel-ili7838e-dv2-alpha-cmd.ko",
@@ -198,7 +202,9 @@ mgk_64_k61_device_modules = [
     "drivers/input/touchscreen/GT9896S/gt9896s.ko",
     "drivers/input/touchscreen/k6985v1_64_alpha/tp_y761.ko",
     "drivers/input/touchscreen/NT36532/nt36532.ko",
+    "drivers/input/touchscreen/FT3519/focaltech_tp.ko",
     "drivers/input/touchscreen/tui-common.ko",
+    "drivers/input/fingerprint/goodix/goodix_fp.ko",
     "drivers/interconnect/mediatek/mmqos-common.ko",
     "drivers/interconnect/mediatek/mtk-emi.ko",
     "drivers/iommu/arm/arm-smmu-v3/arm_smmu_v3.ko",
@@ -256,6 +262,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/atf/atf_logger.ko",
     "drivers/misc/mediatek/audio_ipi/audio_ipi.ko",
     "drivers/misc/mediatek/blocktag/blocktag.ko",
+    "drivers/misc/mediatek/board_id/board_id.ko",
     "drivers/misc/mediatek/btif/common/btif_drv.ko",
     "drivers/misc/mediatek/cache-auditor/cpuqos_v3/cpuqos_v3.ko",
     "drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp70.ko",
@@ -297,6 +304,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/geniezone/gz-trusty/gz_trusty_mod.ko",
     "drivers/misc/mediatek/geniezone/gz-trusty/gz_virtio_mod.ko",
     "drivers/misc/mediatek/geniezone/gz_tz_system.ko",
+    "drivers/misc/mediatek/hl5280/hl5280.ko",
     "drivers/misc/mediatek/hw_sem/mtk-hw-semaphore.ko",
     "drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
     "drivers/misc/mediatek/iommu/iommu_debug.ko",
@@ -328,6 +336,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/lens/vcm/v4l2/main2_vcm/main2_vcm.ko",
     "drivers/misc/mediatek/lens/vcm/v4l2/main3_vcm/main3_vcm.ko",
     "drivers/misc/mediatek/lens/vcm/v4l2/main4_vcm/main4_vcm.ko",
+    "drivers/misc/mediatek/lens/vcm/v4l2/pd9302a/pd9302a.ko",
     "drivers/misc/mediatek/lens/ois/dw9781c/dw9781c.ko",
     "drivers/misc/mediatek/lens/ois/dw9781d/dw9781d.ko",
     "drivers/misc/mediatek/lens/vcm/v4l2/media/camera_af_media.ko",
@@ -495,6 +504,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/vow/ver02/mtk-vow.ko",
     "drivers/misc/mediatek/widevine_drm/widevine_driver.ko",
     "drivers/misc/mediatek/wlcdrv/wlcdrv.ko",
+    "drivers/misc/haptic/haptic.ko",
     "drivers/mmc/host/cqhci.ko",
     "drivers/mmc/host/mtk-mmc-dbg.ko",
     "drivers/mmc/host/mtk-wp.ko",
@@ -596,6 +606,7 @@ mgk_64_k61_device_modules = [
     "drivers/thermal/mediatek/soc_temp_lvts.ko",
     "drivers/thermal/mediatek/thermal_interface.ko",
     "drivers/thermal/mediatek/thermal_trace.ko",
+    "drivers/thermal/nothing/simulated_ntc.ko",
     "drivers/thermal/mediatek/vtskin_temp.ko",
     "drivers/thermal/mediatek/wifi_cooling.ko",
     "drivers/tty/serial/8250/8250_mtk.ko",
@@ -608,6 +619,7 @@ mgk_64_k61_device_modules = [
     "sound/soc/codecs/mt6681-accdet.ko",
     "sound/soc/codecs/richtek/richtek_spm_cls.ko",
     "sound/soc/codecs/richtek/snd-soc-rt5512.ko",
+    "sound/soc/codecs/aw882xx/snd-soc-aw882xx.ko",
     "sound/soc/codecs/snd-soc-mt6338.ko",
     "sound/soc/codecs/snd-soc-mt6368.ko",
     "sound/soc/codecs/snd-soc-mt6369.ko",
@@ -623,6 +635,16 @@ mgk_64_k61_device_modules = [
     "sound/soc/mediatek/ultrasound/ultra_common/mtk-scp-ultra.ko",
     "sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko",
     "sound/soc/mediatek/vow/mtk-scp-vow.ko",
+    "drivers/power/supply/sc8541_charger.ko",
+    "drivers/power/supply/upm6720_charger.ko",
+    "drivers/power/supply/nt_usb_ts.ko",
+    "drivers/power/supply/nt_chg.ko",
+    "drivers/nothing_stability/nothing_writeback_kmsg.ko",
+    "drivers/nothing_stability/nothing_task_meminfo.ko",
+    "drivers/nothing_stability/nothing_value_check.ko",
+    "drivers/nothing_stability/nothing_task_info.ko",
+    "drivers/nothing_stability/nothing_disk_usage.ko",
+    "drivers/nothing_stability/nothing_readahead_trace.ko",
 ]
 
 mgk_64_k61_platform_device_modules = {

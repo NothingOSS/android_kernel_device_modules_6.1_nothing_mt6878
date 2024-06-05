@@ -214,6 +214,9 @@
 
 /* latch magic timeout, avoid return same error code as i2c timeout */
 #define MT6375_LATCH_TIMEOUT			5526789
+#define GAUGE_NAME "mt6375-gm30"
+char fuel_gauge_info[32] = {"unknown"};
+EXPORT_SYMBOL(fuel_gauge_info);
 
 enum mt6375_gauge_cic_idx {
 	MT6375_GAUGE_CIC1 = 0,
@@ -4086,6 +4089,12 @@ static int mt6375_gauge_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to do mtk gauge init\n");
 		goto out_irq_chip;
 	}
+
+	/* update gauge hw info  */
+	memset(fuel_gauge_info, 0, sizeof(fuel_gauge_info));
+	memcpy(fuel_gauge_info, GAUGE_NAME,
+		strlen(GAUGE_NAME) > (sizeof(fuel_gauge_info) - 1) ?
+		(sizeof(fuel_gauge_info) - 1) : strlen(GAUGE_NAME));
 
 	return 0;
 

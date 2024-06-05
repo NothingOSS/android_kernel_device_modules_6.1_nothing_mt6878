@@ -229,6 +229,7 @@ static int pd_set_cap(struct adapter_device *dev, enum adapter_cap_type type,
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
 	int ret = TCP_DPM_RET_DENIED_UNKNOWN, active_idx = 0;
+	int cnt = 0;
 
 	if (info == NULL)
 		return MTK_ADAPTER_ERROR;
@@ -238,17 +239,19 @@ static int pd_set_cap(struct adapter_device *dev, enum adapter_cap_type type,
 	mutex_unlock(&info->idx_lock);
 
 	dev_info(info->dev, "%s type:%d %dmV %dmA\n", __func__, type, mV, mA);
-
-	if (type == MTK_PD_APDO_START)
-		ret = tcpm_set_apdo_charging_policy(info->tcpc[active_idx],
+	do {
+		if (type == MTK_PD_APDO_START)
+			ret = tcpm_set_apdo_charging_policy(info->tcpc[active_idx],
 						    DPM_CHARGING_POLICY_PPS,
 						    mV, mA, NULL);
-	else {
-		if (type == MTK_PD_APDO_END)
-			tcpm_reset_pd_charging_policy(info->tcpc[active_idx],
+		else {
+			if (type == MTK_PD_APDO_END)
+				tcpm_reset_pd_charging_policy(info->tcpc[active_idx],
 						      NULL);
-		ret = tcpm_dpm_pd_request(info->tcpc[active_idx], mV, mA, NULL);
-	}
+			ret = tcpm_dpm_pd_request(info->tcpc[active_idx], mV, mA, NULL);
+		}
+		cnt++;
+	} while (ret != TCP_DPM_RET_SUCCESS && cnt < 3);
 
 	return to_mtk_adapter_ret(ret);
 }

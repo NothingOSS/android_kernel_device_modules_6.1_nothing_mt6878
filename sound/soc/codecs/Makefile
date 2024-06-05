@@ -39,3 +39,4 @@ obj-$(CONFIG_SND_SOC_MT6681_ACCDET) += mt6681-accdet.o
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_HDMI_CODEC)	+= snd-soc-hdmi-codec.o
 obj-$(CONFIG_SND_SOC_RT5512)	+= richtek/
 obj-$(CONFIG_SND_SOC_TFA9874)	+= tfa98xx/
+obj-$(CONFIG_SND_SMARTPA_AW882XX) += aw882xx/

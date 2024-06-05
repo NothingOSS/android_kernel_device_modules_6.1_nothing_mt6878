@@ -105,4 +105,8 @@ obj-$(CONFIG_MTK_WIDEVINE_DRM) += widevine_drm/
 obj-$(CONFIG_MTK_PGBOOST) += pgboost/
 obj-$(CONFIG_MTK_MBRAINK)      += mbraink/
 obj-$(CONFIG_MTK_IPS_HELPER) += ips/
-
+obj-$(CONFIG_AUDIO_SWITCH_HL5280) += hl5280/
+# Add support for board id
+# @{
+obj-$(CONFIG_GPIO_BOARD_ID) 	+= board_id/
+# @}

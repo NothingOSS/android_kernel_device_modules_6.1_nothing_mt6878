@@ -31,6 +31,9 @@
 #include "mtk_battery.h"
 #include "mtk_battery_table.h"
 
+#define BATTERY_NAME "PSL466689D"
+char bat_info[32] = {"unknown"};
+EXPORT_SYMBOL(bat_info);
 
 struct tag_bootmode {
 	u32 size;
@@ -652,7 +655,10 @@ static int battery_psy_get_property(struct power_supply *psy,
 		val->intval = bs_data->bat_technology;
 		break;
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
-		val->intval = 1;
+		/*
+			val->intval = 1;
+		*/
+		val->intval = gm->bat_cycle;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		/* 1 = META_BOOT, 4 = FACTORY_BOOT 5=ADVMETA_BOOT */
@@ -662,13 +668,17 @@ static int battery_psy_get_property(struct power_supply *psy,
 			val->intval = 75;
 			break;
 		}
-
-		if (gm->fixed_uisoc != 0xffff)
+		//if (gm->fixed_uisoc != 0xffff)
+		if (gm->fixed_uisoc != FAKE_BATT_MAGIC)
 			val->intval = gm->fixed_uisoc;
 		else
 			val->intval = bs_data->bat_capacity;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		if (gm->fixed_bat_i != FAKE_BATT_MAGIC) {
+			val->intval = gm->fixed_bat_i * 1000;
+			break;
+		}
 		ret = gauge_get_property_control(gm, GAUGE_PROP_BATTERY_CURRENT,
 			&curr_now, 1);
 
@@ -682,6 +692,10 @@ static int battery_psy_get_property(struct power_supply *psy,
 		ret = 0;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
+		if (gm->fixed_bat_i != FAKE_BATT_MAGIC) {
+			val->intval = gm->fixed_bat_i * 1000;
+			break;
+		}
 		ret = gauge_get_property_control(gm, GAUGE_PROP_AVERAGE_CURRENT,
 			&curr_avg, 1);
 
@@ -710,7 +724,10 @@ static int battery_psy_get_property(struct power_supply *psy,
 			val->intval = 4000000;
 			break;
 		}
-
+		if (gm->fixed_bat_v != FAKE_BATT_MAGIC) {
+			val->intval = gm->fixed_bat_v * 1000;
+			break;
+		}
 		if (gm->disableGM30)
 			bs_data->bat_batt_vol = 4000;
 		else
@@ -721,7 +738,7 @@ static int battery_psy_get_property(struct power_supply *psy,
 			val->intval = gm->vbat;
 		else {
 			gm->vbat = bs_data->bat_batt_vol;
-		val->intval = bs_data->bat_batt_vol * 1000;
+			val->intval = bs_data->bat_batt_vol * 1000;
 		}
 		ret = 0;
 		break;
@@ -733,32 +750,33 @@ static int battery_psy_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TIME_TO_FULL_NOW:
 		/* full or unknown must return 0 */
-		ret = check_cap_level(bs_data->bat_capacity);
-		if ((ret == POWER_SUPPLY_CAPACITY_LEVEL_FULL) ||
-			(ret == POWER_SUPPLY_CAPACITY_LEVEL_UNKNOWN))
-			val->intval = 0;
-		else {
-			int q_max_now = gm->fg_table_cust_data.fg_profile[
-						gm->battery_id].q_max;
-			int remain_ui = 100 - bs_data->bat_capacity;
-			int remain_mah = remain_ui * q_max_now / 10;
-			int current_now = 0;
-			int time_to_full = 0;
-
-			ret = gauge_get_property_control(gm, GAUGE_PROP_AVERAGE_CURRENT,
-				&current_now, 1);
-
-			if (ret == -EHOSTDOWN)
-				current_now = gm->ibat;
-
-			if (current_now != 0)
-				time_to_full = remain_mah * 3600 / current_now;
-
-				bm_debug("time_to_full:%d, remain:ui:%d mah:%d, current_now:%d, qmax:%d\n",
-					time_to_full, remain_ui, remain_mah,
-					current_now, q_max_now);
-			val->intval = abs(time_to_full);
-		}
+	//	ret = check_cap_level(bs_data->bat_capacity);
+	//	if ((ret == POWER_SUPPLY_CAPACITY_LEVEL_FULL) ||
+	//		(ret == POWER_SUPPLY_CAPACITY_LEVEL_UNKNOWN))
+	//		val->intval = 0;
+	//	else {
+	//		int q_max_now = gm->fg_table_cust_data.fg_profile[
+	//					gm->battery_id].q_max;
+	//		int remain_ui = 100 - bs_data->bat_capacity;
+	//		int remain_mah = remain_ui * q_max_now / 10;
+	//		int current_now = 0;
+	//		int time_to_full = 0;
+	//
+	//		ret = gauge_get_property_control(gm, GAUGE_PROP_AVERAGE_CURRENT,
+	//			&current_now, 1);
+	//
+	//		if (ret == -EHOSTDOWN)
+	//			current_now = gm->ibat;
+	//
+	//		if (current_now != 0)
+	//			time_to_full = remain_mah * 3600 / current_now;
+	//
+	//			bm_debug("time_to_full:%d, remain:ui:%d mah:%d, current_now:%d, qmax:%d\n",
+	//				time_to_full, remain_ui, remain_mah,
+	//				current_now, q_max_now);
+	//		val->intval = abs(time_to_full);
+	//	}
+	val->intval = -1;
 		ret = 0;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
@@ -972,8 +990,8 @@ void battery_service_data_init(struct mtk_battery *gm)
 	bs_data->bat_capacity = -1,
 	bs_data->bat_batt_vol = 0,
 	bs_data->bat_batt_temp = 0,
-
-	gm->fixed_uisoc = 0xffff;
+	//gm->fixed_uisoc = 0xffff;
+	gm->fixed_uisoc = FAKE_BATT_MAGIC;
 }
 
 /* ============================================================ */
@@ -989,13 +1007,15 @@ int adc_battemp(struct mtk_battery *gm, int res)
 	ptable = gm->tmp_table;
 	if (res >= ptable[0].TemperatureR) {
 		tbatt_value = -40;
-	} else if (res <= ptable[20].TemperatureR) {
-		tbatt_value = 60;
+	/*	} else if (res <= ptable[20].TemperatureR) {
+		tbatt_value = 60;*/
+	} else if (res <= ptable[FG_TEMP_T_MAX-1].TemperatureR) {
+		tbatt_value = 70;
 	} else {
 		res1 = ptable[0].TemperatureR;
 		tmp1 = ptable[0].BatteryTemp;
-
-		for (i = 0; i <= 20; i++) {
+		/*for (i = 0; i <= 20; i++) {*/
+		for (i = 0; i <= (FG_TEMP_T_MAX-1); i++) {
 			if (res >= ptable[i].TemperatureR) {
 				res2 = ptable[i].TemperatureR;
 				tmp2 = ptable[i].BatteryTemp;
@@ -1238,8 +1258,8 @@ int force_get_tbat(struct mtk_battery *gm, bool update)
 		gm->cur_bat_temp = 25;
 		return 25;
 	}
-
-	if (gm->fixed_bat_tmp != 0xffff) {
+	//if (gm->fixed_bat_tmp != 0xffff) {
+	if (gm->fixed_bat_tmp != FAKE_BATT_MAGIC) {
 		gm->cur_bat_temp = gm->fixed_bat_tmp;
 		return gm->fixed_bat_tmp;
 	}
@@ -3728,6 +3748,7 @@ int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 		bm_debug("[%s]OVERHEAT shutdown!\n", __func__);
 		kernel_power_off();
 		break;
+#ifdef SHUTDOWN_CONDITION_SOC_ZERO_PERCENT
 	case SOC_ZERO_PERCENT:
 		if (sdc->shutdown_status.is_soc_zero_percent != true) {
 			mutex_lock(&sdc->lock);
@@ -3746,6 +3767,8 @@ int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 			mutex_unlock(&sdc->lock);
 		}
 		break;
+#endif
+#ifdef SHUTDOWN_CONDITION_UISOC_ONE_PERCENT
 	case UISOC_ONE_PERCENT:
 		if (sdc->shutdown_status.is_uisoc_one_percent != true) {
 			mutex_lock(&sdc->lock);
@@ -3765,6 +3788,7 @@ int set_shutdown_cond(struct mtk_battery *gm, int shutdown_cond)
 			mutex_unlock(&sdc->lock);
 		}
 		break;
+#endif
 #ifdef SHUTDOWN_CONDITION_LOW_BAT_VOLT
 	case LOW_BAT_VOLT:
 		if (sdc->shutdown_status.is_under_shutdown_voltage != true) {
@@ -3846,7 +3870,9 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 			polling++;
 			if (tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
 				bm_debug("soc zero shutdown\n");
-				kernel_power_off();
+				//kernel_power_off();
+				gm->bs_data.bat_capacity = 0;
+				battery_update(gm);
 				return next_waketime(polling);
 			}
 		} else if (current_soc > 0) {
@@ -3967,7 +3993,9 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 				if (tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
 					bm_debug("low bat shutdown, over %d second\n",
 						SHUTDOWN_TIME);
-					kernel_power_off();
+					//kernel_power_off();
+					gm->bs_data.bat_capacity = 0;
+					battery_update(gm);
 					return next_waketime(polling);
 				}
 			}
@@ -4078,10 +4106,21 @@ static int mtk_power_misc_psy_event(
 				nb, struct shutdown_controller, psy_nb);
 
 			if (gm->cur_bat_temp >= BATTERY_SHUTDOWN_TEMPERATURE) {
-				bm_debug(
-					"%d battery temperature >= %d,shutdown",
-					gm->cur_bat_temp, tmp);
-				wake_up_overheat(sdc);
+				// bm_debug(
+				//		"%d battery temperature >= %d,shutdown",
+				//		gm->cur_bat_temp, tmp);
+				// wake_up_overheat(sdc);
+				/* 8: KERNEL_POWER_OFF_CHARGING_BOOT */
+				if (gm->bootmode == 8) {
+					bm_info(
+						"tbat=%d power off charging, ignore overheat state.",
+						gm->cur_bat_temp);
+				} else {
+					bm_info(
+						"%d battery temperature >= %d,shutdown",
+						gm->cur_bat_temp, tmp);
+					wake_up_overheat(sdc);
+				}
 			}
 		}
 	}
@@ -4252,7 +4291,11 @@ int battery_init(struct platform_device *pdev)
 
 	gauge = dev_get_drvdata(&pdev->dev);
 	gm = gauge->gm;
-	gm->fixed_bat_tmp = 0xffff;
+	//gm->fixed_bat_tmp = 0xffff;
+	gm->fixed_bat_tmp = FAKE_BATT_MAGIC;
+	gm->fixed_bat_i = FAKE_BATT_MAGIC;
+	gm->fixed_bat_v = FAKE_BATT_MAGIC;
+	gm->nt_quse = FAKE_BATT_MAGIC;
 	gm->tmp_table = fg_temp_table;
 	gm->log_level = BMLOG_ERROR_LEVEL;
 	gm->sw_iavg_gap = 3000;
@@ -4321,6 +4364,12 @@ int battery_init(struct platform_device *pdev)
 		battery_algo_init(gm);
 		bm_err("[%s]: enable Kernel mode Gauge\n", __func__);
 	}
+
+	/* update battery cell hw info  */
+	memset(bat_info, 0, sizeof(bat_info));
+	memcpy(bat_info, BATTERY_NAME,
+		strlen(BATTERY_NAME) > (sizeof(bat_info) - 1) ?
+		(sizeof(bat_info) - 1) : strlen(BATTERY_NAME));
 
 	return 0;
 }

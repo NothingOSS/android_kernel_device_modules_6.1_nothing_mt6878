@@ -2119,6 +2119,14 @@ int mtk_drm_aod_scp_get_dsi_ulps_wakeup_prd(struct drm_crtc *crtc)
 	return ulps_wakeup_prd;
 }
 
+static void hbm_cmdq_cb(struct cmdq_cb_data data)
+{
+	struct mtk_cmdq_cb_data *cb_data = data.data;
+
+	cmdq_pkt_destroy(cb_data->cmdq_handle);
+	kfree(cb_data);
+}
+
 int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -2127,6 +2135,10 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 	struct cmdq_client *client;
 	bool is_frame_mode;
 	bool state = false;
+
+	int fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
+	struct mtk_cmdq_cb_data *cb_data;
 
 	if (!(comp && comp->funcs && comp->funcs->io_cmd))
 		return -EINVAL;
@@ -2157,6 +2169,14 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 		return -EINVAL;
 	}
 
+	/* clear cmdq before set hbm */
+	cmdq_pkt_flush(cmdq_handle);
+
+	/*Wait TE, then set hbm cmd*/
+	if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+		comp->funcs->io_cmd(comp, NULL, DSI_HBM_WAIT, NULL);
+	}
+
 	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 
 	if (is_frame_mode) {
@@ -2166,7 +2186,19 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 				mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 	}
 
+	/* Not do cmdq flush at commit thread */
+	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
+	if (!cb_data) {
+		DDPPR_ERR("cb data creation failed\n");
+		return -EINVAL;
+	}
+
+	cb_data->crtc = crtc;
+	cb_data->cmdq_handle = cmdq_handle;
+
+	mtk_drm_trace_begin("DSI_HBM_SET: %d", en);
 	comp->funcs->io_cmd(comp, cmdq_handle, DSI_HBM_SET, &en);
+	mtk_drm_trace_end("DSI_HBM_SET: %d", en);
 
 	if (is_frame_mode) {
 		cmdq_pkt_set_event(cmdq_handle,
@@ -2175,8 +2207,18 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 				mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 	}
 
-	cmdq_pkt_flush(cmdq_handle);
-	cmdq_pkt_destroy(cmdq_handle);
+	if (en) {
+		cmdq_pkt_flush_threaded(cmdq_handle, hbm_cmdq_cb, cb_data);
+		if (fps == 120) {
+			/* dealy one frame to wait hbm work */
+			if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+				comp->funcs->io_cmd(comp, NULL, DSI_HBM_WAIT, NULL);
+			}
+		}
+	} else {
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+	}
 
 	return 0;
 }
@@ -15983,6 +16025,7 @@ static void msync_cmdq_cb(struct cmdq_cb_data data)
 	kfree(cb_data);
 }
 
+/*
 static void mtk_atomic_hbm_bypass_pq(struct drm_crtc *crtc,
 		struct cmdq_pkt *handle, int en)
 {
@@ -16010,7 +16053,7 @@ static void mtk_atomic_hbm_bypass_pq(struct drm_crtc *crtc,
 		}
 	}
 }
-
+*/
 #ifdef IF_ZERO /* not ready for dummy register method */
 static void sf_cmdq_cb(struct cmdq_cb_data data)
 {
@@ -16107,8 +16150,8 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		mtk_drm_crtc_set_panel_hbm(crtc, hbm_en);
 		mtk_drm_crtc_hbm_wait(crtc, hbm_en);
 
-		if (!mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
-			mtk_atomic_hbm_bypass_pq(crtc, cmdq_handle, hbm_en);
+			//if (!mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
+				//mtk_atomic_hbm_bypass_pq(crtc, cmdq_handle, hbm_en);
 	}
 
 	hdr_en = (bool)mtk_crtc_state->prop_val[CRTC_PROP_HDR_ENABLE];

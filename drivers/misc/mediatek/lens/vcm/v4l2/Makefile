@@ -18,3 +18,4 @@ obj-$(CONFIG_MTK_V4L2_LENS)   += main2_vcm/
 obj-$(CONFIG_MTK_V4L2_LENS)   += main3_vcm/
 obj-$(CONFIG_MTK_V4L2_LENS)   += main4_vcm/
 obj-$(CONFIG_MTK_V4L2_LENS)   += sub_vcm/
+obj-$(CONFIG_MTK_V4L2_LENS)   += pd9302a/

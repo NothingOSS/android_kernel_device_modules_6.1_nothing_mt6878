@@ -617,6 +617,19 @@
 /*Others*/
 #define SENSOR_DRVNAME_SHARP3D_MIPI_YUV         "sharp3d_mipi_yuv"
 #define SENSOR_DRVNAME_T8EV5_YUV                "t8ev5_yuv"
+#define IMX882_SENSOR_ID                        0x8202
+#define SENSOR_DRVNAME_IMX882_MIPI_RAW           "imx882_mipi_raw"
+#define GC16B3C_SENSOR_ID                       0x16b3
+#define SENSOR_DRVNAME_GC16B3C_MIPI_RAW          "gc16b3c_mipi_raw"
+#define SC202CS_SENSOR_ID                       0xeb52
+#define SENSOR_DRVNAME_SC202CS_MIPI_RAW          "sc202cs_mipi_raw"
+
+#define IMX882TXD_SENSOR_ID                        0x8203
+#define SENSOR_DRVNAME_IMX882TXD_MIPI_RAW           "imx882txd_mipi_raw"
+#define GC16B3CTXD_SENSOR_ID                       0x16b4
+#define SENSOR_DRVNAME_GC16B3CTXD_MIPI_RAW          "gc16b3ctxd_mipi_raw"
+#define SC202CSSJ_SENSOR_ID                       0xeb53
+#define SENSOR_DRVNAME_SC202CSSJ_MIPI_RAW          "sc202cssj_mipi_raw"
 /*Test*/
 #define SENSOR_DRVNAME_IMX135_MIPI_RAW_5MP      "imx135_mipi_raw_5mp"
 #define SENSOR_DRVNAME_IMX135_MIPI_RAW_8MP      "imx135_mipi_raw_8mp"

@@ -159,6 +159,18 @@ int charger_dev_kick_direct_charging_wdt(struct charger_device *chg_dev)
 }
 EXPORT_SYMBOL(charger_dev_kick_direct_charging_wdt);
 
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+int charger_dev_get_ts(struct charger_device *chg_dev, u32 *ts)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+	    chg_dev->ops->get_ts_adc)
+		return chg_dev->ops->get_ts_adc(chg_dev, ts);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_get_ts);
+#endif /* CONFIG_NT_USB_TS */
+
 int charger_dev_get_vbus(struct charger_device *chg_dev, u32 *vbus)
 {
 	if (chg_dev != NULL && chg_dev->ops != NULL &&
@@ -387,6 +399,16 @@ int charger_dev_set_vac_ovp(struct charger_device *chg_dev, u32 uV)
 	return -EOPNOTSUPP;
 }
 EXPORT_SYMBOL(charger_dev_set_vac_ovp);
+
+int charger_dev_enable_vac_otgovp(struct charger_device *chg_dev, bool en)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+	    chg_dev->ops->enable_vac_otgovp)
+		return chg_dev->ops->enable_vac_otgovp(chg_dev, en);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_enable_vac_otgovp);
 
 int charger_dev_get_adc(struct charger_device *charger_dev,
 	enum adc_channel chan, int *min, int *max)
@@ -668,6 +690,26 @@ int charger_dev_enable_discharge(struct charger_device *chg_dev, bool en)
 }
 EXPORT_SYMBOL(charger_dev_enable_discharge);
 
+int charger_dev_get_boost_current_limit(struct charger_device *chg_dev, u32* uA)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+	    chg_dev->ops->get_boost_current_limit)
+		return chg_dev->ops->get_boost_current_limit(chg_dev, uA);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_get_boost_current_limit);
+
+int charger_dev_get_boost_voltage_limit(struct charger_device *chg_dev, u32* uV)
+{
+	if (chg_dev != NULL && chg_dev->ops != NULL &&
+	    chg_dev->ops->get_boost_voltage_limit)
+		return chg_dev->ops->get_boost_voltage_limit(chg_dev, uV);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_get_boost_voltage_limit);
+
 int charger_dev_set_boost_current_limit(struct charger_device *chg_dev, u32 uA)
 {
 	if (chg_dev != NULL && chg_dev->ops != NULL &&
@@ -823,6 +865,26 @@ int charger_dev_get_property(struct charger_device *charger_dev,
 	return -EOPNOTSUPP;
 }
 EXPORT_SYMBOL(charger_dev_get_property);
+
+int charger_dev_enable_ship_mode(struct charger_device *charger_dev, bool en)
+{
+	if (charger_dev != NULL && charger_dev->ops != NULL &&
+					   charger_dev->ops->enable_ship_mode)
+		return charger_dev->ops->enable_ship_mode(charger_dev, en);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_enable_ship_mode);
+
+int charger_dev_get_cp_status(struct charger_device *charger_dev, u32 evt)
+{
+	if (charger_dev != NULL && charger_dev->ops != NULL &&
+					   charger_dev->ops->get_cp_status)
+		return charger_dev->ops->get_cp_status(charger_dev, evt);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_get_cp_status);
 
 static DEVICE_ATTR_RO(name);
 

@@ -4,3 +4,4 @@
 #
 
 obj-y				+= mediatek/
+obj-y				+= haptic/

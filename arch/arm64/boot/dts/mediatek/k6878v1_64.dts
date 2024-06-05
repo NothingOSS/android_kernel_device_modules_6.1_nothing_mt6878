@@ -13,17 +13,20 @@
 #include <dt-bindings/pinctrl/mt6897-pinfunc.h>
 #endif
 
+/* Trustonic Mobilecore real driver */
+&mobicore{
+	trustonic,real-drv=<1>;
+};
+
 &chosen {
 bootargs_ext = "";
 };
 
 &mtk_leds {
-	compatible = "mediatek,i2c-leds";
+	compatible = "mediatek,disp-leds";
 
 	backlight {
-		led-mode = <6>;
-		gate-enable = <1>;
-		pwm-config = <0 1 0 0 0>;
+		led-mode = <4>;
 	};
 };
 
@@ -113,7 +116,44 @@ bootargs_ext = "";
 
 #endif
 
+&i2c0 {
+	clock-frequency = <400000>;
+	status = "ok";
+
+	ics_haptic_drv: ics_haptic@5f {
+		compatible = "ics,haptic_rt";
+		reg = <0x5f>;
+		device-name = "vibrator_nt";
+		richtap-name = "aac_richtap";
+		pinctrl-names = "default";
+		gpio-en = <&pio 74 0>;
+		gpio-irq = <&pio 9 0>;
+		status = "ok";
+	};
+};
+
+&i2c3 {
+	clock-frequency = <400000>;
+	hl5280-audioswitch@42 {
+		compatible = "mediatek,hl5280-audioswitch";
+		reg = <0x42>;
+	};
+};
+
 &i2c6 {
+	clock-frequency = <400000>;
+	aw882xx_smartpa_0: aw882xx_smartpa@34 {
+		compatible = "awinic,aw882xx_smartpa";
+		#sound-dai-cells = <0>;
+		reg = <0x34>;
+		//reset-gpio = <&pio 151 0>;
+		irq-gpio = <&pio 41 0x0>;
+		sync-load = <1>;
+		aw-re-min = <5000>;
+		aw-re-max = <7000>;
+		/*aw-cali-mode = "none";*/
+		status = "okay";
+	};
 	spk: speaker-amp@5c {
 		compatible = "richtek,rt5512";
 		#address-cells = <1>;
@@ -128,7 +168,7 @@ bootargs_ext = "";
 &sound {
 	mediatek,spk-i2s = <25 24>;
 	mediatek,speaker-codec {
-		sound-dai = <&spk>;
+		sound-dai = <&aw882xx_smartpa_0>;
 	};
 };
 
@@ -155,7 +195,7 @@ bootargs_ext = "";
 &pio {
 	mtkfb_pins_lcd_bias_enp1: lcd-bias-enp1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO153__FUNC_GPIO153>;
 			slew-rate = <1>;
 			output-high;
 		};
@@ -163,7 +203,7 @@ bootargs_ext = "";
 
 	mtkfb_pins_lcd_bias_enp0: lcd-bias-enp0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO153__FUNC_GPIO153>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -171,7 +211,7 @@ bootargs_ext = "";
 
 	mtkfb_pins_lcd_bias_enn1: lcd-bias-enn1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO153__FUNC_GPIO153>;
 			slew-rate = <1>;
 			output-high;
 		};
@@ -179,7 +219,7 @@ bootargs_ext = "";
 
 	mtkfb_pins_lcd_bias_enn0: lcd-bias-enn0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO153__FUNC_GPIO153>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -208,7 +248,7 @@ bootargs_ext = "";
 
 	mtkfb_pins_lcm_led_en1: lcm-led-en1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO153__FUNC_GPIO153>;
 			slew-rate = <1>;
 			output-high;
 		};
@@ -216,7 +256,7 @@ bootargs_ext = "";
 
 	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO153__FUNC_GPIO153>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -235,13 +275,11 @@ bootargs_ext = "";
 	#size-cells = <0>;
 	switch-fps = <120>;
 	panel1@0 {
-		compatible = "jdi,nt36672e,vdo,120hz,threshold";
+		compatible = "samsung,s6e8fc3x02";
 		reg = <0>;
-		pm-enable-gpios = <&pio 149 0>;
+		vddi-en-gpios = <&pio 153 0>;
+		vci-en-gpios = <&pio 154 0>;
 		reset-gpios = <&pio 90 0>;
-		res-switch = <2>;
-		gate-ic = <4831>;
-		rc-enable = <1>;
 		pinctrl-names = "default";
 		port {
 			panel_in1: endpoint {
@@ -249,10 +287,11 @@ bootargs_ext = "";
 			};
 		};
 	};
+/*
 	panel2@1 {
 		compatible = "jdi,nt36672e,vdo,60hz";
 		reg = <1>;
-		pm-enable-gpios = <&pio 149 0>;
+		pm-enable-gpios = <&pio 153 0>;
 		reset-gpios = <&pio 90 0>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
@@ -265,7 +304,7 @@ bootargs_ext = "";
 	panel3@2 {
 		compatible = "truly,td4330,cmd";
 		reg = <2>;
-		pm-enable-gpios = <&pio 149 0>;
+		pm-enable-gpios = <&pio 153 0>;
 		reset-gpios = <&pio 90 0>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
@@ -275,17 +314,20 @@ bootargs_ext = "";
 			};
 		};
 	};
+*/
 	ports {
 		port {
 			dsi_out: endpoint {
 				remote-endpoint = <&panel_in1>;
 			};
+/*
 			dsi_out2: endpoint2 {
 				remote-endpoint = <&panel_in2>;
 			};
 			dsi_out3: endpoint3 {
 				remote-endpoint = <&panel_in3>;
 			};
+*/
 		};
 	};
 };
@@ -301,8 +343,21 @@ bootargs_ext = "";
 	afe-reserved;
 };
 
+	&mtee_svp {
+		mtee: MTEE {
+			compatible = "mediatek,mtk_svp_on_mtee_support";
+		};
+
+		svp: SecureVideoPath {
+			compatible = "mediatek,mtk_sec_video_path_support";
+		};
+	};
+
 #include <k6878v1_64/cust.dtsi>
-#include "mediatek/cust_mt6878_touch_1080x2400.dtsi"
+#include "mediatek/cust_mt6878_touch_ft3519_1080x2400.dtsi"
 #include "mediatek/cust_mt6878_camera_v4l2.dtsi"
 #include "mediatek/cust_k6878_connfem.dtsi"
+#include "mediatek/sc8541.dtsi"
+#include "mediatek/upm6720.dtsi"
+#include "goodix_fingerprint.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/

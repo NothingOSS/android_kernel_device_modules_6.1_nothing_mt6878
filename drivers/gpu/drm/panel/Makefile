@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
 
+obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6E8FC3X02) += panel-samsung-s6e8fc3x02.o
 obj-$(CONFIG_DRM_PANEL_NOVATEK_NT35695B_VDO) += panel-nt35695b-auo-vdo.o
 obj-$(CONFIG_DRM_PANEL_NOVATEK_NT36672A_VDO) += panel-nt36672a-rt4801-vdo.o
 obj-$(CONFIG_DRM_PANEL_SAMSUNG_ANA6705_CMD) += panel-samsung-ana6705-cmd.o

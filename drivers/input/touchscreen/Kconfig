@@ -21,5 +21,6 @@ config TOUCHSCREEN_MT6985_ALPHA_SUPPORT
          and set N to disable.
 
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/NT36532/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/FT3519/Kconfig"
 
 endif

@@ -1,0 +1,121 @@
+
+&spi1{
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	goodix: gffingerprint@spi1 {
+		compatible = "goodix,goodix-fp";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		status = "okay";
+	};
+};
+
+&goodix_fp {
+	interrupt-parent = <&pio>;
+	interrupts = <18 IRQ_TYPE_EDGE_RISING 18 0>;
+	VFP-supply = <&mt6369_vfp>;
+	//fpid-gpio = <&pio 12 0>;
+	pinctrl-names = "default",
+		"fingerprint_irq",
+		"fp_reset_high", "fp_reset_low", "miso_spi",
+		"miso_pullhigh", "miso_pulllow",
+		"fpc_mosi_pull_up", "fpc_mosi_pull_down";
+	pinctrl-0 = <&fpc_pins_default>;
+	pinctrl-1 = <&fpc_pins_eint_as_int>;
+	pinctrl-2 = <&fpc_pins_rst_high>;
+	pinctrl-3 = <&fpc_pins_rst_low>;
+	pinctrl-4 = <&fpc_mode_as_cs &fpc_mode_as_ck &fpc_mode_as_mi &fpc_mode_as_mo>;
+	pinctrl-5 = <&fpc_miso_pull_up>;
+	pinctrl-6 = <&fpc_miso_pull_down>;
+	pinctrl-7 = <&fpc_mosi_pull_up>;
+	pinctrl-8 = <&fpc_mosi_pull_down>;
+	status = "okay";
+};
+
+&mt6369_vfp {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+};
+
+&pio {
+	fpc_pins_default: fpcdefault {
+	};
+
+	fpc_pins_eint_as_int: fpceint@0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO18__FUNC_GPIO18>;
+			slew-rate = <0>;
+			bias-disable;
+		};
+	};
+	fpc_pins_rst_high: fpcrsthigh {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO73__FUNC_GPIO73>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	fpc_pins_rst_low: fpcrstlow {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO73__FUNC_GPIO73>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	fpc_mode_as_cs: fpccs {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO61__FUNC_SPI1_CSB>;
+			bias-pull-up = <00>;
+		};
+	};
+	fpc_mode_as_ck: fpcck {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO60__FUNC_SPI1_CLK>;
+			bias-pull-up = <00>;
+			drive-strength = <3>;
+		};
+	};
+	fpc_mode_as_mi: fpcmi {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO63__FUNC_SPI1_MI>;
+			bias-pull-up = <00>;
+		};
+	};
+	fpc_mode_as_mo: fpcmo {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO62__FUNC_SPI1_MO>;
+			bias-pull-down = <00>;
+			drive-strength = <1>;
+		};
+	};
+	fpc_miso_pull_up: fpcmisoup {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO63__FUNC_GPIO63>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	fpc_miso_pull_down: fpcmisolow {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO63__FUNC_GPIO63>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	fpc_mosi_pull_up: fpcmosiup {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO62__FUNC_GPIO62>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	fpc_mosi_pull_down: fpcmosilow {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO62__FUNC_GPIO62>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+

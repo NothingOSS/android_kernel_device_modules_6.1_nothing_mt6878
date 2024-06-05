@@ -32,7 +32,7 @@
 #define REG_FLASH_TOUT		0x08
 #define REG_FLAG1		0x0A
 #define REG_FLAG2		0x0B
-
+#define REG_ID		0x0C
 /* fault mask */
 #define FAULT_TIMEOUT	(1<<0)
 #define FAULT_THERMAL_SHUTDOWN	(1<<2)
@@ -42,9 +42,9 @@
 /*  FLASH Brightness
  *	min 10900uA, step 11725uA, max 1500000uA
  */
-#define LM3644_FLASH_BRT_MIN 10900
-#define LM3644_FLASH_BRT_STEP 11725
-#define LM3644_FLASH_BRT_MAX 1499975
+#define LM3644_FLASH_BRT_MIN 2940
+#define LM3644_FLASH_BRT_STEP 5870
+#define LM3644_FLASH_BRT_MAX 1500000
 #define LM3644_FLASH_BRT_uA_TO_REG(a)	\
 	((a) < LM3644_FLASH_BRT_MIN ? 0 :	\
 	 (((a) - LM3644_FLASH_BRT_MIN) / LM3644_FLASH_BRT_STEP))
@@ -61,9 +61,9 @@
 /*  TORCH BRT
  *	min 1954uA, step 2800uA, max 357554uA
  */
-#define LM3644_TORCH_BRT_MIN 1964
-#define LM3644_TORCH_BRT_STEP 2800
-#define LM3644_TORCH_BRT_MAX 357554
+#define LM3644_TORCH_BRT_MIN 750
+#define LM3644_TORCH_BRT_STEP 1510
+#define LM3644_TORCH_BRT_MAX 386000
 #define LM3644_TORCH_BRT_uA_TO_REG(a)	\
 	((a) < LM3644_TORCH_BRT_MIN ? 0 :	\
 	 (((a) - LM3644_TORCH_BRT_MIN) / LM3644_TORCH_BRT_STEP))
@@ -129,6 +129,8 @@ struct lm3644_flash {
 	struct pinctrl *lm3644_hwen_pinctrl;
 	struct pinctrl_state *lm3644_hwen_high;
 	struct pinctrl_state *lm3644_hwen_low;
+	struct pinctrl_state *lm3644_hwen_high1;
+	struct pinctrl_state *lm3644_hwen_low1;
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
 	struct flashlight_device_id flash_dev_id[LM3644_LED_MAX];
 #endif
@@ -157,13 +159,19 @@ static int lm3644_set_driver(int set);
 #define LM3644_PINCTRL_PINSTATE_HIGH 1
 #define LM3644_PINCTRL_STATE_HWEN_HIGH "hwen-high"
 #define LM3644_PINCTRL_STATE_HWEN_LOW  "hwen-low"
+#define LM3644_PINCTRL_STATE_HWEN_HIGH1 "hwen-high1"
+#define LM3644_PINCTRL_STATE_HWEN_LOW1  "hwen-low1"
 /******************************************************************************
  * Pinctrl configuration
  *****************************************************************************/
 static int lm3644_pinctrl_init(struct lm3644_flash *flash)
 {
 	int ret = 0;
-
+	int rval = 0;
+	unsigned int reg_val;
+	/* get regsiter ID */
+	rval = regmap_read(flash->regmap, REG_ID, &reg_val);
+	pr_info("rval is 0x%x reg_val = 0x%x\n", rval, reg_val);
 	/* get pinctrl */
 	flash->lm3644_hwen_pinctrl = devm_pinctrl_get(flash->dev);
 	if (IS_ERR(flash->lm3644_hwen_pinctrl)) {
@@ -189,12 +197,34 @@ static int lm3644_pinctrl_init(struct lm3644_flash *flash)
 		ret = PTR_ERR(flash->lm3644_hwen_low);
 	}
 
+		/* Flashlight HWEN1 pin initialization */
+		flash->lm3644_hwen_high1 = pinctrl_lookup_state(
+			flash->lm3644_hwen_pinctrl,
+			LM3644_PINCTRL_STATE_HWEN_HIGH1);
+		if (IS_ERR(flash->lm3644_hwen_high1)) {
+			pr_info("Failed to init (%s)\n",
+			LM3644_PINCTRL_STATE_HWEN_HIGH1);
+			ret = PTR_ERR(flash->lm3644_hwen_high1);
+		}
+	flash->lm3644_hwen_low1 = pinctrl_lookup_state(
+			flash->lm3644_hwen_pinctrl,
+			LM3644_PINCTRL_STATE_HWEN_LOW1);
+		if (IS_ERR(flash->lm3644_hwen_low1)) {
+			pr_info("Failed to init (%s)\n", LM3644_PINCTRL_STATE_HWEN_LOW1);
+			ret = PTR_ERR(flash->lm3644_hwen_low1);
+		}
 	return ret;
 }
 
 static int lm3644_pinctrl_set(struct lm3644_flash *flash, int pin, int state)
 {
 	int ret = 0;
+	unsigned int reg_val;
+	int rval = 0;
+
+	/* get regsiter ID */
+	rval = regmap_read(flash->regmap, REG_ID, &reg_val);
+	pr_info("reg_id is 0x%x \n", reg_val);
 
 	if (IS_ERR(flash->lm3644_hwen_pinctrl)) {
 		pr_info("pinctrl is not available\n");
@@ -204,13 +234,19 @@ static int lm3644_pinctrl_set(struct lm3644_flash *flash, int pin, int state)
 	switch (pin) {
 	case LM3644_PINCTRL_PIN_HWEN:
 		if (state == LM3644_PINCTRL_PINSTATE_LOW &&
-				!IS_ERR(flash->lm3644_hwen_low))
+				!IS_ERR(flash->lm3644_hwen_low)) {
 			pinctrl_select_state(flash->lm3644_hwen_pinctrl,
 					flash->lm3644_hwen_low);
+			pinctrl_select_state(flash->lm3644_hwen_pinctrl,
+					flash->lm3644_hwen_low1);
+		}
 		else if (state == LM3644_PINCTRL_PINSTATE_HIGH &&
-				!IS_ERR(flash->lm3644_hwen_high))
+				!IS_ERR(flash->lm3644_hwen_high)) {
 			pinctrl_select_state(flash->lm3644_hwen_pinctrl,
 					flash->lm3644_hwen_high);
+			pinctrl_select_state(flash->lm3644_hwen_pinctrl,
+					flash->lm3644_hwen_high1);
+		}
 		else
 			pr_info("set err, pin(%d) state(%d)\n", pin, state);
 		break;
@@ -308,8 +344,8 @@ static int lm3644_torch_brt_ctrl(struct lm3644_flash *flash,
 	flash->cur_mA[led_no] = brt / 1000;
 	br_bits = LM3644_TORCH_BRT_uA_TO_REG(brt);
 	if (led_no == LM3644_LED0)
-		rval = regmap_update_bits(flash->regmap,
-					  REG_LED0_TORCH_BR, 0x7f, br_bits);
+		rval = regmap_write(flash->regmap,
+					  REG_LED0_TORCH_BR,br_bits);
 	else
 		rval = regmap_update_bits(flash->regmap,
 					  REG_LED1_TORCH_BR, 0x7f, br_bits);
@@ -340,8 +376,8 @@ static int lm3644_flash_brt_ctrl(struct lm3644_flash *flash,
 	flash->cur_mA[led_no] = brt / 1000;
 	br_bits = LM3644_FLASH_BRT_uA_TO_REG(brt);
 	if (led_no == LM3644_LED0)
-		rval = regmap_update_bits(flash->regmap,
-					  REG_LED0_FLASH_BR, 0x7f, br_bits);
+		rval = regmap_write(flash->regmap,
+					  REG_LED0_FLASH_BR,br_bits);
 	else
 		rval = regmap_update_bits(flash->regmap,
 					  REG_LED1_FLASH_BR, 0x7f, br_bits);

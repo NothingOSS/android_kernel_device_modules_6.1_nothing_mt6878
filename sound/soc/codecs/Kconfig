@@ -159,4 +159,10 @@ config SND_SOC_MT6681_ACCDET
 	  detection mechanism. Select N if you don't
 	  have jack on board.
 
+config SND_SMARTPA_AW882XX
+	tristate "SoC Audio for awinic aw882xxseries"
+	depends on I2C
+	help
+		This option enables support for aw882xxseries Smart PA.
+
 endmenu

@@ -47,7 +47,8 @@ do {								\
 
 struct mtk_charger;
 struct charger_data;
-#define BATTERY_CV 4350000
+//#define BATTERY_CV 4350000
+#define BATTERY_CV 4480000
 #define V_CHARGER_MAX 6500000 /* 6.5 V */
 #define V_CHARGER_MIN 4600000 /* 4.6 V */
 #define VBUS_OVP_VOLTAGE 15000000 /* 15V */
@@ -60,12 +61,13 @@ struct charger_data;
 #define AC_CHARGER_INPUT_CURRENT		3200000
 #define NON_STD_AC_CHARGER_CURRENT		500000
 #define CHARGING_HOST_CHARGER_CURRENT		650000
-
+#define NON_STD_CHARGER_CURRENT 1000000
+#define NON_STD_CHARGER_INPUT_CURRENT 1000000
 /* dynamic mivr */
 #define V_CHARGER_MIN_1 4400000 /* 4.4 V */
 #define V_CHARGER_MIN_2 4200000 /* 4.2 V */
 #define MAX_DMIVR_CHARGER_CURRENT 1800000 /* 1.8 A */
-
+#define MAX_CHARGING_TIME (10 * 60 * 60) /* 10 hours */
 /* battery warning */
 #define BATTERY_NOTIFY_CASE_0001_VCHARGER
 #define BATTERY_NOTIFY_CASE_0002_VBATTEMP
@@ -83,9 +85,10 @@ struct charger_data;
 /* Battery Temperature Protection */
 #define MIN_CHARGE_TEMP  0
 #define MIN_CHARGE_TEMP_PLUS_X_DEGREE	6
-#define MAX_CHARGE_TEMP  50
-#define MAX_CHARGE_TEMP_MINUS_X_DEGREE	47
-
+//#define MAX_CHARGE_TEMP  50
+//#define MAX_CHARGE_TEMP_MINUS_X_DEGREE	47
+#define MAX_CHARGE_TEMP  60
+#define MAX_CHARGE_TEMP_MINUS_X_DEGREE	57
 #define MAX_ALG_NO 10
 
 #define RESET_BOOT_VOLT_TIME 50
@@ -182,6 +185,8 @@ struct charger_custom_data {
 	int usb_charger_current;
 	int ac_charger_current;
 	int ac_charger_input_current;
+	int non_std_charger_current;
+	int non_std_charger_input_current;
 	int charging_host_charger_current;
 
 	/* sw jeita */
@@ -214,7 +219,8 @@ struct charger_custom_data {
 	int min_charger_voltage_1;
 	int min_charger_voltage_2;
 	int max_dmivr_charger_current;
-
+	/*charging time*/
+	int max_charging_time;
 };
 
 struct charger_data {
@@ -291,6 +297,11 @@ struct mtk_charger {
 	struct adapter_device *pd_adapter;
 	struct notifier_block pd_nb;
 	struct mutex pd_lock;
+	struct power_supply_desc usb_desc;
+	struct power_supply_config usb_cfg;
+	struct power_supply *usb_psy;
+	bool aging_mode;
+	bool fastchg_rerun;
 	int pd_type;
 	bool pd_reset;
 
@@ -460,6 +471,7 @@ extern void _wake_up_charger(struct mtk_charger *info);
 
 /* functions for other */
 extern int mtk_chg_enable_vbus_ovp(bool enable);
+extern int mtk_chg_set_vbus_ovp(bool enable,int ovp);
 
 enum attach_type {
 	ATTACH_TYPE_NONE,

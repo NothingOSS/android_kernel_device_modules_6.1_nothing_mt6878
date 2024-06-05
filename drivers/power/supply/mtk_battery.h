@@ -18,8 +18,7 @@
 #include <linux/ktime.h>
 #include <linux/ctype.h>
 #include "mtk_gauge.h"
-
-
+#define FAKE_BATT_MAGIC                  (0xFEFE)
 #define NETLINK_FGD 26
 #define UNIT_TRANS_10	10
 #define UNIT_TRANS_100	100
@@ -865,9 +864,11 @@ struct irq_controller {
 /* ============================================================ */
 /* power misc related */
 /* ============================================================ */
-#define BAT_VOLTAGE_LOW_BOUND 3000
+//#define BAT_VOLTAGE_LOW_BOUND 3000
+#define BAT_VOLTAGE_LOW_BOUND 3400
 #define BAT_VOLTAGE_HIGH_BOUND 3450
-#define LOW_TMP_BAT_VOLTAGE_LOW_BOUND 3100
+//#define LOW_TMP_BAT_VOLTAGE_LOW_BOUND 3100
+#define LOW_TMP_BAT_VOLTAGE_LOW_BOUND 3350
 #define SHUTDOWN_TIME 40
 #define AVGVBAT_ARRAY_SIZE 30
 #define INIT_VOLTAGE 3450
@@ -974,7 +975,9 @@ struct mtk_battery {
 	/* adb */
 	int fixed_bat_tmp;
 	int fixed_uisoc;
-
+	int fixed_bat_v;
+	int fixed_bat_i;
+	int nt_quse;
 	/* for test */
 	struct BAT_EC_Struct Bat_EC_ctrl;
 	int BAT_EC_cmd;

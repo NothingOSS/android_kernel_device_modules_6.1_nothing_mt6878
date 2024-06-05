@@ -40,6 +40,30 @@
 
 static DEFINE_MUTEX(pinctrl_lock);
 
+#ifdef ESD_WRITE_KEY_SUPPORT
+extern void _mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle, const struct mipi_dsi_msg *msg);
+void lcm_key_level_write(struct mtk_ddp_comp *output_comp, struct cmdq_pkt *handle)
+{
+       unsigned char tx_1[10] = {0};
+       struct mtk_dsi *dsi =NULL;
+       struct mipi_dsi_msg msg;
+       if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI) {
+               dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
+       }
+       if (dsi == NULL) {
+               DDPMSG("%s esd lcm get dsi failed!\n", __func__);
+               return ;
+       }
+       tx_1[0] = 0xF0;
+       tx_1[1] = 0x5A;
+       tx_1[2] = 0x5A;
+       msg.type = 0x39;
+       msg.tx_len = 3;
+       msg.tx_buf = tx_1;
+       _mtk_mipi_dsi_write_gce(dsi, handle, &msg);
+}
+#endif
+
 /* pinctrl implementation */
 long _set_state(struct drm_crtc *crtc, const char *name)
 {
@@ -166,8 +190,6 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 	int index = drm_crtc_index(crtc);
 	int ret = 0;
 
-	DDPINFO("[ESD%u]%s\n", index, __func__);
-
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (unlikely(!output_comp)) {
 		DDPPR_ERR("%s:invalid output comp\n", __func__);
@@ -203,8 +225,8 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 				     mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 		/* Record Vblank start timestamp */
-		mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, ESD_CHECK);
 
+		mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, ESD_CHECK);
 		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, ESD_CHECK_READ,
 				    (void *)mtk_crtc);
 
@@ -234,7 +256,9 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 				    NULL);
 
 		CRTC_MMP_MARK(index, esd_check, 2, 3);
-
+#ifdef ESD_WRITE_KEY_SUPPORT
+		lcm_key_level_write(output_comp,cmdq_handle);
+#endif
 		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, ESD_CHECK_READ,
 				    (void *)mtk_crtc);
 

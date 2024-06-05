@@ -25,6 +25,7 @@
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
 #include <linux/reset.h>
+#include <linux/sysfs.h>
 
 #include <linux/mmc/card.h>
 #include <linux/mmc/core.h>
@@ -506,6 +507,9 @@ static const u32 cmd_ints_mask = MSDC_INTEN_CMDRDY | MSDC_INTEN_RSPCRCERR |
 static const u32 data_ints_mask = MSDC_INTEN_XFER_COMPL | MSDC_INTEN_DATTMO |
 			MSDC_INTEN_DATCRCERR | MSDC_INTEN_DMA_BDCSERR |
 			MSDC_INTEN_DMA_GPDCSERR | MSDC_INTEN_DMA_PROTECT;
+
+static int sd_nt_init_sysfs(struct platform_device *pdev);
+static void remove_sd_nt_sysfs(struct platform_device *pdev);
 
 static u8 msdc_dma_calcs(u8 *buf, u32 len)
 {
@@ -1526,12 +1530,17 @@ static int msdc_ops_switch_volt(struct mmc_host *mmc, struct mmc_ios *ios)
 				ret, ios->signal_voltage);
 			return ret;
 		}
-
 		/* Apply different pinctrl settings for different signal voltage */
 		if (ios->signal_voltage == MMC_SIGNAL_VOLTAGE_180)
 			pinctrl_select_state(host->pinctrl, host->pins_uhs);
-		else
-			pinctrl_select_state(host->pinctrl, host->pins_default);
+		else{
+			if (host->pins_default_version == 8 && host->pins_default_v8){
+				pinctrl_select_state(host->pinctrl, host->pins_default_v8);
+			}
+			else{
+				pinctrl_select_state(host->pinctrl, host->pins_default);
+			}
+		}
 	}
 #endif
 	return 0;
@@ -2016,6 +2025,19 @@ static void msdc_ops_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 			if (ret) {
 				dev_info(host->dev, "Failed to register vmmc nb!\n");
 				return;
+			}
+			if (host->id == MSDC_SD && host->pins_uhs &&
+				ios->signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
+				host->pins_default_version = 0;
+				pinctrl_select_state(host->pinctrl, host->pins_uhs);
+			} else if (host->pins_default) {
+				if (ios->clock < 400000 && host->pins_default_v8){
+					host->pins_default_version = 8;
+					pinctrl_select_state(host->pinctrl, host->pins_default_v8);
+				} else {
+					host->pins_default_version = 0;
+					pinctrl_select_state(host->pinctrl, host->pins_default);
+				}
 			}
 		}
 		break;
@@ -3384,7 +3406,12 @@ static int msdc_drv_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Cannot find pinctrl default!\n");
 		goto host_free;
 	}
-
+	host->pins_default_v8 = pinctrl_lookup_state(host->pinctrl, "default_v8");
+	if (IS_ERR(host->pins_default_v8)) {
+		ret = PTR_ERR(host->pins_default_v8);
+		dev_err(&pdev->dev, "Cannot find pinctrl default v8 !\n");
+		goto host_free;
+	}
 	host->pins_uhs = pinctrl_lookup_state(host->pinctrl, "state_uhs");
 	if (IS_ERR(host->pins_uhs)) {
 		ret = PTR_ERR(host->pins_uhs);
@@ -3539,6 +3566,8 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	ret = mmc_rpmb_register(mmc);
 #endif
 
+	sd_nt_init_sysfs(pdev);
+
 	return 0;
 end:
 	pm_runtime_disable(host->dev);
@@ -3572,6 +3601,8 @@ static int msdc_drv_remove(struct platform_device *pdev)
 
 	mmc = platform_get_drvdata(pdev);
 	host = mmc_priv(mmc);
+
+	remove_sd_nt_sysfs(pdev);
 
 	pm_runtime_get_sync(host->dev);
 
@@ -3741,6 +3772,51 @@ static void msdc_power_voter_release(struct msdc_host *host)
 		pr_info("%s: power voter release fail, err: %lu\n",
 			 __func__, res.a0);
 
+}
+
+static ssize_t sd_timing_spec_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct mmc_host *mmc = dev_get_drvdata(dev);
+
+	if (msdc_get_cd(mmc)) {
+		pr_info("%s:mmc card oemid: 0x%x\n",
+			__func__,
+			mmc->card->cid.oemid);
+
+		return snprintf(buf, PAGE_SIZE, "0x%x\n", mmc->ios.timing);
+	} else {
+		pr_info("%s:mmc card is not inserted\n", __func__);
+		return snprintf(buf, PAGE_SIZE, "0x0\n");
+	}
+}
+static DEVICE_ATTR_RO(sd_timing_spec);
+
+static struct attribute *sd_nt_sysfs_attrs[] = {
+	&dev_attr_sd_timing_spec.attr,
+	NULL
+};
+
+static const struct attribute_group sd_nt_sysfs_group = {
+	.name = "nt",
+	.attrs = sd_nt_sysfs_attrs,
+};
+
+static int sd_nt_init_sysfs(struct platform_device *pdev)
+{
+	int ret;
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &sd_nt_sysfs_group);
+	if (ret)
+		pr_info("%s: Failed to create sd_timing_spec sysfs group (err = %d)\n",
+				__func__, ret);
+
+	return ret;
+}
+
+static void remove_sd_nt_sysfs(struct platform_device *pdev)
+{
+	sysfs_remove_group(&pdev->dev.kobj, &sd_nt_sysfs_group);
 }
 
 static int __maybe_unused msdc_runtime_suspend(struct device *dev)

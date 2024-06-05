@@ -52,6 +52,7 @@ enum ENUM_CAMERA_CAM_CAL_TYPE_ENUM {
 	CAMERA_CAM_CAL_DATA_STEREO_DATA,
 	CAMERA_CAM_CAL_DATA_DUMP,
 	CAMERA_CAM_CAL_DATA_LENS_ID,
+	CAMERA_CAM_CAL_DATA_FUSE_ID,
 	CAMERA_CAM_CAL_DATA_SHADING_TABLE_16_9,
 	CAMERA_CAM_CAL_DATA_LIST
 };
@@ -188,7 +189,7 @@ struct STRUCT_CAM_CAL_PDAF_STRUCT {
 struct STRUCT_CAM_CAL_DATA_STRUCT {
 	enum ENUM_CAMERA_CAM_CAL_TYPE_ENUM Command;
 	enum ENUM_CAM_CAL_DATA_VER_ENUM DataVer;
-	unsigned char PartNumber[24];
+	unsigned char PartNumber[48];
 	unsigned int  sensorID;
 	unsigned int  deviceID;
 	struct STRUCT_CAM_CAL_SINGLE_LSC_STRUCT   SingleLsc;
@@ -196,6 +197,7 @@ struct STRUCT_CAM_CAL_DATA_STRUCT {
 	struct STRUCT_CAM_CAL_PDAF_STRUCT         PDAF;
 	struct STRUCT_CAM_CAL_Stereo_Data_STRUCT  Stereo_Data;
 	unsigned char LensDrvId[10];
+	unsigned char FuseId[32];
 };
 
 /**
@@ -207,7 +209,7 @@ struct STRUCT_CAM_CAL_MODULE_VERSION_STRUCT {
 };
 
 struct STRUCT_CAM_CAL_PART_NUM_STRUCT {
-	unsigned char PartNumber[24];
+	unsigned char PartNumber[48];
 };
 
 struct STRUCT_CAM_CAL_LSC_DATA_STRUCT {

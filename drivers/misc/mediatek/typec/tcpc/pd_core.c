@@ -1367,6 +1367,13 @@ void pd_reset_pe_timer(struct pd_port *pd_port)
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 }
 
+int pd_core_connected = 0;
+bool get_pd_pps_connected(void)
+{
+	return (pd_core_connected == PD_CONNECT_PE_READY_SNK_APDO);
+}
+EXPORT_SYMBOL(get_pd_pps_connected);
+
 int pd_update_connect_state(struct pd_port *pd_port, uint8_t state)
 {
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
@@ -1375,6 +1382,7 @@ int pd_update_connect_state(struct pd_port *pd_port, uint8_t state)
 		return 0;
 
 	pd_port->pd_connect_state = state;
+	pd_core_connected = state;
 	PE_INFO("pd_state=%d\n", state);
 	return tcpci_notify_pd_state(tcpc, state);
 }

@@ -946,6 +946,7 @@ static void mtk_atomic_doze_update_dsi_state(struct drm_device *dev,
 		mtk_crtc_change_output_mode(crtc,
 			mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
 }
+#if 0
 static void pq_bypass_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
@@ -953,6 +954,8 @@ static void pq_bypass_cmdq_cb(struct cmdq_cb_data data)
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 }
+#endif
+#if 0
 static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage, bool old_state)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -1080,7 +1083,7 @@ static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 	}
 #endif
 }
-
+#endif
 static void mtk_atomic_doze_preparation(struct drm_device *dev,
 					 struct drm_atomic_state *old_state)
 {
@@ -1102,11 +1105,11 @@ static void mtk_atomic_doze_preparation(struct drm_device *dev,
 
 		mtk_crtc = to_mtk_crtc(crtc);
 		comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (comp && comp->id == DDP_COMPONENT_DSI0 && old_state->crtcs[0].old_state)
-			mtk_atomit_doze_update_pq(crtc, 0, old_state->crtcs[0].old_state->active);
+		//if (comp && comp->id == DDP_COMPONENT_DSI0 && old_state->crtcs[0].old_state)
+		//	mtk_atomit_doze_update_pq(crtc, 0, old_state->crtcs[0].old_state->active);
 
-		if (comp && comp->id == DDP_COMPONENT_DSI1 && old_state->crtcs[3].old_state)
-			mtk_atomit_doze_update_pq(crtc, 0, old_state->crtcs[3].old_state->active);
+		//if (comp && comp->id == DDP_COMPONENT_DSI1 && old_state->crtcs[3].old_state)
+		//	mtk_atomit_doze_update_pq(crtc, 0, old_state->crtcs[3].old_state->active);
 
 		mtk_atomic_doze_update_dsi_state(dev, crtc, 1);
 
@@ -1138,11 +1141,11 @@ static void mtk_atomic_doze_finish(struct drm_device *dev,
 
 		mtk_crtc = to_mtk_crtc(crtc);
 		comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (comp && comp->id == DDP_COMPONENT_DSI0 && old_state->crtcs[0].old_state)
-			mtk_atomit_doze_update_pq(crtc, 1, old_state->crtcs[0].old_state->active);
+		//if (comp && comp->id == DDP_COMPONENT_DSI0 && old_state->crtcs[0].old_state)
+		//	mtk_atomit_doze_update_pq(crtc, 1, old_state->crtcs[0].old_state->active);
 
-		if (comp && comp->id == DDP_COMPONENT_DSI1 && old_state->crtcs[3].old_state)
-			mtk_atomit_doze_update_pq(crtc, 1, old_state->crtcs[3].old_state->active);
+		//if (comp && comp->id == DDP_COMPONENT_DSI1 && old_state->crtcs[3].old_state)
+		//	mtk_atomit_doze_update_pq(crtc, 1, old_state->crtcs[3].old_state->active);
 	}
 }
 

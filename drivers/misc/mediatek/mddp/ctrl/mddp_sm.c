@@ -459,6 +459,8 @@ void mddp_dump_sm_table(struct mddp_app_t *app)
 }
 #endif
 
+extern unsigned long mddp_abnormal_disabled_jiffies;
+
 enum mddp_state_e mddp_sm_on_event(struct mddp_app_t *app,
 		enum mddp_event_e event)
 {
@@ -467,11 +469,13 @@ enum mddp_state_e mddp_sm_on_event(struct mddp_app_t *app,
 	enum mddp_state_e               new_state;
 	struct mddp_sm_entry_t         *state_machine;
 	struct mddp_sm_entry_t         *entry;
+	bool 							lanWanExist;
 
 	mutex_lock(&mddp_state_handler_mtx);
 
 	new_state = old_state = mddp_get_state(app);
 	state_machine = app->state_machines[old_state];
+	lanWanExist = mddp_f_dev_is_wan_lan_dev();
 
 	for (idx = 0; idx < MDDP_EVT_CNT; idx++) {
 		entry = state_machine + idx;
@@ -486,8 +490,9 @@ enum mddp_state_e mddp_sm_on_event(struct mddp_app_t *app,
 
 			mddp_dump_sm_table(app);
 			MDDP_S_LOG(MDDP_LL_WARN,
-					"%s: event(%d), old_state(%d) -> new_state(%d).\n",
-					__func__, event, old_state, new_state);
+					"%s:evt(%d),(%d)->(%d),e(%d),j(%lu)\n",
+					__func__, event, old_state, new_state,
+					lanWanExist,mddp_abnormal_disabled_jiffies);
 
 			if (entry->action)
 				entry->action(app);
@@ -498,8 +503,9 @@ enum mddp_state_e mddp_sm_on_event(struct mddp_app_t *app,
 			 * NG. Unexpected event for this state!
 			 */
 			MDDP_S_LOG(MDDP_LL_WARN,
-					"%s: Invalid event(%d) for current state(%d)!\n",
-					__func__, event, old_state);
+					"%s: Invalid e(%d) for s(%d)!e(%d),j(%lu)\n",
+					__func__, event, old_state,
+					lanWanExist,mddp_abnormal_disabled_jiffies);
 
 			break;
 		}

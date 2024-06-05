@@ -46,6 +46,8 @@ struct pe50_hal {
 	const char **support_ta;
 	int support_ta_cnt;
 	struct power_supply *bat_psy;
+	struct power_supply *chgpsy;
+	struct mtk_charger *info;
 };
 
 static inline int to_chgtyp(enum chg_idx idx)
@@ -198,6 +200,7 @@ int pe50_hal_authenticate_ta(struct chg_alg_device *alg,
 			PE50_DBG("authenticate fail(%d)\n", ret);
 			continue;
 		}
+		_data.support_meas_cap = false;
 		hal->adapter = hal->adapters[i];
 		data->vta_min = _data.vta_min;
 		data->vta_max = _data.vta_max;
@@ -288,6 +291,13 @@ int pe50_hal_init_hardware(struct chg_alg_device *alg, const char **support_ta,
 		ret = IS_ERR(hal->bat_psy) ? PTR_ERR(hal->bat_psy) : -ENODEV;
 		PE50_ERR("get bat_psy fail(%d)\n", ret);
 	}
+
+	hal->chgpsy = power_supply_get_by_name("mtk-master-charger");
+	if (IS_ERR_OR_NULL(hal->chgpsy)) {
+		ret = IS_ERR(hal->chgpsy) ? PTR_ERR(hal->chgpsy) : -ENODEV;
+		PE50_ERR("get chgpsy fail(%d)\n", ret);
+	}
+
 	PE50_INFO("successfully\n");
 	return 0;
 err:
@@ -457,6 +467,41 @@ out:
 	return ret;
 }
 
+static int pe50_get_vbat(struct pe50_hal *hal)
+{
+	int ret = 0;
+	union power_supply_propval val = {0,};
+
+	if (IS_ERR_OR_NULL(hal->bat_psy))
+		goto out;
+
+	ret = power_supply_get_property(hal->bat_psy,
+					POWER_SUPPLY_PROP_VOLTAGE_NOW, &val);
+	if (ret < 0) {
+		PE50_ERR("get ibat fail(%d)\n", ret);
+		ret = 0;
+		goto out;
+	}
+	ret = val.intval / 1000;
+out:
+	PE50_DBG("%d\n", ret);
+	return ret;
+}
+
+int pe50_hal_set_ieoc(struct chg_alg_device *alg, enum chg_idx chgidx, u32 mA)
+{
+	int ret;
+	int chgtyp = to_chgtyp(chgidx);
+	struct pe50_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
+
+	if (alg == NULL)
+		return -EINVAL;
+
+	ret = charger_dev_set_eoc_current(hal->chgdevs[chgtyp], milli_to_micro(mA));
+	PE50_DBG("%s idx:%d %d\n", __func__, chgidx, mA);
+	return ret;
+}
+
 int pe50_hal_get_adc(struct chg_alg_device *alg, enum chg_idx chgidx,
 		     enum pe50_adc_channel chan, int *val)
 {
@@ -477,11 +522,20 @@ int pe50_hal_get_adc(struct chg_alg_device *alg, enum chg_idx chgidx,
 		*val = pe50_get_ibat(hal);
 		return 0;
 	}
+	else if(_chan == ADC_CHANNEL_VBAT){
+		*val = pe50_get_vbat(hal);
+		return 0;
+	}
+
 	ret = charger_dev_get_adc(hal->chgdevs[chgtyp], _chan, val, val);
 	if (ret < 0)
 		return ret;
+	/*
 	if (_chan == ADC_CHANNEL_VBAT || _chan == ADC_CHANNEL_IBAT ||
 	    _chan == ADC_CHANNEL_VBUS || _chan == ADC_CHANNEL_IBUS ||
+	    _chan == ADC_CHANNEL_VOUT || _chan == ADC_CHANNEL_VSYS)
+	*/
+	if (_chan == ADC_CHANNEL_VBUS || _chan == ADC_CHANNEL_IBUS ||
 	    _chan == ADC_CHANNEL_VOUT || _chan == ADC_CHANNEL_VSYS)
 		*val = micro_to_milli(*val);
 	return 0;
@@ -634,4 +688,35 @@ int pe50_hal_init_chip(struct chg_alg_device *alg, enum chg_idx chgidx)
 	if (chgtyp < 0)
 		return chgtyp;
 	return charger_dev_init_chip(hal->chgdevs[chgtyp]);
+}
+
+int pe50_hal_dump_registers(struct chg_alg_device *alg, enum chg_idx chgidx)
+{
+	int chgtyp = to_chgtyp(chgidx);
+	struct pe50_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
+
+	if (chgtyp < 0)
+		return chgtyp;
+	return charger_dev_dump_registers(hal->chgdevs[chgtyp]);
+}
+
+int pe50_hal_get_jeita_state(struct chg_alg_device *alg)
+{
+	struct pe50_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
+
+	if(IS_ERR_OR_NULL(hal->chgpsy))
+		hal->chgpsy = power_supply_get_by_name("mtk-master-charger");
+
+	if (IS_ERR_OR_NULL(hal->chgpsy)) {
+		pr_err("%s: Failed to get charger psy\n", __func__);
+		return -1;
+	}
+
+	hal->info =(struct mtk_charger *)power_supply_get_drvdata(hal->chgpsy);
+	if (IS_ERR_OR_NULL(hal->info)) {
+		pr_err("%s: Failed to get mtk charger\n", __func__);
+		return -1;
+	}
+
+	return hal->info->sw_jeita.sm;
 }

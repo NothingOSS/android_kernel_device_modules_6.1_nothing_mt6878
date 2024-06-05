@@ -526,6 +526,8 @@ struct msdc_host {
 
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *pins_default;
+	struct pinctrl_state *pins_default_v8;
+	int pins_default_version;
 	struct pinctrl_state *pins_uhs;
 	struct delayed_work req_timeout;
 	int irq;		/* host interrupt */

@@ -1451,10 +1451,10 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 				comp->regs_pa + DISP_REG_OVL_TRIG, 0x1000, 0x1000);
 
 
-	mtk_ddp_write(comp, (height * 9) / 10,
+	mtk_ddp_write(comp, (height * 7) / 10,
 		OVL_ROI_TIMING_0, handle);
 
-	DDPINFO("%s -> %u\n", __func__, (height * 9) / 10);
+	DDPINFO("%s -> %u\n", __func__, (height * 7) / 10);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(crtc_idx == 0)) {

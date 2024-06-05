@@ -17,11 +17,11 @@
 #endif
 
 #define RT_MAX_NUM 10
-#define ESD_CHECK_NUM 3
+#define ESD_CHECK_NUM 4
 #define MAX_TX_CMD_NUM 20
 #define MAX_RX_CMD_NUM 20
-#define READ_DDIC_SLOT_NUM 8
-#define MAX_DYN_CMD_NUM 20
+#define READ_DDIC_SLOT_NUM 16
+#define MAX_DYN_CMD_NUM 60
 #define MAX_TX_CMD_NUM_PACK 64
 #define MAX_MODE_SWITCH_CMD_NUM 20
 
@@ -497,11 +497,11 @@ enum DISPLAY_MODE {
 };
 
 struct mtk_panel_params {
+	unsigned int change_fps_by_vfp_send_cmd;
 	unsigned int pll_clk;
 	unsigned int data_rate;
 	unsigned int data_rate_khz;
 	unsigned int vdo_per_frame_lp_enable; /* Enable video mode per frame lp */
-	unsigned int change_fps_by_vfp_send_cmd;
 	struct mtk_dsi_phy_timcon phy_timcon;
 	unsigned int vfp_low_power;
 	struct dynamic_mipi_params dyn;
@@ -740,4 +740,8 @@ int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev,
 				mtk_dsi_ddic_handler_cb handler_cb,
 				struct mtk_lcm_dsi_cmd_packet *packet);
 
+void mtk_panel_update_lcm_state_to_fingerprint(void);
+void mtk_panel_proc_hbm(int hbm_status);
+void mtk_panel_proc_ui_status(int ui_ready);
+int mtk_panel_get_ui_status(void);
 #endif

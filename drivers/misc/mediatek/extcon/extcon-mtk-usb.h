@@ -27,6 +27,7 @@ struct mtk_extcon_info {
 	struct delayed_work wq_detcable;
 	unsigned int vbus_limit_cur;
 	bool vbus_cur_inlimit;
+	struct charger_device *dvchg1_dev;
 };
 
 struct usb_role_info {
@@ -46,3 +47,7 @@ enum {
 	DUAL_PROP_PR_SNK,
 	DUAL_PROP_PR_NONE,
 };
+
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+int extcon_usb_mode_switch(bool mode);
+#endif

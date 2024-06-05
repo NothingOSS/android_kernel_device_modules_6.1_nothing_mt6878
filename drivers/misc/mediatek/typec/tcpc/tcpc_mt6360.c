@@ -2306,11 +2306,11 @@ err_init_alert:
 err_sw_reset:
 	tcpc_device_unregister(chip->dev, chip->tcpc);
 err_tcpc_reg:
-#if CONFIG_WATER_DETECTION || CONFIG_CABLE_TYPE_DETECTION
+#if CONFIG_WATER_DETECTION
 #if IS_ENABLED(CONFIG_MTK_CHARGER)
 err_get_chg:
 #endif /* CONFIG_MTK_CHARGER */
-#endif /* CONFIG_WATER_DETECTION || CONFIG_CABLE_TYPE_DETECTION */
+#endif /* CONFIG_WATER_DETECTION */
 #if IS_ENABLED(CONFIG_RT_REGMAP)
 	mt6360_regmap_deinit(chip);
 err_regmap_init:

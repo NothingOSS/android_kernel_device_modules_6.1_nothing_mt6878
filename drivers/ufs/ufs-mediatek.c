@@ -29,6 +29,7 @@
 #include <ufs/ufs_quirks.h>
 #include <ufs/ufshcd.h>
 #include <ufs/unipro.h>
+#include <trace/hooks/ufshcd.h>
 
 #include "ufshcd-crypto.h"
 #include "ufshcd-pltfrm.h"
@@ -58,6 +59,31 @@ static struct ufs_hba *ufshba;
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 #include <mtk_battery_oc_throttling.h>
 #endif
+
+/* UFSHCD error handling flags */
+enum {
+	UFSHCD_HAGC_EH_IN_PROGRESS = (1 << 0),
+};
+
+/* UFSHCD UIC layer error flags */
+enum {
+	UFSHCD_UIC_DL_PA_INIT_ERROR = (1 << 0), /* Data link layer error */
+	UFSHCD_UIC_DL_NAC_RECEIVED_ERROR = (1 << 1), /* Data link layer error */
+	UFSHCD_UIC_DL_TCx_REPLAY_ERROR = (1 << 2), /* Data link layer error */
+	UFSHCD_UIC_NL_ERROR = (1 << 3), /* Network layer error */
+	UFSHCD_UIC_TL_ERROR = (1 << 4), /* Transport Layer error */
+	UFSHCD_UIC_DME_ERROR = (1 << 5), /* DME error */
+	UFSHCD_UIC_PA_GENERIC_ERROR = (1 << 6), /* Generic PA error */
+};
+
+static int ufs_nt_init_sysfs(struct ufs_hba *hba);
+
+#define ufshcd_set_hagc_eh_in_progress(h) \
+	((h)->eh_flags |= UFSHCD_HAGC_EH_IN_PROGRESS)
+#define ufshcd_hagc_eh_in_progress(h) \
+	((h)->eh_flags & UFSHCD_HAGC_EH_IN_PROGRESS)
+#define ufshcd_clear_hagc_eh_in_progress(h) \
+	((h)->eh_flags &= ~UFSHCD_HAGC_EH_IN_PROGRESS)
 
 #define UFS_WAKE_LOCK_TIMEOUT_MS	5000
 
@@ -129,6 +155,72 @@ static const char *const ufs_uic_dl_err_str[] = {
 	"PA_ERROR_IND_RECEIVED",
 	"PA_INIT"
 };
+
+#if defined(CONFIG_UFSFEATURE)
+static void ufs_vh_compl_command(void *data, struct ufs_hba *hba,
+			struct ufshcd_lrb *lrbp)
+{
+	struct utp_upiu_header *header = &lrbp->ucd_rsp_ptr->header;
+	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
+	struct scsi_cmnd *cmd = lrbp->cmd;
+	int scsi_status, result, ocs;
+	unsigned long *outstanding_reqs;
+	unsigned long out_tasks = 0;
+	unsigned long ongoing_cnt = 0;
+	int tmp_tag, nr_tag;
+
+	if (!cmd)
+		return;
+
+	ocs = le32_to_cpu(lrbp->utr_descriptor_ptr->header.dword_2) & MASK_OCS;
+	if (ocs != OCS_SUCCESS)
+		goto check_last_req;
+
+	result = be32_to_cpu(header->dword_0) >> 24;
+	if (result != UPIU_TRANSACTION_RESPONSE)
+		goto check_last_req;
+
+	scsi_status = be32_to_cpu(header->dword_1) & MASK_SCSI_STATUS;
+	if (scsi_status != SAM_STAT_GOOD)
+		goto check_last_req;
+
+	ufsf_upiu_check_for_ccd(lrbp);
+
+	outstanding_reqs = &hba->outstanding_reqs;
+	nr_tag = hba->nutrs;
+
+	for_each_set_bit(tmp_tag, outstanding_reqs, nr_tag) {
+		ongoing_cnt = 1;
+		break;
+	}
+
+	out_tasks = hba->outstanding_tasks;
+
+check_last_req:
+#if defined(CONFIG_UFSHID)
+	/* Check if it is the last request to be completed */
+	if (!out_tasks && !ongoing_cnt)
+		schedule_work(&ufsf->on_idle_work);
+#endif
+	;
+}
+
+static void ufs_vh_update_sdev(void *data, struct scsi_device *sdev)
+{
+	struct ufs_hba *hba = shost_priv(sdev->host);
+	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
+
+	ufsf_slave_configure(ufsf, sdev);
+}
+
+static void ufs_vh_send_command(void *data, struct ufs_hba *hba,
+				struct ufshcd_lrb *lrbp)
+{
+	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
+
+	ufsf_hid_acc_io_stat(ufsf, lrbp);
+}
+#endif
 
 static bool ufs_mtk_is_boost_crypt_enabled(struct ufs_hba *hba)
 {
@@ -1554,6 +1646,265 @@ static void ufs_mtk_rq_dwork_fn(struct work_struct *dwork)
 #endif
 
 /**
+ * ufs_mtk_query_ioctl - perform user read queries
+ * @hba: per-adapter instance
+ * @lun: used for lun specific queries
+ * @buffer: user space buffer for reading and submitting query data and params
+ * @return: 0 for success negative error code otherwise
+ *
+ * Expected/Submitted buffer structure is struct ufs_ioctl_query_data.
+ * It will read the opcode, idn and buf_length parameters, and, put the
+ * response in the buffer field while updating the used size in buf_length.
+ */
+static int
+ufs_mtk_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
+{
+	struct ufs_ioctl_query_data *ioctl_data;
+	int err = 0;
+	int length = 0;
+	void *data_ptr;
+	bool flag;
+	u32 att;
+	u8 index;
+	u8 *desc = NULL;
+
+	ioctl_data = kzalloc(sizeof(*ioctl_data), GFP_KERNEL);
+	if (!ioctl_data) {
+		err = -ENOMEM;
+		goto out;
+	}
+
+	/* extract params from user buffer */
+	err = copy_from_user(ioctl_data, buffer,
+			     sizeof(struct ufs_ioctl_query_data));
+	if (err) {
+		dev_err(hba->dev,
+			"%s: Failed copying buffer from user, err %d\n",
+			__func__, err);
+		goto out_release_mem;
+	}
+
+#if defined(CONFIG_UFSFEATURE)
+	if (ufsf_check_query(ioctl_data->opcode)) {
+		err = ufsf_query_ioctl(ufs_mtk_get_ufsf(hba), lun, buffer,
+				       ioctl_data, UFSFEATURE_SELECTOR);
+		goto out_release_mem;
+	}
+#endif
+
+	/* verify legal parameters & send query */
+	switch (ioctl_data->opcode) {
+	case UPIU_QUERY_OPCODE_READ_DESC:
+		switch (ioctl_data->idn) {
+		case QUERY_DESC_IDN_DEVICE:
+		case QUERY_DESC_IDN_CONFIGURATION:
+		case QUERY_DESC_IDN_INTERCONNECT:
+		case QUERY_DESC_IDN_GEOMETRY:
+		case QUERY_DESC_IDN_POWER:
+			index = 0;
+			break;
+		case QUERY_DESC_IDN_UNIT:
+			if (!ufs_is_valid_unit_desc_lun(&hba->dev_info, lun)) {
+				dev_err(hba->dev,
+					"%s: No unit descriptor for lun 0x%x\n",
+					__func__, lun);
+				err = -EINVAL;
+				goto out_release_mem;
+			}
+			index = lun;
+			break;
+		default:
+			goto out_einval;
+		}
+		length = min_t(int, QUERY_DESC_MAX_SIZE,
+			       ioctl_data->buf_size);
+		desc = kzalloc(length, GFP_KERNEL);
+		if (!desc) {
+			dev_err(hba->dev, "%s: Failed allocating %d bytes\n",
+				__func__, length);
+			err = -ENOMEM;
+			goto out_release_mem;
+		}
+		err = ufshcd_query_descriptor_retry(hba, ioctl_data->opcode,
+						    ioctl_data->idn, index, 0,
+						    desc, &length);
+		break;
+	case UPIU_QUERY_OPCODE_READ_ATTR:
+		switch (ioctl_data->idn) {
+		case QUERY_ATTR_IDN_BOOT_LU_EN:
+		case QUERY_ATTR_IDN_POWER_MODE:
+		case QUERY_ATTR_IDN_ACTIVE_ICC_LVL:
+		case QUERY_ATTR_IDN_OOO_DATA_EN:
+		case QUERY_ATTR_IDN_BKOPS_STATUS:
+		case QUERY_ATTR_IDN_PURGE_STATUS:
+		case QUERY_ATTR_IDN_MAX_DATA_IN:
+		case QUERY_ATTR_IDN_MAX_DATA_OUT:
+		case QUERY_ATTR_IDN_REF_CLK_FREQ:
+		case QUERY_ATTR_IDN_CONF_DESC_LOCK:
+		case QUERY_ATTR_IDN_MAX_NUM_OF_RTT:
+		case QUERY_ATTR_IDN_EE_CONTROL:
+		case QUERY_ATTR_IDN_EE_STATUS:
+		case QUERY_ATTR_IDN_SECONDS_PASSED:
+			index = 0;
+			break;
+		case QUERY_ATTR_IDN_DYN_CAP_NEEDED:
+		case QUERY_ATTR_IDN_CORR_PRG_BLK_NUM:
+			index = lun;
+			break;
+		default:
+			goto out_einval;
+		}
+		err = ufshcd_query_attr(hba, ioctl_data->opcode,
+					ioctl_data->idn, index, 0, &att);
+		break;
+
+	case UPIU_QUERY_OPCODE_WRITE_ATTR:
+		err = copy_from_user(&att,
+				     buffer +
+				     sizeof(struct ufs_ioctl_query_data),
+				     sizeof(u32));
+		if (err) {
+			dev_err(hba->dev,
+				"%s: Failed copying buffer from user, err %d\n",
+				__func__, err);
+			goto out_release_mem;
+		}
+
+		switch (ioctl_data->idn) {
+		case QUERY_ATTR_IDN_BOOT_LU_EN:
+			index = 0;
+			if (!att) {
+				dev_err(hba->dev,
+					"%s: Illegal ufs query ioctl data, opcode 0x%x, idn 0x%x, att 0x%x\n",
+					__func__, ioctl_data->opcode,
+					(unsigned int)ioctl_data->idn, att);
+				err = -EINVAL;
+				goto out_release_mem;
+			}
+			break;
+		default:
+			goto out_einval;
+		}
+		err = ufshcd_query_attr(hba, ioctl_data->opcode,
+					ioctl_data->idn, index, 0, &att);
+		break;
+
+	case UPIU_QUERY_OPCODE_READ_FLAG:
+		switch (ioctl_data->idn) {
+		case QUERY_FLAG_IDN_FDEVICEINIT:
+		case QUERY_FLAG_IDN_PERMANENT_WPE:
+		case QUERY_FLAG_IDN_PWR_ON_WPE:
+		case QUERY_FLAG_IDN_BKOPS_EN:
+		case QUERY_FLAG_IDN_PURGE_ENABLE:
+		case QUERY_FLAG_IDN_FPHYRESOURCEREMOVAL:
+		case QUERY_FLAG_IDN_BUSY_RTC:
+			break;
+		default:
+			goto out_einval;
+		}
+		err = ufshcd_query_flag(hba, ioctl_data->opcode,
+					ioctl_data->idn, 0, &flag);
+		break;
+	default:
+		goto out_einval;
+	}
+
+	if (err) {
+		dev_err(hba->dev, "%s: Query for idn %d failed\n", __func__,
+			ioctl_data->idn);
+		goto out_release_mem;
+	}
+
+	/*
+	 * copy response data
+	 * As we might end up reading less data than what is specified in
+	 * "ioctl_data->buf_size". So we are updating "ioctl_data->
+	 * buf_size" to what exactly we have read.
+	 */
+	switch (ioctl_data->opcode) {
+	case UPIU_QUERY_OPCODE_READ_DESC:
+		ioctl_data->buf_size = min_t(int, ioctl_data->buf_size, length);
+		data_ptr = desc;
+		break;
+	case UPIU_QUERY_OPCODE_READ_ATTR:
+		ioctl_data->buf_size = sizeof(u32);
+		data_ptr = &att;
+		break;
+	case UPIU_QUERY_OPCODE_READ_FLAG:
+		ioctl_data->buf_size = 1;
+		data_ptr = &flag;
+		break;
+	case UPIU_QUERY_OPCODE_WRITE_ATTR:
+		goto out_release_mem;
+	default:
+		goto out_einval;
+	}
+
+	/* copy to user */
+	err = copy_to_user(buffer, ioctl_data,
+			   sizeof(struct ufs_ioctl_query_data));
+	if (err)
+		dev_err(hba->dev, "%s: Failed copying back to user.\n",
+			__func__);
+	err = copy_to_user(buffer + sizeof(struct ufs_ioctl_query_data),
+			   data_ptr, ioctl_data->buf_size);
+	if (err)
+		dev_err(hba->dev, "%s: err %d copying back to user.\n",
+			__func__, err);
+	goto out_release_mem;
+
+out_einval:
+	dev_err(hba->dev,
+		"%s: illegal ufs query ioctl data, opcode 0x%x, idn 0x%x\n",
+		__func__, ioctl_data->opcode, (unsigned int)ioctl_data->idn);
+	err = -EINVAL;
+out_release_mem:
+	kfree(ioctl_data);
+	kfree(desc);
+out:
+	return err;
+}
+
+/**
+ * ufs_mtk_ioctl - ufs ioctl callback registered in scsi_host
+ * @dev: scsi device required for per LUN queries
+ * @cmd: command opcode
+ * @buffer: user space buffer for transferring data
+ *
+ * Supported commands:
+ * UFS_IOCTL_QUERY
+ */
+static int
+ufs_mtk_ioctl(struct scsi_device *dev, unsigned int cmd, void __user *buffer)
+{
+	struct ufs_hba *hba = shost_priv(dev->host);
+	int err = 0;
+
+	BUG_ON(!hba);
+	if (!buffer) {
+		dev_err(hba->dev, "%s: User buffer is NULL!\n", __func__);
+		return -EINVAL;
+	}
+
+	switch (cmd) {
+	case UFS_IOCTL_QUERY:
+		ufshcd_rpm_get_sync(hba);
+		err = ufs_mtk_query_ioctl(hba,
+					   ufshcd_scsi_to_upiu_lun(dev->lun),
+					   buffer);
+		ufshcd_rpm_put_sync(hba);
+		break;
+	default:
+		err = -ENOIOCTLCMD;
+		dev_err(hba->dev, "%s: Unsupported ioctl cmd %d\n", __func__,
+			cmd);
+		break;
+	}
+
+	return err;
+}
+
+/**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
  *
@@ -1691,6 +2042,16 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	ufs_mtk_init_ioctl(hba);
 
+	init_manual_gc(hba);
+
+/* Provide SCSI host ioctl API */
+	hba->host->hostt->ioctl = (int (*)(struct scsi_device *, unsigned int,
+				   void __user *))ufs_mtk_ioctl;
+#ifdef CONFIG_COMPAT
+	hba->host->hostt->compat_ioctl = (int (*)(struct scsi_device *,
+					  unsigned int,
+					  void __user *))ufs_mtk_ioctl;
+#endif
 	goto out;
 
 out_variant_clear:
@@ -1983,6 +2344,9 @@ static int ufs_mtk_device_reset(struct ufs_hba *hba)
 {
 	struct arm_smccc_res res;
 
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_reset_host(ufs_mtk_get_ufsf(hba));
+#endif
 	ufs_mtk_device_reset_ctrl(0, res);
 
 	/* disable hba in middle of device reset */
@@ -2405,6 +2769,9 @@ static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	if (status == PRE_CHANGE) {
+#if defined(CONFIG_UFSFEATURE)
+		ufsf_suspend(ufs_mtk_get_ufsf(hba));
+#endif
 		if (!ufshcd_is_auto_hibern8_supported(hba))
 			return 0;
 		err = ufs_mtk_auto_hibern8_disable(hba);
@@ -2460,7 +2827,11 @@ static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	int err;
 	struct arm_smccc_res res;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+#if defined(CONFIG_UFSFEATURE)
+	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
 
+	schedule_work(&ufsf->resume_work);
+#endif
 	if (hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL)
 		ufs_mtk_dev_vreg_set_lpm(hba, false);
 
@@ -2627,6 +2998,11 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 	else
 		ufs_mtk_setup_ref_clk_wait_us(hba,
 					      REFCLK_DEFAULT_WAIT_US);
+
+	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_SKHYNIX) {
+		ufs_nt_init_sysfs(hba);
+	}
+
 	return 0;
 }
 
@@ -2658,6 +3034,9 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 	ufs_mtk_fix_clock_scaling(hba);
 
 	ufs_mtk_install_tracepoints(hba);
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_set_init_state(hba);
+#endif
 }
 
 static void ufs_mtk_event_notify(struct ufs_hba *hba,
@@ -2670,6 +3049,10 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 
 	trace_ufs_mtk_event(evt, val);
 
+#if defined(CONFIG_UFSFEATURE)
+	if (evt == UFS_EVT_WL_SUSP_ERR)
+		ufsf_resume(ufs_mtk_get_ufsf(hba), true);
+#endif
 	/* Print details of UIC Errors */
 	if (evt <= UFS_EVT_DME_ERR) {
 		dev_info(hba->dev,
@@ -3095,6 +3478,15 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 #endif
 };
 
+#if defined(CONFIG_UFSFEATURE)
+static void ufs_samsung_register_hooks(void)
+{
+	register_trace_android_vh_ufs_compl_command(ufs_vh_compl_command, NULL);
+	register_trace_android_vh_ufs_update_sdev(ufs_vh_update_sdev, NULL);
+	register_trace_android_vh_ufs_send_command(ufs_vh_send_command, NULL);
+}
+#endif
+
 /**
  * ufs_mtk_probe - probe routine of the driver
  * @pdev: pointer to Platform device handle
@@ -3191,6 +3583,10 @@ skip_phy:
 				REGULATOR_MODE_NORMAL);
 
 out:
+#if defined(CONFIG_UFSFEATURE)
+	/* Register hook for Samsung feature */
+	ufs_samsung_register_hooks();
+#endif
 	of_node_put(phy_node);
 	of_node_put(reset_node);
 	return err;
@@ -3207,7 +3603,9 @@ static int ufs_mtk_remove(struct platform_device *pdev)
 	struct ufs_hba *hba = platform_get_drvdata(pdev);
 
 	pm_runtime_get_sync(&(pdev)->dev);
-
+#if defined(CONFIG_UFSFEATURE)
+	ufsf_remove(ufs_mtk_get_ufsf(hba));
+#endif
 	ufs_mtk_remove_sysfs(hba);
 
 	ufshcd_remove(hba);
@@ -3217,6 +3615,216 @@ static int ufs_mtk_remove(struct platform_device *pdev)
 	ufs_mtk_uninstall_tracepoints();
 
 	return 0;
+}
+
+/* for manual gc */
+static ssize_t manual_gc_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	int err;
+
+	u32 status = MANUAL_GC_OFF;
+
+	if (host->manual_gc.state == MANUAL_GC_DISABLE)
+		return scnprintf(buf, PAGE_SIZE, "%s", "disabled\n");
+
+
+	if (!ufshcd_hagc_eh_in_progress(hba)) {
+		pm_runtime_get_sync(hba->dev);
+		err = ufshcd_query_attr_retry(hba,
+			UPIU_QUERY_OPCODE_READ_ATTR,
+			QUERY_ATTR_IDN_MANUAL_GC_STATUS, 0, 0, &status);
+		pm_runtime_put_sync(hba->dev);
+		host->manual_gc.hagc_support = err ? false: true;
+	}
+
+	if (!host->manual_gc.hagc_support)
+		return scnprintf(buf, PAGE_SIZE, "%s", "GRAY\n");
+
+	dev_err(dev, "%s status=%d\n", __func__, status);
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			status == MANUAL_GC_STATUS_CLEAN ? "GREEN" :
+			status == MANUAL_GC_STATUS_PAUSE ? "YELLOW" :
+			status == MANUAL_GC_STATUS_DIRTY ? "RED" :
+			status == MANUAL_GC_STATUS_MAX ? "UNKNOWN" : "UNKNOWN");
+}
+
+static int manual_gc_enable(struct ufs_hba *hba, u32 *value)
+{
+	int ret;
+
+	if (ufshcd_hagc_eh_in_progress(hba))
+		return -EBUSY;
+
+	dev_err(hba->dev, "%s value=%d\n", __func__, *value);
+	pm_runtime_get_sync(hba->dev);
+	ret = ufshcd_query_attr_retry(hba,
+				UPIU_QUERY_OPCODE_WRITE_ATTR,
+				QUERY_ATTR_IDN_MANUAL_GC_CONT, 0, 0,
+				value);
+	pm_runtime_put_sync(hba->dev);
+	dev_err(hba->dev, "%s ret=%d\n", __func__, ret);
+	return ret;
+}
+
+static ssize_t manual_gc_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	u32 value;
+	int err = 0;
+
+	if (kstrtou32(buf, 0, &value))
+		return -EINVAL;
+
+	if (value >= MANUAL_GC_MAX)
+		return -EINVAL;
+
+	if (ufshcd_hagc_eh_in_progress(hba))
+		return -EBUSY;
+
+	if (value == MANUAL_GC_DISABLE || value == MANUAL_GC_ENABLE) {
+		host->manual_gc.state = value;
+		return count;
+	}
+	if (host->manual_gc.state == MANUAL_GC_DISABLE)
+		return count;
+
+	if (host->manual_gc.hagc_support)
+		host->manual_gc.hagc_support =
+			manual_gc_enable(hba, &value) ? false : true;
+
+	pm_runtime_get_sync(hba->dev);
+
+	if (!host->manual_gc.hagc_support) {
+		err = ufshcd_bkops_ctrl(hba, (value == MANUAL_GC_ON) ?
+					BKOPS_STATUS_NON_CRITICAL:
+					BKOPS_STATUS_CRITICAL);
+		if (!hba->auto_bkops_enabled)
+			err = -EAGAIN;
+	}
+
+	/* flush wb buffer */
+	if (hba->dev_info.wspecversion >= 0x0220) {
+		enum query_opcode opcode = (value == MANUAL_GC_ON) ?
+						UPIU_QUERY_OPCODE_SET_FLAG:
+						UPIU_QUERY_OPCODE_CLEAR_FLAG;
+		u8 index = ufshcd_wb_get_query_index(hba);
+
+		ufshcd_query_flag_retry(hba, opcode,
+				QUERY_FLAG_IDN_WB_BUFF_FLUSH_DURING_HIBERN8,
+				index, NULL);
+		ufshcd_query_flag_retry(hba, opcode,
+				QUERY_FLAG_IDN_WB_BUFF_FLUSH_EN, index, NULL);
+	}
+
+	if (err || hrtimer_active(&host->manual_gc.hrtimer)) {
+		pm_runtime_put_sync(hba->dev);
+		return count;
+	} else {
+		/* pm_runtime_put_sync in delay_ms */
+		hrtimer_start(&host->manual_gc.hrtimer,
+			ms_to_ktime(host->manual_gc.delay_ms),
+			HRTIMER_MODE_REL);
+	}
+	return count;
+}
+
+static DEVICE_ATTR_RW(manual_gc);
+
+static ssize_t manual_gc_hold_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	return snprintf(buf, PAGE_SIZE, "%lu\n", host->manual_gc.delay_ms);
+}
+
+static ssize_t manual_gc_hold_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	unsigned long value;
+
+	if (kstrtoul(buf, 0, &value))
+		return -EINVAL;
+
+	if (value < UFSHCD_MANUAL_GC_HOLD_HIBERN8_MIN ||
+		value > UFSHCD_MANUAL_GC_HOLD_HIBERN8_MAX) {
+		dev_err(dev, "%s Invaild value: %lu\n", __func__, value);
+		return -EINVAL;
+	}
+	host->manual_gc.delay_ms = value;
+	return count;
+}
+
+static DEVICE_ATTR_RW(manual_gc_hold);
+
+static enum hrtimer_restart mgc_hrtimer_handler(struct hrtimer *timer)
+{
+	struct ufs_mtk_host *host = container_of(timer, struct ufs_mtk_host,
+					manual_gc.hrtimer);
+
+	queue_work(host->manual_gc.mgc_workq, &host->manual_gc.hibern8_work);
+	return HRTIMER_NORESTART;
+}
+
+static void mgc_hibern8_work(struct work_struct *work)
+{
+	struct ufs_mtk_host *host = container_of(work, struct ufs_mtk_host,
+					manual_gc.hibern8_work);
+	pm_runtime_put_sync(host->hba->dev);
+	/* bkops will be disabled when power down */
+}
+
+static struct attribute *ufs_nt_sysfs_attrs[] = {
+	&dev_attr_manual_gc.attr,
+	&dev_attr_manual_gc_hold.attr,
+	NULL
+};
+
+static const struct attribute_group ufs_nt_sysfs_group = {
+	.name = "nt",
+	.attrs = ufs_nt_sysfs_attrs,
+};
+
+static int ufs_nt_init_sysfs(struct ufs_hba *hba)
+{
+	int ret;
+
+	ret = sysfs_create_group(&hba->dev->kobj, &ufs_nt_sysfs_group);
+	if (ret)
+		dev_err(hba->dev, "%s: Failed to create manual_gc sysfs group (err = %d)\n",
+				__func__, ret);
+
+	return ret;
+}
+
+void init_manual_gc(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct ufs_manual_gc *mgc = &host->manual_gc;
+	char wq_name[sizeof("ufs_mgc_hibern8_work")];
+
+	mgc->state = MANUAL_GC_ENABLE;
+	mgc->hagc_support = true;
+	mgc->delay_ms = UFSHCD_MANUAL_GC_HOLD_HIBERN8;
+
+	hrtimer_init(&mgc->hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	mgc->hrtimer.function = mgc_hrtimer_handler;
+
+	INIT_WORK(&mgc->hibern8_work, mgc_hibern8_work);
+	snprintf(wq_name, ARRAY_SIZE(wq_name), "ufs_mgc_hibern8_work_%d",
+			hba->host->host_no);
+	host->manual_gc.mgc_workq = create_singlethread_workqueue(wq_name);
 }
 
 #ifdef CONFIG_PM_SLEEP
