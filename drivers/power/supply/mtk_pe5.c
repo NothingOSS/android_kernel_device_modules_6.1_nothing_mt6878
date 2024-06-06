@@ -3984,6 +3984,8 @@ static int pe50_start_algo(struct chg_alg_device *alg)
 
 	if (pe50_is_algo_running(alg))
 		return ALG_RUNNING;
+	if(pe50_is_algo_finish(alg))
+		return ALG_DONE;
 	mutex_lock(&data->lock);
 	PE50_DBG("++\n");
 	if (!data->inited || !data->ta_ready) {
