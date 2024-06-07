@@ -10818,11 +10818,11 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	{
 		panel_ext = mtk_dsi_get_panel_ext(comp);
 		if (!(panel_ext && panel_ext->funcs &&
-		      panel_ext->funcs->hbm_set_cmdq))
+		      panel_ext->funcs->hbm_set_pack))
 			break;
 
-		panel_ext->funcs->hbm_set_cmdq(dsi->panel, dsi,
-					       mipi_dsi_dcs_write_gce, handle,
+		panel_ext->funcs->hbm_set_pack(dsi->panel, dsi,
+					       mtk_dsi_cmdq_pack_gce, handle,
 					       *(bool *)params);
 		break;
 	}

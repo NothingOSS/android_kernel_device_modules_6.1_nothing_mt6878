@@ -534,22 +534,37 @@ static int lcm_setbacklight_cmdq(void *dsi,
 	return 0;
 }
 
-static int panel_hbm_set_cmdq(struct drm_panel *panel, void *dsi,
-			      dcs_write_gce cb, void *handle, bool en)
-{
-	struct lcm *ctx = panel_to_lcm(panel);
-	unsigned int level = 0xff;
-	char hbm_buf01[] = {0xF0, 0x5A, 0x5A};
-	char hbm_buf02[] = {0x53, 0x20};
-	char hbm_buf03[] = {0x53, 0xE0};
-	char hbm_buf04[] = {0x51, 0x05, 0xF4};
-	char hbm_buf05[] = {0xF7, 0x0B};
-	char hbm_buf06[] = {0xF0, 0xA5, 0xA5};
+static struct LCM_mtk_setting_table elvssdly_cmd_tb[] = {
+	{3, {0xF0, 0x5A, 0x5A}},
+	{4, {0xB0, 0x00, 0x0C, 0xB2}},
+	{2, {0xB2, 0x30}},
+	{2, {0x53, 0xE0}},
+	{3, {0x51, 0x05, 0xF4}},
+	{2, {0xF7, 0x0B}},
+	{3, {0xF0, 0xA5, 0xA5}},
+};
 
-	char elvssdly_con[] = {0xB0, 0x00, 0x0C, 0xB2};
-	char elvssoff_dlyon [] = {0xB2, 0x30};
+static struct LCM_mtk_setting_table hbm_code_cmd_tb[] = {
+	{2, {0x53, 0xE0}},
+	{3, {0x51, 0x05, 0xF4}},
+	{2, {0xF7, 0x0B}},
+};
+
+static struct LCM_mtk_setting_table backlight_code_cmd_tb[] = {
+	{2, {0x53, 0x20}},
+	{3, {0x51, 0x05, 0xF4}},
+	{2, {0xF7, 0x0B}},
+};
+
+static int panel_set_hbm_pack(struct drm_panel *panel, void *dsi, dcs_write_gce_pack cb,
+		void *handle, bool en)
+{
+		struct lcm *ctx = panel_to_lcm(panel);
+	unsigned int level = 0xff;
+	int cmd_cnt = 0;
+
 	if (!cb) {
-		pr_info("[LCM]cb is null, panel_hbm_set_cmdq return -1\n");
+		pr_info("[LCM]cb is null, %s return -1\n", __func__);
 		return 0;
 	}
 
@@ -557,30 +572,23 @@ static int panel_hbm_set_cmdq(struct drm_panel *panel, void *dsi,
 		goto done;
 
 	if (en) {
-		cb(dsi, handle, hbm_buf01, ARRAY_SIZE(hbm_buf01));
-		cb(dsi, handle, elvssdly_con, ARRAY_SIZE(elvssdly_con));
-		cb(dsi, handle, elvssoff_dlyon, ARRAY_SIZE(elvssoff_dlyon));
-		cb(dsi, handle, hbm_buf03, ARRAY_SIZE(hbm_buf03));
-		cb(dsi, handle, hbm_buf04, ARRAY_SIZE(hbm_buf04));
-		cb(dsi, handle, hbm_buf05, ARRAY_SIZE(hbm_buf05));
-		cb(dsi, handle, hbm_buf06, ARRAY_SIZE(hbm_buf06));
+		cmd_cnt = sizeof(elvssdly_cmd_tb) / sizeof(struct LCM_mtk_setting_table);
+		panel_send_pack_cmd(dsi, elvssdly_cmd_tb, cmd_cnt, cb, handle);
 		pr_info("[LCM]hbm, set to hbm bl!\n");
 	} else {
 		lcm_hbmoff_state = 1;
 		if (g_level > 0x7FF) {
 			level = g_level - 0x800;
-			hbm_buf04[1] = (level>>8)&0xf;
-			hbm_buf04[2] = (level)&0xff;
-			cb(dsi, handle, hbm_buf03, ARRAY_SIZE(hbm_buf03));
-			cb(dsi, handle, hbm_buf04, ARRAY_SIZE(hbm_buf04));
-			cb(dsi, handle, hbm_buf05, ARRAY_SIZE(hbm_buf05));
+			hbm_code_cmd_tb[1].para_list[1] = (level>>8)&0xf;
+			hbm_code_cmd_tb[1].para_list[2] = (level)&0xff;
+			cmd_cnt = sizeof(hbm_code_cmd_tb) / sizeof(struct LCM_mtk_setting_table);
+			panel_send_pack_cmd(dsi, hbm_code_cmd_tb, cmd_cnt, cb, handle);
 			pr_info("[LCM]hbm, restore hbm bl:%d\n",g_level);
 		} else {
-			hbm_buf04[1] = (g_level>>8)&0xf;
-			hbm_buf04[2] = (g_level)&0xff;
-			cb(dsi, handle, hbm_buf02, ARRAY_SIZE(hbm_buf02));
-			cb(dsi, handle, hbm_buf04, ARRAY_SIZE(hbm_buf04));
-			cb(dsi, handle, hbm_buf05, ARRAY_SIZE(hbm_buf05));
+			backlight_code_cmd_tb[1].para_list[1]  = (g_level>>8)&0xf;
+			backlight_code_cmd_tb[1].para_list[2]  = (g_level)&0xff;
+			cmd_cnt = sizeof(backlight_code_cmd_tb) / sizeof(struct LCM_mtk_setting_table);
+			panel_send_pack_cmd(dsi, backlight_code_cmd_tb, cmd_cnt, cb, handle);
 			pr_info("[LCM]hbm, restore normal bl:%d\n",g_level);
 		}
 	}
@@ -590,6 +598,20 @@ static int panel_hbm_set_cmdq(struct drm_panel *panel, void *dsi,
 	mtk_panel_proc_hbm(ctx->hbm_en);
 	pr_info("%s- level =%d ctx->hbm_en =%d\n", __func__,g_level,ctx->hbm_en);
 done:
+	return 0;
+}
+
+static int panel_hbm_set_cmdq(struct drm_panel *panel, void *dsi,
+			      dcs_write_gce cb, void *handle, bool en)
+{
+
+	pr_info("%s\n", __func__);
+
+	if (!cb) {
+		pr_info("[LCM]cb is null, panel_hbm_set_cmdq return -1\n");
+		return 0;
+	}
+
 	return 0;
 }
 
@@ -1315,6 +1337,7 @@ static struct mtk_panel_funcs ext_funcs = {
 
 	.ata_check = panel_ata_check,
 	.hbm_set_cmdq = panel_hbm_set_cmdq,
+	.hbm_set_pack = panel_set_hbm_pack,
 	.hbm_get_state = panel_hbm_get_state,
 	.hbm_get_wait_state = panel_hbm_get_wait_state,
 	.hbm_set_wait_state = panel_hbm_set_wait_state,
