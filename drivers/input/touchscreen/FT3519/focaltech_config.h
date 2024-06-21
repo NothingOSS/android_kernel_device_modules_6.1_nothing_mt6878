@@ -232,7 +232,7 @@
  * Stylus PEN enable
  * 1:enable(default),0:disable
 */
-#define FTS_PEN_EN                              1
+#define FTS_PEN_EN                              0
 
 /*
  * Gesture function enable
