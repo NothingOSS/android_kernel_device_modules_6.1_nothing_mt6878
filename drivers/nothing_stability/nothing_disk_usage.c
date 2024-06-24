@@ -188,6 +188,11 @@ static bool printdir_sub(struct dir_context *ctx, const char *name, int namlen,
 	int ret = 0;
 	int is_dir = 0;
 
+	if (namlen >= F2FS_NAME_LEN) {
+		ret = -F2FS_NAME_LEN;
+		goto ERR_OUT;
+	}
+
 	strncpy(real_name, name, namlen);
 	real_name[namlen] = '\0';
 
