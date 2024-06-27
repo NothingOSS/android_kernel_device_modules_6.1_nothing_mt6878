@@ -1254,6 +1254,7 @@ static void nt_hvchg_flag_work(struct work_struct *work)
 						if (g_nt_chg)
 							g_nt_chg->is_hvcharger = false;
 						cancel_delayed_work(&ddata->detect_hvchg_flag_work);
+						cancel_delayed_work(&ddata->detect_hvchg_work);
 						dev_info(ddata->dev, "%s: nt_get_cc_connected return\n", __func__);
 				} else {
 						schedule_delayed_work(&ddata->detect_hvchg_flag_work, msecs_to_jiffies(200));
@@ -1360,7 +1361,6 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 	bool bc12_ctrl = !(pdata->nr_port > 1), bc12_en = false, rpt_psy = true;
 	int ret = 0, attach = ATTACH_TYPE_NONE, active_idx = 0;
 	u32 val = 0;
-	int dp = 0, dm = 0;
 
 	mutex_lock(&ddata->attach_lock);
 	active_idx = ddata->active_idx;
@@ -1385,8 +1385,6 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 		if (g_nt_chg)
 			g_nt_chg->is_hvcharger = false;
 		mt6375_set_dpdm_voltage(ddata, 0, 0);
-		msleep(200);
-		mt6375_get_dpdm_voltage(ddata, &dp, &dm);
 		goto out;
 	case ATTACH_TYPE_TYPEC:
 		if (pdata->nr_port > 1)
@@ -1399,6 +1397,11 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 			ddata->psy_desc.type = POWER_SUPPLY_TYPE_USB_DCP;
 			ddata->psy_type[active_idx] = POWER_SUPPLY_TYPE_USB_DCP;
 			ddata->psy_usb_type[active_idx] = POWER_SUPPLY_USB_TYPE_DCP;
+			/* clear hvdcp before bc12 */
+			ddata->hvchg_recheck_count = 0;
+			ddata->is_hvcharger_detect = false;
+			cancel_delayed_work(&ddata->detect_hvchg_work);
+			cancel_delayed_work(&ddata->detect_hvchg_flag_work);
 			goto out;
 		}
 		ret = mt6375_chg_field_get(ddata, F_PORT_STAT, &val);
