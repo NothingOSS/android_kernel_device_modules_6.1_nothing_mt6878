@@ -6152,9 +6152,9 @@ static void mtk_dsi_cmdq_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				DSI_CMDQ_SIZE, CMDQ_SIZE, handle);
 	mtk_ddp_write_mask(&dsi->ddp_comp, CMDQ_SIZE_SEL,
 				DSI_CMDQ_SIZE, CMDQ_SIZE_SEL, handle);
-	DDPINFO("set cmdqaddr %u, val:%x, mask %x\n", DSI_CMDQ_SIZE, cmdq_size,
-			CMDQ_SIZE);
-}
+	DDPINFO("cmdq_size = %d,DSI_CMDQ_SIZE=0x%x\n", cmdq_size,
+				readl(dsi->regs + DSI_CMDQ_SIZE));
+ }
 
 static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				struct mtk_ddic_dsi_cmd *para_table)
@@ -6540,14 +6540,6 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 			dsi->ddp_comp.regs_pa + DSI_INTSTA,
 			VM_CMD_DONE_INT_EN, VM_CMD_DONE_INT_EN);
 
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + DSI_START, 0,
-			VM_CMD_START);
-
-		/* clear VM_CMD_DONE */
-		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
-			dsi->ddp_comp.regs_pa + DSI_INTSTA, 0,
-			VM_CMD_DONE_INT_EN);
 	}
 
 	mtk_dsi_power_keep_gce(dsi, handle, false);
@@ -9798,9 +9790,11 @@ void mtk_dsi_send_switch_cmd_nothing(struct mtk_dsi *dsi,
 			struct mtk_drm_crtc *mtk_crtc, unsigned int cur_mode, unsigned int dst_mode)
 {
 	unsigned int i;
+	int lcm_cmd_count = 0;
 	struct dfps_switch_cmd *dfps_cmd = NULL;
 	struct mtk_panel_params *params = NULL;
 	struct drm_display_mode *old_mode = NULL;
+	struct mtk_ddic_dsi_cmd send_cmd_to_ddic;
 
 	old_mode = &(mtk_crtc->avail_modes[cur_mode]);
 
@@ -9808,11 +9802,33 @@ void mtk_dsi_send_switch_cmd_nothing(struct mtk_dsi *dsi,
 		params = mtk_crtc->panel_ext->params;
 	else /* can't find panel ext information,stop */
 		return;
+
+	for (i = 0; i < MAX_DYN_CMD_NUM; i++) {
+		dfps_cmd = &params->dyn_fps.dfps_cmd_table[i];
+		if (dfps_cmd->cmd_num == 0)
+			break;
+		lcm_cmd_count++;
+	}
+
+	if (lcm_cmd_count > MAX_TX_CMD_NUM_PACK) {
+		pr_info("%s,out of mtk_ddic_dsi_cmd\n", __func__);
+		return;
+	}
+
+	for (i = 0; i < lcm_cmd_count; i++) {
+		send_cmd_to_ddic.mtk_ddic_cmd_table[i].cmd_num = params->dyn_fps.dfps_cmd_table[i].cmd_num;
+		send_cmd_to_ddic.mtk_ddic_cmd_table[i].para_list = params->dyn_fps.dfps_cmd_table[i].para_list;
+	}
+	send_cmd_to_ddic.is_hs = 1;
+	send_cmd_to_ddic.is_package = 1;
+	send_cmd_to_ddic.cmd_count = lcm_cmd_count;
+
 /*	if (dsi->slave_dsi)
 		mtk_dsi_enter_idle(dsi->slave_dsi,1,false);
 	if (dsi->slave_dsi)
 		mtk_dsi_leave_idle(dsi->slave_dsi,1,false);
 */
+/*
 	for (i = 0; i < MAX_DYN_CMD_NUM; i++) {
 		dfps_cmd = &params->dyn_fps.dfps_cmd_table[i];
 		if (dfps_cmd->cmd_num == 0)
@@ -9822,6 +9838,9 @@ void mtk_dsi_send_switch_cmd_nothing(struct mtk_dsi *dsi,
 			mipi_dsi_dcs_write_gce(dsi, handle, dfps_cmd->para_list,
 				dfps_cmd->cmd_num);
 	}
+*/
+	if (dfps_cmd->src_fps == 0 || drm_mode_vrefresh(old_mode) == dfps_cmd->src_fps)
+		mtk_dsi_cmdq_pack_gce(dsi, handle, &send_cmd_to_ddic);
 }
 static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc, struct drm_crtc_state *old_state)
@@ -9966,10 +9985,8 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		mtk_dsi_trigger(comp, handle);
 	} else if (fps_chg_index & MODE_DSI_VFP) {
 		DDPINFO("%s, change VFP\n", __func__);
-		cmdq_pkt_clear_event(handle,
-			mtk_crtc->gce_obj.event[EVENT_DSI_SOF]);
 		cmdq_pkt_wait_no_clear(handle,
-			mtk_crtc->gce_obj.event[EVENT_DSI_SOF]);
+			mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
 		comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 		if (!comp) {
@@ -9990,8 +10007,6 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 
 		mtk_dsi_send_switch_cmd_nothing(dsi, handle, mtk_crtc, src_mode,
 					drm_mode_vrefresh(&adjusted_mode));
-		cmdq_pkt_wait_no_clear(handle,
-			mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
 		/* Msync 2.0 ToDo: can we change vm.vfront_porch according msync?
 		 * mmdvfs,dramdvfs according to vm.vfront_porch?
 		 */
