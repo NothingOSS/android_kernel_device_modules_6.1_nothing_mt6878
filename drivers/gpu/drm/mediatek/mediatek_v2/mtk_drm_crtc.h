@@ -666,6 +666,9 @@ enum DISP_SMC_CMD {
 	DISP_CMD_MAX,
 };
 
+extern struct delayed_work set_first_backlight_by_workqueue;
+void set_first_backlight_work(struct work_struct *work);
+
 struct mtk_crtc_path_data {
 	bool is_fake_path;
 	bool is_discrete_path;

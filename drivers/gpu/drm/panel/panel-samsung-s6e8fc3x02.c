@@ -202,7 +202,8 @@ static int samsung_set_backlight_pack(void *dsi, dcs_write_gce_pack cb,
 	bl_tb0[1] = (level >> 8) & 0xFF;
 	bl_tb0[2] = level & 0xFF;
 
-	g_level = level;
+	if (level != 0)
+		g_level = level;
 
 	if (g_ctx->hbm_stat == true || g_ctx->hbm_en == true) {
 		pr_info("%s+, hbm mode set_level=%d\n", __func__, level);

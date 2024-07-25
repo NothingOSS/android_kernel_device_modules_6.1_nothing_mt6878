@@ -58,7 +58,7 @@ struct cmdq_sec_helper_fp *cmdq_sec_helper;
 #define CMDQ_HW_MAX			2
 
 /* sleep for 312 tick, which around 12us */
-#define CMDQ_POLL_TICK			312
+#define CMDQ_POLL_TICK			156
 
 #define CMDQ_GET_ADDR_H(addr)		(sizeof(addr) > 32 ? (addr >> 32) : 0)
 #define CMDQ_GET_ARG_B(arg)		(((arg) & GENMASK(31, 16)) >> 16)

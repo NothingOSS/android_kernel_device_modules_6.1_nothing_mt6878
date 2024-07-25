@@ -417,6 +417,8 @@ static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
 
 ktime_t time_start;
 s64 elapsed_ms[3] = {0};
+bool delay_first_set_backlight = false;
+EXPORT_SYMBOL(delay_first_set_backlight);
 
 static u32 underrun_cnt;
 module_param(underrun_cnt, uint, 0644);
@@ -3638,6 +3640,7 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		return;
 	}
 
+	delay_first_set_backlight = true;
 	crtc_idx = drm_crtc_index(crtc);
 	CRTC_MMP_EVENT_START(crtc_idx, dsi_enable,
 				(unsigned long)crtc, crtc_idx);
@@ -6152,9 +6155,9 @@ static void mtk_dsi_cmdq_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				DSI_CMDQ_SIZE, CMDQ_SIZE, handle);
 	mtk_ddp_write_mask(&dsi->ddp_comp, CMDQ_SIZE_SEL,
 				DSI_CMDQ_SIZE, CMDQ_SIZE_SEL, handle);
-	DDPINFO("cmdq_size = %d,DSI_CMDQ_SIZE=0x%x\n", cmdq_size,
-				readl(dsi->regs + DSI_CMDQ_SIZE));
- }
+	DDPINFO("set cmdqaddr %u, val:%x, mask %x\n", DSI_CMDQ_SIZE, cmdq_size,
+			CMDQ_SIZE);
+}
 
 static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				struct mtk_ddic_dsi_cmd *para_table)
@@ -6540,6 +6543,14 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 			dsi->ddp_comp.regs_pa + DSI_INTSTA,
 			VM_CMD_DONE_INT_EN, VM_CMD_DONE_INT_EN);
 
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			dsi->ddp_comp.regs_pa + DSI_START, 0,
+			VM_CMD_START);
+
+		/* clear VM_CMD_DONE */
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			dsi->ddp_comp.regs_pa + DSI_INTSTA, 0,
+			VM_CMD_DONE_INT_EN);
 	}
 
 	mtk_dsi_power_keep_gce(dsi, handle, false);
@@ -9790,11 +9801,9 @@ void mtk_dsi_send_switch_cmd_nothing(struct mtk_dsi *dsi,
 			struct mtk_drm_crtc *mtk_crtc, unsigned int cur_mode, unsigned int dst_mode)
 {
 	unsigned int i;
-	int lcm_cmd_count = 0;
 	struct dfps_switch_cmd *dfps_cmd = NULL;
 	struct mtk_panel_params *params = NULL;
 	struct drm_display_mode *old_mode = NULL;
-	struct mtk_ddic_dsi_cmd send_cmd_to_ddic;
 
 	old_mode = &(mtk_crtc->avail_modes[cur_mode]);
 
@@ -9802,33 +9811,11 @@ void mtk_dsi_send_switch_cmd_nothing(struct mtk_dsi *dsi,
 		params = mtk_crtc->panel_ext->params;
 	else /* can't find panel ext information,stop */
 		return;
-
-	for (i = 0; i < MAX_DYN_CMD_NUM; i++) {
-		dfps_cmd = &params->dyn_fps.dfps_cmd_table[i];
-		if (dfps_cmd->cmd_num == 0)
-			break;
-		lcm_cmd_count++;
-	}
-
-	if (lcm_cmd_count > MAX_TX_CMD_NUM_PACK) {
-		pr_info("%s,out of mtk_ddic_dsi_cmd\n", __func__);
-		return;
-	}
-
-	for (i = 0; i < lcm_cmd_count; i++) {
-		send_cmd_to_ddic.mtk_ddic_cmd_table[i].cmd_num = params->dyn_fps.dfps_cmd_table[i].cmd_num;
-		send_cmd_to_ddic.mtk_ddic_cmd_table[i].para_list = params->dyn_fps.dfps_cmd_table[i].para_list;
-	}
-	send_cmd_to_ddic.is_hs = 1;
-	send_cmd_to_ddic.is_package = 1;
-	send_cmd_to_ddic.cmd_count = lcm_cmd_count;
-
 /*	if (dsi->slave_dsi)
 		mtk_dsi_enter_idle(dsi->slave_dsi,1,false);
 	if (dsi->slave_dsi)
 		mtk_dsi_leave_idle(dsi->slave_dsi,1,false);
 */
-/*
 	for (i = 0; i < MAX_DYN_CMD_NUM; i++) {
 		dfps_cmd = &params->dyn_fps.dfps_cmd_table[i];
 		if (dfps_cmd->cmd_num == 0)
@@ -9838,9 +9825,6 @@ void mtk_dsi_send_switch_cmd_nothing(struct mtk_dsi *dsi,
 			mipi_dsi_dcs_write_gce(dsi, handle, dfps_cmd->para_list,
 				dfps_cmd->cmd_num);
 	}
-*/
-	if (dfps_cmd->src_fps == 0 || drm_mode_vrefresh(old_mode) == dfps_cmd->src_fps)
-		mtk_dsi_cmdq_pack_gce(dsi, handle, &send_cmd_to_ddic);
 }
 static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc, struct drm_crtc_state *old_state)
@@ -9985,6 +9969,7 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		mtk_dsi_trigger(comp, handle);
 	} else if (fps_chg_index & MODE_DSI_VFP) {
 		DDPINFO("%s, change VFP\n", __func__);
+
 		cmdq_pkt_wait_no_clear(handle,
 			mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
 		comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -9993,6 +9978,38 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 			DDPPR_ERR("ddp comp is NULL\n");
 			kfree(cb_data);
 			return;
+		}
+
+		if (dsi && dsi->ext && dsi->ext->params
+			&& dsi->ext->params->change_fps_by_vfp_send_cmd) {
+			/*wait and clear EOF
+			 * avoid other display related task break fps change task
+			 * because fps change need stop & re-start vdo mode
+			 */
+			cmdq_pkt_wfe(handle,
+				     mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+			/*1.1 send cmd: stop vdo mode*/
+			mtk_dsi_stop_vdo_mode(dsi, handle);
+			/* for crtc first enable,dyn fps fail*/
+			if (dsi->data_rate == 0) {
+				dsi->data_rate = mtk_dsi_default_rate(dsi);
+				mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, dsi->data_rate);
+				if (dsi->ext->params->data_rate_khz)
+					mtk_mipi_tx_pll_rate_khz_set_adpt(dsi->phy,
+						dsi->ext->params->data_rate_khz);
+				if (dsi->slave_dsi) {
+					dsi->slave_dsi->data_rate = dsi->data_rate;
+					mtk_mipi_tx_pll_rate_set_adpt(dsi->slave_dsi->phy, dsi->data_rate);
+					if (dsi->ext->params->data_rate_khz)
+						mtk_mipi_tx_pll_rate_khz_set_adpt(dsi->slave_dsi->phy,
+							dsi->ext->params->data_rate_khz);
+				}
+				if (dsi->data_rate) {
+					mtk_dsi_phy_timconfig(dsi, NULL);
+					if (dsi->slave_dsi)
+						mtk_dsi_phy_timconfig(dsi->slave_dsi, NULL);
+				}
+			}
 		}
 
 		if (dsi->mipi_hopping_sta && dsi->ext) {
@@ -10005,8 +10022,6 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		if (dsi->slave_dsi)
 			dsi->slave_dsi->vm.vfront_porch = vfp;
 
-		mtk_dsi_send_switch_cmd_nothing(dsi, handle, mtk_crtc, src_mode,
-					drm_mode_vrefresh(&adjusted_mode));
 		/* Msync 2.0 ToDo: can we change vm.vfront_porch according msync?
 		 * mmdvfs,dramdvfs according to vm.vfront_porch?
 		 */
@@ -10037,6 +10052,23 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		if (dsi->slave_dsi)
 			mtk_dsi_porch_setting(&dsi->slave_dsi->ddp_comp,
 						handle, DSI_VFP, vfp);
+
+		if (dsi && dsi->ext && dsi->ext->params
+			&& dsi->ext->params->change_fps_by_vfp_send_cmd) {
+			/*1.2 send cmd: send cmd*/
+			mtk_dsi_send_switch_cmd(dsi, handle, mtk_crtc, src_mode,
+						drm_mode_vrefresh(&adjusted_mode));
+			/*1.3 send cmd: start vdo mode*/
+			mtk_dsi_start_vdo_mode(comp, handle);
+			/*clear EOF
+			 * avoid config continue after we trigger vdo mode
+			 */
+			cmdq_pkt_clear_event(handle,
+				     mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+			/*1.4 send cmd: trigger*/
+			mtk_disp_mutex_trigger(comp->mtk_crtc->mutex[0], handle);
+			mtk_dsi_trigger(comp, handle);
+		}
 	}
 
 	if (mtk_crtc->qos_ctx)
