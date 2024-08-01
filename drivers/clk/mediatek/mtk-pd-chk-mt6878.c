@@ -503,7 +503,7 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 		if (mtk_subsys_check[i].pd_id == id) {
 			print_subsys_reg_mt6878(mtk_subsys_check[i].chk_id);
 			parent_id = mtk_subsys_check[i].pd_parent;
-			break;
+			//break;
 		}
 	}
 
