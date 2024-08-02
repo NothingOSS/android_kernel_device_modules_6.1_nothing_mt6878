@@ -10,3 +10,6 @@
   - Improve TP driver
   - Improve stability
 
+3. OS 2.6(Tetris-U2.6-240729-1047)
+  - Fix charger issue
+
