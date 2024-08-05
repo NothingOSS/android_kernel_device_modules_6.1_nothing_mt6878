@@ -978,15 +978,17 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 	if (ssusb->clk_mgr && !ssusb->is_host)
 		return 0;
 
+	ssusb->is_suspended = true;
+
 	ssusb->offload_mode = ssusb_offload_get_mode();
 
 	dev_info(ssusb->dev, "%s offload_mode %d\n", __func__, ssusb->offload_mode);
 
 	if (ssusb->offload_mode == SSUSB_OFFLOAD_MODE_S) {
 		ssusb_set_power_state(ssusb, MTU3_STATE_OFFLOAD);
-		return 0;
+		goto suspend;
 	} else if (ssusb->offload_mode == SSUSB_OFFLOAD_MODE_D) {
-		return 0;
+		goto suspend;
 	}
 
 	ssusb_set_power_state(ssusb, MTU3_STATE_SUSPEND);
@@ -1010,7 +1012,8 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 		ssusb_host_suspend(ssusb);
 		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
 
 	ret = wait_for_ip_sleep(ssusb);
@@ -1020,6 +1023,7 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 	ssusb_phy_power_off(ssusb);
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
 	ssusb_wakeup_set(ssusb, true);
+suspend:
 	return 0;
 
 sleep_err:
@@ -1029,13 +1033,14 @@ sleep_err:
 		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST);
 	}
 err:
+	ssusb->is_suspended = false;
 	return ret;
 }
 
 static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 {
 	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
-	int ret;
+	int ret = 0;
 
 	dev_info(ssusb->dev, "%s event %d\n", __func__, msg.event);
 
@@ -1048,9 +1053,9 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 
 	if (ssusb->offload_mode == SSUSB_OFFLOAD_MODE_S) {
 		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
-		return 0;
+		goto resume;
 	} else if (ssusb->offload_mode == SSUSB_OFFLOAD_MODE_D) {
-		return 0;
+		goto resume;
 	}
 
 	ssusb_wakeup_set(ssusb, false);
@@ -1066,6 +1071,8 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 
 	ssusb_set_power_state(ssusb, MTU3_STATE_RESUME);
 
+resume:
+	ssusb->is_suspended = false;
 	return ret;
 phy_err:
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);

@@ -347,6 +347,7 @@ struct ssusb_mtk {
 	/* dp switch */
 	struct regmap *dp_switch;
 	u32 dp_switch_oft;
+	bool is_suspended;
 };
 
 /**
