@@ -247,20 +247,6 @@ static void lcm_dcs_write(struct lcm *ctx, const void *data, size_t len)
 	}
 }
 
-static int lcm_panel_check_data(struct lcm *ctx, u8 reg, u8 *reg_value)
-{
-	ssize_t ret;
-	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
-
-	ret = mipi_dsi_dcs_read(dsi, reg, reg_value, sizeof(*reg_value));
-	if(ret <= 0) {
-		pr_err("%s error, reg=0x%02x\n", __func__, reg);
-		return ret;
-	}
-
-	return 0;
-}
-
 char panel_name_find[128] = "lcd unknow";
 EXPORT_SYMBOL(panel_name_find);
 extern char lcm_id[3];
@@ -278,7 +264,6 @@ EXPORT_SYMBOL(lcm_panel_get_data);
 
 static void lcm_panel_init(struct lcm *ctx)
 {
-	u8 reg_value;
 	ctx->reset_gpio =
 		devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 0);
@@ -287,11 +272,6 @@ static void lcm_panel_init(struct lcm *ctx)
 	usleep_range(10 * 1000, 11 * 1000);
 	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
-	lcm_dcs_write_seq_static(ctx, 0xF0, 0x5A, 0x5A);
-	lcm_panel_check_data(ctx, 0xDC, &reg_value);
-	lcm_dcs_write_seq_static(ctx, 0xF0, 0xA5, 0xA5);
-	pr_info("[LCM]0xDC reg_value=0x%x\n", reg_value);
-
 	lcm_dcs_write_seq_static(ctx, 0x9F, 0xA5, 0xA5);
 	lcm_dcs_write_seq_static(ctx, 0xF0, 0x5A, 0x5A);
 	lcm_dcs_write_seq_static(ctx, 0xFC, 0x5A, 0x5A);
@@ -299,11 +279,6 @@ static void lcm_panel_init(struct lcm *ctx)
 	usleep_range(20 * 1000, 21 * 1000);
 	lcm_dcs_write_seq_static(ctx, 0x35, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0xB2, 0x01, 0x31);
-	if(reg_value == 0x01) {  //96.0MHz
-		lcm_dcs_write_seq_static(ctx, 0xDF, 0x09, 0x30, 0x95, 0x44, 0x36, 0x44, 0x36);
-	} else {  //91.8MHz
-		lcm_dcs_write_seq_static(ctx, 0xDF, 0x09, 0x30, 0x95, 0x41, 0x3A, 0x41, 0x3A);
-	}
 	lcm_dcs_write_seq_static(ctx, 0x9D, 0x01);
 	lcm_dcs_write_seq_static(ctx, 0x9E,
 		0x11, 0x00, 0x00, 0x89, 0x30, 0x80, 0x09, 0x60,
