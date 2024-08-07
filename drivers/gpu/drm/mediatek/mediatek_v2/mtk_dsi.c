@@ -3640,7 +3640,6 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		return;
 	}
 
-	delay_first_set_backlight = true;
 	crtc_idx = drm_crtc_index(crtc);
 	CRTC_MMP_EVENT_START(crtc_idx, dsi_enable,
 				(unsigned long)crtc, crtc_idx);
@@ -3684,6 +3683,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 				(unsigned long)dsi->output_en, 4);
 		return;
 	}
+
+	delay_first_set_backlight = true;
 
 	if (dsi->panel) {
 		DDP_PROFILE("[PROFILE] %s panel init start\n", __func__);
