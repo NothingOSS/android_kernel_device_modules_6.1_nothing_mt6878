@@ -118,7 +118,6 @@ struct timespec64 atomic_flush_tval;
 struct timespec64 rdma_sof_tval;
 static bool hrt_usage_status;
 bool hdr_en;
-extern bool delay_first_set_backlight;
 static const char * const crtc_gce_client_str[] = {
 	DECLARE_GCE_CLIENT(DECLARE_STR)};
 
@@ -1732,10 +1731,6 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	}
 	if (lock)
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-
-	if (delay_first_set_backlight) {
-		delay_first_set_backlight = false;
-	}
 
 	CRTC_MMP_EVENT_END(index, backlight, (unsigned long)crtc,
 			level);

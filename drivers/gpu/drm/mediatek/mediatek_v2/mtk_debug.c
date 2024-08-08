@@ -130,9 +130,6 @@ static unsigned int partial_y_offset;
 static unsigned int partial_height;
 unsigned int seg_id_dbg;
 
-extern bool delay_first_set_backlight;
-struct delayed_work set_first_backlight_by_workqueue;
-
 struct logger_buffer {
 	char **buffer_ptr;
 	unsigned int len;
@@ -140,15 +137,6 @@ struct logger_buffer {
 	const unsigned int cnt;
 	const unsigned int size;
 };
-
-struct brightness_buffer {
-	unsigned int level;
-	unsigned int panel_ext_param;
-	unsigned int cfg_flag;
-	struct drm_crtc *crtc;
-};
-
-static struct brightness_buffer bl_buffer;
 
 static DEFINE_SPINLOCK(dprec_err_logger_spinlock);
 static DEFINE_SPINLOCK(dprec_fence_logger_spinlock);
@@ -522,11 +510,6 @@ int mtkfb_set_backlight_level_AOD(unsigned int level)
 }
 EXPORT_SYMBOL(mtkfb_set_backlight_level_AOD);
 
-void set_first_backlight_work(struct work_struct *work)
-{
-	mtk_drm_setbacklight(bl_buffer.crtc, bl_buffer.level, bl_buffer.panel_ext_param, bl_buffer.cfg_flag, 1);
-}
-
 int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 			       unsigned int cfg_flag, bool group)
 {
@@ -549,16 +532,7 @@ int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param
 	if (group == true) {
 		ret = mtk_drm_setbacklight_grp(crtc, level, panel_ext_param, cfg_flag);
 	} else {
-		if (delay_first_set_backlight) {
-			bl_buffer.level = level;
-			bl_buffer.panel_ext_param = panel_ext_param;
-			bl_buffer.cfg_flag = cfg_flag;
-			bl_buffer.crtc = crtc;
-			schedule_delayed_work(&set_first_backlight_by_workqueue, msecs_to_jiffies(35));
-			ret = 0;
-		} else {
-			ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag, 1);
-		}
+		ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag, 1);
 	}
 
 	return ret;
@@ -5773,8 +5747,6 @@ void disp_dbg_init(struct drm_device *dev)
 	else
 		DDPMSG("%s, disp debug init\n", __func__);
 
-	INIT_DELAYED_WORK(&set_first_backlight_by_workqueue, set_first_backlight_work);
-
 	drm_dev = dev;
 	init_completion(&cwb_cmp);
 
@@ -5803,7 +5775,6 @@ void disp_dbg_deinit(void)
 #ifdef MTK_DPINFO
 	mtk_dp_debugfs_deinit();
 #endif
-	cancel_delayed_work_sync(&set_first_backlight_by_workqueue);
 }
 
 void get_disp_dbg_buffer(unsigned long *addr, unsigned long *size,

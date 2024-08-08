@@ -417,8 +417,6 @@ static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
 
 ktime_t time_start;
 s64 elapsed_ms[3] = {0};
-bool delay_first_set_backlight = false;
-EXPORT_SYMBOL(delay_first_set_backlight);
 
 static u32 underrun_cnt;
 module_param(underrun_cnt, uint, 0644);
@@ -3683,8 +3681,6 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 				(unsigned long)dsi->output_en, 4);
 		return;
 	}
-
-	delay_first_set_backlight = true;
 
 	if (dsi->panel) {
 		DDP_PROFILE("[PROFILE] %s panel init start\n", __func__);
