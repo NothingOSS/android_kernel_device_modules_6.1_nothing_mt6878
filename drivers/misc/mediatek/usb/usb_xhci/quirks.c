@@ -25,6 +25,8 @@ struct usb_audio_quirk_flags_table {
 static const struct usb_device_id mtk_usb_quirk_list[] = {
 	/* HUAWEI AM33/CM33 HeadSet */
 	{USB_DEVICE(0x12d1, 0x3a07), .driver_info = USB_QUIRK_IGNORE_REMOTE_WAKEUP|USB_QUIRK_RESET},
+	/* TTGK */
+	{USB_DEVICE(0x2d13, 0xa001), .driver_info = USB_QUIRK_NO_LPM},
 
 	{ }  /* terminating entry must be last */
 };
