@@ -89,10 +89,15 @@ static int check_chg_status(struct nt_chg_info *nci)
 	return 0;
 }
 
-static int check_dvchg_status(void)
+static int check_dvchg_status(struct nt_chg_info *nci)
 {
 	struct chg_alg_device *alg = NULL;
 	struct pe50_algo_info *info = NULL;
+
+	if (nci->info->pd_type != MTK_PD_CONNECT_PE_READY_SNK_APDO)
+		return 0;
+	if (!nci->typec_attach)
+		return 0;
 
 	alg = get_chg_alg_by_name("pe5");
 	if(alg){
@@ -224,7 +229,7 @@ static unsigned int check_abnormal_status(struct nt_chg_info *nci)
 	else
 		notify_code &= ~NT_NOTIFY_CHARGER_TERMINAL;
 	/*check pump status*/
-	evt = check_dvchg_status();
+	evt = check_dvchg_status(nci);
 	if((evt > EVT_HARDRESET) && (evt != EVT_BATPRO_DONE)){
 		notify_code |= NT_NOTIFY_CHARGE_PUMP_ERR;
 	}else if(evt && evt < EVT_HARDRESET){
