@@ -64,6 +64,7 @@
 #include "mtk_charger.h"
 #include "mtk_battery.h"
 #include "nt_chg.h"
+#include "nt_usb_ts.h"
 
 struct tag_bootmode {
 	u32 size;
@@ -3485,7 +3486,19 @@ static const enum power_supply_property charger_psy_properties[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_BOOT,
 	POWER_SUPPLY_PROP_USB_TYPE,
 };
+static int psy_nt_chg_get_property(enum power_supply_property psp)
+{
+	union power_supply_propval value;
+	int ret;
+	struct power_supply *psy = power_supply_get_by_name("nt-chg");
 
+	if (!IS_ERR_OR_NULL(psy)) {
+		ret = power_supply_get_property(psy,
+			POWER_SUPPLY_PROP_TEMP, &value);
+		return value.intval * 10;
+	}
+	return -1;
+}
 static int psy_charger_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val)
 {
@@ -3562,7 +3575,11 @@ static int psy_charger_get_property(struct power_supply *psy,
 			val->intval = get_vbus(info);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		val->intval = info->chg_data[idx].junction_temp_max * 10;
+		//val->intval = info->chg_data[idx].junction_temp_max * 10;
+		if(info->usb_psy != NULL && info->usb_psy == psy)
+			val->intval = psy_nt_chg_get_property(POWER_SUPPLY_PROP_TEMP);
+		else
+			val->intval = info->chg_data[idx].junction_temp_max * 10;
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 		val->intval =

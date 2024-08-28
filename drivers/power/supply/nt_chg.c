@@ -1295,6 +1295,7 @@ void _wake_up_nt_charger(struct nt_chg_info *nci)
 
 static enum power_supply_property nt_charger_psy_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_TEMP,
 };
 
 static char *nt_charger_supplied_to[] = {
@@ -1343,6 +1344,9 @@ static int nt_psy_charger_get_property(struct power_supply *psy,
 			if (ret == ALG_RUNNING)
 				val->intval = true;
 		}
+		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		val->intval = get_usb_temperature();
 		break;
 	default:
 		break;
