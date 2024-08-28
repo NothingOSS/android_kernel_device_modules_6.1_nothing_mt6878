@@ -4882,6 +4882,7 @@ int mtk_dsi_esd_cmp(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 			if (lcm_esd_tb->mask_list[j])
 				chk_val[j] = chk_val[j] & lcm_esd_tb->mask_list[j];
 			if (chk_val[j] == lcm_esd_tb->para_list[j]) {
+				DDPMSG("%s: expect[0x%x], read[0x%x]\n", __func__, lcm_esd_tb->para_list[j], chk_val[j]);
 				err_flag_gpio = devm_gpiod_get(dsi->dev, "err-flag", GPIOD_IN);
 				if (err_flag_gpio) {
 					ret = gpiod_get_value(err_flag_gpio);
