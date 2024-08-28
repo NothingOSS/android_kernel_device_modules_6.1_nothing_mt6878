@@ -528,12 +528,10 @@ int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param
 		DDPPR_ERR("%s failed to find crtc\n", __func__);
 		return -EINVAL;
 	}
-
-	if (group == true) {
+	if (group == true)
 		ret = mtk_drm_setbacklight_grp(crtc, level, panel_ext_param, cfg_flag);
-	} else {
+	else
 		ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag, 1);
-	}
 
 	return ret;
 }
