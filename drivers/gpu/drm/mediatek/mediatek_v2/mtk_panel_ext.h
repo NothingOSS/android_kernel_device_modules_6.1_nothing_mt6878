@@ -577,6 +577,7 @@ struct mtk_panel_params {
 	bool dual_swap;
 	unsigned int mode_switch_delay;
 
+	bool delay_first_bl_en;
 	bool vdo_mix_mode_en;
 };
 

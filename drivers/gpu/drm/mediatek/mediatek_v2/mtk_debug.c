@@ -129,6 +129,8 @@ static bool partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
 unsigned int seg_id_dbg;
+extern bool delay_first_set_backlight;
+struct delayed_work set_first_backlight_by_workqueue;
 
 struct logger_buffer {
 	char **buffer_ptr;
@@ -137,6 +139,14 @@ struct logger_buffer {
 	const unsigned int cnt;
 	const unsigned int size;
 };
+
+struct brightness_buffer {
+	unsigned int level;
+	unsigned int panel_ext_param;
+	unsigned int cfg_flag;
+	struct drm_crtc *crtc;
+};
+static struct brightness_buffer bl_buffer;
 
 static DEFINE_SPINLOCK(dprec_err_logger_spinlock);
 static DEFINE_SPINLOCK(dprec_fence_logger_spinlock);
@@ -510,17 +520,22 @@ int mtkfb_set_backlight_level_AOD(unsigned int level)
 }
 EXPORT_SYMBOL(mtkfb_set_backlight_level_AOD);
 
+void set_first_backlight_work(struct work_struct *work)
+{
+	mtk_drm_setbacklight(bl_buffer.crtc, bl_buffer.level, bl_buffer.panel_ext_param, bl_buffer.cfg_flag, 1);
+}
+
 int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 			       unsigned int cfg_flag, bool group)
 {
 	struct drm_crtc *crtc;
+	struct mtk_panel_params *panel_ext = NULL;
 	int ret = 0;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev\n", __func__);
 		return -EINVAL;
 	}
-
 	/* this debug cmd only for crtc0 */
 	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
 				typeof(*crtc), head);
@@ -528,10 +543,25 @@ int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param
 		DDPPR_ERR("%s failed to find crtc\n", __func__);
 		return -EINVAL;
 	}
-	if (group == true)
+	panel_ext = mtk_drm_get_lcm_ext_params(crtc);
+	if (panel_ext == NULL) {
+		DDPPR_ERR("%s, invalid panel_ext\n", __func__);
+		return -EINVAL;
+	}
+	if (group == true) {
 		ret = mtk_drm_setbacklight_grp(crtc, level, panel_ext_param, cfg_flag);
-	else
-		ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag, 1);
+	} else {
+		if (panel_ext->delay_first_bl_en && delay_first_set_backlight) {
+			bl_buffer.level = level;
+			bl_buffer.panel_ext_param = panel_ext_param;
+			bl_buffer.cfg_flag = cfg_flag;
+			bl_buffer.crtc = crtc;
+			schedule_delayed_work(&set_first_backlight_by_workqueue, msecs_to_jiffies(35));
+			ret = 0;
+		} else {
+			ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag, 1);
+		}
+	}
 
 	return ret;
 }
@@ -5745,6 +5775,7 @@ void disp_dbg_init(struct drm_device *dev)
 	else
 		DDPMSG("%s, disp debug init\n", __func__);
 
+	INIT_DELAYED_WORK(&set_first_backlight_by_workqueue, set_first_backlight_work);
 	drm_dev = dev;
 	init_completion(&cwb_cmp);
 
@@ -5773,6 +5804,7 @@ void disp_dbg_deinit(void)
 #ifdef MTK_DPINFO
 	mtk_dp_debugfs_deinit();
 #endif
+	cancel_delayed_work_sync(&set_first_backlight_by_workqueue);
 }
 
 void get_disp_dbg_buffer(unsigned long *addr, unsigned long *size,

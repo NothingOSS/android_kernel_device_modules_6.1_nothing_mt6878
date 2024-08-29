@@ -962,6 +962,7 @@ static struct mtk_panel_params ext_params_120hz = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 	},
+	.delay_first_bl_en = true,
 	.vdo_mix_mode_en = true,
 	.dyn_fps = {
 		.data_rate = 1140,
@@ -1046,6 +1047,7 @@ static struct mtk_panel_params ext_params_60hz = {
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 	},
+	.delay_first_bl_en = true,
 	.vdo_mix_mode_en = true,
 	.dyn_fps = {
 		.data_rate = 1140,
