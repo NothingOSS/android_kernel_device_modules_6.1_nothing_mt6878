@@ -264,6 +264,7 @@ EXPORT_SYMBOL(lcm_panel_get_data);
 
 static void lcm_panel_init(struct lcm *ctx)
 {
+	unsigned int bl_level = 0xff;
 	ctx->reset_gpio =
 		devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 0);
@@ -311,7 +312,7 @@ static void lcm_panel_init(struct lcm *ctx)
 	lcm_dcs_write_seq_static(ctx, 0xB2, 0x01);
 	lcm_dcs_write_seq_static(ctx, 0xB0, 0x00, 0x0C, 0xB2);
 	lcm_dcs_write_seq_static(ctx, 0xB2, 0x20);
-/*
+
 	if (g_level>0x7FF) {
 		bl_level = g_level - 0x800;
 		lcm_dcs_write_seq_static(ctx, 0x53, 0xE0);
@@ -322,7 +323,7 @@ static void lcm_panel_init(struct lcm *ctx)
 	bl_tb0[1] = (bl_level>>8)&0xf;
 	bl_tb0[2] = (bl_level)&0xff;
 	lcm_dcs_write(ctx, bl_tb0, ARRAY_SIZE(bl_tb0));
-*/
+
 	lcm_dcs_write_seq_static(ctx, 0xF7, 0x0B);
 
 // Err FG Setting
