@@ -646,7 +646,8 @@ static int usb_temp_proc_show(struct seq_file *m, void *v)
 		pr_err("%s:nci is null!!\n", __func__);
 		return 0;
 	}
-	temp = get_usb_temperature();
+	temp = get_usb_temperature() * 10;
+	pr_info("%s: usb_temp = %d\n", __func__, temp);
 	seq_printf(m, "%d\n", temp);
 	return 0;
 }
