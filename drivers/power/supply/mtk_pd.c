@@ -175,11 +175,14 @@ static int _pd_is_algo_ready(struct chg_alg_device *alg)
 				ret_value = ALG_NOT_READY;
 			else if (uisoc >= pd->pd_stop_battery_soc ||
 				(uisoc == -1 && pd->ref_vbat > pd->vbat_threshold))
+				ret_value = ALG_WAIVER;
 #else
 			if (uisoc >= pd->pd_stop_battery_soc ||
 				(uisoc == -1 && pd->ref_vbat > pd->vbat_threshold))
-#endif
 				ret_value = ALG_WAIVER;
+			else if (uisoc == -1)
+				ret_value = ALG_INIT_FAIL;
+#endif
 		} else if (ret_value == ALG_TA_NOT_SUPPORT)
 			pd->state = PD_TA_NOT_SUPPORT;
 		else if (ret_value == ALG_TA_CHECKING)
