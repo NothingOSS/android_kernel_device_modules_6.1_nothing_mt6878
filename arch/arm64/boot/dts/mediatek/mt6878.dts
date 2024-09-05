@@ -4328,6 +4328,7 @@
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_VCORE>;
 		clocks = <&cam_vcore_clk CLK_CAM_VCORE_MM0_DCM_DIS>;
 		clock-names = "apb";
+		mediatek,comm-port-id = <0>;
 	};
 
 	smi_cam_4x1_sub_comm0: smi-cam-4x1-sub-comm0@1a005000 {
