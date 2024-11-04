@@ -30,7 +30,6 @@
 
 /* The switch of log message */
 #define TYPEC_INFO_ENABLE	1
-#define TYPEC_INFO2_ENABLE	1
 #define PE_EVENT_DBG_ENABLE	1
 #define PE_STATE_INFO_ENABLE	1
 #define TCPC_INFO_ENABLE	1
@@ -336,7 +335,6 @@ struct tcpc_device {
 	bool typec_drp_try_timeout;
 	bool typec_lpm;
 	bool typec_power_ctrl;
-	bool typec_is_attached_src;
 
 	int typec_usb_sink_curr;
 
@@ -505,13 +503,6 @@ static inline bool pd_check_rev30(struct pd_port *pd_port)
 	RT_DBG_INFO(CONFIG_TCPC_DBG_PRESTR "TYPEC:" format, ##args)
 #else
 #define TYPEC_INFO(format, args...)
-#endif /* TYPEC_INFO_ENABLE */
-
-#if TYPEC_INFO2_ENABLE
-#define TYPEC_INFO2(format, args...)	\
-	RT_DBG_INFO(CONFIG_TCPC_DBG_PRESTR "TYPEC:" format, ##args)
-#else
-#define TYPEC_INFO2(format, args...)
 #endif /* TYPEC_INFO_ENABLE */
 
 #if TCPC_INFO_ENABLE

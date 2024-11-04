@@ -21,7 +21,7 @@
 #include "inc/std_tcpci_v10.h"
 
 #define MT6375_INFO_EN		1
-#define MT6375_DBGINFO_EN	CONFIG_WD_DURING_PLUGGED_IN
+#define MT6375_DBGINFO_EN	1
 #define MT6375_WD1_EN		1
 #define MT6375_WD2_EN		1
 #define CC_SHORT_DEBOUNCE	100
@@ -145,6 +145,7 @@
 #define MT6375_MSK_WAKEUP	BIT(0)
 #define MT6375_MSK_VBUS80	BIT(1)
 #define MT6375_MSK_TYPECOTP	BIT(2)
+#define MT6375_MSK_VBUSVALID	BIT(5)
 /* MT6375_REG_MTINT2: 0x99 */
 #define MT6375_MSK_VCON_OVCC1	BIT(0)
 #define MT6375_MSK_VCON_OVCC2	BIT(1)
@@ -549,8 +550,7 @@ static int mt6375_sw_reset(struct mt6375_tcpc_data *ddata)
 
 static int mt6375_init_power_status_mask(struct mt6375_tcpc_data *ddata)
 {
-	return mt6375_write8(ddata, TCPC_V10_REG_POWER_STATUS_MASK,
-			     TCPC_V10_REG_POWER_STATUS_VBUS_PRES);
+	return mt6375_write8(ddata, TCPC_V10_REG_POWER_STATUS_MASK, 0);
 }
 
 static int mt6375_init_fault_mask(struct mt6375_tcpc_data *ddata)
@@ -570,7 +570,8 @@ static int mt6375_init_vend_mask(struct mt6375_tcpc_data *ddata)
 	struct tcpc_device *tcpc = ddata->tcpc;
 
 	mask[MT6375_VEND_INT1] |= MT6375_MSK_WAKEUP |
-				  MT6375_MSK_VBUS80;
+				  MT6375_MSK_VBUS80 |
+				  MT6375_MSK_VBUSVALID;
 
 	if (tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP)
 		mask[MT6375_VEND_INT1] |= MT6375_MSK_TYPECOTP;
@@ -604,7 +605,6 @@ static int mt6375_init_alert_mask(struct mt6375_tcpc_data *ddata)
 {
 	int ret;
 	u16 mask = TCPC_V10_REG_ALERT_CC_STATUS |
-		   TCPC_V10_REG_ALERT_POWER_STATUS |
 		   TCPC_V10_REG_VBUS_SINK_DISCONNECT |
 		   TCPC_V10_REG_ALERT_VENDOR_DEFINED;
 
@@ -1475,7 +1475,7 @@ static int mt6375_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	mt6375_write8(ddata, MT6375_REG_VCONCTRL3, 0x11);
 
 	/* Set HILOCCFILTER 250us */
-	mt6375_write8(ddata, MT6375_REG_HILOCTRL9, 0x0A);
+	mt6375_write8(ddata, MT6375_REG_HILOCTRL9, 0xAA);
 
 	/* Enable CC open 40ms when PMIC SYSUV */
 	mt6375_set_bits(ddata, MT6375_REG_SHIELDCTRL1, MT6375_MSK_OPEN40MS_EN);
@@ -1580,12 +1580,12 @@ static int mt6375_get_power_status(struct tcpc_device *tcpc, u16 *status)
 	u8 data;
 	struct mt6375_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
-	ret = mt6375_read8(ddata, TCPC_V10_REG_POWER_STATUS, &data);
+	ret = mt6375_read8(ddata, MT6375_REG_MTST1, &data);
 	if (ret < 0)
 		return ret;
 
 	*status = 0;
-	if (data & TCPC_V10_REG_POWER_STATUS_VBUS_PRES)
+	if (data & MT6375_MSK_VBUSVALID)
 		*status |= TCPC_REG_POWER_STATUS_VBUS_PRES;
 
 	/*
@@ -1678,12 +1678,18 @@ static int mt6375_set_cc(struct tcpc_device *tcpc, int pull)
 		if (ret < 0)
 			return ret;
 		mt6375_enable_vsafe0v_detect(ddata, false);
+		/*
+		 * Before set LOOK_CONNECTION, at least 30us needed after
+		 * setting TCPC_V10_REG_ROLE_CTRL
+		 */
+		udelay(30);
 		ret = mt6375_write8(ddata, TCPC_V10_REG_COMMAND,
 				    TCPM_CMD_LOOK_CONNECTION);
 	} else {
 		pull2 = pull1 = pull;
 
-		if (pull == TYPEC_CC_RP && tcpc->typec_is_attached_src) {
+		if (pull == TYPEC_CC_RP &&
+		    tcpc->typec_state == typec_attached_src) {
 			if (tcpc->typec_polarity)
 				pull1 = TYPEC_CC_RD;
 			else
@@ -1764,7 +1770,9 @@ static int mt6375_is_vsafe0v(struct tcpc_device *tcpc)
 	ret = mt6375_read8(ddata, MT6375_REG_MTST1, &data);
 	if (ret < 0)
 		return ret;
-	return (data & MT6375_MSK_VBUS80) ? 1 : 0;
+	ret = (data & MT6375_MSK_VBUS80) ? 1 : 0;
+	MT6375_INFO("vbus_safe0v:%d\n", ret);
+	return ret;
 }
 
 static int mt6375_set_low_power_mode(struct tcpc_device *tcpc, bool en,
@@ -2013,6 +2021,23 @@ static int mt6375_typec_otp_irq_handler(struct mt6375_tcpc_data *ddata)
 				     !!(data & MT6375_MSK_TYPECOTP));
 }
 
+static int mt6375_vbus_valid_irq_handler(struct mt6375_tcpc_data *ddata)
+{
+	int ret;
+	u8 data;
+
+	ret = mt6375_read8(ddata, MT6375_REG_MTST1, &data);
+	if (ret < 0)
+		return ret;
+	ddata->tcpc->vbus_present = !!(data & MT6375_MSK_VBUSVALID);
+
+	ret = tcpci_is_vsafe0v(ddata->tcpc);
+	if (ret < 0)
+		return ret;
+	ddata->tcpc->vbus_safe0v = ret ? true : false;
+	return 0;
+}
+
 static void mt6375_wd12_strise_irq_dwork_handler(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
@@ -2113,6 +2138,8 @@ static struct irq_mapping_tbl mt6375_vend_irq_mapping_tbl[] = {
 	MT6375_IRQ_MAPPING(1, vsafe0v),
 
 	MT6375_IRQ_MAPPING(2, typec_otp),
+
+	MT6375_IRQ_MAPPING(5, vbus_valid),
 
 	MT6375_IRQ_MAPPING(49, wd12_strise),
 	MT6375_IRQ_MAPPING(50, wd12_done),
@@ -2260,12 +2287,33 @@ static struct tcpc_ops mt6375_tcpc_ops = {
 static irqreturn_t mt6375_pd_evt_handler(int irq, void *data)
 {
 	struct mt6375_tcpc_data *ddata = data;
+	u8 evt = 0;
+	int ret;
 
 	MT6375_DBGINFO("++\n");
+	disable_irq_nosync(irq);
 	pm_stay_awake(ddata->dev);
-	tcpci_lock_typec(ddata->tcpc);
-	tcpci_alert(ddata->tcpc);
-	tcpci_unlock_typec(ddata->tcpc);
+
+	while (1) {
+		tcpci_lock_typec(ddata->tcpc);
+		ret = tcpci_alert(ddata->tcpc);
+		tcpci_unlock_typec(ddata->tcpc);
+		if (ret < 0)
+			break;
+
+		ret = mt6375_read8(ddata, 0x1df, &evt);
+		if (ret < 0)
+			break;
+		MT6375_DBGINFO("evt = %x\n", evt);
+		if (evt & 0x01) {
+			ret = mt6375_write8(ddata, 0x1df, 0x01);
+			if (ret < 0)
+				break;
+		} else
+			break;
+	}
+
+	enable_irq(irq);
 	pm_relax(ddata->dev);
 	MT6375_DBGINFO("--\n");
 

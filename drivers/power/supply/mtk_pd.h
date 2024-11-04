@@ -14,7 +14,8 @@
 /* pd */
 #define PD_VBUS_UPPER_BOUND		10000000	/* uv */
 #define PD_VBUS_LOW_BOUND		5000000	/* uv */
-#define PD_FAIL_CURRENT			500000	/* 500mA */
+//#define PD_FAIL_CURRENT			500000	/* 500mA */
+#define PD_FAIL_CURRENT			100000	/* 100mA */
 
 #define PD_SC_INPUT_CURRENT		3000000	/* 3000mA */
 #define PD_SC_CHARGER_CURRENT	3000000	/* 3000mA */

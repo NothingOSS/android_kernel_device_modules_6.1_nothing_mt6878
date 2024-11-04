@@ -117,17 +117,24 @@ static bool usb_is_online(struct mtk_extcon_info *extcon)
 		return false;
 	}
 
+	//ret = power_supply_get_property(extcon->usb_psy,
+	//			POWER_SUPPLY_PROP_TYPE, &tval);
+	//if (ret < 0) {
+	//	dev_info(extcon->dev, "failed to get usb type\n");
+	//	return false;
+	//}
 	ret = power_supply_get_property(extcon->usb_psy,
-				POWER_SUPPLY_PROP_TYPE, &tval);
+				POWER_SUPPLY_PROP_USB_TYPE, &tval);
 	if (ret < 0) {
 		dev_info(extcon->dev, "failed to get usb type\n");
 		return false;
 	}
 
 	dev_info(extcon->dev, "online=%d, type=%d\n", pval.intval, tval.intval);
-
-	if (pval.intval && (tval.intval == POWER_SUPPLY_TYPE_USB ||
-			tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
+	//if (pval.intval && (tval.intval == POWER_SUPPLY_TYPE_USB ||
+	//		tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
+	if (pval.intval && (tval.intval == POWER_SUPPLY_USB_TYPE_SDP ||
+			tval.intval == POWER_SUPPLY_USB_TYPE_CDP))
 		return true;
 	else
 		return false;

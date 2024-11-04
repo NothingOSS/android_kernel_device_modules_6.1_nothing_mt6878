@@ -717,10 +717,13 @@ static inline void pe_translate_pd_msg_event(struct pd_port *pd_port,
 	if (PD_HEADER_EXT(msg_hdr))
 		pd_event->event_type = PD_EVT_EXT_MSG;
 
-	if (pd_msg->frame_type == TCPC_TX_SOP_PRIME) {
+#if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
+	if (pd_msg->frame_type == TCPC_TX_SOP_PRIME &&
+	    !pd_event_ctrl_msg_match(pd_event, PD_CTRL_GOOD_CRC)) {
 		pd_sync_sop_prime_spec_revision(
 			pd_port, PD_HEADER_REV(msg_hdr));
 	}
+#endif /* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
 #endif	/* CONFIG_USB_PD_REV30 */
 }
 

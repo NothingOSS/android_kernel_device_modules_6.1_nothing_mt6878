@@ -70,6 +70,8 @@ extern int tcpc_typec_handle_cc_hi(struct tcpc_device *tcpc, int cc_hi);
 	tcpc->typec_remote_cc[1]
 #define typec_get_cc_res()	\
 	(tcpc->typec_polarity ? typec_get_cc2() : typec_get_cc1())
+#define typec_get_cc_sum()	\
+	(tcpc->typec_remote_cc[0] + tcpc->typec_remote_cc[1])
 
 enum TYPEC_CONNECTION_STATE {
 	typec_disabled = 0,
@@ -98,9 +100,7 @@ enum TYPEC_CONNECTION_STATE {
 
 	typec_trywait_snk,
 	typec_trywait_snk_pe,
-#endif
-
-#if CONFIG_TYPEC_CAP_TRY_SINK
+#endif	/* CONFIG_TYPEC_CAP_TRY_SOURCE */
 
 	/* Require : Assert Rd
 	 * Wait for tDRPTry and only then begin monitoring CC.
@@ -116,8 +116,6 @@ enum TYPEC_CONNECTION_STATE {
 	 */
 
 	typec_trywait_src,
-	typec_trywait_src_pe,
-#endif	/* CONFIG_TYPEC_CAP_TRY_SINK */
 
 	typec_audioaccessory,
 #if CONFIG_TYPEC_CAP_DBGACC
@@ -128,9 +126,7 @@ enum TYPEC_CONNECTION_STATE {
 	typec_attached_dbgacc_snk,
 #endif	/* CONFIG_TYPEC_CAP_DBGACC_SNK */
 
-#if CONFIG_TYPEC_CAP_CUSTOM_SRC
 	typec_attached_custom_src,
-#endif	/* CONFIG_TYPEC_CAP_CUSTOM_SRC */
 
 #if CONFIG_TYPEC_CAP_NORP_SRC
 	typec_attached_norp_src,

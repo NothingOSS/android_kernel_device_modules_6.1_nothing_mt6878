@@ -642,6 +642,9 @@ void pd_dpm_snk_standby_power(struct pd_port *pd_port)
 		return;
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 
+	if (standby_curr > pd_port->request_i_new)
+		standby_curr = pd_port->request_i_new;
+
 	if (pd_port->request_v_new > pd_port->request_v) {
 		/* Case2 Increasing the Voltage */
 		/* Case3 Increasing the Voltage and Current */

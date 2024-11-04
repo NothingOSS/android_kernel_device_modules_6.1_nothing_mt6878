@@ -886,6 +886,16 @@ int charger_dev_get_cp_status(struct charger_device *charger_dev, u32 evt)
 }
 EXPORT_SYMBOL(charger_dev_get_cp_status);
 
+int charger_dev_get_hvchg_detect_status(struct charger_device *charger_dev, bool* en)
+{
+	if (charger_dev != NULL && charger_dev->ops != NULL &&
+					   charger_dev->ops->get_hvchg_detect_status)
+		return charger_dev->ops->get_hvchg_detect_status(charger_dev, en);
+
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(charger_dev_get_hvchg_detect_status);
+
 static DEVICE_ATTR_RO(name);
 
 static struct attribute *charger_class_attrs[] = {

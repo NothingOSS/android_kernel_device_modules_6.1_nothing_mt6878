@@ -7663,6 +7663,8 @@
 			clock-div = <1>;
 			scl-gpio-id = <135>;
 			sda-gpio-id = <136>;
+			mediatek,use-qos-req;
+			mediatek,fifo-use-polling;
 		};
 
 		i2c6: i2c@11e01000 {
@@ -10159,6 +10161,9 @@
 			wakeup-source;
 			usb-role-switch;
 			cdp-block;
+			typec-name = "rt-pd-manager";
+			typec-port-name = "port0";
+			usb-psy-name = "mtk-master-charger";
 			port {
 				mtu3_drd_switch: endpoint {
 					remote-endpoint = <&usb_role>;
@@ -11641,7 +11646,7 @@
 	extcon_usb: extcon-usb {
 		compatible = "mediatek,extcon-usb";
 		vbus-supply = <&mt6375_otg_vbus>;
-		vbus-voltage = <5000000>;
+		vbus-voltage = <5400000>;
 		vbus-current = <1300000>;
 		vbus-limit-current = <500000>;
 		charger = <&mt6375_chg>;
@@ -13138,7 +13143,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				      <&mt6375_adc MT6375_ADC_SBU2>,
 				      <&mt6375_adc MT6375_ADC_TS>;
 			chg-name = "primary_chg";
-			aicr = <500>;
+			aicr = <100>;
 			mivr = <4400>;
 			cv = <4200>;
 			ichg = <2000>;
@@ -13181,9 +13186,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			/* 0: Unknown, 1: SNK, 2: SRC, 3: DRP, 4: Try.SRC, 5: Try.SNK */
 			tcpc,role-def = <5>;
 			/* 0: Default, 1: 1.5, 2: 3.0 */
-			tcpc,rp-level = <1>;
+			tcpc,rp-level = <0>;
 			/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
-			tcpc,vconn-supply = <1>;
+			tcpc,vconn-supply = <0>;
 			io-channels = <&mt6375_adc MT6375_ADC_SBU1>,
 				      <&mt6375_adc MT6375_ADC_SBU2>;
 			charger = <&mt6375_chg>;
@@ -13216,13 +13221,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 							      0x00 0x00 0x00 0x00
 							      0x00 0x00 0x00 0x00
 							      0x00 0x00 0x00 0x00
-							      0x00 0x00 0x01 0x07
+							      0x00 0x00 0x01 0x06
 							      0x00>;
 				pd,sink-cap-ext = /bits/ 8 <0xcf 0x29 0x75 0x63
 							    0x00 0x00 0x00 0x00
 							    0x00 0x00 0x01 0x00
 							    0x00 0x00 0x00 0x00
-							    0x01 0x0b 0x01 0x0a
+							    0x01 0x0b 0x0a 0x0a
 							    0x0a 0x00 0x00 0x00>;
 				pd,mfrs = "RichtekTCPC";
 
@@ -13234,8 +13239,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				pd,charging-policy = <0x31>;
 
 				pd,source-pdo-size = <1>;
-				pd,source-pdo-data = <0x00019096>; /* 5V, 1500 mA */
+				pd,source-pdo-data = <0x00019082>; /* 5V, 1300 mA */
 				pd,sink-pdo-size = <1>;
+				/* Fixed, 5000mV, 2000mA */
 				pd,sink-pdo-data = <0x000190c8>;
 
 				/*
@@ -13250,7 +13256,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				 */
 
 				pd,id-vdo-size = <6>;
-				pd,id-vdo-data = <0xd54029cf 0x0 0x63750000
+				pd,id-vdo-data = <0xd14029cf 0x0 0x63750000
 						  0x61000000 0x0 0x41000000>;
 
 				bat,nr = <1>;
@@ -13271,7 +13277,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				// local-give-back;
 				local-no-suspend;
 
-				attempt-enter-dp-mode;
+				// attempt-enter-dp-mode;
 				// attempt-discover-cable;
 				// attempt-discover-id;
 				// attempt-discover-svids;

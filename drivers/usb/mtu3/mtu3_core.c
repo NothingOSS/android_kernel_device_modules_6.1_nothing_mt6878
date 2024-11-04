@@ -76,22 +76,34 @@ static void mtu3_vbus_draw_work(struct work_struct *data)
 {
 	struct mtu3 *mtu = container_of(data, struct mtu3, draw_work);
 	union power_supply_propval val;
-	int ret;
+	//int ret;
+	//
+	//val.intval = mtu->is_active &&	!(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW) &&
+	//		!mtu3_is_usb_pd(mtu);
+	//
+	//if (mtu->is_power_limit != val.intval) {
+	//	ret = power_supply_set_property(mtu->usb_psy,
+	//		POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
+	//	if (!ret)
+	//		mtu->is_power_limit = val.intval;
+	//	else
+	//		dev_info(mtu->dev, "%s set property error:%d\n", __func__, ret);
+	//}
+	//
+	//dev_info(mtu->dev, "%s %d mA, is_limit %d\n",
+	//	__func__, mtu->vbus_draw, mtu->is_power_limit);
+	dev_info(mtu->dev, "%s %d mA\n", __func__, mtu->vbus_draw);
 
-	val.intval = mtu->is_active &&	!(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW) &&
-			!mtu3_is_usb_pd(mtu);
-
-	if (mtu->is_power_limit != val.intval) {
-		ret = power_supply_set_property(mtu->usb_psy,
-			POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
-		if (!ret)
-			mtu->is_power_limit = val.intval;
-		else
-			dev_info(mtu->dev, "%s set property error:%d\n", __func__, ret);
+	val.intval = !(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW);
+	if (mtu->usb_psy == NULL)
+		mtu->usb_psy = power_supply_get_by_name("mtk-master-charger");
+	if (mtu->usb_psy == NULL || IS_ERR(mtu->usb_psy)) {
+		dev_info(mtu->dev, "%s Couldn't get chg_psy\n", __func__);
+		return;
 	}
 
-	dev_info(mtu->dev, "%s %d mA, is_limit %d\n",
-		__func__, mtu->vbus_draw, mtu->is_power_limit);
+	power_supply_set_property(mtu->usb_psy,
+		POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
 }
 
 int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA)

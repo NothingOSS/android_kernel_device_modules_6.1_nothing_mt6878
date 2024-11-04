@@ -1135,10 +1135,24 @@ void pd_notify_pe_cancel_pr_swap(struct pd_port *pd_port)
 void pd_noitfy_pe_bist_mode(struct pd_port *pd_port, uint8_t mode)
 {
 	struct tcpc_device *tcpc = pd_port->tcpc;
+	bool noti = false;
 
 	mutex_lock(&tcpc->access_lock);
-	tcpc->pd_bist_mode = mode;
+	if (tcpc->pd_bist_mode != mode) {
+		tcpc->pd_bist_mode = mode;
+		noti = true;
+	}
 	mutex_unlock(&tcpc->access_lock);
+
+	if (!noti)
+		return;
+
+	if (mode == PD_BIST_MODE_DISABLE)
+		tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_REQUEST, pd_port->request_v,
+				pd_port->request_i);
+	else
+		tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_REQUEST, TCPC_VBUS_SINK_0V,
+				0);
 }
 
 bool pd_is_pe_wait_pd_transmit_done(struct pd_port *pd_port)

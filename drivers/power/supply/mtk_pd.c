@@ -513,18 +513,16 @@ int mtk_pd_input_current_protection(struct chg_alg_device *alg, int vbus)
 {
 	struct mtk_pd *pd = dev_get_drvdata(&alg->dev);
 
-	switch (vbus) {
-	case 5000:
-		//pd->input_current_limit1 = 3000000;
-		pd->input_current_limit1 = 2000000;
-		break;
-	case 9000:
-		//pd->input_current_limit1 = 1500000;
-		pd->input_current_limit1 = 2000000;
-		break;
-	}
-	pd_hal_set_input_current(alg,
-		CHG1, pd->input_current_limit1);
+//	switch (vbus) {
+//	case 5000:
+//		pd->input_current_limit1 = 3000000;
+//		break;
+//	case 9000:
+//		pd->input_current_limit1 = 1500000;
+//		break;
+//	}
+//	pd_hal_set_input_current(alg,
+//		CHG1, pd->input_current_limit1);
 	pd_dbg("%s run: vbus: %d, ibus_limit: %d", __func__, vbus, pd->input_current_limit1);
 	return 0;
 }

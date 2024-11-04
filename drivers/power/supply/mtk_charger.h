@@ -302,6 +302,9 @@ struct mtk_charger {
 	struct power_supply *usb_psy;
 	bool aging_mode;
 	bool fastchg_rerun;
+	bool pd_disable_pp;
+	bool usb_disable_pp;
+	int sink_ua;
 	int pd_type;
 	bool pd_reset;
 

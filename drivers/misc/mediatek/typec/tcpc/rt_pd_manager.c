@@ -66,6 +66,12 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		dev_info(rpmd->dev, "%s sink vbus %dmV %dmA type(0x%02X)\n",
 				    __func__, noti->vbus_state.mv,
 				    noti->vbus_state.ma, noti->vbus_state.type);
+		/*
+		 * TODO: Disable Charger Powerpath when mA is 0 and set AICR according to mA.
+		 * ex:
+		 *	charger_dev_set_input_current(chg_dev, noti->vbus_state.ma * 1000);
+		 *	charger_dev_enable_powerpath(chg_dev, !!noti->vbus_state.ma);
+		 */
 		break;
 	case TCP_NOTIFY_SOURCE_VBUS:
 		dev_info(rpmd->dev, "%s source vbus %dmV %dmA type(0x%02X)\n",

@@ -72,7 +72,7 @@ struct tag_bootmode {
 	u32 bootmode;
 	u32 boottype;
 };
-static int mtk_charger_enable_power_path(struct mtk_charger *info,int idx, bool en);
+
 #ifdef MODULE
 static char __chg_cmdline[COMMAND_LINE_SIZE];
 static char *chg_cmdline = __chg_cmdline;
@@ -107,6 +107,57 @@ const char *chg_get_cmd(void)
 	return saved_command_line;
 }
 #endif
+
+static int mtk_charger_enable_power_path_cust(struct mtk_charger *info,
+		struct power_supply *psy, bool en)
+{
+	int ret = 0;
+	bool is_en = true;
+	bool setting = true;
+	struct charger_device *chg_dev = NULL;
+
+	if (!info)
+		return -EINVAL;
+	chg_dev = get_charger_by_name("primary_chg");
+	if (IS_ERR_OR_NULL(chg_dev)) {
+		chr_err("%s: chg_dev not found\n", __func__);
+		return -EINVAL;
+	}
+
+	mutex_lock(&info->pp_lock[CHG1_SETTING]);
+	if (info->psy1 == psy)
+		info->usb_disable_pp = !en;
+	if (info->usb_psy == psy)
+		info->pd_disable_pp = !en;
+
+	if ((info->aging_mode == true && info->cmd_discharging == false)
+			|| (info->safety_timeout == true)) {
+		setting = true;
+	} else if (info->usb_disable_pp || info->pd_disable_pp)
+		setting = false;
+	else if (psy == NULL)
+		setting = en;
+	else
+		goto out;
+
+	chr_err("%s: disable_pp(u=%d,p=%d), enable power path = %d\n", __func__,
+			info->usb_disable_pp, info->pd_disable_pp, setting);
+	ret = charger_dev_is_powerpath_enabled(chg_dev, &is_en);
+	if (ret < 0) {
+		chr_err("%s: get is power path enabled failed\n", __func__);
+		goto out;
+	}
+
+	if (is_en == setting) {
+		chr_err("%s: power path is already en = %d\n", __func__, is_en);
+		goto out;
+	}
+
+	ret = charger_dev_enable_powerpath(chg_dev, setting);
+out:
+	mutex_unlock(&info->pp_lock[CHG1_SETTING]);
+	return ret;
+}
 
 int chr_get_debug_level(void)
 {
@@ -2287,15 +2338,19 @@ static bool mtk_chg_check_vbus(struct mtk_charger *info)
 {
 	int vchr = 0;
 	bool hvcharger = false;
+	bool is_hvcharger_detect = false;
 
 	g_nt_chg = get_nt_chg_entry();
 	if (g_nt_chg)
 		hvcharger = g_nt_chg->is_hvcharger;
+	charger_dev_get_hvchg_detect_status(info->chg1_dev, &is_hvcharger_detect);
 
 	vchr = get_vbus(info) * 1000; /* uV */
-	if (vchr > (hvcharger ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage)) {
+	if (vchr > (hvcharger ? HVDCP_SW_VBUSOV_UV :
+			(is_hvcharger_detect ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage))) {
 		chr_err("%s:NT vbus(%d mV) > %d mV\n", __func__, vchr / 1000,
-			(hvcharger ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage) / 1000);
+			(hvcharger ? HVDCP_SW_VBUSOV_UV :
+				(is_hvcharger_detect ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage)) / 1000);
 		chr_err("%s: vbus(%d mV) > %d mV\n", __func__, vchr / 1000,
 			info->data.max_charger_voltage / 1000);
 		return false;
@@ -2309,12 +2364,16 @@ static void mtk_battery_notify_VCharger_check(struct mtk_charger *info)
 	int vchr = 0;
 	//vchr = get_vbus(info) * 1000; /* uV */
 	bool hvcharger = false;
+	bool is_hvcharger_detect = false;
 
 	vchr = get_vbus(info) * 1000; /* uV */
 	g_nt_chg = get_nt_chg_entry();
 	if (g_nt_chg)
 		hvcharger = g_nt_chg->is_hvcharger;
-	if (vchr < (hvcharger ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage))
+	charger_dev_get_hvchg_detect_status(info->chg1_dev, &is_hvcharger_detect);
+
+	if (vchr < (hvcharger ? HVDCP_SW_VBUSOV_UV :
+			(is_hvcharger_detect ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage)))
 	//if (vchr < info->data.max_charger_voltage)
 		info->notify_code &= ~CHG_VBUS_OV_STATUS;
 	else {
@@ -2635,10 +2694,7 @@ stop_charging:
 		_mtk_enable_charging(info, charging);
 	else if (charging == false && chg_dev_chgen == true)
 		_mtk_enable_charging(info, charging);
-	if((info->aging_mode == true && info->cmd_discharging == false) || (info->safety_timeout == true))
-		mtk_charger_enable_power_path(info, CHG1_SETTING, true);
-	else
-		mtk_charger_enable_power_path(info, CHG1_SETTING, charging);
+	mtk_charger_enable_power_path_cust(info, NULL, charging);
 	info->can_charging = charging;
 }
 
@@ -3613,54 +3669,54 @@ static int psy_charger_get_property(struct power_supply *psy,
 	return 0;
 }
 
-static int mtk_charger_enable_power_path(struct mtk_charger *info,
-	int idx, bool en)
-{
-	int ret = 0;
-	bool is_en = true;
-	struct charger_device *chg_dev = NULL;
-
-	if (!info)
-		return -EINVAL;
-
-	switch (idx) {
-	case CHG1_SETTING:
-		chg_dev = get_charger_by_name("primary_chg");
-		break;
-	case CHG2_SETTING:
-		chg_dev = get_charger_by_name("secondary_chg");
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (IS_ERR_OR_NULL(chg_dev)) {
-		chr_err("%s: chg_dev not found\n", __func__);
-		return -EINVAL;
-	}
-
-	mutex_lock(&info->pp_lock[idx]);
-	info->enable_pp[idx] = en;
-
-	if (info->force_disable_pp[idx])
-		goto out;
-
-	ret = charger_dev_is_powerpath_enabled(chg_dev, &is_en);
-	if (ret < 0) {
-		chr_err("%s: get is power path enabled failed\n", __func__);
-		goto out;
-	}
-	if (is_en == en) {
-		chr_err("%s: power path is already en = %d\n", __func__, is_en);
-		goto out;
-	}
-
-	pr_info("%s: enable power path = %d\n", __func__, en);
-	ret = charger_dev_enable_powerpath(chg_dev, en);
-out:
-	mutex_unlock(&info->pp_lock[idx]);
-	return ret;
-}
+//static int mtk_charger_enable_power_path(struct mtk_charger *info,
+//	int idx, bool en)
+//{
+//	int ret = 0;
+//	bool is_en = true;
+//	struct charger_device *chg_dev = NULL;
+//
+//	if (!info)
+//		return -EINVAL;
+//
+//	switch (idx) {
+//	case CHG1_SETTING:
+//		chg_dev = get_charger_by_name("primary_chg");
+//		break;
+//	case CHG2_SETTING:
+//		chg_dev = get_charger_by_name("secondary_chg");
+//		break;
+//	default:
+//		return -EINVAL;
+//	}
+//
+//	if (IS_ERR_OR_NULL(chg_dev)) {
+//		chr_err("%s: chg_dev not found\n", __func__);
+//		return -EINVAL;
+//	}
+//
+//	mutex_lock(&info->pp_lock[idx]);
+//	info->enable_pp[idx] = en;
+//
+//	if (info->force_disable_pp[idx])
+//		goto out;
+//
+//	ret = charger_dev_is_powerpath_enabled(chg_dev, &is_en);
+//	if (ret < 0) {
+//		chr_err("%s: get is power path enabled failed\n", __func__);
+//		goto out;
+//	}
+//	if (is_en == en) {
+//		chr_err("%s: power path is already en = %d\n", __func__, is_en);
+//		goto out;
+//	}
+//
+//	pr_info("%s: enable power path = %d\n", __func__, en);
+//	ret = charger_dev_enable_powerpath(chg_dev, en);
+//out:
+//	mutex_unlock(&info->pp_lock[idx]);
+//	return ret;
+//}
 
 static int mtk_charger_force_disable_power_path(struct mtk_charger *info,
 	int idx, bool disable)
@@ -3751,10 +3807,14 @@ static int psy_charger_set_property(struct power_supply *psy,
 		//	val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
+		//if (val->intval > 0)
+		//	mtk_charger_enable_power_path(info, idx, false);
+		//else
+		//	mtk_charger_enable_power_path(info, idx, true);
 		if (val->intval > 0)
-			mtk_charger_enable_power_path(info, idx, false);
+			mtk_charger_enable_power_path_cust(info, psy, false);
 		else
-			mtk_charger_enable_power_path(info, idx, true);
+			mtk_charger_enable_power_path_cust(info, psy, true);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT_MAX:
 		if (val->intval > 0)

@@ -149,6 +149,9 @@ static bool support_fast_charging(struct mtk_charger *info)
 			break;
 		} else if (state == ALG_INIT_FAIL) {
 			chg_alg_init_algo(alg);
+		} else if (state == ALG_TA_CHECKING) {
+			ret = true;
+			break;
 		}
 	}
 	return ret;
@@ -196,6 +199,12 @@ static bool select_charging_current_limit(struct mtk_charger *info,
 		info->setting.input_current_limit1 = 2000000;
 		is_basic = true;
 		goto done;
+	}
+
+	if (info->usb_disable_pp  || info->pd_disable_pp ) {
+		pdata->input_current_limit = 0;
+		is_basic = true;
+		return is_basic;
 	}
 
 	if (info->atm_enabled == true
@@ -780,13 +789,18 @@ static int do_algorithm(struct mtk_charger *info)
 		}
 	}
 	info->is_chg_done = chg_done;
-
-	if (is_basic == true) {
+	//if (is_basic == true) {
+	if ((is_basic == true) && (info->pd_disable_pp != true) && (info->usb_disable_pp != true)) {
 		/*
 		charger_dev_set_input_current(info->chg1_dev,
 			pdata->input_current_limit);*/
-		if (get_pd_usb_connected()) {
-				charger_dev_set_input_current(info->chg1_dev,
+		if (ret == ALG_TA_CHECKING) {
+			chr_err("%s: TA checking, used the input 100mA!\n", __func__);
+			charger_dev_set_input_current(info->chg1_dev, 100000);
+		} else if (get_pd_usb_connected()) {
+			if ((info->sink_ua > 0) && (info->sink_ua < pdata->input_current_limit))
+				pdata->input_current_limit = info->sink_ua;
+			charger_dev_set_input_current(info->chg1_dev,
 					pdata->input_current_limit);
 		} else {
 				g_nt_chg = get_nt_chg_entry();

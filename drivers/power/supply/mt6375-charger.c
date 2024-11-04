@@ -1393,10 +1393,7 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 	case ATTACH_TYPE_PWR_RDY:
 		if (!ddata->bc12_dn[active_idx]) {
 			bc12_en = true;
-			//rpt_psy = false;
-			ddata->psy_desc.type = POWER_SUPPLY_TYPE_USB_DCP;
-			ddata->psy_type[active_idx] = POWER_SUPPLY_TYPE_USB_DCP;
-			ddata->psy_usb_type[active_idx] = POWER_SUPPLY_USB_TYPE_DCP;
+			rpt_psy = false;
 			/* clear hvdcp before bc12 */
 			ddata->hvchg_recheck_count = 0;
 			ddata->is_hvcharger_detect = false;
@@ -2782,6 +2779,15 @@ static int mt6375_enable_ship_mode(struct charger_device *chgdev, bool en)
 	return ret;
 }
 
+static int mt6375_get_hvchg_detect_status(struct charger_device *chgdev, bool* en)
+{
+	struct mt6375_chg_data *ddata = charger_get_data(chgdev);
+
+	*en = ddata->is_hvcharger_detect;
+
+	return 0;
+}
+
 static const struct charger_properties mt6375_chg_props = {
 	.alias_name = "mt6375_chg",
 };
@@ -2860,6 +2866,7 @@ static const struct charger_ops mt6375_chg_ops = {
 	.set_usbid_src_ton = mt6375_set_usbid_src_ton,
 	.enable_usbid_floating = mt6375_enable_usbid_floating,
 	.enable_ship_mode = mt6375_enable_ship_mode,
+	.get_hvchg_detect_status = mt6375_get_hvchg_detect_status,
 };
 
 static irqreturn_t mt6375_fl_wdt_handler(int irq, void *data)

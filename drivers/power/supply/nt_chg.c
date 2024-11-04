@@ -70,6 +70,7 @@ static int check_chg_status(struct nt_chg_info *nci)
 {
 	int vchr = 0;
 	struct mtk_charger *info;
+	bool is_hvcharger_detect = false;
 
 	if (!nci || !nci->info)
 		return 0;
@@ -79,9 +80,10 @@ static int check_chg_status(struct nt_chg_info *nci)
 		return 0;
 
 	charger_dev_get_vbus(info->chg1_dev, &vchr);
-	pr_info("[%s]vbus : %d,{%d ~ %d}\n", __func__, vchr , (nci->is_hvcharger ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage), info->data.min_charger_voltage);
+	charger_dev_get_hvchg_detect_status(info->chg1_dev, &is_hvcharger_detect);
+	pr_info("[%s]vbus : %d,{%d ~ %d ~ %d}\n", __func__, vchr , (nci->is_hvcharger ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage), info->data.min_charger_voltage, is_hvcharger_detect);
 
-	if (vchr > (nci->is_hvcharger ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage)) {
+	if (vchr > (nci->is_hvcharger ? HVDCP_SW_VBUSOV_UV : (is_hvcharger_detect ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage))) {
 		return NT_NOTIFY_CHARGER_OVER_VOL;
 	} else if (vchr <= info->data. min_charger_voltage) {
 		return NT_NOTIFY_CHARGER_LOW_VOL;
@@ -520,6 +522,9 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 {
 	struct tcp_notify *noti = data;
 	struct nt_chg_info *nci = container_of(nb, struct nt_chg_info, pd_nb);
+	int sink_mv, sink_ma;
+	union power_supply_propval val;
+	struct power_supply *usb_psy;
 
 	switch (event) {
 	case TCP_NOTIFY_TYPEC_STATE:
@@ -529,6 +534,11 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		    noti->typec_state.new_state == TYPEC_ATTACHED_NORP_SRC)) {
 			pr_info("%s:[NT] USB Plug in, pol = %d\n", __func__,	noti->typec_state.polarity);
 			nci->typec_attach = true;
+			if (nci->info) {
+				/* Re-plugin, clear pp flag */
+				nci->info->pd_disable_pp = false;
+				nci->info->usb_disable_pp = false;
+			}
 			nci->chg_type = 0;
 			nci->chg_vol_max = 0;
 			nci->chg_icl_max = 0;
@@ -552,6 +562,25 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		break;
 	case TCP_NOTIFY_WD0_STATE:
 		nci->wd0_state = noti->wd0_state.wd0;
+		break;
+	case TCP_NOTIFY_SINK_VBUS:
+		sink_mv = noti->vbus_state.mv;
+		sink_ma = noti->vbus_state.ma;
+		pr_err("NT_CHG: sink vbus %dmV %dmA type(0x%02x)\n",
+			sink_mv, sink_ma, noti->vbus_state.type);
+		usb_psy = power_supply_get_by_name("usb");
+		if (usb_psy && nci->info) {
+			nci->info->sink_ua = sink_ma * 1000;
+			if (sink_mv && sink_ma) {
+				val.intval = 0;
+				power_supply_set_property(usb_psy,
+					POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
+			} else {
+				val.intval = 1;
+				power_supply_set_property(usb_psy,
+					POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
+			}
+		}
 		break;
 	default:
 		break;
