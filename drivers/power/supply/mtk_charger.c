@@ -3825,7 +3825,12 @@ static int psy_charger_set_property(struct power_supply *psy,
 	default:
 		return -EINVAL;
 	}
-	_wake_up_charger(info);
+	//_wake_up_charger(info);
+	//pd disable pp, didnot wakeup charger, and usb need.
+	if (psp != POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT)
+		_wake_up_charger(info);
+	else if (info->psy1 == psy)
+		_wake_up_charger(info);
 
 	return 0;
 }

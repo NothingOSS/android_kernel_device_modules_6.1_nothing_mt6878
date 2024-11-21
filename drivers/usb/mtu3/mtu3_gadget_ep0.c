@@ -488,6 +488,8 @@ static int handle_standard_request(struct mtu3 *mtu,
 			usb_gadget_set_state(&mtu->g, USB_STATE_ADDRESS);
 
 			usb_pd = mtu3_is_usb_pd(mtu);
+			//Disable the usb pd, use maxpower
+			usb_pd = 0;
 			if (usb_pd >= 0)
 				set_usb_selfpower(mtu, usb_pd);
 		} else
