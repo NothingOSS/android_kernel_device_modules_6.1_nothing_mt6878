@@ -475,6 +475,7 @@ extern void _wake_up_charger(struct mtk_charger *info);
 /* functions for other */
 extern int mtk_chg_enable_vbus_ovp(bool enable);
 extern int mtk_chg_set_vbus_ovp(bool enable,int ovp);
+extern int mtk_chg_get_area_id(void);
 
 enum attach_type {
 	ATTACH_TYPE_NONE,

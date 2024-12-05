@@ -115,6 +115,7 @@ static int mtk_charger_enable_power_path_cust(struct mtk_charger *info,
 	bool is_en = true;
 	bool setting = true;
 	struct charger_device *chg_dev = NULL;
+	int area_id = 0;
 
 	if (!info)
 		return -EINVAL;
@@ -123,12 +124,16 @@ static int mtk_charger_enable_power_path_cust(struct mtk_charger *info,
 		chr_err("%s: chg_dev not found\n", __func__);
 		return -EINVAL;
 	}
-
+	area_id = mtk_chg_get_area_id();
 	mutex_lock(&info->pp_lock[CHG1_SETTING]);
 	if (info->psy1 == psy)
 		info->usb_disable_pp = !en;
 	if (info->usb_psy == psy)
 		info->pd_disable_pp = !en;
+	if (area_id != 3) {
+		info->usb_disable_pp = false;
+		info->pd_disable_pp = false;
+	}
 
 	if ((info->aging_mode == true && info->cmd_discharging == false)
 			|| (info->safety_timeout == true)) {
@@ -140,8 +145,8 @@ static int mtk_charger_enable_power_path_cust(struct mtk_charger *info,
 	else
 		goto out;
 
-	chr_err("%s: disable_pp(u=%d,p=%d), enable power path = %d\n", __func__,
-			info->usb_disable_pp, info->pd_disable_pp, setting);
+	chr_err("%s: area_id(%d), disable_pp(u=%d,p=%d), en_pp = %d\n", __func__,
+			area_id, info->usb_disable_pp, info->pd_disable_pp, setting);
 	ret = charger_dev_is_powerpath_enabled(chg_dev, &is_en);
 	if (ret < 0) {
 		chr_err("%s: get is power path enabled failed\n", __func__);
@@ -2311,6 +2316,29 @@ int mtk_chg_set_vbus_ovp(bool enable,int ovp)
 	return ret;
 }
 EXPORT_SYMBOL(mtk_chg_set_vbus_ovp);
+
+int mtk_chg_get_area_id(void)
+{
+	static struct nt_chg_info *nt_chg = NULL;
+	struct power_supply *psy;
+
+	if (nt_chg == NULL) {
+		psy = power_supply_get_by_name("nt-chg");
+		if (psy == NULL) {
+			pr_err("[%s]psy is not rdy\n", __func__);
+			return 0;
+		}
+
+		nt_chg = (struct nt_chg_info *)power_supply_get_drvdata(psy);
+		if (nt_chg == NULL) {
+			pr_err("[%s]nt_chg_info is not rdy\n", __func__);
+			return 0;
+		}
+	}
+
+	return nt_chg->area_id;
+}
+EXPORT_SYMBOL(mtk_chg_get_area_id);
 
 static struct nt_chg_info *get_nt_chg_entry(void)
 {

@@ -149,7 +149,7 @@ static bool support_fast_charging(struct mtk_charger *info)
 			break;
 		} else if (state == ALG_INIT_FAIL) {
 			chg_alg_init_algo(alg);
-		} else if (state == ALG_TA_CHECKING) {
+		} else if ((state == ALG_TA_CHECKING) && (mtk_chg_get_area_id() == 3)) {
 			ret = true;
 			break;
 		}
@@ -794,7 +794,7 @@ static int do_algorithm(struct mtk_charger *info)
 		/*
 		charger_dev_set_input_current(info->chg1_dev,
 			pdata->input_current_limit);*/
-		if (ret == ALG_TA_CHECKING) {
+		if ((ret == ALG_TA_CHECKING) && (mtk_chg_get_area_id() == 3)) {
 			chr_err("%s: TA checking, used the input 100mA!\n", __func__);
 			charger_dev_set_input_current(info->chg1_dev, 100000);
 		} else if (get_pd_usb_connected()) {

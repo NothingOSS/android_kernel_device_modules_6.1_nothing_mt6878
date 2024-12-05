@@ -25,6 +25,13 @@
 #include <linux/usb/typec.h>
 #include "class.h"
 
+int g_fake_usb_checking = 0;
+int get_fake_usb_checking(void)
+{
+	return g_fake_usb_checking;
+}
+EXPORT_SYMBOL(get_fake_usb_checking);
+
 static int ep_fifo_alloc(struct mtu3_ep *mep, u32 seg_size)
 {
 	struct mtu3_fifo_info *fifo = mep->fifo;
@@ -72,6 +79,51 @@ static void ep_fifo_free(struct mtu3_ep *mep)
 		__func__, mep->fifo_seg_size, mep->fifo_size, start_bit);
 }
 
+#define	FAKE_USB_DETECT_DELAY_MS	15000
+static int mtu3_usb_is_online(struct mtu3 *mtu)
+{
+	int ret;
+	union power_supply_propval pval;
+	union power_supply_propval tval;
+	struct power_supply *psy;
+
+	psy = power_supply_get_by_name("primary_chg");
+	if (psy == NULL)
+		return 0;
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_ONLINE, &pval);
+	if (ret < 0)
+		return 0;
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_USB_TYPE, &tval);
+	if (ret < 0)
+		return 0;
+
+	dev_dbg(mtu->dev, "online=%d, type=%d\n", pval.intval, tval.intval);
+	if (pval.intval && (tval.intval == POWER_SUPPLY_USB_TYPE_SDP ||
+			tval.intval == POWER_SUPPLY_USB_TYPE_CDP))
+		return 1;
+	else
+		return 0;
+}
+
+static void mtu3_fake_usb_work(struct work_struct *work)
+{
+	struct mtu3 *mtu = container_of(work, struct mtu3, fake_usb_work.work);
+
+	if (mtu && mtu3_usb_is_online(mtu)) {
+		if (mtu->g.state >= USB_STATE_ADDRESS) {
+			mtu->is_fake_usb = 0;
+			/*
+			 * For real usb, udc driver will call draw_work, did not call here.
+			 */
+		} else {
+			mtu->is_fake_usb = 1;
+			/* fake usb need call draw_work to open powerpath */
+			queue_work(system_power_efficient_wq, &mtu->draw_work);
+		}
+		g_fake_usb_checking = 0;
+	}
+}
+
 static void mtu3_vbus_draw_work(struct work_struct *data)
 {
 	struct mtu3 *mtu = container_of(data, struct mtu3, draw_work);
@@ -92,9 +144,6 @@ static void mtu3_vbus_draw_work(struct work_struct *data)
 	//
 	//dev_info(mtu->dev, "%s %d mA, is_limit %d\n",
 	//	__func__, mtu->vbus_draw, mtu->is_power_limit);
-	dev_info(mtu->dev, "%s %d mA\n", __func__, mtu->vbus_draw);
-
-	val.intval = !(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW);
 	if (mtu->usb_psy == NULL)
 		mtu->usb_psy = power_supply_get_by_name("mtk-master-charger");
 	if (mtu->usb_psy == NULL || IS_ERR(mtu->usb_psy)) {
@@ -102,8 +151,21 @@ static void mtu3_vbus_draw_work(struct work_struct *data)
 		return;
 	}
 
-	power_supply_set_property(mtu->usb_psy,
-		POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
+	if (mtu3_usb_is_online(mtu)) {
+		if (mtu->is_fake_usb == 1)
+			val.intval = 0;
+		else
+			val.intval = !(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW);
+		power_supply_set_property(mtu->usb_psy, POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
+		if((val.intval == 1) && (mtu->is_fake_usb == 0)) {
+			cancel_delayed_work(&mtu->fake_usb_work);
+			schedule_delayed_work(&mtu->fake_usb_work, msecs_to_jiffies(FAKE_USB_DETECT_DELAY_MS));
+			g_fake_usb_checking = 1;
+		}
+	}
+
+	dev_info(mtu->dev, "%s is_fake_usb(%d,%d), s=%d, %d mA\n", __func__,
+			mtu->is_fake_usb, g_fake_usb_checking, mtu->g.state, mtu->vbus_draw);
 }
 
 int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA)
@@ -594,6 +656,9 @@ void mtu3_stop(struct mtu3 *mtu)
 
 	mtu->is_active = 0;
 	mtu3_dev_power_down(mtu);
+	cancel_delayed_work(&mtu->fake_usb_work);
+	mtu->is_fake_usb = 0;
+	g_fake_usb_checking = 0;
 }
 
 static void mtu3_dev_suspend(struct mtu3 *mtu)
@@ -1175,6 +1240,9 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 
 	dev_dbg(dev, "mac_base=0x%p, ippc_base=0x%p\n",
 		mtu->mac_base, mtu->ippc_base);
+
+	INIT_DELAYED_WORK(&mtu->fake_usb_work, mtu3_fake_usb_work);
+	mtu->is_fake_usb = 0;
 
 	/* check usbif compliance property */
 	if (device_property_read_string(mtu->dev, "usb-psy-name", &mtu->usb_psy_name) >= 0) {

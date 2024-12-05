@@ -459,6 +459,8 @@ struct mtu3 {
 	struct work_struct draw_work;
 	unsigned int vbus_draw;
 	unsigned int is_power_limit:1;
+	struct delayed_work fake_usb_work;
+	unsigned int is_fake_usb;
 
 	const char *typec_name;
 	const char *typec_port_name;
