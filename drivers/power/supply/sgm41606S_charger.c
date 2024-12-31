@@ -1602,6 +1602,7 @@ static struct of_device_id sgm41606S_charger_match_table[] = {
         .data = &sgm41606S_mode_data[SGM41606S_MASTER], },
     {   .compatible = "sgm,sgm41606S-slave",
         .data = &sgm41606S_mode_data[SGM41606S_SLAVE], },
+    {}
 };
 
 static int sgm41606S_charger_probe(struct i2c_client *client,

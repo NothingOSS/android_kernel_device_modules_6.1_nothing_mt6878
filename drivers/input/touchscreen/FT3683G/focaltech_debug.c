@@ -930,7 +930,6 @@ int fts_fwdbg_exit(struct fts_ts_data *ts_data)
     struct fts_fwdbg *dbg = fts_fwdbg_data;
     FTS_FUNC_ENTER();
     if (dbg) {
-        if (dbg->proc_fwdbg) proc_remove(dbg->proc_fwdbg);
         if (dbg->regfa_val) {
             vfree(dbg->regfa_val);
             dbg->regfa_val = NULL;

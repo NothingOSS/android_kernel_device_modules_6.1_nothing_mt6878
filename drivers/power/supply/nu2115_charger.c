@@ -666,7 +666,7 @@ static int __nu2115_set_irqmask(struct nu2115 *chip, u8 addr, u8 mask)
 static void nu2115_check_status_flags(struct nu2115 *chip)
 {
     int ret;
-	u8 sf_reg[22] = {0};
+	u8 sf_reg[26] = {0};
 
 	dev_err(chip->dev,"---------%s---------\n", __func__);
 

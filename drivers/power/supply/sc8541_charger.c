@@ -1555,6 +1555,7 @@ static struct of_device_id sc8541_charger_match_table[] = {
         .data = &sc8541_mode_data[SC8541_MASTER], },
     {   .compatible = "sc,sc8541-slave", 
         .data = &sc8541_mode_data[SC8541_SLAVE], },
+    {}
 };
 
 static int sc8541_charger_probe(struct i2c_client *client,
