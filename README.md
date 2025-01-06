@@ -16,3 +16,8 @@
 4. OS 2.6(Tetris-U2.6-240813-2046)
   - Improve LCD
   - Fix USB issue
+
+5. OS 2.6(Tetris-U2.6-240910-1735)
+  - Improve TP/USB/LCD driver
+  - Fix charger issue
+  - Improve charger driver
