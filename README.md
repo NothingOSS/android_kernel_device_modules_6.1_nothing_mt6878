@@ -21,3 +21,7 @@
   - Improve TP/USB/LCD driver
   - Fix charger issue
   - Improve charger driver
+
+6. OS 2.6(Tetris-U2.6-241021-2030)
+  - Fix camera issue
+  - Improve LCD driver
