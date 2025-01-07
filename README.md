@@ -25,3 +25,6 @@
 6. OS 2.6(Tetris-U2.6-241021-2030)
   - Fix camera issue
   - Improve LCD driver
+
+7. OS 2.6(Tetris-U2.6-241204-2338)
+  - Fix charger issue
