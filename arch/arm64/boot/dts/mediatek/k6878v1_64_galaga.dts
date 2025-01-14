@@ -296,10 +296,6 @@ NFC Ese equipment configuration
 	dis-second-bc12;
 };
 
-&mt6375_typec {
-	tcpc,en-fod;
-};
-
 &mt6375_typec_pd_data {
 	pd,sink-cap-ext = /bits/ 8 <0xcf 0x29 0x75 0x63
 				    0x00 0x00 0x00 0x00
