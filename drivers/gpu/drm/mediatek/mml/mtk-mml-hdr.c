@@ -473,7 +473,6 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 			mml_pq_err("%s: get hdr param timeout: %d in %dms",
 				 __func__, ret, HDR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
-			goto exit;
 		}
 
 		result = get_hdr_comp_config_result(task);
