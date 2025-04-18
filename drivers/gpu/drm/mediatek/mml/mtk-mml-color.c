@@ -265,7 +265,6 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 			mml_pq_err("%s: get color param timeout: %d in %dms", __func__,
 				ret, COLOR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
-			goto exit;
 		}
 
 		result = get_color_comp_config_result(task);

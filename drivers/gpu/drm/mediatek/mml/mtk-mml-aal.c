@@ -996,7 +996,6 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 			mml_pq_err("%s: get aal param timeout: %d in %dms",
 				__func__, ret, AAL_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
-			goto exit;
 		}
 
 		result = get_aal_comp_config_result(task);
