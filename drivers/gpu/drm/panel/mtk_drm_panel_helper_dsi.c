@@ -9,6 +9,7 @@
 #include <linux/of.h>
 #include "mtk_drm_panel_helper.h"
 
+extern unsigned int esd_check_num;
 /* parsing of struct mtk_panel_cm_params */
 static void parse_lcm_dsi_cm_params(struct device_node *np,
 			struct mtk_panel_cm_params *cm_params)
@@ -754,7 +755,7 @@ static void parse_lcm_dsi_fps_ext_param(struct device_node *np,
 			"lcm-params-dsi-esd-check-enable",
 			&ext_param->esd_check_enable);
 	if (ext_param->esd_check_enable != 0) {
-		for (i = 0; i < ESD_CHECK_NUM; i++) {
+		for (i = 0; i < esd_check_num; i++) {
 			ret = snprintf(prop, sizeof(prop),
 				 "lcm-params-dsi-lcm-esd-check-table%u", i);
 			if (ret < 0 || (size_t)ret >= sizeof(prop))
@@ -2418,7 +2419,7 @@ static void dump_lcm_dsi_fps_ext_param(struct mtk_panel_params *ext_param, unsig
 
 	/* dump esd check table */
 	if (ext_param->esd_check_enable != 0) {
-		for (i = 0; i < ESD_CHECK_NUM; i++) {
+		for (i = 0; i < esd_check_num; i++) {
 			DDPDUMP(">>>>esd_check_table%d:(cmd=%u, count=%u)\n", i,
 				ext_param->lcm_esd_check_table[i].cmd,
 				ext_param->lcm_esd_check_table[i].count);

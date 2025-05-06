@@ -19,11 +19,15 @@
 #include <linux/usb/role.h>
 #include <linux/workqueue.h>
 #include <linux/proc_fs.h>
-
+#include "charger_class.h"
 #include "extcon-mtk-usb.h"
 
 #if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include "tcpm.h"
+#endif
+
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+struct mtk_extcon_info *g_extcon;
 #endif
 
 static const unsigned int usb_extcon_cable[] = {
@@ -113,17 +117,24 @@ static bool usb_is_online(struct mtk_extcon_info *extcon)
 		return false;
 	}
 
+	//ret = power_supply_get_property(extcon->usb_psy,
+	//			POWER_SUPPLY_PROP_TYPE, &tval);
+	//if (ret < 0) {
+	//	dev_info(extcon->dev, "failed to get usb type\n");
+	//	return false;
+	//}
 	ret = power_supply_get_property(extcon->usb_psy,
-				POWER_SUPPLY_PROP_TYPE, &tval);
+				POWER_SUPPLY_PROP_USB_TYPE, &tval);
 	if (ret < 0) {
 		dev_info(extcon->dev, "failed to get usb type\n");
 		return false;
 	}
 
 	dev_info(extcon->dev, "online=%d, type=%d\n", pval.intval, tval.intval);
-
-	if (pval.intval && (tval.intval == POWER_SUPPLY_TYPE_USB ||
-			tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
+	//if (pval.intval && (tval.intval == POWER_SUPPLY_TYPE_USB ||
+	//		tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
+	if (pval.intval && (tval.intval == POWER_SUPPLY_USB_TYPE_SDP ||
+			tval.intval == POWER_SUPPLY_USB_TYPE_CDP))
 		return true;
 	else
 		return false;
@@ -205,10 +216,14 @@ static int mtk_usb_extcon_set_vbus(struct mtk_extcon_info *extcon,
 	if (!vbus || extcon->vbus_on == is_on)
 		return 0;
 
+	if (!extcon->dvchg1_dev)
+		extcon->dvchg1_dev = get_charger_by_name("primary_dvchg");
+
 	dev_info(dev, "vbus turn %s\n", is_on ? "on" : "off");
 
 	if (is_on) {
 		if (extcon->vbus_vol) {
+			charger_dev_enable_vac_otgovp(extcon->dvchg1_dev, true);
 			ret = regulator_set_voltage(vbus,
 					extcon->vbus_vol, extcon->vbus_vol);
 			if (ret) {
@@ -231,8 +246,11 @@ static int mtk_usb_extcon_set_vbus(struct mtk_extcon_info *extcon,
 			dev_info(dev, "vbus regulator enable failed\n");
 			return ret;
 		}
+		charger_dev_enable_vac_otgovp_spec(extcon->dvchg1_dev, true);
 	} else {
 		regulator_disable(vbus);
+		charger_dev_enable_vac_otgovp(extcon->dvchg1_dev, false);
+		charger_dev_enable_vac_otgovp_spec(extcon->dvchg1_dev, false);
 		/* Restore to default state */
 		extcon->vbus_cur_inlimit = 0;
 	}
@@ -582,6 +600,31 @@ error:
 }
 #endif
 
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+int extcon_usb_mode_switch(bool mode)
+{
+	struct regulator *vbus = g_extcon->vbus;
+	if(!g_extcon){
+		pr_err("g_extcon is NULL,return...\n");
+		return -1;
+	}
+
+	if (mode){
+		if ((vbus != NULL) && g_extcon->vbus_on) {
+			mtk_usb_extcon_set_vbus(g_extcon, false);
+			mtk_usb_extcon_set_role(g_extcon, USB_ROLE_DEVICE);
+			dev_info(g_extcon->dev, "disable otg...\n");
+		} else {
+			mtk_usb_extcon_set_role(g_extcon, USB_ROLE_NONE);
+			dev_info(g_extcon->dev, "Switch usb out mode...\n");
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(extcon_usb_mode_switch);
+#endif
+
 static int mtk_usb_extcon_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -651,6 +694,9 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 	ret = mtk_usb_extcon_psy_init(extcon);
 	if (ret < 0)
 		dev_err(dev, "failed to init psy\n");
+	extcon->dvchg1_dev = get_charger_by_name("primary_dvchg");
+	if (!extcon->dvchg1_dev)
+		dev_err(dev, "get dcchg1 charger device failed!\n");
 
 #if IS_ENABLED(CONFIG_TCPC_CLASS)
 	/* tcpc */
@@ -659,6 +705,9 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to init tcpc\n");
 #endif
 
+#if IS_ENABLED(CONFIG_NT_USB_TS)
+	g_extcon = extcon;
+#endif
 	platform_set_drvdata(pdev, extcon);
 
 	return 0;

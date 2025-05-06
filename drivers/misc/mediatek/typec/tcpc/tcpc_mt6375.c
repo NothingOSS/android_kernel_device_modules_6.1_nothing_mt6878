@@ -140,6 +140,7 @@
 #define MT6375_MSK_BMCIOOSC_EN	BIT(0)
 #define MT6375_MSK_VBUSDET_EN	BIT(1)
 #define MT6375_MSK_LPWR_EN	BIT(3)
+#define MT6375_MSK_BG_ITRIM_EN	BIT(4)
 /* MT6375_REG_MTINT1: 0x98 */
 #define MT6375_MSK_WAKEUP	BIT(0)
 #define MT6375_MSK_VBUS80	BIT(1)
@@ -259,6 +260,9 @@
 #define MT6375_SFT_WD0_TSLEEP	(4)
 #define MT6375_MSK_WD0_TDET	GENMASK(2, 0)
 #define MT6375_SFT_WD0_TDET	(0)
+#define TYPEC_NAME "mt6375-tcpc"
+char typec_info[32] = {"unknown"};
+EXPORT_SYMBOL(typec_info);
 
 struct mt6375_tcpc_data {
 	struct device *dev;
@@ -1270,8 +1274,11 @@ static int mt6375_wd_polling_evt_process(struct mt6375_tcpc_data *ddata)
 		polling = false;
 		break;
 	}
-	if (polling ||
-	    tcpc_typec_handle_wd(tcpcs, array_size, true) == -EAGAIN)
+	if (polling
+#if CONFIG_WATER_DETECTION
+	    || tcpc_typec_handle_wd(tcpcs, array_size, true) == -EAGAIN
+#endif
+	)
 		mt6375_enable_wd_polling(ddata, true);
 	return 0;
 }
@@ -1280,9 +1287,11 @@ static int mt6375_wd_protection_evt_process(struct mt6375_tcpc_data *ddata)
 {
 	int i, ret;
 	bool error[2] = {false, false}, protection = false;
+#if CONFIG_WATER_DETECTION
 	struct tcpc_device *tcpcs[] = {ddata->tcpc, ddata->tcpc_port1};
 	const uint32_t tcpc_flags = ddata->tcpc->tcpc_flags;
 	size_t array_size = (tcpc_flags & TCPC_FLAGS_WD_DUAL_PORT) ?  2 : 1;
+#endif
 
 	for (i = 0; i < MT6375_WD_CHAN_NUM; i++) {
 		if (!mt6375_wd_chan_en[i])
@@ -1302,7 +1311,9 @@ out:
 	}
 	MT6375_DBGINFO("retry cnt = %d\n", atomic_read(&ddata->wd_protect_rty));
 	if (!protection && atomic_dec_and_test(&ddata->wd_protect_rty)) {
+#if CONFIG_WATER_DETECTION
 		tcpc_typec_handle_wd(tcpcs, array_size, false);
+#endif
 		atomic_set(&ddata->wd_protect_rty,
 			   CONFIG_WD_PROTECT_RETRY_COUNT);
 	} else
@@ -1783,6 +1794,7 @@ static int mt6375_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 #if CONFIG_TYPEC_CAP_NORP_SRC
 		data |= MT6375_MSK_VBUSDET_EN;
 #endif	/* CONFIG_TYPEC_CAP_NORP_SRC */
+		data |= MT6375_MSK_BG_ITRIM_EN;
 	} else {
 		data = MT6375_MSK_VBUSDET_EN | MT6375_MSK_BMCIOOSC_EN;
 	}
@@ -1948,6 +1960,7 @@ static int mt6375_get_cc_hi(struct tcpc_device *tcpc)
 	return __mt6375_get_cc_hi(ddata);
 }
 
+#if CONFIG_WATER_DETECTION
 static int mt6375_set_water_protection(struct tcpc_device *tcpc, bool en)
 {
 	int ret = 0;
@@ -1960,6 +1973,7 @@ static int mt6375_set_water_protection(struct tcpc_device *tcpc, bool en)
 #endif	/* CONFIG_WD_DURING_PLUGGED_IN */
 	return ret;
 }
+#endif
 
 /*
  * ==================================================================
@@ -2221,9 +2235,9 @@ static struct tcpc_ops mt6375_tcpc_ops = {
 
 	.set_cc_hidet = mt6375_set_cc_hidet,
 	.get_cc_hi = mt6375_get_cc_hi,
-
+#if CONFIG_WATER_DETECTION
 	.set_water_protection = mt6375_set_water_protection,
-
+#endif
 	.set_vbus_short_cc_en = mt6375_enable_vbus_short_cc,
 
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
@@ -2474,6 +2488,66 @@ static int mt6375_check_revision(struct mt6375_tcpc_data *ddata)
 	return 0;
 }
 
+static char __mt6375_tcpc_cmdline[1024];
+static char *mt6375_tcpc_cmdline = __mt6375_tcpc_cmdline;
+const char *mt6375_tcpc_get_cmd(struct mt6375_tcpc_data *ddata)
+{
+	struct device_node *of_chosen = NULL;
+	char *bootargs = NULL;
+
+	if (__mt6375_tcpc_cmdline[0] != 0)
+		return mt6375_tcpc_cmdline;
+
+	of_chosen = of_find_node_by_path("/chosen");
+	if (of_chosen) {
+		bootargs = (char *)of_get_property(
+					of_chosen, "bootargs", NULL);
+		if (!bootargs)
+			dev_err(ddata->dev, "%s: failed to get bootargs\n", __func__);
+		else {
+			strcpy(__mt6375_tcpc_cmdline, bootargs);
+			dev_err(ddata->dev, "%s: bootargs: %s\n", __func__, bootargs);
+		}
+	} else
+		dev_err(ddata->dev, "%s: failed to get /chosen\n", __func__);
+
+	return mt6375_tcpc_cmdline;
+}
+
+void mt6375_tcpc_get_eea_code(struct mt6375_tcpc_data *ddata)
+{
+	char code_str[64] = {0};
+	char *ptr = NULL, *ptr_e = NULL;
+	char keyword[] = "hardware.sku=";
+	int size = 0;
+
+	ptr = strstr(mt6375_tcpc_get_cmd(ddata), keyword);
+	if (ptr != 0) {
+		ptr_e = strstr(ptr, " ");
+		if (ptr_e == 0)
+			goto end;
+
+		size = ptr_e - (ptr + strlen(keyword));
+		if (size <= 0)
+			goto end;
+		strncpy(code_str, ptr + strlen(keyword), size);
+		code_str[size] = '\0';
+		dev_err(ddata->dev, "%s: code_str: %s\n", __func__, code_str);
+
+		if (!ddata->tcpc)
+			goto end;
+		if (!strncmp(code_str, "EEA", strlen("EEA")))
+			ddata->tcpc->is_eea_code = true;
+		else if (!strncmp(code_str, "eea", strlen("eea")))
+			ddata->tcpc->is_eea_code = true;
+		else
+			ddata->tcpc->is_eea_code = false;
+	}
+end:
+	if (ddata->tcpc)
+		dev_err(ddata->dev, "is eea code %d\n", ddata->tcpc->is_eea_code);
+}
+
 static int mt6375_tcpc_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -2532,6 +2606,7 @@ static int mt6375_tcpc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	mt6375_tcpc_get_eea_code(ddata);
 	ret = mt6375_sw_reset(ddata);
 	if (ret < 0) {
 		dev_err(ddata->dev, "failed to reset sw(%d)\n", ret);
@@ -2581,7 +2656,11 @@ static int mt6375_tcpc_probe(struct platform_device *pdev)
 		dev_err(ddata->dev, "failed to init irq\n");
 		goto err;
 	}
-
+	/* update type-c hw info  */
+	memset(typec_info, 0, sizeof(typec_info));
+	memcpy(typec_info, TYPEC_NAME,
+		strlen(TYPEC_NAME) > (sizeof(typec_info) - 1) ?
+		(sizeof(typec_info) - 1) : strlen(TYPEC_NAME));
 	dev_info(ddata->dev, "%s successfully!\n", __func__);
 	return 0;
 err:

@@ -1009,7 +1009,16 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 	} while ((mml_pq_debug_mode & MML_PQ_SET_TEST) && result->is_set_test);
 
+	if (!result->aal_reg_cnt) {
+		aal_frm->config_success = false;
+		aal_relay(comp, pkt, base_pa, 0x1);
+		goto exit;
+	}
+
 	regs = result->aal_regs;
+
+	mml_pq_init_comp_config_result(result);
+
 	curve = result->aal_curve;
 
 	/* TODO: use different regs */
@@ -1578,7 +1587,6 @@ static s32 aal_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			mml_pq_err("get aal param timeout: %d in %dms",
 				ret, AAL_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
-			goto exit;
 		}
 
 		result = get_aal_comp_config_result(task);

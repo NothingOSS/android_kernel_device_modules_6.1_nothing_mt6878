@@ -279,6 +279,13 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 	} while ((mml_pq_debug_mode & MML_PQ_SET_TEST) && result->is_set_test);
 
+	if (!result->color_reg_cnt) {
+		mml_pq_err("%s: not get correct reg count", __func__);
+		color_frm->config_success = false;
+		ret = -EBUSY;
+		goto exit;
+	}
+
 	regs = result->color_regs;
 
 	/* TODO: use different regs */
@@ -351,7 +358,6 @@ static s32 color_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			mml_pq_err("get color param timeout: %d in %dms",
 				ret, COLOR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
-			goto exit;
 		}
 
 		result = get_color_comp_config_result(task);

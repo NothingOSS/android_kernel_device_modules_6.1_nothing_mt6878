@@ -35,14 +35,14 @@
 static struct {
 	struct ffa_device *dev;
 	const struct ffa_ops *ops;
-	struct ffa_device_id device_id;
 	irq_handler_t global_irq_handler;
+	struct ffa_device_id device_id[];
 } l_ffa_ctx = {
 	.dev = NULL,
 	.ops = NULL,
-	.device_id = {
+	.device_id = {{
 		UUID_INIT(0x8bf0ccc3, 0x42a3, 0x5271,
-			  0x86, 0x0d, 0x66, 0x58, 0x04, 0x69, 0x47, 0x9f) },
+			  0x86, 0x0d, 0x66, 0x58, 0x04, 0x69, 0x47, 0x9f) }, {}}
 };
 
 int ffa_module_probe(void)
@@ -246,7 +246,7 @@ static struct ffa_driver kinibi_ffa_driver = {
 	.name = "kinibi",
 	.probe = ffa_probe,
 	.remove = ffa_remove,
-	.id_table = &l_ffa_ctx.device_id,
+	.id_table = l_ffa_ctx.device_id,
 };
 
 int ffa_register_module(void)

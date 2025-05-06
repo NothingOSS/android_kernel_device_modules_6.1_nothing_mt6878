@@ -18,7 +18,7 @@
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/suspend.h>
-
+#include <linux/power_supply.h>
 #include "ready.h"
 #include "sensor_comm.h"
 #include "sensor_list.h"
@@ -269,6 +269,78 @@ static void transceiver_report(struct transceiver_device *dev,
 	} while (ret < 0);
 }
 
+static void transceiver_print_event(struct hf_manager_event *event, int64_t src_timestamp, int64_t remap_timestamp)
+{
+	switch (event->sensor_type) {
+		case SENSOR_TYPE_PROXIMITY:
+			pr_info("[SCP/AP] prox_event: scp_ts 0x%llX hal_ts 0x%llX raw_adc %d(%d:<%d,%d>) factory_val %d near_far %d\n",
+				src_timestamp, remap_timestamp,
+				event->word[1], event->word[2], event->word[3], event->word[4],
+				event->word[5], event->word[0]);
+			break;
+		case SENSOR_TYPE_FINGERPRINT_DISPLAY:
+			pr_info("[SCP/AP] fingerprint_display_detect_event scp_ts 0x%llX hal_ts 0x%llX data %d\n",
+				src_timestamp, remap_timestamp, event->word[0]);
+			break;
+		case SENSOR_TYPE_AMBIENT_LIGHT:
+			pr_info("[SCP/AP] ambient_light_scene_event scp_ts 0x%llX hal_ts 0x%llX data %d %d\n",
+				src_timestamp, remap_timestamp, event->word[0], event->word[1]);
+			break;
+		case SENSOR_TYPE_POCKET_MODE:
+			pr_info("[SCP/AP] pocket_mode_event scp_ts 0x%llX hal_ts 0x%llX status %d tiltAngle %d prox %d\n",
+				src_timestamp, remap_timestamp, event->word[0], event->word[1], event->word[2]);
+			break;
+		case SENSOR_TYPE_NT_SAR:
+			pr_info("[SCP/AP] sar_event scp_ts 0x%llX hal_ts 0x%llX data %d %d %d\n",
+				src_timestamp, remap_timestamp, event->word[0], event->word[1], event->word[2]);
+			break;
+		case SENSOR_TYPE_DEVICE_ORIENTATION:
+			pr_info("[SCP/AP] dev_orient scp_ts 0x%llX hal_ts 0x%llX data %d\n",
+				src_timestamp, remap_timestamp, event->word[0]);
+			break;
+		case SENSOR_TYPE_WAKE_GESTURE:
+			pr_info("[SCP/AP] tilt_gesture scp_ts 0x%llX hal_ts 0x%llX data %d\n",
+				src_timestamp, remap_timestamp, event->word[0]);
+			break;
+		default:
+			break;
+	}
+}
+
+// Add for send charging info to scp
+static int transceiver_comm_with(int sensor_type, int cmd, void *data, uint8_t length);
+
+struct charging_info {
+	int is_charging;
+	int current_now;
+};
+
+static struct charging_info chg_info;
+static uint8_t send_buffer[8] = {0};
+
+static void get_charger_status(void)
+{
+	struct power_supply *psy;
+	union power_supply_propval prop;
+
+	psy = power_supply_get_by_name("battery");
+	if (!psy) {
+		pr_err("get battery fail\n");
+		return;
+	}
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_STATUS, &prop);
+	chg_info.is_charging = prop.intval;
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_CURRENT_NOW, &prop);
+	chg_info.current_now = prop.intval;
+}
+
+static void send_charger_status_to_mag(void)
+{
+	get_charger_status();
+	memcpy(send_buffer, &chg_info, sizeof(chg_info));
+	transceiver_comm_with(SENSOR_TYPE_MAGNETIC_FIELD, SENS_COMM_CTRL_DEBUG_CMD, send_buffer, 8);
+}
+
 static int transceiver_translate(struct transceiver_device *dev,
 		struct hf_manager_event *dst,
 		const struct share_mem_data *src)
@@ -289,8 +361,14 @@ static int transceiver_translate(struct transceiver_device *dev,
 		dst->accurancy = src->accurancy;
 		dst->action = src->action;
 		switch (src->sensor_type) {
-		case SENSOR_TYPE_ACCELEROMETER:
+// Add for send charging info to scp
 		case SENSOR_TYPE_MAGNETIC_FIELD:
+			dst->word[0] = src->value[0];
+			dst->word[1] = src->value[1];
+			dst->word[2] = src->value[2];
+			send_charger_status_to_mag();
+			break;
+		case SENSOR_TYPE_ACCELEROMETER:
 		case SENSOR_TYPE_GYROSCOPE:
 			dst->word[0] = src->value[0];
 			dst->word[1] = src->value[1];
@@ -329,6 +407,13 @@ static int transceiver_translate(struct transceiver_device *dev,
 		case SENSOR_TYPE_LIGHT:
 		case SENSOR_TYPE_PRESSURE:
 		case SENSOR_TYPE_PROXIMITY:
+			dst->word[0] = src->value[0];
+			dst->word[1] = src->value[1];
+			dst->word[2] = src->value[2];
+			dst->word[3] = src->value[3];
+			dst->word[4] = src->value[4];
+			dst->word[5] = src->value[5];
+			break;
 		case SENSOR_TYPE_STEP_COUNTER:
 			dst->word[0] = src->value[0];
 			break;
@@ -337,6 +422,7 @@ static int transceiver_translate(struct transceiver_device *dev,
 				min(sizeof(dst->word), sizeof(src->value)));
 			break;
 		}
+		transceiver_print_event(dst, src->timestamp, remap_timestamp);
 	} else if (src->action == FLUSH_ACTION) {
 		dst->timestamp = remap_timestamp;
 		dst->sensor_type = src->sensor_type;

@@ -18,6 +18,8 @@
 #define USB2_PORT 2
 #define USB3_PORT 3
 
+#define SSUSB_SUSPEND_RESUME_TIMEOUT (HZ) /* 1 sec */
+
 static inline struct ssusb_mtk *otg_sx_to_ssusb(struct otg_switch_mtk *otg_sx)
 {
 	return container_of(otg_sx, struct ssusb_mtk, otg_switch);
@@ -106,6 +108,7 @@ static void switch_port_to_on(struct ssusb_mtk *ssusb, enum phy_mode mode)
 	pm_runtime_get(ssusb->dev);
 
 	ssusb_clks_enable(ssusb);
+	ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 	ssusb_vsvoter_set(ssusb);
 	ssusb_phy_power_on(ssusb);
 	ssusb_phy_set_mode(ssusb, mode);
@@ -121,6 +124,7 @@ static void switch_port_to_off(struct ssusb_mtk *ssusb)
 	ssusb_phy_set_mode(ssusb, PHY_MODE_INVALID);
 	ssusb_phy_power_off(ssusb);
 	ssusb_vsvoter_clr(ssusb);
+	ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
 	ssusb_clks_disable(ssusb);
 
 	pm_runtime_put(ssusb->dev);
@@ -215,6 +219,7 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	enum usb_role desired_role;
 	enum usb_role current_role;
 	unsigned long flags;
+	size_t expire;
 
 	desired_role = work_data->desired_role;
 	current_role = otg_sx->current_role;
@@ -227,6 +232,14 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 
 	mtu3_dbg_trace(ssusb->dev, "set role : %s", usb_role_string(desired_role));
 
+	expire = jiffies + SSUSB_SUSPEND_RESUME_TIMEOUT;
+	while (time_before(jiffies, expire)) {
+		if (!ssusb->is_suspended)
+			break;
+		dev_info(ssusb->dev, "wait for suspend/resume complete\n");
+		msleep(20);
+	}
+
 	pm_runtime_get_sync(ssusb->dev);
 
 	/* switch port to off first */
@@ -238,7 +251,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		mdelay(100);
 		/* unregister host driver */
 		ssusb_host_register(ssusb, false);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
 		ssusb_host_disable(ssusb);
 		switch_port_to_off(ssusb);
 		break;
@@ -252,7 +264,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 				pm_runtime_put(ssusb->dev);
 		}
 		spin_unlock_irqrestore(&mtu->lock, flags);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
 		mtu3_device_disable(mtu);
 		switch_port_to_off(ssusb);
 		pm_relax(ssusb->dev);
@@ -268,7 +279,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	case USB_ROLE_HOST:
 		switch_port_to_on(ssusb, PHY_MODE_USB_HOST);
 		ssusb_host_enable(ssusb);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 		ssusb_set_force_mode(ssusb, MTU3_DR_FORCE_HOST);
 		/* register host driver */
 		ssusb_host_register(ssusb, true);
@@ -283,7 +293,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		pm_stay_awake(ssusb->dev);
 		switch_port_to_on(ssusb, PHY_MODE_USB_DEVICE);
 		mtu3_device_enable(mtu);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 		ssusb_set_force_mode(ssusb, MTU3_DR_FORCE_DEVICE);
 		mtu3_start(mtu);
 		break;

@@ -23,6 +23,7 @@
 #define AAL_HIST_NUM (768)
 #define AAL_DUAL_INFO_NUM (16)
 #define AAL_CLARITY_STATUS_NUM (7)
+#define MAX_REG_NUM (180)
 #define C3D_LUT_NUM (729) // 9*9*9
 
 #define CMDQ_GPR_UPDATE	(2)
@@ -388,6 +389,13 @@ int mml_pq_get_comp_config_result(struct mml_task *task, u32 timeout_ms);
  * @task:	task data, include pq parameters and frame info
  */
 void mml_pq_put_comp_config_result(struct mml_task *task);
+
+/*
+ * mml_pq_init_comp_config_result - init result for first frame
+ *
+ * @result:	hw setting data
+ */
+void mml_pq_init_comp_config_result(struct mml_pq_comp_config_result *result);
 
 /*
  * mml_pq_sub_task_clear - remove invalid sub_task from list

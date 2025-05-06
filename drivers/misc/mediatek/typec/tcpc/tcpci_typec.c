@@ -72,6 +72,11 @@ static inline void typec_wait_ps_change(struct tcpc_device *tcpc,
 		tcpci_enable_force_discharge(tcpc, false, 0);
 		mutex_unlock(&tcpc->access_lock);
 #endif	/* CONFIG_TYPEC_ATTACHED_SRC_SAFE0V_TIMEOUT */
+	} else if (tcpc->typec_wait_ps_change == TYPEC_WAIT_PS_SRC_VSAFE5V
+		&& state != TYPEC_WAIT_PS_SRC_VSAFE5V) {
+#if CONFIG_TYPEC_ATTACHED_SRC_SAFE5V_DELAY
+		tcpc_disable_timer(tcpc, TYPEC_RT_TIMER_SAFE5V_DELAY);
+#endif	/* CONFIG_TYPEC_ATTACHED_SRC_SAFE5V_DELAY */
 	}
 
 	tcpc->typec_wait_ps_change = state;
@@ -590,6 +595,10 @@ static inline void typec_sink_dbg_acc_attached_entry(struct tcpc_device *tcpc)
 static bool typec_try_norp_src(struct tcpc_device *tcpc)
 {
 	if (tcpc->typec_state == typec_unattached_snk) {
+		if (typec_is_cc_open() && tcpc->typec_role >= TYPEC_ROLE_DRP &&
+			tcpc->typec_role <= TYPEC_ROLE_TRY_SNK)
+			tcpci_set_cc(tcpc, TYPEC_CC_DRP);
+
 		if (tcpci_check_vbus_valid(tcpc) &&
 		    typec_is_cc_no_res()) {
 			TYPEC_INFO("norp_src=1\n");
@@ -1299,6 +1308,41 @@ static inline bool typec_is_ignore_cc_change(struct tcpc_device *tcpc)
 
 	return false;
 }
+int nt_cc1_connected = 0;
+int nt_cc2_connected = 0;
+
+int nt_get_cc_connected(void)
+{
+	return (nt_cc2_connected | nt_cc1_connected);
+}
+EXPORT_SYMBOL(nt_get_cc_connected);
+
+#ifdef CONFIG_CC_ALERT_DETECTION
+static bool typec_is_cc_abnormal(struct tcpc_device *tcpc)
+{
+	u64 tdelta = ktime_ms_delta(ktime_get(), tcpc->time_prev);
+
+	if (tdelta <= MAX_CC_ALERT_TDELTA) {
+		atomic_inc(&tcpc->ccalert_cnt);
+		if (!tcpc->cc_abnormal &&
+		    atomic_read(&tcpc->ccalert_cnt) >= MAX_CC_ALERT_COUNT) {
+			tcpc->cc_abnormal = true;
+			tcpci_notify_cc_abnormal(tcpc);
+		}
+	} else if (tdelta > MAX_CC_ALERT_TDELTA) {
+		if (tcpc->cc_abnormal) {
+			tcpc->cc_abnormal = false;
+			tcpci_notify_cc_abnormal(tcpc);
+		}
+		atomic_set(&tcpc->ccalert_cnt, 0);
+	}
+	TYPEC_INFO("TDelta = %lldms, cc_alert count = %d, cc_abnormal = %d\n",
+		   tdelta, atomic_read(&tcpc->ccalert_cnt), tcpc->cc_abnormal);
+	tcpc->time_prev = ktime_get();
+
+	return tcpc->cc_abnormal;
+}
+#endif /* CONFIG_CC_ALERT_DETECTION */
 
 int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 {
@@ -1307,6 +1351,8 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 	ret = tcpci_get_cc(tcpc);
 	if (ret < 0)
 		return ret;
+	nt_cc1_connected = typec_get_cc1();
+	nt_cc2_connected = typec_get_cc2();
 
 	TYPEC_INFO("[CC_Alert] %d/%d\n", typec_get_cc1(), typec_get_cc2());
 
@@ -1317,6 +1363,11 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 
 	if (typec_is_ignore_cc_change(tcpc))
 		return 0;
+
+#ifdef CONFIG_CC_ALERT_DETECTION
+	if (typec_is_cc_abnormal(tcpc))
+		return 0;
+#endif /* CONFIG_CC_ALERT_DETECTION */
 
 	if (typec_is_cc_attach(tcpc)) {
 		typec_disable_low_power_mode(tcpc);
@@ -1523,6 +1574,14 @@ int tcpc_typec_handle_timeout(struct tcpc_device *tcpc, uint32_t timer_id)
 		break;
 #endif	/* CONFIG_TYPEC_ATTACHED_SRC_SAFE0V_DELAY */
 
+#if CONFIG_TYPEC_ATTACHED_SRC_SAFE5V_DELAY
+	case TYPEC_RT_TIMER_SAFE5V_DELAY:
+		tcpc->typec_attach_new = TYPEC_ATTACHED_SRC;
+		typec_alert_attach_state_change(tcpc);
+		typec_wait_ps_change(tcpc, TYPEC_WAIT_PS_DISABLE);
+		break;
+#endif	/* CONFIG_TYPEC_ATTACHED_SRC_SAFE5V_DELAY */
+
 	case TYPEC_RT_TIMER_LOW_POWER_MODE:
 		typec_enter_low_power_mode(tcpc);
 		break;
@@ -1576,8 +1635,13 @@ static inline int typec_handle_vbus_present(struct tcpc_device *tcpc)
 		typec_alert_attach_state_change(tcpc);
 		break;
 	case TYPEC_WAIT_PS_SRC_VSAFE5V:
+#if CONFIG_TYPEC_ATTACHED_SRC_SAFE5V_DELAY
+		tcpc_enable_timer(tcpc, TYPEC_RT_TIMER_SAFE5V_DELAY);
+		return 0;
+#else
 		tcpc->typec_attach_new = TYPEC_ATTACHED_SRC;
 		typec_alert_attach_state_change(tcpc);
+#endif /* CONFIG_TYPEC_ATTACHED_SRC_SAFE5V_DELAY */
 		break;
 #if CONFIG_TYPEC_CAP_DBGACC
 	case TYPEC_WAIT_PS_DBG_VSAFE5V:
@@ -1828,8 +1892,10 @@ int tcpc_typec_change_role(
 	if (tcpc_typec_is_cc_open_state(tcpc))
 		return 0;
 
+	//if (!postpone || tcpc->typec_attach_old == TYPEC_UNATTACHED)
+	pr_err("Check:%d,%d\n", postpone, tcpc->typec_attach_old);
 	if (!postpone || tcpc->typec_attach_old == TYPEC_UNATTACHED ||
-			 tcpc->typec_attach_old == TYPEC_ATTACHED_NORP_SRC)
+		tcpc->typec_attach_old == TYPEC_ATTACHED_NORP_SRC)
 		return tcpc_typec_error_recovery(tcpc);
 	else
 		return 0;

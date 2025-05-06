@@ -163,6 +163,36 @@ config REGULATOR_MTK_VMM_ISP71
 	  of Mediatek. It allows for voting on regulator state
 	  between multiple users.
 
+config REGULATOR_ET5924A
+	tristate "Richtek ET5924A regulator driver"
+	depends on I2C && GPIOLIB
+	select REGMAP
+	select CRC8
+	select OF_GPIO
+	select REGULATOR_FIXED_VOLTAGE
+	select MTK_SUBPMIC_MISC
+	help
+	  ET5924A is an integrated chip. It includes 8 LDOs and 3 GPIOs that
+	  can be used to drive output high/low purpose. The dependency of the
+	  GPIO block is internally LDO1 voltage. If LDO1 voltage output disabled,
+	  GPIO cannot be used to drive output high. It need to pay more
+	  attention on the usage.
+
+config REGULATOR_DIO8016
+	tristate "Richtek DIO8016 regulator driver"
+	depends on I2C && GPIOLIB
+	select REGMAP
+	select CRC8
+	select OF_GPIO
+	select REGULATOR_FIXED_VOLTAGE
+	select MTK_SUBPMIC_MISC
+	help
+	  DIO8016 is an integrated chip. It includes 8 LDOs and 3 GPIOs that
+	  can be used to drive output high/low purpose. The dependency of the
+	  GPIO block is internally LDO1 voltage. If LDO1 voltage output disabled,
+	  GPIO cannot be used to drive output high. It need to pay more
+	  attention on the usage.
+
 config REGULATOR_RT4803
 	tristate "Richtek RT4803 boost regualtor"
 	depends on I2C

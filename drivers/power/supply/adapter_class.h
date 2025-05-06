@@ -53,7 +53,15 @@ enum adapter_type {
 static const char *const adapter_type_names[] = {
 	"pd_adapter", "ufcs_adapter"
 };
-
+enum mtk_pd_connect_type {
+	MTK_PD_CONNECT_NONE,
+	MTK_PD_CONNECT_HARD_RESET,
+	MTK_PD_CONNECT_SOFT_RESET,
+	MTK_PD_CONNECT_PE_READY_SNK,
+	MTK_PD_CONNECT_PE_READY_SNK_PD30,
+	MTK_PD_CONNECT_PE_READY_SNK_APDO,
+	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
+};
 enum adapter_event {
 	TA_ATTACH,
 	TA_DETACH,

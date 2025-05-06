@@ -436,6 +436,7 @@ struct tcpc_device {
 	bool typec_vbus_to_cc_en;
 	bool cc_hidet_en;
 	int cc_hi;
+	bool is_eea_code;
 };
 
 #define to_tcpc_device(obj) container_of(obj, struct tcpc_device, dev)

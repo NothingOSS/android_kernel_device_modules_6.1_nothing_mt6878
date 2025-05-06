@@ -1427,6 +1427,16 @@ static int lvts_register_irq_handler(struct lvts_data *lvts_data)
 		if (i == 0 && IS_ENABLE(FEATURE_MT6897_SOC_LVTS_THERMAL_REBOOT_WA))
 			continue;
 
+		if (i == 0 && IS_ENABLE(FEATURE_MT6878_SOC_MCU_LVTS_THERMAL_REBOOT_WA)) {
+			dev_info(dev,"skip register irq_num %d\n", lvts_data->domain[i].irq_num);
+			continue;
+		}
+
+		if (i == 1 && IS_ENABLE(FEATURE_MT6878_SOC_MCU_LVTS_THERMAL_REBOOT_WA)) {
+			dev_info(dev,"skip register irq_num %d\n", lvts_data->domain[i].irq_num);
+			continue;
+		}
+
 		ret = devm_request_irq(dev, lvts_data->domain[i].irq_num,
 			irq_handler, IRQF_TRIGGER_HIGH, "mtk_lvts", lvts_data);
 
@@ -5504,7 +5514,8 @@ static struct lvts_data mt6878_lvts_data = {
 		.check_cal_data = mt6878_check_cal_data,
 		.update_coef_data = mt6878_update_coef_data,
 	},
-	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK,
+	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK |
+		FEATURE_MT6878_SOC_MCU_LVTS_THERMAL_REBOOT_WA,
 	.num_efuse_addr = 24,
 	.num_efuse_block = 4,
 	.cal_data = {

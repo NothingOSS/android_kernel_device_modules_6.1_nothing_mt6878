@@ -14,6 +14,11 @@
 #include "inc/pd_core.h"
 #include "pd_dpm_prv.h"
 
+int g_nt_adp_power_vid;
+int g_nt_adp_power_pid;
+EXPORT_SYMBOL(g_nt_adp_power_vid);
+EXPORT_SYMBOL(g_nt_adp_power_pid);
+
 struct pd_device_policy_manager {
 	uint8_t temp;
 };
@@ -641,6 +646,9 @@ void pd_dpm_snk_standby_power(struct pd_port *pd_port)
 	if (pd_port->request_apdo)
 		return;
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
+
+	if (standby_curr > pd_port->request_i_new)
+		standby_curr = pd_port->request_i_new;
 
 	if (pd_port->request_v_new > pd_port->request_v) {
 		/* Case2 Increasing the Voltage */
@@ -1666,6 +1674,8 @@ void pd_dpm_inform_source_cap_ext(struct pd_port *pd_port)
 		DPM_INFO2("vid=0x%04x, pid=0x%04x\n", scedb->vid, scedb->pid);
 		DPM_INFO2("fw_ver=0x%02x, hw_ver=0x%02x\n",
 			scedb->fw_ver, scedb->hw_ver);
+		g_nt_adp_power_vid = scedb->vid;
+		g_nt_adp_power_pid = scedb->pid;
 #endif /* DPM_INFO2_ENABLE */
 		dpm_reaction_clear(pd_port,
 			DPM_REACTION_GET_SOURCE_CAP_EXT);

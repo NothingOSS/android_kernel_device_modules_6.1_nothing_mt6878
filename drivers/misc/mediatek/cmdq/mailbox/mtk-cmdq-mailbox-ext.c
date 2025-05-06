@@ -3328,17 +3328,18 @@ void cmdq_mbox_disable(void *chan)
 	thd_usage = atomic_dec_return(&cmdq->thread[i].usage);
 	if (!thd_usage && !list_empty(&cmdq->thread[i].task_busy_list)) {
 		struct cmdq_task *task;
-
+		unsigned long flags;
 		cmdq_err("hwid:%u idx:%d usage:%d still has tasks",
 			cmdq->hwid, i, thd_usage);
 		dump_stack();
-
+		spin_lock_irqsave(&thread->chan->lock, flags);
 		list_for_each_entry(task, &thread->task_busy_list, list_entry)
 			if(task->pkt) {
 				cmdq_set_alldump(true);
 				cmdq_dump_pkt(task->pkt, 0, true);
 				cmdq_set_alldump(false);
 			}
+		spin_unlock_irqrestore(&thread->chan->lock, flags);
 		cmdq_util_aee_ex(CMDQ_AEE_EXCEPTION, "CMDQ",
 			"hwid:%hu usage:%d idx:%u usage:%d gce off",
 			cmdq->hwid, atomic_read(&cmdq->usage),

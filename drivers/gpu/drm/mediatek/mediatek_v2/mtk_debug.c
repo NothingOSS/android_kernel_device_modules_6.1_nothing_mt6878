@@ -129,6 +129,8 @@ static bool partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
 unsigned int seg_id_dbg;
+extern bool delay_first_set_backlight;
+struct delayed_work set_first_backlight_by_workqueue;
 
 struct logger_buffer {
 	char **buffer_ptr;
@@ -137,6 +139,22 @@ struct logger_buffer {
 	const unsigned int cnt;
 	const unsigned int size;
 };
+
+struct brightness_buffer {
+	unsigned int level;
+	unsigned int panel_ext_param;
+	unsigned int cfg_flag;
+	struct drm_crtc *crtc;
+};
+static struct brightness_buffer bl_buffer;
+
+struct esd_rec_set {
+	unsigned int esd_rec_level;
+	unsigned int esd_panel_ext_param;
+	unsigned int esd_cfg_flag;
+};
+static struct esd_rec_set esd_recovery_setting;
+extern int last_bl_level;
 
 static DEFINE_SPINLOCK(dprec_err_logger_spinlock);
 static DEFINE_SPINLOCK(dprec_fence_logger_spinlock);
@@ -510,17 +528,22 @@ int mtkfb_set_backlight_level_AOD(unsigned int level)
 }
 EXPORT_SYMBOL(mtkfb_set_backlight_level_AOD);
 
+void set_first_backlight_work(struct work_struct *work)
+{
+	mtk_drm_setbacklight(bl_buffer.crtc, bl_buffer.level, bl_buffer.panel_ext_param, bl_buffer.cfg_flag, 1);
+}
+
 int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 			       unsigned int cfg_flag, bool group)
 {
 	struct drm_crtc *crtc;
+	struct mtk_panel_params *panel_ext = NULL;
 	int ret = 0;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev\n", __func__);
 		return -EINVAL;
 	}
-
 	/* this debug cmd only for crtc0 */
 	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
 				typeof(*crtc), head);
@@ -528,10 +551,25 @@ int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param
 		DDPPR_ERR("%s failed to find crtc\n", __func__);
 		return -EINVAL;
 	}
-	if (group == true)
+	panel_ext = mtk_drm_get_lcm_ext_params(crtc);
+	if (panel_ext == NULL) {
+		DDPPR_ERR("%s, invalid panel_ext\n", __func__);
+		return -EINVAL;
+	}
+	if (group == true) {
 		ret = mtk_drm_setbacklight_grp(crtc, level, panel_ext_param, cfg_flag);
-	else
-		ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag, 1);
+	} else {
+		if (panel_ext->delay_first_bl_en && delay_first_set_backlight) {
+			bl_buffer.level = level;
+			bl_buffer.panel_ext_param = panel_ext_param;
+			bl_buffer.cfg_flag = cfg_flag;
+			bl_buffer.crtc = crtc;
+			schedule_delayed_work(&set_first_backlight_by_workqueue, msecs_to_jiffies(35));
+			ret = 0;
+		} else {
+			ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag, 1);
+		}
+	}
 
 	return ret;
 }
@@ -539,9 +577,20 @@ int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param
 int mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 				 unsigned int cfg_flag)
 {
+	esd_recovery_setting.esd_rec_level = level;
+	esd_recovery_setting.esd_panel_ext_param = panel_ext_param;
+	esd_recovery_setting.esd_cfg_flag = cfg_flag;
 	return __mtkfb_set_backlight_level(level, panel_ext_param, cfg_flag, false);
 }
 EXPORT_SYMBOL(mtkfb_set_backlight_level);
+
+int mtkfb_esd_rec_set_backlight_level(void)
+{
+	esd_recovery_setting.esd_rec_level = last_bl_level;
+	return mtkfb_set_backlight_level(esd_recovery_setting.esd_rec_level,
+		        esd_recovery_setting.esd_panel_ext_param, 1);
+}
+EXPORT_SYMBOL(mtkfb_esd_rec_set_backlight_level);
 
 int mtk_drm_set_conn_backlight_level(unsigned int conn_id, unsigned int level,
 				unsigned int panel_ext_param, unsigned int cfg_flag)
@@ -1417,6 +1466,7 @@ int mtk_ddic_dsi_send_cmd(struct mtk_ddic_dsi_msg *cmd_msg,
 
 	return ret;
 }
+EXPORT_SYMBOL(mtk_ddic_dsi_send_cmd);
 
 static void set_cwb_info_buffer(struct drm_crtc *crtc, int format)
 {
@@ -1648,6 +1698,34 @@ void ddic_dsi_send_cmd_test(unsigned int case_num)
 
 		break;
 	}
+	case 7:
+	{
+		cmd_msg->channel = 0;
+		cmd_msg->flags = 0;
+		cmd_msg->tx_cmd_num = 1;
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xF0;
+		tx[1] = 0x5A;
+		tx[2] = 0x5A;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 3;
+
+		break;
+	}
+	case 8:
+	{
+		cmd_msg->channel = 0;
+		cmd_msg->flags = 0;
+		cmd_msg->tx_cmd_num = 1;
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xF0;
+		tx[1] = 0xA5;
+		tx[2] = 0xA5;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 3;
+
+		break;
+	}
 	default:
 		DDPMSG("%s no this test case:%d\n", __func__, case_num);
 		break;
@@ -1675,6 +1753,7 @@ done:
 
 	DDPMSG("%s end -\n", __func__);
 }
+EXPORT_SYMBOL(ddic_dsi_send_cmd_test);
 
 void ddic_dsi_send_switch_pgt(unsigned int cmd_num, u8 addr,
 	u8 val1, u8 val2, u8 val3, u8 val4, u8 val5, u8 val6)
@@ -1800,6 +1879,8 @@ done:
 	DDPMSG("%s end -\n", __func__);
 }
 
+unsigned char lcm_id[3] = {0};
+EXPORT_SYMBOL(lcm_id);
 void ddic_dsi_read_cmd_test(unsigned int case_num)
 {
 	unsigned int j = 0;
@@ -1923,6 +2004,57 @@ void ddic_dsi_read_cmd_test(unsigned int case_num)
 
 		break;
 	}
+	case 7:
+	{
+		/* Read 0xe8 = 0x00,0x01,0x23,0x00 */
+		cmd_msg->channel = 0;
+		cmd_msg->tx_cmd_num = 1;
+		cmd_msg->type[0] = 0x06;
+		tx[0] = 0xDA;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 1;
+
+		cmd_msg->rx_cmd_num = 1;
+		cmd_msg->rx_buf[0] = vmalloc(2 * sizeof(unsigned char));
+		memset(cmd_msg->rx_buf[0], 0, 2);
+		cmd_msg->rx_len[0] = 1;
+
+		break;
+	}
+	case 8:
+	{
+		/* Read 0xe8 = 0x00,0x01,0x23,0x00 */
+		cmd_msg->channel = 0;
+		cmd_msg->tx_cmd_num = 1;
+		cmd_msg->type[0] = 0x06;
+		tx[0] = 0xDB;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 1;
+
+		cmd_msg->rx_cmd_num = 1;
+		cmd_msg->rx_buf[0] = vmalloc(2 * sizeof(unsigned char));
+		memset(cmd_msg->rx_buf[0], 0, 2);
+		cmd_msg->rx_len[0] = 1;
+
+		break;
+	}
+	case 9:
+	{
+		/* Read 0xe8 = 0x00,0x01,0x23,0x00 */
+		cmd_msg->channel = 0;
+		cmd_msg->tx_cmd_num = 1;
+		cmd_msg->type[0] = 0x06;
+		tx[0] = 0xDC;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 1;
+
+		cmd_msg->rx_cmd_num = 1;
+		cmd_msg->rx_buf[0] = vmalloc(2 * sizeof(unsigned char));
+		memset(cmd_msg->rx_buf[0], 0, 2);
+		cmd_msg->rx_len[0] = 1;
+
+		break;
+	}
 
 	default:
 		DDPMSG("%s no this test case:%d\n", __func__, case_num);
@@ -1942,6 +2074,13 @@ void ddic_dsi_read_cmd_test(unsigned int case_num)
 		DDPMSG("read lcm addr:0x%x--byte:%d,val:0x%x\n",
 			*(char *)(cmd_msg->tx_buf[0]), j,
 			*(char *)(cmd_msg->rx_buf[0] + j));
+		if (case_num == 7) {
+			lcm_id[0] = *(char *)(cmd_msg->rx_buf[0] + j);
+		} else if (case_num == 8) {
+			lcm_id[1] = *(char *)(cmd_msg->rx_buf[0] + j);
+		} else if (case_num == 9) {
+			lcm_id[2] = *(char *)(cmd_msg->rx_buf[0] + j);
+		}
 	}
 
 done:
@@ -1950,6 +2089,7 @@ done:
 
 	DDPMSG("%s end -\n", __func__);
 }
+EXPORT_SYMBOL(ddic_dsi_read_cmd_test);
 
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state)
 {
@@ -5658,6 +5798,7 @@ void disp_dbg_init(struct drm_device *dev)
 	else
 		DDPMSG("%s, disp debug init\n", __func__);
 
+	INIT_DELAYED_WORK(&set_first_backlight_by_workqueue, set_first_backlight_work);
 	drm_dev = dev;
 	init_completion(&cwb_cmp);
 
@@ -5686,6 +5827,7 @@ void disp_dbg_deinit(void)
 #ifdef MTK_DPINFO
 	mtk_dp_debugfs_deinit();
 #endif
+	cancel_delayed_work_sync(&set_first_backlight_by_workqueue);
 }
 
 void get_disp_dbg_buffer(unsigned long *addr, unsigned long *size,

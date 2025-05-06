@@ -92,6 +92,8 @@
 #define I2C_FAST_MODE_PLUS_BUFFER	(20 / 3)
 #define I2C_HS_MODE_BUFFER		(10 / 3)
 
+#define I2C0_LS_DUTY			31
+
 #define I2C_CONTROL_RS                  (0x1 << 1)
 #define I2C_CONTROL_DMA_EN              (0x1 << 2)
 #define I2C_CONTROL_CLK_EXT_EN          (0x1 << 3)
@@ -1245,7 +1247,11 @@ static int mtk_i2c_set_speed_v2(struct mtk_i2c *i2c, unsigned int parent_clk)
 
 			l_cal_para.best_mul = (parent_clk + clk_div * head_speed - 1) /
 				(clk_div * head_speed) + 1;
-			l_cal_para.exp_duty = I2C_LS_DUTY;
+			if (i2c->adap.nr == 0) {
+        			l_cal_para.exp_duty = I2C0_LS_DUTY;
+        		} else {
+            			l_cal_para.exp_duty = I2C_LS_DUTY;
+        		}
 			l_cal_para.exp_duty_diff = I2C_DUTY_DIFF_TENTHS;
 			ret = mtk_i2c_calculate_speed_v2(i2c, &l_cal_para);
 			if (ret < 0)
@@ -1263,7 +1269,11 @@ static int mtk_i2c_set_speed_v2(struct mtk_i2c *i2c, unsigned int parent_clk)
 			i2c->ac_timing.ext = (h_ext_time << 1) | (l_ext_time << 8) | (1 << 0);
 			i2c->ac_timing.sda_timing = 0;
 		} else {
-			l_cal_para.exp_duty = I2C_LS_DUTY;
+			if (i2c->adap.nr == 0) {
+          			l_cal_para.exp_duty = I2C0_LS_DUTY;
+       		 	} else {
+          			l_cal_para.exp_duty = I2C_LS_DUTY;
+        		}
 			l_ext_time = (parent_clk / clk_div) * 5 /
 				(target_speed / I2C_MAX_STANDARD_MODE_FREQ * 1000000);
 			if (l_ext_time > MAX_LS_EXT_TIME)

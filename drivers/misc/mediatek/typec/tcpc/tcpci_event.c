@@ -689,6 +689,7 @@ bool pd_put_cc_attached_event(
 	rv = power_supply_get_property(tcpc->chg_psy,
 		POWER_SUPPLY_PROP_USB_TYPE, &val);
 	if ((type == TYPEC_ATTACHED_SNK || type == TYPEC_ATTACHED_DBGACC_SNK) &&
+		(tcpc->is_eea_code == true) &&
 		(rv < 0 || val.intval == POWER_SUPPLY_USB_TYPE_UNKNOWN)) {
 		tcpc->pd_wait_bc12_count = 1;
 		tcpc_enable_timer(tcpc, TYPEC_RT_TIMER_PD_WAIT_BC12);

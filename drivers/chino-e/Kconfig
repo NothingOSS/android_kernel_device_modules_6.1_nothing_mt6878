@@ -1,0 +1,5 @@
+#
+# OEM device bootinfo configuration
+#
+
+source "$(KCONFIG_EXT_PREFIX)drivers/chino-e/hwinfo/Kconfig"

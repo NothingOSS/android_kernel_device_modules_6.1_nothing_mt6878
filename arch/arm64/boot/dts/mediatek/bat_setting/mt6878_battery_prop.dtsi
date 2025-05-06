@@ -13,7 +13,7 @@
 	keep-100-percent = <(1)>;
 	curr-measure-20a = <(0)>;
 	unit-multiple = <(1)>;
-	r-fg-value = <(1)>;
+	r-fg-value = <(2)>;
 	/* Rsense resistance */
 	embedded-sel = <(0)>;
 	/* Configures whether using embedded battery or not */
@@ -23,11 +23,11 @@
 	/* The resistance of PCB */
 	car-tune-value = <(100)>;
 	/* Tune value for current measurement */
-	pmic-min-vol = <(30000)>;
+	pmic-min-vol = <(33500)>;
 	/* vboot voltage for gauge 0%*/
 	poweron-system-iboot = <(500)>;
 	/* power on system iboot */
-	shutdown-gauge0-voltage = <(30000)>;
+	shutdown-gauge0-voltage = <(34000)>;
 	/* shutdown gauge 0% voltage */
 	temperature-t0 = <(50)>;
 	/* Battery temperature T0 */
@@ -37,9 +37,9 @@
 	/* Battery temperature T2 */
 	temperature-t3 = <(0)>;
 	/* Battery temperature T3 */
-	temperature-t4 = <(-7)>;
+	temperature-t4 = <(-10)>;
 	/* Battery temperature T4 */
-	temperature-t5 = <(-10)>;
+	temperature-t5 = <(-20)>;
 	/* Battery temperature T5 */
 	g-fg-pseudo100-t0 = <(100)>;
 	/* Pseudo 100% percentage at T0 */
@@ -51,13 +51,13 @@
 	/* Pseudo 100% percentage at T3 */
 	g-fg-pseudo100-t4 = <(100)>;
 	/* Pseudo 100% percentage at T4 */
-	q-max-sys-voltage-bat0 = <(3000)>;
+	q-max-sys-voltage-bat0 = <(3350)>;
 	/* Pseudo1 for hide percentage */
-	q-max-sys-voltage-bat1 = <(3000)>;
+	q-max-sys-voltage-bat1 = <(3350)>;
 	/* Pseudo1 for hide percentage */
-	q-max-sys-voltage-bat2 = <(3000)>;
+	q-max-sys-voltage-bat2 = <(3350)>;
 	/* Pseudo1 for hide percentage */
-	q-max-sys-voltage-bat3 = <(3000)>;
+	q-max-sys-voltage-bat3 = <(3350)>;
 	/* Pseudo1 for hide percentage */
 	com-fg-meter-resistance = <(70)>;
 	/* compensate The resistance of PCB */
@@ -89,6 +89,7 @@
 	vbat2-det1-voltage3 = <(35000)>;
 	bat-voltage-low-bound1 = <(3400)>;
 	low-tmp-bat-voltage-low-bound1 = <(3500)>;
+	is-evb-board = <0>;
 #include "mt6878_battery_table.dtsi"
 #include "mt6878_battery_prop_dim2_ext.dtsi"
 };

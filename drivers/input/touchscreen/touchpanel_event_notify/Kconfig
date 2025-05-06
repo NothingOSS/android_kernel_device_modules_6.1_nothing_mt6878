@@ -1,0 +1,10 @@
+#
+# Focaltech Touchscreen driver configuration
+#
+
+config TOUCHPANEL_EVENT_NOTIFY
+    tristate "touchpanel event notify"
+    default m
+    help
+      Say Y here if you have touchpanel event notify.
+      If unsure, say N.

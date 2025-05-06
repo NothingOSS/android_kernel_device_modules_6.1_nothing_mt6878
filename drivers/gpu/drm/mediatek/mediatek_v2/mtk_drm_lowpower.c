@@ -1597,7 +1597,7 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 	idlemgr_ctx->enterulps = 0;
 	idlemgr_ctx->idlemgr_last_kick_time = ~(0ULL);
 	idlemgr_ctx->cur_lp_cust_mode = 0;
-	idlemgr_ctx->idle_check_interval = 50;
+	idlemgr_ctx->idle_check_interval = 1000;
 
 	snprintf(name, LEN, "mtk_drm_disp_idlemgr-%d", index);
 	idlemgr->idlemgr_task =

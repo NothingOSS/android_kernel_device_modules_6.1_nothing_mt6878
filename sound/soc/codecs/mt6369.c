@@ -7242,7 +7242,7 @@ static ssize_t mt6369_debugfs_read(struct file *file, char __user *buf,
 				   size_t count, loff_t *pos)
 {
 	struct mt6369_priv *priv = file->private_data;
-	const int size = 12288;
+	const int size = 14336;
 	char *buffer = NULL; /* for reduce kernel stack */
 	int n = 0, ret = 0;
 

@@ -1489,6 +1489,18 @@ static int __init mtk_smi_dbg_init(void)
 	return platform_register_drivers(smi_dbg_drivers, ARRAY_SIZE(smi_dbg_drivers));
 }
 
+void mtk_smi_set_common_clamp_and_lock(const u32 comm_id, bool on)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	if (!smi->comm[comm_id].dev)
+		pr_notice("%s: can not find comm%d\n",
+			__func__, comm_id);
+	else
+		mtk_smi_common_clamp_and_lock(smi->comm[comm_id].dev, on);
+}
+EXPORT_SYMBOL_GPL(mtk_smi_set_common_clamp_and_lock);
+
 int smi_ut_dump_get(char *buf, const struct kernel_param *kp)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
