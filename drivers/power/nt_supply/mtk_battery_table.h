@@ -134,9 +134,12 @@
 /* Aging Compensation 3*/
 #define AGING_THIRD_EN				1
 
-#define AGING_4_EN				0
-#define AGING_5_EN				0
-#define AGING_6_EN				0
+//#define AGING_4_EN				0
+//#define AGING_5_EN				0
+//#define AGING_6_EN				0
+#define AGING_4_EN				1
+#define AGING_5_EN				1
+#define AGING_6_EN				1
 
 /* threshold */
 #define HWOCV_SWOCV_DIFF			300
