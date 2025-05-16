@@ -1,0 +1,43 @@
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&i2c11 {
+	status = "okay";
+	clock-frequency = <1000000>;
+	nu2115: nu2115-standalone@65 {
+		compatible = "cp,nu2115";
+		status = "okay";
+		chg_name = "primary_dvchg";
+		reg = <0x6D>;
+		nu2115,intr = <&pio 12 IRQ_TYPE_EDGE_FALLING>;
+
+		ac_ovp = <12000000>;
+		bat_ovp = <4700000>;
+		bat_ovp_alm = <4600000>;
+		bat_ocp = <8000000>;
+		bat_ocp_alm = <7800000>;
+		bat_ucp_alm = <50000>;
+		bus_ovp = <11000000>;
+		bus_ovp_alm = <10800000>;
+		bus_ocp = <4000000>;
+		bus_ocp_alm = <3800000>;
+		ibat_sns_res = <2>;
+		tdie_dis = <1>;
+		tsbus_dis = <1>;
+		tsbat_dis = <1>;
+		pmid2out_uvp = <3>;
+		pmid2out_ovp = <3>;
+		watchdog_dis;
+		ss_timeout = <1500000>;
+	};
+};

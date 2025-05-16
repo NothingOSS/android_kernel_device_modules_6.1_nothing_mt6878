@@ -587,6 +587,7 @@ enum CRTC_GCE_EVENT_TYPE {
 	EVENT_STREAM_BLOCK,
 	EVENT_CABC_EOF,
 	EVENT_DSI_SOF,
+	EVENT_DSI_CMD_DONE,
 	/*Msync 2.0*/
 	EVENT_SYNC_TOKEN_VFP_PERIOD,
 	EVENT_GPIO_TE0,
@@ -664,6 +665,9 @@ enum DISP_SMC_CMD {
 	DISP_CMD_CRTC_ENABLE,
 	DISP_CMD_MAX,
 };
+
+extern struct delayed_work set_first_backlight_by_workqueue;
+void set_first_backlight_work(struct work_struct *work);
 
 struct mtk_crtc_path_data {
 	bool is_fake_path;

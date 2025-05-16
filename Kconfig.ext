@@ -54,6 +54,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/phy/mediatek/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/thermal/mediatek/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/thermal/nothing/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/spmi/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/tty/serial/8250/Kconfig"
@@ -80,6 +82,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/input/fingerprint/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/panel/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/mediatek/Kconfig"
@@ -89,6 +93,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/usb/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/devfreq/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/haptic/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/Kconfig"
 
@@ -103,3 +109,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/pinctrl/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/mtk-isp/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)fs/f2fs/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/chino-e/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/nothing_stability/Kconfig"

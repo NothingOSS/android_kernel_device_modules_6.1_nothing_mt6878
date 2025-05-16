@@ -54,6 +54,8 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/phy/mediatek/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/thermal/mediatek/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/thermal/nothing/
+
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/spmi/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/tty/serial/8250/
@@ -92,10 +94,16 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/devfreq/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/misc/mediatek/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/misc/haptic/
+
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/soc/codecs/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/soc/mediatek/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/pci/controller/
+
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/chino-e/
+
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/nothing_stability/
 
 endif

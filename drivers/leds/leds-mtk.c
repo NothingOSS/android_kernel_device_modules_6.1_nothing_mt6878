@@ -567,6 +567,7 @@ int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode)
 		pr_info("No min-brightness, use default value 1");
 		mdev->conf.mode = MT_LED_MODE_CUST_BLS_I2C;
 	}
+	mdev->conf.mode = MT_LED_MODE_CUST_LCM;
 	mdev->conf.limit_hw_brightness = mdev->conf.max_hw_brightness;
 	ret = fwnode_property_read_string(fwnode, "default-state", &state);
 	if (!ret) {
@@ -577,7 +578,7 @@ int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode)
 		else
 			mdev->conf.cdev.brightness = 0;
 	} else {
-		mdev->conf.cdev.brightness = mdev->conf.cdev.max_brightness * 40 / 100;
+		mdev->conf.cdev.brightness = mdev->conf.cdev.max_brightness * 10 / 100;
 	}
 
 	strscpy(mdev->desp.name, mdev->conf.cdev.name,

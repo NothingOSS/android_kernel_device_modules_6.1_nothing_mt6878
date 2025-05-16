@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Universal Flash Storage Host Initiated Defrag (UFS HID)
+ * Universal Flash Storage Host Initiated Defrag
  *
- * Copyright (C) 2019-2019 Samsung Electronics Co., Ltd.
+ * Copyright (C) 2019 Samsung Electronics Co., Ltd.
  *
  * Authors:
  *	Yongmyung Lee <ymhungry.lee@samsung.com>
- *	Jieon Seol <jieon.seol@samsung.com>
+ *	Jinyoung Choi <j-young.choi@samsung.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -45,20 +45,26 @@
 #include <linux/blkdev.h>
 #include <linux/bitfield.h>
 #include <scsi/scsi_cmnd.h>
+#include <linux/delay.h>
 
 #include "../../../block/blk.h"
 
 #define UFSHID_VER					0x0101
-#define UFSHID_DD_VER					0x010202
+#define UFSHID_DD_VER					0x010600
 #define UFSHID_DD_VER_POST				""
 
-#define UFS_FEATURE_SUPPORT_HID_BIT			0x400
+#define UFS_FEATURE_SUPPORT_HID_BIT			(1 << 0)
 
 #define HID_TRIGGER_WORKER_DELAY_MS_DEFAULT	2000
 #define HID_TRIGGER_WORKER_DELAY_MS_MIN		100
 #define HID_TRIGGER_WORKER_DELAY_MS_MAX		10000
 
+#define HID_ON_IDLE_DELAY_MS_DEFAULT		100
+#define HID_ON_IDLE_DELAY_MS_MIN		10
+#define HID_ON_IDLE_DELAY_MS_MAX		10000
+
 #define HID_FRAG_LEVEL_MASK		0xF
+#define HID_GET_FRAG_LEVEL(val)		(val & HID_FRAG_LEVEL_MASK)
 #define HID_FRAG_UPDATE_STAT_SHIFT	30
 #define HID_EXECUTE_REQ_STAT_SHIFT	31
 #define HID_FRAG_UPDATE_STAT(val)	((val >> HID_FRAG_UPDATE_STAT_SHIFT) & 0x1)
@@ -81,7 +87,7 @@ enum UFSHID_STATE {
 	HID_RESET = -3,
 };
 
-enum {
+enum UFSHID_OP {
 	HID_OP_DISABLE	= 0,
 	HID_OP_ANALYZE	= 1,
 	HID_OP_EXECUTE	= 2,
@@ -106,6 +112,7 @@ struct ufshid_dev {
 	unsigned int hid_trigger;   /* default value is false */
 	struct delayed_work hid_trigger_work;
 	unsigned int hid_trigger_delay;
+	unsigned int hid_on_idle_delay;
 
 	u32 ahit;			/* to restore ahit value */
 	bool is_auto_enabled;
@@ -134,6 +141,11 @@ struct ufshid_sysfs_entry {
 	ssize_t (*show)(struct ufshid_dev *hid, char *buf);
 	ssize_t (*store)(struct ufshid_dev *hid, const char *buf, size_t count);
 };
+
+struct ufshcd_lrb;
+
+int ufshid_trigger_on(struct ufshid_dev *hid);
+int ufshid_trigger_off(struct ufshid_dev *hid);
 
 int ufshid_get_state(struct ufsf_feature *ufsf);
 void ufshid_set_state(struct ufsf_feature *ufsf, int state);

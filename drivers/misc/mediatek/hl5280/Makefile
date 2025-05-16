@@ -1,0 +1,2 @@
+
+obj-$(CONFIG_AUDIO_SWITCH_HL5280) += hl5280.o

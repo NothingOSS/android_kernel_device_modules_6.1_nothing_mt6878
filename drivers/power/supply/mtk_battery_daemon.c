@@ -3927,6 +3927,7 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	{
 		int reset = gm->is_reset_aging_factor;
 
+		ret_msg->fgd_data_len += sizeof(reset);
 		memcpy(ret_msg->fgd_data, &reset,
 			sizeof(reset));
 
@@ -4158,8 +4159,11 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		rcv = &msg->fgd_data[0];
 		prcv = (struct fgd_cmd_param_t_4 *)rcv;
 		memcpy(&param, prcv->input, sizeof(struct fgd_cmd_param_t_8));
-
-		bm_err("[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d RM:%d\n",
+		gm->nt_quse = param.data[4];
+		if (param.data[10] != 0)
+			gm->nt_bat_health = param.data[10];
+		//bm_err("[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d RM:%d\n",
+		bm_err("[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d %d RM:%d\n",
 				param.data[0],
 				param.data[1],
 				param.data[2],
@@ -4170,6 +4174,7 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 				param.data[7],
 				param.data[8],
 				param.data[9],
+				param.data[10],
 				param.data[4] * param.data[6] / 10000);
 
 		psy = power_supply_get_by_name("mtk-gauge");

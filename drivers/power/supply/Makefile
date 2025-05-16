@@ -36,3 +36,10 @@ mtk_pep50p-objs := mtk_pe5p.o mtk_pe5p_hal.o
 obj-$(CONFIG_CHARGER_RT9759)	+= rt9759.o
 obj-$(CONFIG_CHARGER_RT9490)	+= rt9490-charger.o
 obj-$(CONFIG_CHARGER_RT9758)	+= rt9758-charger.o
+obj-$(CONFIG_CHARGER_SC8541)	+= sc8541_charger.o
+obj-$(CONFIG_CHARGER_UPM6720)	+= upm6720_charger.o
+obj-$(CONFIG_CHARGER_SGM41606S)	+= sgm41606S_charger.o
+obj-$(CONFIG_CHARGER_NU2115)	+= nu2115_charger.o
+obj-$(CONFIG_CHARGER_NT)		+= nt_chg.o
+obj-$(CONFIG_NT_USB_TS)			+= nt_usb_ts.o
+

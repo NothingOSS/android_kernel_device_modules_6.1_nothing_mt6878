@@ -190,6 +190,7 @@ struct mtk_smi {
 	bool				skip_rpm_cb;
 	atomic_t			ref_count;
 	struct mtk_smi_flow_ctrl_dbg	*flow_ctrl_dbg;
+	int				comm_port_id[SMI_COMMON_LARB_NR_MAX];
 };
 
 #define LARB_MAX_COMMON		(2)
@@ -3192,6 +3193,31 @@ s32 mtk_smi_status_check(struct device *larbdev, bool log_enable)
 }
 EXPORT_SYMBOL_GPL(mtk_smi_status_check);
 
+void mtk_smi_common_clamp_and_lock(struct device *commdev, bool on)
+{
+	struct mtk_smi *common = dev_get_drvdata(commdev);
+	int i;
+	u32 clamp_reg = on ? SMI_CLAMP_EN_SET : SMI_CLAMP_EN_CLR;
+
+	if (unlikely(!common))
+		return;
+	/* disable/enable related SMI common port */
+	for (i = 0; i < SMI_COMMON_LARB_NR_MAX; i++) {
+
+		if (common->comm_port_id[i] >= 0) {
+
+			writel(1 << common->comm_port_id[i],
+				common->base + clamp_reg);
+
+			if (1)
+				pr_notice("[smi] %s on:%d comm%d clamp: %#x = %#x\n",
+					__func__, on, common->commid, SMI_CLAMP_EN,
+					readl(common->base + SMI_CLAMP_EN));
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(mtk_smi_common_clamp_and_lock);
+
 static bool is_p2_lock;
 void mtk_smi_larb_clamp_and_lock(struct device *larbdev, bool on)
 {
@@ -4322,6 +4348,9 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 			dev_notice(dev, "Failed to get sram smi_common device\n");
 			return -EINVAL;
 		}
+		common->comm_port_id[i] = -1;
+		of_property_read_u32_index(dev->of_node, "mediatek,comm-port-id",
+						i, &common->comm_port_id[i]);
 	}
 
 	of_property_read_u32(dev->of_node, "mediatek,common-id", &common->commid);

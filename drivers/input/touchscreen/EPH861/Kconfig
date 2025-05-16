@@ -1,0 +1,16 @@
+config TOUCHSCREEN_EPH861
+	tristate "ESWIN EPH86XX touchscreen"
+	depends on I2C || SPI_MASTER
+	help
+		Say Y here if you have a EPHTouch I2C or SPI for the built-in touchscreen.
+		IF unsure, say N.
+	choice
+		prompt "ESWIN EPH86XXX BUS"
+		default ESWIN_EPH861X_SPI
+		config ESWIN_EPH861X_I2C
+			bool "ESWIN_EPH861X_I2C" if I2C
+			depends on TOUCHSCREEN_EPHTouch
+		config ESWIN_EPH861X_SPI
+			bool "ESWIN_EPH861X_SPI" if SPI_MASTER
+			depends on TOUCHSCREEN_EPHTouch
+	endchoice

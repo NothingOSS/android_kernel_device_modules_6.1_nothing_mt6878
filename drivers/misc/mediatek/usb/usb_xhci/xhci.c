@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/dmi.h>
 #include <linux/dma-mapping.h>
+#include <linux/usb/quirks.h>
 
 #include "xhci.h"
 #include "xhci-trace.h"
@@ -4626,6 +4627,9 @@ static int xhci_set_usb2_hardware_lpm(struct usb_hcd *hcd,
 
 	if (hcd->speed >= HCD_USB3 || !xhci->hw_lpm_support ||
 			!udev->lpm_capable)
+		return -EPERM;
+
+	if (udev->quirks & USB_QUIRK_NO_LPM)
 		return -EPERM;
 
 	if (!udev->parent || udev->parent->parent ||

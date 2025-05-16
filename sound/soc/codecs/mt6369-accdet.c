@@ -182,6 +182,26 @@ static void recover_eint_setting(u32 eintsts);
 static void recover_moisture_setting(u32 moistureID);
 static void send_status_event(u32 cable_type, u32 status);
 
+#if IS_ENABLED(CONFIG_AUDIO_SWITCH_HL5280)
+void accdet_eint_callback_wrapper(bool plug_status)
+{
+	int ret = 0;
+
+	pr_info("%s: call ex eint handler, plug_status %d\n", __func__, plug_status);
+
+	accdet->cur_eint_state = (plug_status == true ? EINT_PLUG_IN : EINT_PLUG_OUT);
+
+	disable_irq_nosync(accdet->gpioirq);//
+
+	pr_info("accdet %s(), cur_eint_state=%d\n", __func__, accdet->cur_eint_state);
+
+	ret = queue_work(accdet->eint_workqueue, &accdet->eint_work);
+
+	pr_info("%s: exit queue work\n", __func__);
+}
+EXPORT_SYMBOL(accdet_eint_callback_wrapper);
+#endif
+
 /* global function declaration */
 inline u32 accdet_read(u32 addr)
 {
