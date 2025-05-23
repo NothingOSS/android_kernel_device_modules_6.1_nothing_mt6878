@@ -4,3 +4,6 @@
 
 2. OS 3.0 (Tetris-V3.0-250208-2015)
   - Fix Kasan issue
+
+3. OS 3.0 (Tetris-V3.0-250409-1734)
+  - [usb] mtu3: refine power on/off flow
