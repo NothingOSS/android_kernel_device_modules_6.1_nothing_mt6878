@@ -45,12 +45,14 @@ enum {
     IDX_POWER_BOARD = 4,
     IDX_DVT_1 = 5,
     IDX_PVT_1 = 6,
+    IDX_24121T_1 = 7,
     IDX_T0_2 = 8,
     IDX_EVT_2 = 9,
     IDX_DVT_2 = 10,
     IDX_PVT_2 = 11,
     IDX_DVT_3 = 12,
     IDX_PVT_3 = 13,
+    IDX_24121T_2 = 14,
     IDX_UNKNOW,
 };
 
@@ -62,13 +64,14 @@ static const char * const hwid_type_text[] = {
     "POWER_BOARD",
     "DVT",
     "PVT",
-    "reserve1",
+    "24121T",
     "T0_India",
     "EVT_India",
     "DVT_India",
     "PVT_India",
     "DVT_Japan",
     "PVT_Japan",
+    "24121T_Japan",
     "Unknow",
 };
 
@@ -266,6 +269,9 @@ static int board_id_probe(struct platform_device *pdev)
         case (6) :
              board_id_version = IDX_PVT_1;
              break;
+        case (7) :
+             board_id_version = IDX_24121T_1;
+             break;
         case (8) :
              board_id_version = IDX_T0_2;
              break;
@@ -278,11 +284,14 @@ static int board_id_probe(struct platform_device *pdev)
         case (11) :
              board_id_version = IDX_PVT_2;
              break;
-	case (21) :
+        case (21) :
              board_id_version = IDX_DVT_3;
              break;
         case (22) :
              board_id_version = IDX_PVT_3;
+             break;
+        case (23) :
+             board_id_version = IDX_24121T_2;
              break;
         default:
              board_id_version = IDX_UNKNOW;
