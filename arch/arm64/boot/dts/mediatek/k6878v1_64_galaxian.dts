@@ -576,7 +576,7 @@ bootargs_ext = "";
 
 #include <k6878v1_64/cust.dtsi>
 #include "mediatek/cust_mt6878_touch_galaga_1080x2392.dtsi"
-#include "mediatek/cust_mt6878_galaga_camera_v4l2.dtsi"
+#include "mediatek/cust_mt6878_galaxian_camera_v4l2.dtsi"
 #include "mediatek/cust_k6878_connfem.dtsi"
 #include "mediatek/sgm41606S.dtsi"
 #include "mediatek/sc8541.dtsi"
