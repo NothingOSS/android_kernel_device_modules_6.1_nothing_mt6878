@@ -330,19 +330,6 @@ bootargs_ext = "";
 	#size-cells = <0>;
 	switch-fps = <120>;
 	panel1@0 {
-		compatible = "jdi,nt36672e,vdo,60hz";
-		reg = <0>;
-		pm-enable-gpios = <&pio 153 0>;
-		reset-gpios = <&pio 90 0>;
-		gate-ic = <1>;
-		pinctrl-names = "default";
-		port {
-			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out>;
-			};
-		};
-	};
-	panel2@1 {
 		compatible = "rm69220,boe";
 		reg = <1>;
 		vddi-en-gpios = <&pio 32 0>;
@@ -355,12 +342,12 @@ bootargs_ext = "";
 		mipi-drive-capability = <0x06>;
 		pinctrl-names = "default";
 		port {
-			panel_in2: endpoint {
-				remote-endpoint = <&dsi_out2>;
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out>;
 			};
 		};
 	};
-	panel3@2 {
+	panel2@1 {
 		compatible = "rm69220,vxn";
 		reg = <2>;
 		vddi-en-gpios = <&pio 32 0>;
@@ -372,12 +359,12 @@ bootargs_ext = "";
 		esd-check-num = <1>;
 		pinctrl-names = "default";
 		port {
-			panel_in3: endpoint {
-				remote-endpoint = <&dsi_out3>;
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out2>;
 			};
 		};
 	};
-	panel4@3 {
+	panel3@2 {
 		compatible = "epd8820,boe";
 		reg = <3>;
 		vddi-en-gpios = <&pio 32 0>;
@@ -390,8 +377,8 @@ bootargs_ext = "";
 		mipi-drive-capability = <0x08>;
 		pinctrl-names = "default";
 		port {
-			panel_in4: endpoint {
-				remote-endpoint = <&dsi_out4>;
+			panel_in3: endpoint {
+				remote-endpoint = <&dsi_out3>;
 			};
 		};
 	};
@@ -405,9 +392,6 @@ bootargs_ext = "";
 			};
 			dsi_out3: endpoint@2 {
 				remote-endpoint = <&panel_in3>;
-			};
-			dsi_out4: endpoint@3 {
-				remote-endpoint = <&panel_in4>;
 			};
 		};
 	};
