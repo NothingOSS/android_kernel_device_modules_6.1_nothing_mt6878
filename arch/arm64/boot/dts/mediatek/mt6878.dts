@@ -302,6 +302,10 @@
 
 	};
 
+	breathing_lights: breathing_lights{
+
+	};
+
 	gic: interrupt-controller@c000000 {
 		/*TODO: please check interrupt controller again*/
 		compatible = "arm,gic-v3";

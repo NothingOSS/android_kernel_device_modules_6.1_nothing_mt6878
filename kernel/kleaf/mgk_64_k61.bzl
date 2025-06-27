@@ -230,6 +230,7 @@ mgk_64_k61_device_modules = [
     "drivers/leds/leds-mtk.ko",
     "drivers/leds/leds-mtk-pwm.ko",
     "drivers/leds/regulator-vibrator.ko",
+    "drivers/leds/breathing_lights.ko",
     "drivers/leds/flash/leds-mt6379.ko",
     "drivers/mailbox/mtk-ise-mailbox.ko",
     "drivers/mailbox/mtk-mbox-mailbox.ko",

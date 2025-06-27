@@ -201,6 +201,19 @@ bootargs_ext = "";
 	board_id_gpio4 = <&pio 189 0x0>;
 };
 
+&breathing_lights {
+	compatible = "breathing,lights";
+	status = "okay";
+	reg = <0x0>;
+
+	vdd-supply = <&mt6369_vibr>;
+};
+
+&mt6369_vibr {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+};
+
 &i2c6 {
 	clock-frequency = <400000>;
 	tfa98xx_smartpa_0: tfa98xx@34 {
