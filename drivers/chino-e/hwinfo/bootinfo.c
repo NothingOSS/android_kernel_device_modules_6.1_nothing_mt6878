@@ -56,6 +56,9 @@ EXPORT_SYMBOL(depth_camera);
 char tele_camera[32];
 EXPORT_SYMBOL(tele_camera);
 
+char micro_camera[32];
+EXPORT_SYMBOL(micro_camera);
+
 char main_camera_sn[64];
 EXPORT_SYMBOL(main_camera_sn);
 
@@ -68,6 +71,9 @@ EXPORT_SYMBOL(front_camera_sn);
 
 char tele_camera_sn[64];
 EXPORT_SYMBOL(tele_camera_sn);
+
+char micro_camera_sn[64];
+EXPORT_SYMBOL(micro_camera_sn);
 
 char main_module_id[64];
 EXPORT_SYMBOL(main_module_id);
@@ -529,6 +535,16 @@ static ssize_t tele_camera_info_show(struct kobject *kobj, struct kobj_attribute
 	return sizeof(tele_camera);
 }
 
+static ssize_t micro_camera_info_show(struct kobject *kobj, struct kobj_attribute *attr, char * buf)
+{
+	if(0 == strlen(micro_camera)){
+		sprintf(buf, "micro_camera error to find!\n");
+	} else {
+		sprintf(buf, "%s\n", micro_camera);
+	}
+	return sizeof(micro_camera);
+}
+
 static ssize_t uw_camera_info_show(struct kobject *kobj, struct kobj_attribute *attr, char * buf)
 {
 	if(0 == strlen(depth_camera)){
@@ -540,6 +556,11 @@ static ssize_t uw_camera_info_show(struct kobject *kobj, struct kobj_attribute *
 }
 
 static ssize_t tele_camera_info_store(struct kobject *kobj, struct kobj_attribute *attr, const char * buf, size_t n)
+{
+	return n;
+}
+
+static ssize_t micro_camera_info_store(struct kobject *kobj, struct kobj_attribute *attr, const char * buf, size_t n)
 {
 	return n;
 }
@@ -569,6 +590,15 @@ static struct kobj_attribute tele_camera_info_attr = {
 	},
 	.show =&tele_camera_info_show,
 	.store= &tele_camera_info_store,
+};
+
+static struct kobj_attribute micro_camera_info_attr = {
+	.attr = {
+		.name = "cam_micro_lens_mfr",
+		.mode = 0644,
+	},
+	.show =&micro_camera_info_show,
+	.store= &micro_camera_info_store,
 };
 
 static struct kobj_attribute uw_camera_info_attr = {
@@ -663,6 +693,16 @@ static ssize_t tele_camera_msn_show(struct kobject *kobj, struct kobj_attribute 
 	return sizeof(tele_camera_sn);
 }
 
+static ssize_t micro_camera_msn_show(struct kobject *kobj, struct kobj_attribute *attr, char * buf)
+{
+	if(0 == strlen(micro_camera_sn)){
+		sprintf(buf, "micro_camera_sn error to find!\n");
+	} else {
+		sprintf(buf, "%s\n", micro_camera_sn);
+	}
+	return sizeof(micro_camera_sn);
+}
+
 static ssize_t uw_camera_msn_show(struct kobject *kobj, struct kobj_attribute *attr, char * buf)
 {
 	if(0 == strlen(depth_camera_sn)){
@@ -688,6 +728,11 @@ static ssize_t tele_camera_msn_store(struct kobject *kobj, struct kobj_attribute
 	return n;
 }
 
+static ssize_t micro_camera_msn_store(struct kobject *kobj, struct kobj_attribute *attr, const char * buf, size_t n)
+{
+	return n;
+}
+
 static ssize_t uw_camera_msn_store(struct kobject *kobj, struct kobj_attribute *attr, const char * buf, size_t n)
 {
 	return n;
@@ -709,6 +754,15 @@ static struct kobj_attribute tele_camera_msn_attr = {
 	},
 	.show =&tele_camera_msn_show,
 	.store= &tele_camera_msn_store,
+};
+
+static struct kobj_attribute micro_camera_msn_attr = {
+	.attr = {
+		.name = "micro_camera_msn",
+		.mode = 0644,
+	},
+	.show =&micro_camera_msn_show,
+	.store= &micro_camera_msn_store,
 };
 
 static struct kobj_attribute uw_camera_msn_attr = {
@@ -999,6 +1053,7 @@ static struct attribute * g[] = {
 	&depth_camera_info_attr.attr,
 	&front_camera_info_attr.attr,
 	&tele_camera_info_attr.attr,
+	&micro_camera_info_attr.attr,
 	&uw_camera_info_attr.attr,
 #ifdef CAM_ERR_STATUS
 	&cam_err_status_attr.attr,
@@ -1008,6 +1063,7 @@ static struct attribute * g[] = {
 	&wide_camera_msn_attr.attr,
 	&cam_vendor_info_list_attr.attr,
 	&tele_camera_msn_attr.attr,
+	&micro_camera_msn_attr.attr,
 	&uw_camera_msn_attr.attr,
 	&depth_camera_msn_attr.attr,
 	&cam_depth_lens_efuse_attr.attr,
