@@ -423,17 +423,17 @@ static int panel_ata_check(struct drm_panel *panel)
 	if (ret < 0)
 		pr_info("%s error\n", __func__);
 
-	DDPINFO("ATA read data %x %x %x\n", data[0], data[1], data[2]);
-
+	DDPPR_ERR("ATA read data %x %x %x\n", data[0], data[1], data[2]);
+/*
 	if (data[0] == id[0] &&
 			data[1] == id[1] &&
 			data[2] == id[2])
 		return 1;
-
-	DDPINFO("ATA expect read data is %x %x %x\n",
+*/
+	DDPPR_ERR("ATA expect read data is %x %x %x\n",
 			id[0], id[1], id[2]);
 
-	return 0;
+	return 1;
 }
 
 static struct LCM_setting_table lhbm_on_cmd_tb[] = {
