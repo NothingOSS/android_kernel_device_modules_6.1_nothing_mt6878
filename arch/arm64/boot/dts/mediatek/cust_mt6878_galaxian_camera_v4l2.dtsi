@@ -86,6 +86,12 @@
 			remote-endpoint = <&main_af>;
 		};
 	};
+	port@1 {
+		reg = <0>;
+		tele_af_endpoint: endpoint {
+			remote-endpoint = <&tele_af>;
+		};
+	};
 };
 
 /* CAMERA GPIO standardization */
@@ -527,9 +533,18 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
+	camera-af-tele@c {
+		compatible = "mediatek,cn3968";
+		reg = <0x0c>;
+		port {
+			tele_af: endpoint {
+				remote-endpoint = <&tele_af_endpoint>;
+			};
+		};
+	};
 	sensor3: sensor3@36 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "gc02m1_mipi_raw";
+		sensor-names = "gc02m1_mipi_raw","ov50d40_mipi_raw", "ov50d40ofilm_mipi_raw";
 		reg = <0x36>;
 		#reindex-to = <0>;
 
@@ -554,7 +569,8 @@
 
 		avdd-supply = <&camera_tele_avdd>;
 		dovdd-supply = <&camera_common_dovdd>;
-
+		dvdd-supply = <&ldo_dvdd_tele>;
+		afvdd-supply = <&ldo_afvdd_m_tele>;
 		clocks = <&topckgen_clk CLK_TOP_UVPLL192M_D32>,
 			<&topckgen_clk CLK_TOP_UVPLL192M_D16>,
 			<&topckgen_clk CLK_TOP_OSC_D20>,
