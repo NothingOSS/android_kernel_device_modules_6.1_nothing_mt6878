@@ -531,7 +531,7 @@
 
 &i2c9 {
 	status = "okay";
-	clock-frequency = <1000000>;
+	clock-frequency = <400000>;
 
 	camera-af-tele@c {
 		compatible = "mediatek,cn3968";
