@@ -14,5 +14,5 @@ obj-$(CONFIG_LEDS_REGULATOR_VIBRATOR)	+= regulator-vibrator.o
 # Flash and Torch LED Drivers
 obj-$(CONFIG_LEDS_CLASS_FLASH)		+= flash/
 
-obj-$(CONFIG_OEM_LED)  += breathing_lights.o
+obj-$(CONFIG_OEM_LED)  += noth_leds.o
 

@@ -16,7 +16,7 @@
 #define VTG_MIN_UV                      3300000
 #define VTG_MAX_UV                      3300000
 
-#define BREATHING_LIGHTS_DEVICE                     "breathing_lights"
+#define BREATHING_LIGHTS_DEVICE                     "noth_leds"
 
 static struct hrtimer g_hr_timer;
 static ktime_t hr_timer_interval_ns;
@@ -66,34 +66,46 @@ static void hr_timer_init(void)
     hr_timer_interval_ns = ktime_set(0, 1000000 * 1000); // 1000 ms
 }
 
-static ssize_t breathing_lights_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t state_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
+    int ret;
+
     sscanf(buf, "%d", &perioid);
     printk(KERN_ERR "[breathing_lights] value=%d\n", perioid);
     if (perioid > 0 ) {
-        timer_enabled = 1;
-        hrtimer_start(&g_hr_timer, perioid * 1000 * 1000, HRTIMER_MODE_REL);
+        if(perioid == 1)
+        {
+            timer_enabled = 0;
+            if (!regulator_is_enabled(lights_data->vdd)){
+                ret = regulator_enable(lights_data->vdd);
+            }
+        } else {
+            timer_enabled = 1;
+            hrtimer_start(&g_hr_timer, perioid * 1000 * 1000, HRTIMER_MODE_REL);
+        }
     } else {
         timer_enabled = 0;
         if (regulator_is_enabled(lights_data->vdd)){
             regulator_disable(lights_data->vdd);
         }
     }
+
     return count;
 }
-static ssize_t breathing_lights_show(struct device *dev, struct device_attribute *attr, char *buf)
+
+static ssize_t state_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
     ssize_t len = 0;
 
-    len += snprintf(buf + len, PAGE_SIZE - len, "breath perioid = %d\n", perioid);
+    len = snprintf(buf, PAGE_SIZE, "breath perioid = %d\n", perioid);
 
     return len;
 }
 
-static DEVICE_ATTR(breathing_lights, S_IWUSR | S_IRUGO, breathing_lights_show, breathing_lights_store);
+static DEVICE_ATTR(state, S_IWUSR | S_IRUGO, state_show, state_store);
 
 static struct attribute * g[] = {
-	&dev_attr_breathing_lights.attr,
+        &dev_attr_state.attr,
 	NULL,
 };
 
@@ -151,6 +163,7 @@ static int breathing_lights_probe(struct platform_device *pdev)
 static int breathing_lights_remove(struct platform_device *pdev)
 {
     int ret;
+
     ret = regulator_disable(lights_data->vdd);
 
     if (timer_enabled)
