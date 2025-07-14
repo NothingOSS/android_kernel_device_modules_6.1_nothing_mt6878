@@ -290,6 +290,10 @@ static void transceiver_print_event(struct hf_manager_event *event, int64_t src_
 			pr_info("[SCP/AP] pocket_mode_event scp_ts 0x%llX hal_ts 0x%llX status %d tiltAngle %d prox %d\n",
 				src_timestamp, remap_timestamp, event->word[0], event->word[1], event->word[2]);
 			break;
+		case SENSOR_TYPE_SCREEN_UPWARD:
+			pr_info("[SCP/AP] screen_upward_event scp_ts 0x%llX hal_ts 0x%llX data %d\n",
+				src_timestamp, remap_timestamp, event->word[0]);
+			break;
 		case SENSOR_TYPE_NT_SAR:
 			pr_info("[SCP/AP] sar_event scp_ts 0x%llX hal_ts 0x%llX data %d %d %d\n",
 				src_timestamp, remap_timestamp, event->word[0], event->word[1], event->word[2]);
