@@ -53,6 +53,7 @@ enum {
     IDX_DVT_3 = 12,
     IDX_PVT_3 = 13,
     IDX_24121T_2 = 14,
+    IDX_24121T_3 = 15,
     IDX_UNKNOW,
 };
 
@@ -72,6 +73,7 @@ static const char * const hwid_type_text[] = {
     "DVT_Japan",
     "PVT_Japan",
     "24121T_Japan",
+    "24121T_India",
     "Unknow",
 };
 
@@ -284,6 +286,9 @@ static int board_id_probe(struct platform_device *pdev)
         case (11) :
              board_id_version = IDX_PVT_2;
              break;
+	case (12) :
+	     board_id_version = IDX_24121T_3;
+	     break;
         case (21) :
              board_id_version = IDX_DVT_3;
              break;
