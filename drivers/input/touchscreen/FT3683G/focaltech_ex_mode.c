@@ -48,7 +48,8 @@ enum _ex_mode {
     MODE_EARPHONE,
     MODE_EDGEPALM,
     MODE_FWDBG,
-    MODE_LOW_BATTERY
+    MODE_LOW_BATTERY,
+    MODE_PALM_TO_SLEEP
 };
 
 /*****************************************************************************
@@ -87,6 +88,7 @@ static int fts_ex_mode_set_reg(u8 mode_regaddr, u8 mode_regval)
 static int fts_ex_mode_switch(enum _ex_mode mode, int value)
 {
     int ret = 0;
+    u8 state = 0;
 
     switch (mode) {
     case MODE_GLOVE:
@@ -120,6 +122,17 @@ static int fts_ex_mode_switch(enum _ex_mode mode, int value)
     case MODE_LOW_BATTERY:
         ret = fts_ex_mode_set_reg(FTS_REG_POWER_LEVEL, (value ? 0x01 : 0x00));
         if (ret) FTS_ERROR("Set MODE_LOW_BATTERY to %d failed", value);
+        break;
+    case MODE_PALM_TO_SLEEP:
+        FTS_INFO("PalmToSleep Mode %s\n", (value ? "Enable" : "Disable"));
+        ret = fts_ex_mode_set_reg(FTS_REG_PALM_TO_SLEEP_EN, (u8)value);
+        if (ret) FTS_ERROR("Set PalmToSleep Mode to %d failed", value);
+        msleep(10);
+        fts_read_reg(FTS_REG_PALM_TO_SLEEP_EN, &state);
+        if (state != (u8)value) {
+            ret = fts_ex_mode_set_reg(FTS_REG_PALM_TO_SLEEP_EN, (u8)value);
+            if (ret) FTS_ERROR("Set PalmToSleep Mode to %d failed", value);
+        }
         break;
     default:
         FTS_ERROR("mode(%d) unsupport", mode);
@@ -346,6 +359,50 @@ static struct attribute_group fts_touch_mode_group = {
     .attrs = fts_touch_mode_attrs,
 };
 
+/* 0：Enable palm to sleep support; 1: Disable palm to sleep support */
+ssize_t fts_proc_palm_to_sleep_support_write(struct file *filp, const char __user *ubuf,
+        size_t count, loff_t *pos)
+{
+    char buf[20];
+    u32 tmp;
+    struct fts_ts_data *ts_data = fts_data;
+
+    memset(buf, 0x00, sizeof(buf));
+    if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+        return -EFAULT;
+    if (kstrtouint(buf, 0, &tmp))
+        return -EINVAL;
+
+    mutex_lock(&fts_data->input_dev->mutex);
+    if (tmp == 1) {
+        ts_data->palm_to_sleep_support = ENABLE;
+    } else if (tmp == 0) {
+        ts_data->palm_to_sleep_support = DISABLE;
+    }
+    fts_ex_mode_switch(MODE_PALM_TO_SLEEP, tmp);
+    mutex_unlock(&fts_data->input_dev->mutex);
+
+    return count;
+}
+int fts_proc_palm_to_sleep_support_read(struct seq_file *s, void *unused)
+{
+    u8 reg_val = 0;
+    struct fts_ts_data *ts_data = fts_data;
+
+    mutex_lock(&ts_data->input_dev->mutex);
+    if (fts_read_reg(FTS_REG_PALM_TO_SLEEP_EN, &reg_val)) {
+        FTS_ERROR("Failed to read register 0x%02x\n", FTS_REG_PALM_TO_SLEEP_EN);
+        mutex_unlock(&ts_data->input_dev->mutex);
+        return -EIO;
+    }
+
+    seq_printf(s, "PalmToSleep Mode:%d\n", ts_data->palm_to_sleep_support);
+    seq_printf(s, "Reg:0x%02x,val:%d\n", FTS_REG_PALM_TO_SLEEP_EN, reg_val);
+    mutex_unlock(&ts_data->input_dev->mutex);
+
+    return 0;
+}
+
 int fts_ex_mode_recovery(struct fts_ts_data *ts_data)
 {
     if (ts_data->glove_mode) {
@@ -374,6 +431,10 @@ int fts_ex_mode_recovery(struct fts_ts_data *ts_data)
 
     if (ts_data->low_battery_mode) {
         fts_ex_mode_switch(MODE_LOW_BATTERY, ENABLE);
+    }
+
+    if (ts_data->palm_to_sleep_support) {
+        fts_ex_mode_switch(MODE_PALM_TO_SLEEP, ts_data->palm_to_sleep_support);
     }
 
     return 0;

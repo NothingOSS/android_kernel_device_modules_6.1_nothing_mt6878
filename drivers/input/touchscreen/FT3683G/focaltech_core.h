@@ -292,6 +292,7 @@ struct fts_ts_data {
     bool fwdbg_support;
     bool gesture_support;   /* gesture enable or disable, default: disable */
     u8 gesture_bmode;       /*gesture buffer mode*/
+    bool palm_to_sleep_support;
 
     int fod_fp_down;
     int edgepalm_value;
@@ -410,6 +411,12 @@ void fts_fod_enable(int enable);
 void fts_fod_report_key(struct fts_ts_data *ts_data);
 int fts_fod_readdata(struct fts_ts_data *ts_data);
 #endif
+
+/* palm to sleep */
+void fts_palm_to_sleep_report_key(struct fts_ts_data *ts_data);
+ssize_t fts_proc_palm_to_sleep_support_write(struct file *filp, const char __user *buff,
+        size_t count, loff_t *pos);
+int fts_proc_palm_to_sleep_support_read(struct seq_file *s, void *unused);
 
 /* Apk and functions */
 int fts_create_apk_debug_channel(struct fts_ts_data *);

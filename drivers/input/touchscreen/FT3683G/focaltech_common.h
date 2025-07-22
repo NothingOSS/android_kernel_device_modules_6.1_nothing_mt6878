@@ -101,6 +101,7 @@
 #define FTS_REG_GLOVE_MODE_EN               0xC0
 #define FTS_REG_COVER_MODE_EN               0xC1
 #define FTS_REG_EARPHONE_MODE_EN            0xC3
+#define FTS_REG_POCKET_MODE                 0xCE
 #define FTS_REG_GESTURE_EN                  0xD0
 #define FTS_REG_GESTURE_OUTPUT_ADDRESS      0xD3
 #define FTS_REG_PANEL_ID                    0xE3
@@ -115,7 +116,8 @@
 #define FTS_MAX_RETRIES_READID_RESUME       5
 #define FTS_MAX_RETRIES_READ_BOOTID         5
 #define FTS_MAX_RETRIES_WRITEREG            5
-#define FTS_REG_POCKET_MODE                 0x9A
+#define FTS_REG_PALM_TO_SLEEP_EN            0x9A
+#define FTS_REG_PALM_TO_SLEEP_STATUS        0x9B
 #define FTS_REG_GAME_MODE_EN                0x99
 #define FTS_REG_POWER_LEVEL                 0xCB
 

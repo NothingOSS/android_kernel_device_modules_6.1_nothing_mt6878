@@ -1045,6 +1045,10 @@ int fts_fwdbg_irq_handler(struct fts_ts_data *ts_data)
         }
     }
 
+    if (ts_data->palm_to_sleep_support) {
+        fts_palm_to_sleep_report_key(ts_data);
+    }
+
     if ((touch_buf[1] == 0xFF) && (touch_buf[2] == 0xFF) && (touch_buf[3] == 0xFF) && (touch_buf[4] == 0xFF)) {
         FTS_INFO("touch buff is 0xff, FW initialized");
         fts_release_all_finger();

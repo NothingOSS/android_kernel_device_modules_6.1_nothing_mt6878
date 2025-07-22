@@ -52,6 +52,7 @@
 #define KEY_GESTURE_C                           KEY_C
 #define KEY_GESTURE_Z                           KEY_Z
 #define KEY_GESTURE_WAKEUP                     KEY_WAKEUP
+#define KEY_PALM_TO_SLEEP                       252
 
 #define GESTURE_LEFT                            0x20
 #define GESTURE_RIGHT                           0x21
@@ -291,6 +292,23 @@ void fts_fod_report_key(struct fts_ts_data *ts_data)
     }
 }
 
+
+void fts_palm_to_sleep_report_key(struct fts_ts_data *ts_data)
+{
+    u8 palm_to_sleep_status = 0xFF;
+
+    fts_read_reg(FTS_REG_PALM_TO_SLEEP_STATUS, &palm_to_sleep_status);
+
+    if (palm_to_sleep_status == 0x01) {
+        input_report_key(ts_data->input_dev, KEY_PALM_TO_SLEEP, 1);
+        input_sync(ts_data->input_dev);
+        FTS_DEBUG("KEY_PALM_TO_SLEEP, 1\n");
+        input_report_key(ts_data->input_dev, KEY_PALM_TO_SLEEP, 0);
+        input_sync(ts_data->input_dev);
+        FTS_DEBUG("KEY_PALM_TO_SLEEP, 0\n");
+    }
+}
+
 static void fts_gesture_report(struct input_dev *input_dev, int gesture_id)
 {
     int gesture;
@@ -520,6 +538,7 @@ int fts_gesture_init(struct fts_ts_data *ts_data)
     input_set_capability(input_dev, EV_KEY, KEY_GESTURE_C);
     input_set_capability(input_dev, EV_KEY, KEY_GESTURE_FOD);
     input_set_capability(input_dev, EV_KEY, KEY_GESTURE_WAKEUP);
+    input_set_capability(input_dev, EV_KEY, KEY_PALM_TO_SLEEP);
 
 
     __set_bit(KEY_GESTURE_RIGHT, input_dev->keybit);
@@ -538,6 +557,7 @@ int fts_gesture_init(struct fts_ts_data *ts_data)
     __set_bit(KEY_GESTURE_Z, input_dev->keybit);
     __set_bit(KEY_GESTURE_FOD, input_dev->keybit);
     __set_bit(KEY_GESTURE_WAKEUP, input_dev->keybit);
+    __set_bit(KEY_PALM_TO_SLEEP, input_dev->keybit);
 
 
     fts_create_gesture_sysfs(ts_data->dev);

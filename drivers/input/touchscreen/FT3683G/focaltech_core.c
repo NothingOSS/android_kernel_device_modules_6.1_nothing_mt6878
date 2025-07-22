@@ -600,6 +600,43 @@ static int fts_fod_checkdown(struct fts_ts_data *ts_data)
 {
     return (ts_data->fod_mode && ts_data->fod_fp_down);
 }
+
+static int fts_fod_suspend(struct fts_ts_data *ts_data)
+{
+    u8 state = 0xFF;
+    int i = 0;
+    for (i = 0; i < FTS_MAX_RETRIES_WRITEREG; i++) {
+        fts_write_reg(FTS_REG_GESTURE_EN, ENABLE);
+        fts_msleep(1);
+        fts_read_reg(FTS_REG_GESTURE_EN, &state);
+        if (state == ENABLE)
+             break;
+    }
+    if (i >= FTS_MAX_RETRIES_WRITEREG)
+        FTS_ERROR("fts_fod_suspend set gesture to ENABLE failed,state:%d, reg_val:%x", state, FTS_REG_GESTURE_EN);
+    else if (i >= 0)
+        FTS_INFO("fts_fod_suspend set gesture to ENABLE successfully");
+    return 0;
+}
+
+static int fts_fod_resume(struct fts_ts_data *ts_data)
+{
+    u8 state = 0xFF;
+    int i = 0;
+
+    for (i = 0; i < FTS_MAX_RETRIES_WRITEREG; i++) {
+        fts_write_reg(FTS_REG_GESTURE_EN, DISABLE);
+        fts_msleep(1);
+        fts_read_reg(FTS_REG_GESTURE_EN, &state);
+        if (state == DISABLE)
+            break;
+    }
+    if (i >= FTS_MAX_RETRIES_WRITEREG)
+        FTS_ERROR("fts_fod_resume set gesture to DISABLE failed,state:%d, reg_val:%x", state, FTS_REG_GESTURE_EN);
+    else if (i >= 0)
+        FTS_INFO("fts_fod_resume set gesture to DISABLE successfully");
+    return 0;
+}
 #endif
 
 /*****************************************************************************
@@ -1204,6 +1241,10 @@ static int fts_read_parse_touchdata(struct fts_ts_data *ts_data, u8 *touch_buf)
         }
     }
 #endif
+
+    if (ts_data->palm_to_sleep_support) {
+        fts_palm_to_sleep_report_key(ts_data);
+    }
 
     if (ts_data->suspended && ts_data->gesture_support) {
         if (fts_gesture_readdata(ts_data, touch_buf) == FTS_RETVAL_IGNORE_TOUCHES)
@@ -2072,6 +2113,7 @@ static int fts_ts_suspend(struct device *dev)
 
 #if FTS_FOD_EN
     if (ts_data->fod_mode) {
+            fts_fod_suspend(ts_data);
         ts_data->need_work_in_suspend = true;
     }
 #endif
@@ -2146,6 +2188,12 @@ static int fts_ts_resume(struct device *dev)
     if (ts_data->gesture_support) {
         fts_gesture_resume(ts_data);
     }
+
+#if FTS_FOD_EN
+    if (ts_data->fod_mode) {
+        fts_fod_resume(ts_data);
+    }
+#endif
 
     fts_ex_mode_recovery(ts_data);
     fts_esdcheck_resume(ts_data);

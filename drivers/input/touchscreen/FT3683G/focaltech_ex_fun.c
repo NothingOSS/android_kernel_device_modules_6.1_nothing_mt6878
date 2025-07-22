@@ -1578,6 +1578,18 @@ static const struct proc_ops fts_fod_fops = {
     .proc_release = single_release,
 };
 #endif
+
+static int fts_proc_palm_to_sleep_support_open(struct inode* inode, struct file* file){
+    return single_open(file, fts_proc_palm_to_sleep_support_read, NULL);
+}
+
+static struct proc_ops proc_palm_to_sleep_fops = {
+    .proc_open = fts_proc_palm_to_sleep_support_open,
+    .proc_write = fts_proc_palm_to_sleep_support_write,
+    .proc_read = seq_read,
+    .proc_lseek = seq_lseek,
+    .proc_release = single_release,
+};
 /* get the fw version  example:cat fw_version */
 static DEVICE_ATTR(fts_fw_version, S_IRUGO | S_IWUSR, fts_tpfwver_show, fts_tpfwver_store);
 
@@ -1662,6 +1674,8 @@ int fts_remove_sysfs(struct fts_ts_data *ts_data)
 
 int fts_procfs_init(void)
 {
+    fts_data->palm_to_sleep_support = DISABLE;
+
     proc_touchpanel = proc_mkdir("touchpanel", NULL);
     if (!proc_touchpanel) {
         FTS_ERROR("procfs(proc/touchpanel) create fail");
@@ -1677,6 +1691,7 @@ int fts_procfs_init(void)
         proc_create_data("game_mode", 0664, proc_touchpanel, &fts_game_mode_fops, NULL);
         proc_create_data("edge_mode", 0664, proc_touchpanel, &fts_edge_mode_fops, NULL);
         proc_create_data("diff_mode", 0664, proc_touchpanel, &fts_diff_mode_fops, NULL);
+        proc_create_data("palm_to_sleep_support", 0664, proc_touchpanel, &proc_palm_to_sleep_fops, NULL);
         FTS_DEBUG("procfs(test) create successfully");
     }
 
