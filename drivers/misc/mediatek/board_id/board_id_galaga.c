@@ -65,15 +65,15 @@ static const char * const hwid_type_text[] = {
     "POWER_BOARD",
     "DVT",
     "PVT",
-    "24121T",
+    "PVT_T",
     "T0_India",
     "EVT_India",
     "DVT_India",
     "PVT_India",
     "DVT_Japan",
     "PVT_Japan",
-    "24121T_Japan",
-    "24121T_India",
+    "PVT_T_Japan",
+    "PVT_T__India",
     "Unknow",
 };
 
