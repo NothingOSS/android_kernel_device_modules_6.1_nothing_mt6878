@@ -1191,9 +1191,6 @@ static int fts_read_touchdata_i2c(struct fts_ts_data *ts_data, u8 *buf)
 static int fts_read_parse_touchdata(struct fts_ts_data *ts_data, u8 *touch_buf)
 {
     int ret = 0;
-#if FTS_FOD_EN
-    u8 fod_state = 0xFF;
-#endif
 
     memset(touch_buf, 0xFF, FTS_MAX_TOUCH_BUF);
     ts_data->ta_size = ts_data->touch_size;
@@ -1230,14 +1227,11 @@ static int fts_read_parse_touchdata(struct fts_ts_data *ts_data, u8 *touch_buf)
 
 #if FTS_FOD_EN
     if (ts_data->fod_mode) {
-        fts_read_reg(FTS_REG_FOD_MODE_EN, &fod_state);
-        if(fod_state==FTS_VAL_FOD_ENABLE) {
-            fts_fod_readdata(ts_data);
-            if (ts_data->fod_info.event_type == FTS_REG_FOD_INFO_ID) {
-                fts_fod_report_key(ts_data);
-                if (ts_data->suspended)
-                    return TOUCH_FOD;
-            }
+        fts_fod_readdata(ts_data);
+        if (ts_data->fod_info.event_type == FTS_REG_FOD_INFO_ID) {
+            fts_fod_report_key(ts_data);
+            if (ts_data->suspended)
+                return TOUCH_FOD;
         }
     }
 #endif
