@@ -665,6 +665,10 @@ static int battery_psy_get_property(struct power_supply *psy,
 			val->intval = 1;
 		*/
 		val->intval = gm->bat_cycle;
+		if (gm->fixed_cyclecount != FAKE_BATT_MAGIC) {
+			val->intval = gm->fixed_cyclecount;
+			break;
+		}
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		/* 1 = META_BOOT, 4 = FACTORY_BOOT 5=ADVMETA_BOOT */
@@ -1052,6 +1056,7 @@ void battery_service_data_init(struct mtk_battery *gm)
 	bs_data->bat_batt_temp = 0,
 	//gm->fixed_uisoc = 0xffff;
 	gm->fixed_uisoc = FAKE_BATT_MAGIC;
+	gm->fixed_cyclecount = FAKE_BATT_MAGIC;
 }
 
 /* ============================================================ */

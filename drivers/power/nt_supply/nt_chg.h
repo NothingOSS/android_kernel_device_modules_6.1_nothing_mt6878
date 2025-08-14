@@ -76,6 +76,7 @@ enum nt_fake_value {
 	FAKE_VBAT,
 	FAKE_IBAT,
 	FAKE_TUSB,
+	FAKE_CYCLECUNTER,
 	FAKE_TYPE_MAX,
 };
 
@@ -185,6 +186,7 @@ struct nt_chg_info {
 	int fake_vbat;
 	int fake_ibat;
 	int fake_tusb;
+	int fake_cyclecount;
 	int cam_on_off;
 	int pre_nt_cam;
 	int cam_lmt;

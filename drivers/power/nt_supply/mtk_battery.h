@@ -977,6 +977,7 @@ struct mtk_battery {
 	int fixed_uisoc;
 	int fixed_bat_v;
 	int fixed_bat_i;
+	int fixed_cyclecount;
 	int nt_quse;
 	int nt_bat_health;
 	int prj_id;

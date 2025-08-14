@@ -1089,6 +1089,11 @@ static ssize_t handle_fake_value(struct file *file,
 			set_usb_temperature(value);
 			pr_info("%s: fake_tusb: %d \n", __func__,nci->fake_tusb);
 		break;
+		case FAKE_CYCLECUNTER:
+			nci->fake_cyclecount = value;
+			gm->fixed_cyclecount = value;
+			pr_info("%s: fake_cyclecount: %d \n", __func__,nci->fake_cyclecount);
+		break;
 		default:
 			break;
 	}
@@ -1438,6 +1443,22 @@ static ssize_t ui_soc_proc_write(struct file *file,
 }
 PROC_FOPS_RW(ui_soc);
 
+static int nt_fake_cycle_proc_show(struct seq_file *m, void *v)
+{
+	struct nt_chg_info *nci = m->private;
+	if(nci){
+		pr_info("%s: nt_fake_cycle_proc_show %d\n",__func__, nci->fake_cyclecount);
+		seq_printf(m, "%d\n", nci->fake_cyclecount);
+	}
+	return 0;
+}
+static ssize_t nt_fake_cycle_proc_write(struct file *file,
+	const char __user *buffer, size_t count, loff_t *pos)
+{
+	return handle_fake_value(file, buffer, count, pos, FAKE_CYCLECUNTER);
+}
+PROC_FOPS_RW(nt_fake_cycle);
+
 const struct nt_proc entries[] = {
 	PROC_ENTRY(usb_charger_en),
 	PROC_ENTRY(voltage_adc),
@@ -1469,6 +1490,7 @@ const struct nt_proc entries[] = {
 	PROC_ENTRY(battery_health),
 	PROC_ENTRY(area_id),
 	PROC_ENTRY(ui_soc),
+	PROC_ENTRY(nt_fake_cycle),
 };
 #endif
 
@@ -2048,6 +2070,7 @@ static int nt_chg_probe(struct platform_device *pdev)
 	nci->fake_ibat = FAKE_BATT_MAGIC;
 	nci->fake_vbat = FAKE_BATT_MAGIC;
 	nci->fake_tusb = FAKE_BATT_MAGIC;
+	nci->fake_cyclecount = FAKE_BATT_MAGIC;
 	nci->area_id = 0;
 	nci->ui_soc = -1;
 	nt_charger_init_timer(nci);
