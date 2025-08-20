@@ -44,6 +44,8 @@ static LIST_HEAD(viocb_list);
 static LIST_HEAD(powercb_list);
 static DEFINE_SPINLOCK(devapc_lock);
 
+static bool disable_audio_ke;
+
 static void devapc_test_cb(void)
 {
 	pr_info(PFX "%s success !\n", __func__);
@@ -897,7 +899,7 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 	char dispatch_key[48] = {0};
 	enum infra_subsys_id id;
 	uint32_t ret_cb = 0;
-
+	bool is_audio_vio = false;
 	device_info = mtk_devapc_ctx->soc->device_info;
 	dbg_stat = mtk_devapc_ctx->soc->dbg_stat;
 	vio_info = mtk_devapc_ctx->soc->vio_info;
@@ -953,33 +955,46 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 			id = INFRA_SUBSYS_GZ;
 	else
 		id = DEVAPC_SUBSYS_RESERVED;
+	is_audio_vio = ((slave_type == 0x2) && (vio_index == 0x16));
 
 	/* enable_ut to test callback */
 	if (dbg_stat->enable_ut)
 		id = DEVAPC_SUBSYS_TEST;
 
-	list_for_each_entry(viocb, &viocb_list, list) {
-		if (viocb->id == id && viocb->debug_dump)
-			viocb->debug_dump();
+	if (check_vio_status(slave_type, vio_index) == VIOLATION_TRIGGERED) {
+		pr_info(PFX "Clearing violation status for slave_type: %d, vio_index: %d\n", slave_type, vio_index);
+		(void)clear_vio_status(slave_type, vio_index);
+	}
 
-		/* call MD cb_adv if it's registered */
-		if (viocb->id == id && id == INFRA_SUBSYS_MD &&
-				viocb->debug_dump_adv)
-			ret_cb = viocb->debug_dump_adv(vio_addr);
+	if (is_audio_vio == false) {
+		pr_info(PFX " Other violation: %d/%d\n", slave_type, vio_index);
 
-		/* always call clkmgr cb if it's registered */
-		if (viocb->id == DEVAPC_SUBSYS_CLKMGR &&
-				viocb->debug_dump &&
-				vio_type != DEVAPC_VIO_PERM_DENIED &&
-				ret_cb != DEVAPC_NOT_KE)
-			viocb->debug_dump();
+		list_for_each_entry(viocb, &viocb_list, list) {
+			if (viocb->id == id && viocb->debug_dump)
+				viocb->debug_dump();
+
+			/* call MD cb_adv if it's registered */
+			if (viocb->id == id && id == INFRA_SUBSYS_MD &&
+					viocb->debug_dump_adv)
+				ret_cb = viocb->debug_dump_adv(vio_addr);
+
+			/* always call clkmgr cb if it's registered */
+			if (viocb->id == DEVAPC_SUBSYS_CLKMGR &&
+					viocb->debug_dump &&
+					vio_type != DEVAPC_VIO_PERM_DENIED &&
+					ret_cb != DEVAPC_NOT_KE)
+				viocb->debug_dump();
+		}
 	}
 
 	/* Severity level */
 	if (dbg_stat->enable_KE && (ret_cb != DEVAPC_NOT_KE)) {
-		pr_info(PFX "Device APC Violation Issue/%s", dispatch_key);
-		BUG_ON(id != INFRA_SUBSYS_CONN && id != INFRA_SUBSYS_PCIE);
-
+		pr_info(PFX "Device APC Violation Issue/%s\n", dispatch_key);
+		if ((disable_audio_ke == true) && (is_audio_vio == true)) {
+			pr_info(PFX "Skip \"AUDIO_S-2\" BUG_ON!!!\n");
+		} else {
+			BUG_ON(id != INFRA_SUBSYS_CONN && id != INFRA_SUBSYS_PCIE);
+		}
 	} else if (dbg_stat->enable_AEE) {
 		/* call mtk aee_kernel_exception */
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
@@ -1071,7 +1086,6 @@ static void devapc_dump_info(bool booting)
 
 		devapc_extra_handler(slave_type, vio_master, vio_idx,
 				vio_info->vio_addr, vio_type);
-
 		mask_module_irq(slave_type, vio_idx, false);
 	}
 }
@@ -1187,7 +1201,7 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 
 		// In case of a subsys will not KE,
 		// do not unmask irq to let subsys able to dump information.
-		// mask_module_irq(slave_type, vio_idx, false);
+		mask_module_irq(slave_type, vio_idx, false);
 		break;
 	}
 
@@ -1391,6 +1405,21 @@ ssize_t mtk_devapc_dbg_write(struct file *file, const char __user *buffer,
 
 		return count;
 
+	} else if (!strncmp(cmd_str, "mask_audio_vio", sizeof("mask_audio_vio"))) {
+		bool mask = (param != 0);
+
+		pr_info(PFX "%s \"AUDIO_S-2\" violation!!!\n", mask? "Mask":"Unmask");
+		mask_module_irq(0x2, 0x20, mask);
+
+		return count;
+
+	} else if (!strncmp(cmd_str, "disable_audio_ke", sizeof("disable_audio_ke"))) {
+		disable_audio_ke = (param != 0);
+			pr_info(PFX "\"AUDIO_S-2\" %s KE\n",
+					disable_audio_ke ?
+					"disable" : "enable");
+
+		return count;
 	} else if (!strncmp(cmd_str, "enable_AEE", sizeof("enable_AEE"))) {
 		if (dbg_stat->enable_ut) {
 			dbg_stat->enable_AEE = (param != 0);
@@ -1756,6 +1785,8 @@ int mtk_devapc_probe(struct platform_device *pdev,
 	int ret;
 
 	pr_info(PFX "driver registered\n");
+
+	disable_audio_ke = true;
 
 #ifdef CONFIG_MTK_SERROR_HOOK
 	ret = register_trace_android_rvh_arm64_serror_panic(
