@@ -7,3 +7,6 @@
 
 3. OS 3.0 (Tetris-V3.0-250409-1734)
   - [usb] mtu3: refine power on/off flow
+
+4. OS 3.2 (Tetris-V3.2-250609-2111)
+  - No update
