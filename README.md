@@ -10,3 +10,6 @@
 
 4. OS 3.2 (Tetris-V3.2-250609-2111)
   - No update
+
+5. OS 3.2 (Tetris-V3.2-250723-1800)
+  - No update
