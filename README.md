@@ -11,3 +11,6 @@
 
 4. OS 3.2 (Galaga-V3.2-250616-1258)
   - No update
+
+5. OS 3.2 (Galaga-V3.2-250715-1813)
+  - Improve LCD
