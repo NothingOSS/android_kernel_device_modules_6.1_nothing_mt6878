@@ -150,7 +150,11 @@ static bool transceiver_wakeup_check(uint8_t action, uint8_t sensor_type)
 			sensor_type == SENSOR_TYPE_MOTION_DETECT ||
 			sensor_type == SENSOR_TYPE_IN_POCKET ||
 			sensor_type == SENSOR_TYPE_ANSWER_CALL ||
-			sensor_type == SENSOR_TYPE_FLAT))
+			sensor_type == SENSOR_TYPE_FLAT ||
+			sensor_type == SENSOR_TYPE_FINGERPRINT_DISPLAY ||
+			sensor_type == SENSOR_TYPE_AMBIENT_LIGHT ||
+			sensor_type == SENSOR_TYPE_POCKET_MODE ||
+			sensor_type == SENSOR_TYPE_SCREEN_UPWARD))
 		return true;
 
 	return false;
@@ -248,7 +252,7 @@ static void transceiver_report(struct transceiver_device *dev,
 	do {
 		if (action != FLUSH_ACTION) {
 			if (need_wakeup)
-				__pm_wakeup_event(dev->wakeup_src, 250);
+				__pm_wakeup_event(dev->wakeup_src, 2000);
 			ret = manager->report(manager, event);
 		} else {
 			/*
