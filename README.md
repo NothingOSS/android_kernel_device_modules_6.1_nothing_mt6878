@@ -14,3 +14,7 @@
 
 5. OS 3.2 (Galaga-V3.2-250715-1813)
   - Improve LCD
+
+6. OS 3.2 (Galaga-V3.2-250903-2153)
+  - Fix LCD issue
+  - Fix Audio issue
