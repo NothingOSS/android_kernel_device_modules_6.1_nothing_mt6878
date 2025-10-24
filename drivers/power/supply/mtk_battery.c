@@ -4200,6 +4200,7 @@ static int mtk_power_misc_psy_event(
 	struct shutdown_controller *sdc;
 	struct mtk_battery *gm;
 	int tmp = 0;
+	static int overtemp_count = 0;
 
 	gm = get_mtk_battery();
 
@@ -4209,6 +4210,12 @@ static int mtk_power_misc_psy_event(
 				nb, struct shutdown_controller, psy_nb);
 
 			if (gm->cur_bat_temp >= BATTERY_SHUTDOWN_TEMPERATURE) {
+						overtemp_count++;
+			} else {
+						overtemp_count = 0;
+			}
+
+			if (overtemp_count >= 3) {
 				// bm_debug(
 				//		"%d battery temperature >= %d,shutdown",
 				//		gm->cur_bat_temp, tmp);
