@@ -12855,7 +12855,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		swchg-aicr-ss-step = <200>;
 		swchg-off-vbat = <4250>;
 		force-ta-cv-vbat = <4250>;
-		chg-time-max = <7200>;
+		chg-time-max = <10800>;
 		tta-level-def = <0 0 0 0 25 50 60 70 80>;
 		tta-curlmt = <0 0 0 0 0 300 600 900 (-1)>;
 		tta-recovery-area = <3>;
