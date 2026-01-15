@@ -117,6 +117,7 @@ struct mtk_mipi_tx {
 	struct clk_hw pll_hw;
 	struct clk *pll;
 	unsigned int disp_offset[2]; //for mt6989 dispsys1 dsi0/dsi1 reg offset
+	unsigned int mipi_drive_capability; //lixiaolong add for mipi drive capibility compatible
 };
 
 struct mtk_mipitx_data {

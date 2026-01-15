@@ -62,6 +62,7 @@ struct task_turbo_t {
 	unsigned char render:1;
 	unsigned short inherit_cnt:14;
 	short nice_backup;
+	short policy_backup;
 	atomic_t inherit_types;
 };
 

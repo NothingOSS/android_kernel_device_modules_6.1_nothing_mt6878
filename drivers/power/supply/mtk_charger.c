@@ -63,6 +63,8 @@
 
 #include "mtk_charger.h"
 #include "mtk_battery.h"
+#include "nt_chg.h"
+#include "nt_usb_ts.h"
 
 struct tag_bootmode {
 	u32 size;
@@ -105,6 +107,62 @@ const char *chg_get_cmd(void)
 	return saved_command_line;
 }
 #endif
+
+static int mtk_charger_enable_power_path_cust(struct mtk_charger *info,
+		struct power_supply *psy, bool en)
+{
+	int ret = 0;
+	bool is_en = true;
+	bool setting = true;
+	struct charger_device *chg_dev = NULL;
+	int area_id = 0;
+
+	if (!info)
+		return -EINVAL;
+	chg_dev = get_charger_by_name("primary_chg");
+	if (IS_ERR_OR_NULL(chg_dev)) {
+		chr_err("%s: chg_dev not found\n", __func__);
+		return -EINVAL;
+	}
+	area_id = mtk_chg_get_area_id();
+	mutex_lock(&info->pp_lock[CHG1_SETTING]);
+	if (info->psy1 == psy)
+		info->usb_disable_pp = !en;
+	if (info->usb_psy == psy)
+		info->pd_disable_pp = !en;
+	if (area_id != 3) {
+		info->usb_disable_pp = false;
+		info->pd_disable_pp = false;
+	}
+
+	if ((info->aging_mode == true && info->cmd_discharging == false)
+			|| (info->safety_timeout == true)) {
+		setting = true;
+	} else if (info->usb_disable_pp || info->pd_disable_pp)
+		setting = false;
+	else if (psy == NULL)
+		setting = en;
+	else
+		goto out;
+
+	chr_err("%s: area_id(%d), disable_pp(u=%d,p=%d), en_pp = %d\n", __func__,
+			area_id, info->usb_disable_pp, info->pd_disable_pp, setting);
+	ret = charger_dev_is_powerpath_enabled(chg_dev, &is_en);
+	if (ret < 0) {
+		chr_err("%s: get is power path enabled failed\n", __func__);
+		goto out;
+	}
+
+	if (is_en == setting) {
+		chr_err("%s: power path is already en = %d\n", __func__, is_en);
+		goto out;
+	}
+
+	ret = charger_dev_enable_powerpath(chg_dev, setting);
+out:
+	mutex_unlock(&info->pp_lock[CHG1_SETTING]);
+	return ret;
+}
 
 int chr_get_debug_level(void)
 {
@@ -475,6 +533,179 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 		info->data.temp_neg_10_thres = TEMP_NEG_10_THRES;
 	}
 
+	/* nt jeita */
+	info->enable_nt_sw_jeita = of_property_read_bool(np, "enable-nt-sw-jeita");
+	if (of_property_read_u32(np, "nt-battery-cv", &val) >= 0)
+		info->nt_sw_jeita.nt_battery_cv = val;
+	else
+		info->nt_sw_jeita.nt_battery_cv = NT_JEITA_BATTERY_CV;
+
+	if (of_property_read_u32(np, "nt-battery-ieoc", &val) >= 0)
+		info->nt_sw_jeita.nt_battery_ieoc = val;
+	else
+		info->nt_sw_jeita.nt_battery_ieoc = NT_JEITA_BATTERY_IEOC;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-above-t5-cv", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_above_t5_cv = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_above_t5_cv = NT_JEITA_TEMP_ABOVE_T5_CV;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-t4-to-t5-cv", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_t4_to_t5_cv = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_t4_to_t5_cv = NT_JEITA_TEMP_T4_TO_T5_CV;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-t3-to-t4-cv", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_t3_to_t4_cv = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_t3_to_t4_cv = NT_JEITA_TEMP_T3_TO_T4_CV;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-t2-to-t3-cv", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_t2_to_t3_cv = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_t2_to_t3_cv = NT_JEITA_TEMP_T2_TO_T3_CV;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-t1-to-t2-cv", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_t1_to_t2_cv = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_t1_to_t2_cv = NT_JEITA_TEMP_T1_TO_T2_CV;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-t0-to-t1-cv", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_t0_to_t1_cv = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_t0_to_t1_cv = NT_JEITA_TEMP_T0_TO_T1_CV;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-below-t0-cv", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_below_t0_cv = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_below_t0_cv = NT_JEITA_TEMP_BELOW_T0_CV;
+
+	/* sw jeita ieoc*/
+	if (of_property_read_u32(np, "nt-jeita-temp-above-t5-ieoc", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_above_t5_ieoc = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_above_t5_ieoc = NT_JEITA_TEMP_ABOVE_T5_IEOC;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-t4-to-t5-ieoc", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_t4_to_t5_ieoc = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_t4_to_t5_ieoc = NT_JEITA_TEMP_T4_TO_T5_IEOC;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-t3-to-t4-ieoc", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_t3_to_t4_ieoc = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_t3_to_t4_ieoc = NT_JEITA_TEMP_T3_TO_T4_IEOC;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-t2-to-t3-ieoc", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_t2_to_t3_ieoc = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_t2_to_t3_ieoc = NT_JEITA_TEMP_T2_TO_T3_IEOC;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-t1-to-t2-ieoc", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_t1_to_t2_ieoc = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_t1_to_t2_ieoc = NT_JEITA_TEMP_T1_TO_T2_IEOC;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-t0-to-t1-ieoc", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_t0_to_t1_ieoc = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_t0_to_t1_ieoc = NT_JEITA_TEMP_T0_TO_T1_IEOC;
+
+	if (of_property_read_u32(np, "nt-jeita-temp-below-t0-ieoc", &val) >= 0)
+		info->nt_sw_jeita.nt_jeita_temp_below_t0_ieoc = val;
+	else
+		info->nt_sw_jeita.nt_jeita_temp_below_t0_ieoc = NT_JEITA_TEMP_BELOW_T0_IEOC;
+
+	/* sw jeita temp th*/
+	if (of_property_read_u32(np, "nt-temp-t5-thres", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t5_thres = val;
+	else
+		info->nt_sw_jeita.nt_temp_t5_thres = NT_TEMP_T5_THRES;
+
+	if (of_property_read_u32(np, "nt-temp-t5-thres-minus-x-degree", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t5_thres_minus_x_degree = val;
+	else
+		info->nt_sw_jeita.nt_temp_t5_thres_minus_x_degree = NT_TEMP_T5_THRES_MINUS_X_DEGREE;
+
+	if (of_property_read_u32(np, "nt-temp-t4-thres", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t4_thres = val;
+	else
+		info->nt_sw_jeita.nt_temp_t4_thres = NT_TEMP_T4_THRES;
+
+	if (of_property_read_u32(np, "nt-temp-t4-thres-minus-x-degree", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t4_thres_minus_x_degree = val;
+	else
+		info->nt_sw_jeita.nt_temp_t4_thres_minus_x_degree = NT_TEMP_T4_THRES_MINUS_X_DEGREE;
+
+	if (of_property_read_u32(np, "nt-temp-t3-thres", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t3_thres = val;
+	else
+		info->nt_sw_jeita.nt_temp_t3_thres = NT_TEMP_T3_THRES;
+
+	if (of_property_read_u32(np, "nt-temp-t3-thres-minus-x-degree", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t3_thres_minus_x_degree = val;
+	else
+		info->nt_sw_jeita.nt_temp_t3_thres_minus_x_degree = NT_TEMP_T3_THRES_MINUS_X_DEGREE;
+
+	if (of_property_read_u32(np, "nt-temp-t2-thres", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t2_thres = val;
+	else
+		info->nt_sw_jeita.nt_temp_t2_thres = NT_TEMP_T2_THRES;
+
+	if (of_property_read_u32(np, "nt-temp-t2-thres-plus-x-degree", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t2_thres_plus_x_degree = val;
+	else
+		info->nt_sw_jeita.nt_temp_t2_thres_plus_x_degree = NT_TEMP_T2_THRES_PLUS_X_DEGREE;
+
+	if (of_property_read_u32(np, "nt-temp-t1-thres", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t1_thres = val;
+	else
+		info->nt_sw_jeita.nt_temp_t1_thres = NT_TEMP_T1_THRES;
+
+	if (of_property_read_u32(np, "nt-temp-t1-thres-plus-x-degree", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t1_thres_plus_x_degree = val;
+	else
+		info->nt_sw_jeita.nt_temp_t1_thres_plus_x_degree = NT_TEMP_T1_THRES_PLUS_X_DEGREE;
+
+	if (of_property_read_u32(np, "nt-temp-t0-thres", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t0_thres = val;
+	else
+		info->nt_sw_jeita.nt_temp_t0_thres = NT_TEMP_T0_THRES;
+
+	if (of_property_read_u32(np, "nt-temp-t0-thres-plus-x-degree", &val) >= 0)
+		info->nt_sw_jeita.nt_temp_t0_thres_plus_x_degree = val;
+	else
+		info->nt_sw_jeita.nt_temp_t0_thres_plus_x_degree = NT_TEMP_T0_THRES_PLUS_X_DEGREE;
+
+	chr_err("en:%d, CV(%d,%d,%d,%d,%d,%d,%d), IEOC(%d,%d,%d,%d,%d,%d,%d), TEMP(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)\n",
+		info->enable_nt_sw_jeita,
+		info->nt_sw_jeita.nt_jeita_temp_above_t5_cv,
+		info->nt_sw_jeita.nt_jeita_temp_t4_to_t5_cv,
+		info->nt_sw_jeita.nt_jeita_temp_t3_to_t4_cv,
+		info->nt_sw_jeita.nt_jeita_temp_t2_to_t3_cv,
+		info->nt_sw_jeita.nt_jeita_temp_t1_to_t2_cv,
+		info->nt_sw_jeita.nt_jeita_temp_t0_to_t1_cv,
+		info->nt_sw_jeita.nt_jeita_temp_below_t0_cv,
+		info->nt_sw_jeita.nt_jeita_temp_above_t5_ieoc,
+		info->nt_sw_jeita.nt_jeita_temp_t4_to_t5_ieoc,
+		info->nt_sw_jeita.nt_jeita_temp_t3_to_t4_ieoc,
+		info->nt_sw_jeita.nt_jeita_temp_t2_to_t3_ieoc,
+		info->nt_sw_jeita.nt_jeita_temp_t1_to_t2_ieoc,
+		info->nt_sw_jeita.nt_jeita_temp_t0_to_t1_ieoc,
+		info->nt_sw_jeita.nt_jeita_temp_below_t0_ieoc,
+		info->nt_sw_jeita.nt_temp_t5_thres,
+		info->nt_sw_jeita.nt_temp_t5_thres_minus_x_degree,
+		info->nt_sw_jeita.nt_temp_t4_thres,
+		info->nt_sw_jeita.nt_temp_t4_thres_minus_x_degree,
+		info->nt_sw_jeita.nt_temp_t3_thres,
+		info->nt_sw_jeita.nt_temp_t3_thres_minus_x_degree,
+		info->nt_sw_jeita.nt_temp_t2_thres,
+		info->nt_sw_jeita.nt_temp_t2_thres_plus_x_degree,
+		info->nt_sw_jeita.nt_temp_t1_thres,
+		info->nt_sw_jeita.nt_temp_t1_thres_plus_x_degree,
+		info->nt_sw_jeita.nt_temp_t0_thres,
+		info->nt_sw_jeita.nt_temp_t0_thres_plus_x_degree);
+
 	/* battery temperature protection */
 	info->thermal.sm = BAT_TEMP_NORMAL;
 	info->thermal.enable_min_charge_temp =
@@ -557,7 +788,25 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 			AC_CHARGER_INPUT_CURRENT);
 		info->data.ac_charger_input_current = AC_CHARGER_INPUT_CURRENT;
 	}
+	if (of_property_read_u32(np, "non_std_charger_current", &val) >= 0)
+		info->data.non_std_charger_current = val;
+	else if (of_property_read_u32(np, "non-std-charger-current", &val) >= 0)
+		info->data.non_std_charger_current = val;
+	else {
+		chr_err("use default NON_STD_CHARGER_CURRENT:%d\n",
+			NON_STD_CHARGER_CURRENT);
+		info->data.non_std_charger_current = NON_STD_CHARGER_CURRENT;
+	}
 
+	if (of_property_read_u32(np, "non_std_charger_input_current", &val) >= 0)
+		info->data.non_std_charger_input_current = val;
+	else if (of_property_read_u32(np, "non-std-charger-input-current", &val) >= 0)
+		info->data.non_std_charger_input_current = val;
+	else {
+		chr_err("use default NON_STD_CHARGER_INPUT_CURRENT:%d\n",
+			NON_STD_CHARGER_INPUT_CURRENT);
+		info->data.non_std_charger_input_current = NON_STD_CHARGER_INPUT_CURRENT;
+	}
 	if (of_property_read_u32(np, "charging_host_charger_current", &val)
 		>= 0) {
 		info->data.charging_host_charger_current = val;
@@ -608,6 +857,16 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	info->enable_fast_charging_indicator =
 			of_property_read_bool(np, "enable_fast_charging_indicator")
 			|| of_property_read_bool(np, "enable-fast-charging-indicator");
+
+	if (of_property_read_u32(np, "max_charging_time", &val) >= 0)
+		info->data.max_charging_time = val;
+	else if (of_property_read_u32(np, "max-charging-time", &val) >= 0)
+		info->data.max_charging_time = val;
+	else {
+		chr_err("use default MAX_CHARGING_TIME:%d\n",
+			MAX_CHARGING_TIME);
+		info->data.max_charging_time = MAX_CHARGING_TIME;
+	}
 	/*	adapter priority */
 	if (of_property_read_u32(np, "adapter-priority", &val)>= 0)
 		info->setting.adapter_priority = val;
@@ -736,7 +995,8 @@ void do_sw_jeita_state_machine(struct mtk_charger *info)
 
 			sw_jeita->sm = TEMP_T3_TO_T4;
 		}
-	} else if (info->battery_temp >= info->data.temp_t2_thres) {
+//	} else if (info->battery_temp >= info->data.temp_t2_thres) {
+	} else if (info->battery_temp > info->data.temp_t2_thres) {
 		if (((sw_jeita->sm == TEMP_T3_TO_T4)
 		     && (info->battery_temp
 			 >= info->data.temp_t3_thres_minus_x_degree))
@@ -820,6 +1080,126 @@ void do_sw_jeita_state_machine(struct mtk_charger *info)
 	chr_err("[SW_JEITA]preState:%d newState:%d tmp:%d cv:%d\n",
 		sw_jeita->pre_sm, sw_jeita->sm, info->battery_temp,
 		sw_jeita->cv);
+}
+
+void nt_do_sw_jeita_state_machine(struct mtk_charger *info)
+{
+	struct nt_sw_jeita_data *nt_sw_jeita;
+	struct sw_jeita_data *sw_jeita;
+
+	nt_sw_jeita = &info->nt_sw_jeita;
+	sw_jeita = &info->sw_jeita;
+	sw_jeita->pre_sm = sw_jeita->sm;
+	sw_jeita->charging = true;
+
+	if (info->battery_temp >= nt_sw_jeita->nt_temp_t5_thres) {
+		chr_err("[NT_SW_JEITA] Battery Over high Temperature(%d) !!\n", nt_sw_jeita->nt_temp_t5_thres);
+		sw_jeita->sm = NT_TEMP_ABOVE_T5;
+		sw_jeita->charging = false;
+	} else if (info->battery_temp > nt_sw_jeita->nt_temp_t4_thres) {
+		if ((sw_jeita->sm == NT_TEMP_ABOVE_T5) && (info->battery_temp >= nt_sw_jeita->nt_temp_t5_thres_minus_x_degree))
+		{
+			chr_err("[NT_SW_JEITA] Battery Temperature between %d and %d,not allow charging yet!!\n",
+				nt_sw_jeita->nt_temp_t5_thres_minus_x_degree,
+				nt_sw_jeita->nt_temp_t5_thres);
+			sw_jeita->charging = false;
+		} else {
+			chr_err("[NT_SW_JEITA] Battery Temperature between %d and %d !!\n",
+				nt_sw_jeita->nt_temp_t4_thres,
+				nt_sw_jeita->nt_temp_t5_thres);
+			sw_jeita->sm = NT_TEMP_T4_TO_T5;
+		}
+	} else if (info->battery_temp > nt_sw_jeita->nt_temp_t3_thres) {
+		if ((sw_jeita->sm == NT_TEMP_T4_TO_T5) && (info->battery_temp >= nt_sw_jeita->nt_temp_t4_thres_minus_x_degree))
+		{
+			chr_err("[NT_SW_JEITA] Battery Temperature between %d and %d,not allow recovery yet!!\n",
+				nt_sw_jeita->nt_temp_t4_thres_minus_x_degree,
+				nt_sw_jeita->nt_temp_t4_thres);
+		} else {
+			chr_err("[NT_SW_JEITA] Battery Normal Temperature between %d and %d !!\n",
+				nt_sw_jeita->nt_temp_t3_thres,
+				nt_sw_jeita->nt_temp_t4_thres);
+			sw_jeita->sm = NT_TEMP_T3_TO_T4;
+		}
+	} else if (info->battery_temp > nt_sw_jeita->nt_temp_t2_thres) {
+		if (((sw_jeita->sm == NT_TEMP_T3_TO_T4) && (info->battery_temp >= nt_sw_jeita->nt_temp_t3_thres_minus_x_degree))
+			|| ((sw_jeita->sm == NT_TEMP_T1_TO_T2) && (info->battery_temp <= nt_sw_jeita->nt_temp_t2_thres_plus_x_degree)))
+		{
+			chr_err("[NT_SW_JEITA] Battery Temperature not recovery to normal temperature charging mode yet!!\n");
+		} else {
+			chr_err("[NT_SW_JEITA] Battery Normal Temperature between %d and %d !!\n",
+				nt_sw_jeita->nt_temp_t2_thres,
+				nt_sw_jeita->nt_temp_t3_thres);
+			sw_jeita->sm = NT_TEMP_T2_TO_T3;
+		}
+	} else if (info->battery_temp > nt_sw_jeita->nt_temp_t1_thres) {
+		if ((sw_jeita->sm == NT_TEMP_T0_TO_T1 || sw_jeita->sm == NT_TEMP_BELOW_T0)
+		    && (info->battery_temp <= nt_sw_jeita->nt_temp_t1_thres_plus_x_degree))
+		{
+			if (sw_jeita->sm == NT_TEMP_T0_TO_T1) {
+				chr_err("[NT_SW_JEITA] Battery Temperature between %d and %d !!\n",
+					nt_sw_jeita->nt_temp_t1_thres_plus_x_degree,
+					nt_sw_jeita->nt_temp_t2_thres);
+			}
+			if (sw_jeita->sm == NT_TEMP_BELOW_T0) {
+				chr_err("[NT_SW_JEITA] Battery Temperature between %d and %d,not allow charging yet!!\n",
+					nt_sw_jeita->nt_temp_t1_thres,
+					nt_sw_jeita->nt_temp_t1_thres_plus_x_degree);
+				sw_jeita->charging = false;
+			}
+		} else {
+			chr_err("[NT_SW_JEITA] Battery Temperature between %d and %d !!\n",
+				nt_sw_jeita->nt_temp_t1_thres,
+				nt_sw_jeita->nt_temp_t2_thres);
+			sw_jeita->sm = NT_TEMP_T1_TO_T2;
+		}
+	} else if (info->battery_temp > nt_sw_jeita->nt_temp_t0_thres) {
+		if ((sw_jeita->sm == NT_TEMP_BELOW_T0) && (info->battery_temp <= nt_sw_jeita->nt_temp_t0_thres_plus_x_degree))
+		{
+			chr_err("[NT_SW_JEITA] Battery Temperature between %d and %d,not allow charging yet!!\n",
+				nt_sw_jeita->nt_temp_t0_thres,
+				nt_sw_jeita->nt_temp_t0_thres_plus_x_degree);
+			sw_jeita->charging = false;
+		} else {
+			chr_err("[NT_SW_JEITA] Battery Temperature between %d and %d !!\n",
+				nt_sw_jeita->nt_temp_t0_thres,
+				nt_sw_jeita->nt_temp_t1_thres);
+			sw_jeita->sm = NT_TEMP_T0_TO_T1;
+		}
+	} else {
+		chr_err("[NT_SW_JEITA] Battery below low Temperature(%d) !!\n", nt_sw_jeita->nt_temp_t0_thres);
+		sw_jeita->sm = NT_TEMP_BELOW_T0;
+		sw_jeita->charging = false;
+	}
+
+	if (sw_jeita->sm == NT_TEMP_ABOVE_T5) {
+		sw_jeita->cv = nt_sw_jeita->nt_jeita_temp_above_t5_cv;
+		nt_sw_jeita->nt_ieoc = nt_sw_jeita->nt_jeita_temp_above_t5_ieoc;
+	} else if (sw_jeita->sm == NT_TEMP_T4_TO_T5) {
+		sw_jeita->cv = nt_sw_jeita->nt_jeita_temp_t4_to_t5_cv;
+		nt_sw_jeita->nt_ieoc = nt_sw_jeita->nt_jeita_temp_t4_to_t5_ieoc;
+	} else if (sw_jeita->sm == NT_TEMP_T3_TO_T4) {
+		sw_jeita->cv = nt_sw_jeita->nt_jeita_temp_t3_to_t4_cv;
+		nt_sw_jeita->nt_ieoc = nt_sw_jeita->nt_jeita_temp_t3_to_t4_ieoc;
+	} else if (sw_jeita->sm == NT_TEMP_T2_TO_T3) {
+		sw_jeita->cv = nt_sw_jeita->nt_jeita_temp_t2_to_t3_cv;
+		nt_sw_jeita->nt_ieoc = nt_sw_jeita->nt_jeita_temp_t2_to_t3_ieoc;
+	} else if (sw_jeita->sm == NT_TEMP_T1_TO_T2) {
+		sw_jeita->cv = nt_sw_jeita->nt_jeita_temp_t1_to_t2_cv;
+		nt_sw_jeita->nt_ieoc = nt_sw_jeita->nt_jeita_temp_t1_to_t2_ieoc;
+	} else if (sw_jeita->sm == NT_TEMP_T0_TO_T1) {
+		sw_jeita->cv = nt_sw_jeita->nt_jeita_temp_t0_to_t1_cv;
+		nt_sw_jeita->nt_ieoc = nt_sw_jeita->nt_jeita_temp_t0_to_t1_ieoc;
+	} else if (sw_jeita->sm == NT_TEMP_BELOW_T0) {
+		sw_jeita->cv = nt_sw_jeita->nt_jeita_temp_below_t0_cv;
+		nt_sw_jeita->nt_ieoc = nt_sw_jeita->nt_jeita_temp_below_t0_ieoc;
+	} else {
+		sw_jeita->cv = nt_sw_jeita->nt_battery_cv;
+		nt_sw_jeita->nt_ieoc = nt_sw_jeita->nt_battery_ieoc;
+	}
+
+	pr_err("[NT_SW_JEITA]preState:%d newState:%d tmp:%d cv:%d chg:%d ieoc:%d\n",
+		sw_jeita->pre_sm, sw_jeita->sm, info->battery_temp, sw_jeita->cv, sw_jeita->charging, nt_sw_jeita->nt_ieoc);
 }
 
 static int mtk_chgstat_notify(struct mtk_charger *info)
@@ -1270,10 +1650,13 @@ static ssize_t input_current_store(struct device *dev,
 
 	chg_data = &pinfo->chg_data[CHG1_SETTING];
 	if (kstrtoint(buf, 10, &temp) == 0) {
+		/*
 		if (temp < 0)
 			chg_data->thermal_input_current_limit = 0;
 		else
 			chg_data->thermal_input_current_limit = temp;
+		*/
+		chg_data->thermal_input_current_limit = 9000000;
 	} else {
 		chr_err("%s: format error!\n", __func__);
 	}
@@ -2193,13 +2576,105 @@ int mtk_chg_enable_vbus_ovp(bool enable)
 }
 EXPORT_SYMBOL(mtk_chg_enable_vbus_ovp);
 
+int mtk_chg_set_vbus_ovp(bool enable,int ovp)
+{
+	static struct mtk_charger *pinfo;
+	int ret = 0;
+	u32 sw_ovp = 0;
+	struct power_supply *psy;
+
+	if (pinfo == NULL) {
+		psy = power_supply_get_by_name("mtk-master-charger");
+		if (psy == NULL) {
+			chr_err("[%s]psy is not rdy\n", __func__);
+			return -1;
+		}
+
+		pinfo = (struct mtk_charger *)power_supply_get_drvdata(psy);
+		if (pinfo == NULL) {
+			chr_err("[%s]mtk_gauge is not rdy\n", __func__);
+			return -1;
+		}
+	}
+
+	if (enable)
+		sw_ovp = pinfo->data.max_charger_voltage_setting;
+	else
+		sw_ovp = ovp;
+
+	/* Enable/Disable SW OVP status */
+	pinfo->data.max_charger_voltage = sw_ovp;
+
+	disable_hw_ovp(pinfo, enable);
+
+	chr_err("[%s] en:%d ovp:%d\n",
+			    __func__, enable, sw_ovp);
+	return ret;
+}
+EXPORT_SYMBOL(mtk_chg_set_vbus_ovp);
+
+int mtk_chg_get_area_id(void)
+{
+	static struct nt_chg_info *nt_chg = NULL;
+	struct power_supply *psy;
+
+	if (nt_chg == NULL) {
+		psy = power_supply_get_by_name("nt-chg");
+		if (psy == NULL) {
+			pr_err("[%s]psy is not rdy\n", __func__);
+			return 0;
+		}
+
+		nt_chg = (struct nt_chg_info *)power_supply_get_drvdata(psy);
+		if (nt_chg == NULL) {
+			pr_err("[%s]nt_chg_info is not rdy\n", __func__);
+			return 0;
+		}
+	}
+
+	return nt_chg->area_id;
+}
+EXPORT_SYMBOL(mtk_chg_get_area_id);
+
+static struct nt_chg_info *get_nt_chg_entry(void)
+{
+	static struct nt_chg_info *nt_chg = NULL;
+	struct power_supply *psy;
+
+	if (nt_chg == NULL) {
+		psy = power_supply_get_by_name("nt-chg");
+		if (psy == NULL) {
+			pr_err("[%s]psy is not rdy\n", __func__);
+			return NULL;
+		}
+
+		nt_chg = (struct nt_chg_info *)power_supply_get_drvdata(psy);
+		if (nt_chg == NULL) {
+			pr_err("[%s]nt_chg_info is not rdy\n", __func__);
+			return NULL;
+		}
+	}
+	return nt_chg;
+}
+
 /* return false if vbus is over max_charger_voltage */
 static bool mtk_chg_check_vbus(struct mtk_charger *info)
 {
 	int vchr = 0;
+	bool hvcharger = false;
+	bool is_hvcharger_detect = false;
+
+	g_nt_chg = get_nt_chg_entry();
+	if (g_nt_chg)
+		hvcharger = g_nt_chg->is_hvcharger;
+	charger_dev_get_hvchg_detect_status(info->chg1_dev, &is_hvcharger_detect);
 
 	vchr = get_vbus(info) * 1000; /* uV */
-	if (vchr > info->data.max_charger_voltage) {
+	if (vchr > (hvcharger ? HVDCP_SW_VBUSOV_UV :
+			(is_hvcharger_detect ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage))) {
+		chr_err("%s:NT vbus(%d mV) > %d mV\n", __func__, vchr / 1000,
+			(hvcharger ? HVDCP_SW_VBUSOV_UV :
+				(is_hvcharger_detect ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage)) / 1000);
 		chr_err("%s: vbus(%d mV) > %d mV\n", __func__, vchr / 1000,
 			info->data.max_charger_voltage / 1000);
 		return false;
@@ -2211,9 +2686,19 @@ static void mtk_battery_notify_VCharger_check(struct mtk_charger *info)
 {
 #if defined(BATTERY_NOTIFY_CASE_0001_VCHARGER)
 	int vchr = 0;
+	//vchr = get_vbus(info) * 1000; /* uV */
+	bool hvcharger = false;
+	bool is_hvcharger_detect = false;
 
 	vchr = get_vbus(info) * 1000; /* uV */
-	if (vchr < info->data.max_charger_voltage)
+	g_nt_chg = get_nt_chg_entry();
+	if (g_nt_chg)
+		hvcharger = g_nt_chg->is_hvcharger;
+	charger_dev_get_hvchg_detect_status(info->chg1_dev, &is_hvcharger_detect);
+
+	if (vchr < (hvcharger ? HVDCP_SW_VBUSOV_UV :
+			(is_hvcharger_detect ? HVDCP_SW_VBUSOV_UV : info->data.max_charger_voltage)))
+	//if (vchr < info->data.max_charger_voltage)
 		info->notify_code &= ~CHG_VBUS_OV_STATUS;
 	else {
 		info->notify_code |= CHG_VBUS_OV_STATUS;
@@ -2417,6 +2902,7 @@ static void charger_check_status(struct mtk_charger *info)
 	int temperature;
 	struct battery_thermal_protection_data *thermal;
 	int uisoc = 0;
+	static bool done_retry = false;
 
 	if (get_charger_type(info) == POWER_SUPPLY_TYPE_UNKNOWN)
 		return;
@@ -2431,7 +2917,11 @@ static void charger_check_status(struct mtk_charger *info)
 		info->setting.vbat_mon_en = false;
 
 	if (info->enable_sw_jeita == true) {
-		do_sw_jeita_state_machine(info);
+		//do_sw_jeita_state_machine(info);
+		if (info->enable_nt_sw_jeita)
+			nt_do_sw_jeita_state_machine(info);
+		else
+			do_sw_jeita_state_machine(info);
 		if (info->sw_jeita.charging == false) {
 			charging = false;
 			goto stop_charging;
@@ -2487,10 +2977,21 @@ static void charger_check_status(struct mtk_charger *info)
 		charging = false;
 		goto stop_charging;
 	}
-
-	if (info->cmd_discharging)
+	/*
+		if (info->cmd_discharging)
+			charging = false;
+	*/
+	if (info->cmd_discharging){
 		charging = false;
-	if (info->safety_timeout)
+		done_retry = true;
+	}else{
+		if(done_retry){
+			mtk_chg_alg_notify_call(info, EVT_HARDRESET, 0);
+			done_retry = false;
+		}
+	}
+	/*if (info->safety_timeout)*/
+	if ((info->aging_mode == false) && (info->safety_timeout))
 		charging = false;
 	if (info->vbusov_stat)
 		charging = false;
@@ -2521,7 +3022,7 @@ stop_charging:
 		_mtk_enable_charging(info, charging);
 	else if (charging == false && chg_dev_chgen == true)
 		_mtk_enable_charging(info, charging);
-
+	mtk_charger_enable_power_path_cust(info, NULL, info->cmd_en_pp);
 	info->can_charging = charging;
 }
 
@@ -2544,11 +3045,13 @@ static bool charger_init_algo(struct mtk_charger *info)
 	if (alg == NULL)
 		chr_err("get pe5p fail\n");
 	else {
-		chr_err("get pe5p success\n");
-		alg->config = info->config;
-		alg->alg_id = PE5P_ID;
-		chg_alg_init_algo(alg);
-		register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		if ((alg->alg_id & PE5P_ID) == 0) {
+			chr_err("get pe5p success\n");
+			alg->config = info->config;
+			alg->alg_id = PE5P_ID;
+			chg_alg_init_algo(alg);
+			register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		}
 	}
 	idx++;
 
@@ -2557,24 +3060,29 @@ static bool charger_init_algo(struct mtk_charger *info)
 	if (alg == NULL)
 		chr_err("get hvbp fail\n");
 	else {
-		chr_err("get hvbp success\n");
-		alg->config = info->config;
-		alg->alg_id = HVBP_ID;
-		chg_alg_init_algo(alg);
-		register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		if ((alg->alg_id & HVBP_ID) == 0) {
+			chr_err("get hvbp success\n");
+			alg->config = info->config;
+			alg->alg_id = HVBP_ID;
+			chg_alg_init_algo(alg);
+			register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		}
 	}
 	idx++;
 
 	alg = get_chg_alg_by_name("pe5");
 	info->alg[idx] = alg;
-	if (alg == NULL)
+	if (alg == NULL){
 		chr_err("get pe5 fail\n");
-	else {
-		chr_err("get pe5 success\n");
-		alg->config = info->config;
-		alg->alg_id = PE5_ID;
-		chg_alg_init_algo(alg);
-		register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		return false;
+	}else {
+		if ((alg->alg_id & PE5_ID) == 0) {
+			chr_err("get pe5 success\n");
+			alg->config = info->config;
+			alg->alg_id = PE5_ID;
+			chg_alg_init_algo(alg);
+			register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		}
 	}
 	idx++;
 
@@ -2583,11 +3091,13 @@ static bool charger_init_algo(struct mtk_charger *info)
 	if (alg == NULL)
 		chr_err("get pe45 fail\n");
 	else {
-		chr_err("get pe45 success\n");
-		alg->config = info->config;
-		alg->alg_id = PE4_ID;
-		chg_alg_init_algo(alg);
-		register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		if ((alg->alg_id & PE4_ID) == 0) {
+			chr_err("get pe45 success\n");
+			alg->config = info->config;
+			alg->alg_id = PE4_ID;
+			chg_alg_init_algo(alg);
+			register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		}
 	}
 	idx++;
 
@@ -2596,37 +3106,45 @@ static bool charger_init_algo(struct mtk_charger *info)
 	if (alg == NULL)
 		chr_err("get pe4 fail\n");
 	else {
-		chr_err("get pe4 success\n");
-		alg->config = info->config;
-		alg->alg_id = PE4_ID;
-		chg_alg_init_algo(alg);
-		register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		if ((alg->alg_id & PE4_ID) == 0) {
+			chr_err("get pe4 success\n");
+			alg->config = info->config;
+			alg->alg_id = PE4_ID;
+			chg_alg_init_algo(alg);
+			register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		}
 	}
 	idx++;
 
 	alg = get_chg_alg_by_name("pd");
 	info->alg[idx] = alg;
-	if (alg == NULL)
+	if (alg == NULL){
 		chr_err("get pd fail\n");
-	else {
-		chr_err("get pd success\n");
-		alg->config = info->config;
-		alg->alg_id = PDC_ID;
-		chg_alg_init_algo(alg);
-		register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		return false;
+	}else {
+		if ((alg->alg_id & PDC_ID) == 0) {
+			chr_err("get pd success\n");
+			alg->config = info->config;
+			alg->alg_id = PDC_ID;
+			chg_alg_init_algo(alg);
+			register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		}
 	}
 	idx++;
 
 	alg = get_chg_alg_by_name("pe2");
 	info->alg[idx] = alg;
-	if (alg == NULL)
+	if (alg == NULL){
 		chr_err("get pe2 fail\n");
-	else {
-		chr_err("get pe2 success\n");
-		alg->config = info->config;
-		alg->alg_id = PE2_ID;
-		chg_alg_init_algo(alg);
-		register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		return false;
+	}else {
+		if ((alg->alg_id & PE2_ID) == 0) {
+			chr_err("get pe2 success\n");
+			alg->config = info->config;
+			alg->alg_id = PE2_ID;
+			chg_alg_init_algo(alg);
+			register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		}
 	}
 	idx++;
 
@@ -2635,11 +3153,13 @@ static bool charger_init_algo(struct mtk_charger *info)
 	if (alg == NULL)
 		chr_err("get pe fail\n");
 	else {
-		chr_err("get pe success\n");
-		alg->config = info->config;
-		alg->alg_id = PE_ID;
-		chg_alg_init_algo(alg);
-		register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		if ((alg->alg_id & PE_ID) == 0) {
+			chr_err("get pe success\n");
+			alg->config = info->config;
+			alg->alg_id = PE_ID;
+			chg_alg_init_algo(alg);
+			register_chg_alg_notifier(alg, &info->chg_alg_nb);
+		}
 	}
 
 	chr_err("config is %d\n", info->config);
@@ -2793,7 +3313,7 @@ static int mtk_charger_plug_in(struct mtk_charger *info,
 	struct chg_alg_device *alg;
 	struct chg_alg_notify notify;
 	int i, vbat;
-
+	ktime_t now_time = 0;
 	chr_debug("%s\n",
 		__func__);
 
@@ -2806,6 +3326,7 @@ static int mtk_charger_plug_in(struct mtk_charger *info,
 	info->safety_timeout = false;
 	info->vbusov_stat = false;
 	info->old_cv = 0;
+	info->nt_sw_jeita.nt_old_ieoc = 0;
 	info->stop_6pin_re_en = false;
 	info->batpro_done = false;
 	smart_charging(info);
@@ -2826,7 +3347,8 @@ static int mtk_charger_plug_in(struct mtk_charger *info,
 
 	charger_dev_plug_in(info->chg1_dev);
 	mtk_charger_force_disable_power_path(info, CHG1_SETTING, false);
-
+	now_time = ktime_get_boottime();
+	info->charging_begin_time = ktime_to_timespec64(now_time);
 	return 0;
 }
 
@@ -2966,7 +3488,9 @@ static int charger_routine_thread(void *arg)
 {
 	struct mtk_charger *info = arg;
 	unsigned long flags;
-	unsigned int init_times = 3;
+	/*unsigned int init_times = 3;*/
+	unsigned int init_times = 6;
+	int aicl = -1;
 	static bool is_module_init_done;
 	bool is_charger_on;
 	int ret;
@@ -3052,6 +3576,15 @@ static int charger_routine_thread(void *arg)
 		} else {
 			chr_debug("disable charging %d %d %d\n",
 			    is_disable_charger(info), is_charger_on, info->can_charging);
+			if (is_charger_on == true && info->cmd_discharging) {
+				if (!info->usb_disable_pp && !info->pd_disable_pp && info->cmd_en_pp) {
+					charger_dev_get_input_current(info->chg1_dev, &aicl);
+					if (info->usb_type == POWER_SUPPLY_USB_TYPE_DCP && aicl != 2000000)
+						charger_dev_set_input_current(info->chg1_dev, 2000000);
+					if(info->usb_type == POWER_SUPPLY_USB_TYPE_CDP && aicl != 1500000)
+						charger_dev_set_input_current(info->chg1_dev, 1500000);
+				}
+			}
 		}
 		if (info->bootmode != 1 && info->bootmode != 2 && info->bootmode != 4
 			&& info->bootmode != 8 && info->bootmode != 9)
@@ -3352,7 +3885,19 @@ static const enum power_supply_property charger_psy_properties[] = {
 	POWER_SUPPLY_PROP_CHARGE_NOW,
 	POWER_SUPPLY_PROP_POWER_NOW,
 };
+static int psy_nt_chg_get_property(enum power_supply_property psp)
+{
+	union power_supply_propval value;
+	int ret;
+	struct power_supply *psy = power_supply_get_by_name("nt-chg");
 
+	if (!IS_ERR_OR_NULL(psy)) {
+		ret = power_supply_get_property(psy,
+			POWER_SUPPLY_PROP_TEMP, &value);
+		return value.intval * 10;
+	}
+	return -1;
+}
 static int psy_charger_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val)
 {
@@ -3367,8 +3912,10 @@ static int psy_charger_get_property(struct power_supply *psy,
 		return -EINVAL;
 	}
 	chr_debug("%s psp:%d\n", __func__, psp);
-
+	/*
 	if (info->psy1 == psy) {
+	*/
+	if (info->psy1 == psy || info->usb_psy == psy) {
 		chg = info->chg1_dev;
 		idx = CHG1_SETTING;
 	} else if (info->psy2 == psy) {
@@ -3406,8 +3953,10 @@ static int psy_charger_get_property(struct power_supply *psy,
 			}
 			break;
 		}
-
-		val->intval = is_charger_exist(info);
+		//val->intval = is_charger_exist(info);
+		if (get_charger_type(info) == POWER_SUPPLY_TYPE_USB) {
+			val->intval = is_charger_exist(info);
+		}
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		if (chg != NULL)
@@ -3419,10 +3968,17 @@ static int psy_charger_get_property(struct power_supply *psy,
 		val->intval = info->enable_hv_charging;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = get_vbus(info);
+		if(info->usb_psy != NULL && info->usb_psy == psy)
+			val->intval = get_vbus(info)*1000;
+		else
+			val->intval = get_vbus(info);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		val->intval = info->chg_data[idx].junction_temp_max * 10;
+		//val->intval = info->chg_data[idx].junction_temp_max * 10;
+		if(info->usb_psy != NULL && info->usb_psy == psy)
+			val->intval = psy_nt_chg_get_property(POWER_SUPPLY_PROP_TEMP);
+		else
+			val->intval = info->chg_data[idx].junction_temp_max * 10;
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 		val->intval =
@@ -3461,54 +4017,54 @@ static int psy_charger_get_property(struct power_supply *psy,
 	return 0;
 }
 
-static int mtk_charger_enable_power_path(struct mtk_charger *info,
-	int idx, bool en)
-{
-	int ret = 0;
-	bool is_en = true;
-	struct charger_device *chg_dev = NULL;
-
-	if (!info)
-		return -EINVAL;
-
-	switch (idx) {
-	case CHG1_SETTING:
-		chg_dev = get_charger_by_name("primary_chg");
-		break;
-	case CHG2_SETTING:
-		chg_dev = get_charger_by_name("secondary_chg");
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (IS_ERR_OR_NULL(chg_dev)) {
-		chr_err("%s: chg_dev not found\n", __func__);
-		return -EINVAL;
-	}
-
-	mutex_lock(&info->pp_lock[idx]);
-	info->enable_pp[idx] = en;
-
-	if (info->force_disable_pp[idx])
-		goto out;
-
-	ret = charger_dev_is_powerpath_enabled(chg_dev, &is_en);
-	if (ret < 0) {
-		chr_err("%s: get is power path enabled failed\n", __func__);
-		goto out;
-	}
-	if (is_en == en) {
-		chr_err("%s: power path is already en = %d\n", __func__, is_en);
-		goto out;
-	}
-
-	pr_info("%s: enable power path = %d\n", __func__, en);
-	ret = charger_dev_enable_powerpath(chg_dev, en);
-out:
-	mutex_unlock(&info->pp_lock[idx]);
-	return ret;
-}
+//static int mtk_charger_enable_power_path(struct mtk_charger *info,
+//	int idx, bool en)
+//{
+//	int ret = 0;
+//	bool is_en = true;
+//	struct charger_device *chg_dev = NULL;
+//
+//	if (!info)
+//		return -EINVAL;
+//
+//	switch (idx) {
+//	case CHG1_SETTING:
+//		chg_dev = get_charger_by_name("primary_chg");
+//		break;
+//	case CHG2_SETTING:
+//		chg_dev = get_charger_by_name("secondary_chg");
+//		break;
+//	default:
+//		return -EINVAL;
+//	}
+//
+//	if (IS_ERR_OR_NULL(chg_dev)) {
+//		chr_err("%s: chg_dev not found\n", __func__);
+//		return -EINVAL;
+//	}
+//
+//	mutex_lock(&info->pp_lock[idx]);
+//	info->enable_pp[idx] = en;
+//
+//	if (info->force_disable_pp[idx])
+//		goto out;
+//
+//	ret = charger_dev_is_powerpath_enabled(chg_dev, &is_en);
+//	if (ret < 0) {
+//		chr_err("%s: get is power path enabled failed\n", __func__);
+//		goto out;
+//	}
+//	if (is_en == en) {
+//		chr_err("%s: power path is already en = %d\n", __func__, is_en);
+//		goto out;
+//	}
+//
+//	pr_info("%s: enable power path = %d\n", __func__, en);
+//	ret = charger_dev_enable_powerpath(chg_dev, en);
+//out:
+//	mutex_unlock(&info->pp_lock[idx]);
+//	return ret;
+//}
 
 static int mtk_charger_force_disable_power_path(struct mtk_charger *info,
 	int idx, bool disable)
@@ -3563,7 +4119,10 @@ static int psy_charger_set_property(struct power_supply *psy,
 		return -EINVAL;
 	}
 
+	/*
 	if (info->psy1 == psy)
+	*/
+	if (info->psy1 == psy || info->usb_psy == psy)
 		idx = CHG1_SETTING;
 	else if (info->psy2 == psy)
 		idx = CHG2_SETTING;
@@ -3588,18 +4147,22 @@ static int psy_charger_set_property(struct power_supply *psy,
 			info->enable_hv_charging = false;
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-		info->chg_data[idx].thermal_charging_current_limit =
-			val->intval;
+		//info->chg_data[idx].thermal_charging_current_limit =
+		//	val->intval;
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
-		info->chg_data[idx].thermal_input_current_limit =
-			val->intval;
+		//info->chg_data[idx].thermal_input_current_limit =
+		//	val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
+		//if (val->intval > 0)
+		//	mtk_charger_enable_power_path(info, idx, false);
+		//else
+		//	mtk_charger_enable_power_path(info, idx, true);
 		if (val->intval > 0)
-			mtk_charger_enable_power_path(info, idx, false);
+			mtk_charger_enable_power_path_cust(info, psy, false);
 		else
-			mtk_charger_enable_power_path(info, idx, true);
+			mtk_charger_enable_power_path_cust(info, psy, true);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT_MAX:
 		if (val->intval > 0)
@@ -3610,7 +4173,12 @@ static int psy_charger_set_property(struct power_supply *psy,
 	default:
 		return -EINVAL;
 	}
-	_wake_up_charger(info);
+	//_wake_up_charger(info);
+	//pd disable pp, didnot wakeup charger, and usb need.
+	if (psp != POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT)
+		_wake_up_charger(info);
+	else if (info->psy1 == psy)
+		_wake_up_charger(info);
 
 	return 0;
 }
@@ -3667,6 +4235,8 @@ int notify_adapter_event(struct notifier_block *notifier,
 	struct mtk_charger *pinfo = NULL;
 	u32 boot_mode = 0;
 	bool report_psy = true;
+	union power_supply_propval tcpc_charger_vol;
+	int ret = 0;
 	int index = 0;
 	struct info_notifier_block *ta_nb;
 
@@ -3745,6 +4315,18 @@ int notify_adapter_event(struct notifier_block *notifier,
 		pinfo->cc_hi = *(int *)val;
 		_wake_up_charger(pinfo);
 		break;
+	}
+	if (IS_ERR_OR_NULL(pinfo->chg_psy))
+		pinfo->chg_psy = power_supply_get_by_name("primary_chg");
+	if (!IS_ERR_OR_NULL(pinfo->chg_psy)) {
+		if ((pinfo->pd_type == MTK_PD_CONNECT_PE_READY_SNK_APDO) ||
+			(pinfo->pd_type == MTK_PD_CONNECT_PE_READY_SNK_PD30)) {
+			tcpc_charger_vol.intval = 11000000;
+			ret = power_supply_set_property(pinfo->chg_psy,
+				POWER_SUPPLY_PROP_VOLTAGE_MAX, &tcpc_charger_vol);
+		}
+		if (ret < 0)
+			chr_err("set voltage max fail\n");
 	}
 	chr_debug("%s: evt: pd:%d, ufcs:%d\n", __func__,
 	pinfo->ta_status[PD], pinfo->ta_status[UFCS]);
@@ -3945,7 +4527,24 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	if (IS_ERR(info->psy_hvdvchg2))
 		chr_err("register psy hvdvchg2 fail:%ld\n",
 					PTR_ERR(info->psy_hvdvchg2));
-
+	info->usb_desc.name = "usb";
+	info->usb_desc.type = POWER_SUPPLY_TYPE_USB;
+	info->usb_desc.usb_types = charger_psy_usb_types;
+	info->usb_desc.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
+	info->usb_desc.properties = charger_psy_properties;
+	info->usb_desc.num_properties =
+						ARRAY_SIZE(charger_psy_properties);
+	info->usb_desc.get_property = psy_charger_get_property;
+	info->usb_desc.set_property = psy_charger_set_property;
+	info->usb_desc.property_is_writeable =
+						psy_charger_property_is_writeable;
+	info->usb_cfg.drv_data = info;
+	info->usb_psy = power_supply_register(&pdev->dev,
+						   &info->usb_desc,
+						   &info->usb_cfg);
+	if (IS_ERR(info->usb_psy))
+		chr_err("register psy usb_psy fail:%ld\n",
+					PTR_ERR(info->usb_psy));
 	info->log_level = CHRLOG_ERROR_LEVEL;
 
 	mtk_adapter_protocol_init(info);
@@ -3965,8 +4564,11 @@ static int mtk_charger_probe(struct platform_device *pdev)
 
 	sc_init(&info->sc);
 	info->chg_alg_nb.notifier_call = chg_alg_event;
-
-	info->fast_charging_indicator = 0;
+	/*
+		info->fast_charging_indicator = 0;
+	*/
+	info->fast_charging_indicator = PE5_ID | PDC_ID | PE2_ID;
+	info->cmd_en_pp = true;
 	info->enable_meta_current_limit = 1;
 
 	info->is_charging = false;

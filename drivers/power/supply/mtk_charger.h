@@ -47,7 +47,8 @@ do {								\
 
 struct mtk_charger;
 struct charger_data;
-#define BATTERY_CV 4350000
+//#define BATTERY_CV 4350000
+#define BATTERY_CV 4480000
 #define V_CHARGER_MAX 6500000 /* 6.5 V */
 #define V_CHARGER_MIN 4600000 /* 4.6 V */
 #define VBUS_OVP_VOLTAGE 15000000 /* 15V */
@@ -60,12 +61,13 @@ struct charger_data;
 #define AC_CHARGER_INPUT_CURRENT		3200000
 #define NON_STD_AC_CHARGER_CURRENT		500000
 #define CHARGING_HOST_CHARGER_CURRENT		650000
-
+#define NON_STD_CHARGER_CURRENT 1000000
+#define NON_STD_CHARGER_INPUT_CURRENT 1000000
 /* dynamic mivr */
 #define V_CHARGER_MIN_1 4400000 /* 4.4 V */
 #define V_CHARGER_MIN_2 4200000 /* 4.2 V */
 #define MAX_DMIVR_CHARGER_CURRENT 1800000 /* 1.8 A */
-
+#define MAX_CHARGING_TIME (10 * 60 * 60) /* 10 hours */
 /* battery warning */
 #define BATTERY_NOTIFY_CASE_0001_VCHARGER
 #define BATTERY_NOTIFY_CASE_0002_VBATTEMP
@@ -83,9 +85,10 @@ struct charger_data;
 /* Battery Temperature Protection */
 #define MIN_CHARGE_TEMP  0
 #define MIN_CHARGE_TEMP_PLUS_X_DEGREE	6
-#define MAX_CHARGE_TEMP  50
-#define MAX_CHARGE_TEMP_MINUS_X_DEGREE	47
-
+//#define MAX_CHARGE_TEMP  50
+//#define MAX_CHARGE_TEMP_MINUS_X_DEGREE	47
+#define MAX_CHARGE_TEMP  60
+#define MAX_CHARGE_TEMP_MINUS_X_DEGREE	57
 #define MAX_ALG_NO 10
 
 #define RESET_BOOT_VOLT_TIME 50
@@ -209,6 +212,8 @@ struct charger_custom_data {
 	int usb_charger_current;
 	int ac_charger_current;
 	int ac_charger_input_current;
+	int non_std_charger_current;
+	int non_std_charger_input_current;
 	int charging_host_charger_current;
 
 	/* sw jeita */
@@ -241,7 +246,80 @@ struct charger_custom_data {
 	int min_charger_voltage_1;
 	int min_charger_voltage_2;
 	int max_dmivr_charger_current;
+	/*charging time*/
+	int max_charging_time;
+};
 
+#define NT_JEITA_BATTERY_CV			4480000
+#define NT_JEITA_BATTERY_IEOC		800000
+#define NT_JEITA_TEMP_ABOVE_T5_CV	4100000
+#define NT_JEITA_TEMP_T4_TO_T5_CV	4100000
+#define NT_JEITA_TEMP_T3_TO_T4_CV	4480000
+#define NT_JEITA_TEMP_T2_TO_T3_CV	4480000
+#define NT_JEITA_TEMP_T1_TO_T2_CV	4480000
+#define NT_JEITA_TEMP_T0_TO_T1_CV	4480000
+#define NT_JEITA_TEMP_BELOW_T0_CV	4100000
+#define NT_JEITA_TEMP_ABOVE_T5_IEOC	800000
+#define NT_JEITA_TEMP_T4_TO_T5_IEOC	800000
+#define NT_JEITA_TEMP_T3_TO_T4_IEOC	800000
+#define NT_JEITA_TEMP_T2_TO_T3_IEOC	800000
+#define NT_JEITA_TEMP_T1_TO_T2_IEOC	800000
+#define NT_JEITA_TEMP_T0_TO_T1_IEOC	800000
+#define NT_JEITA_TEMP_BELOW_T0_IEOC	800000
+#define NT_TEMP_T5_THRES	60
+#define NT_TEMP_T5_THRES_MINUS_X_DEGREE	57
+#define NT_TEMP_T4_THRES	45
+#define NT_TEMP_T4_THRES_MINUS_X_DEGREE	42
+#define NT_TEMP_T3_THRES	35
+#define NT_TEMP_T3_THRES_MINUS_X_DEGREE	32
+#define NT_TEMP_T2_THRES	20
+#define NT_TEMP_T2_THRES_PLUS_X_DEGREE	23
+#define NT_TEMP_T1_THRES	10
+#define NT_TEMP_T1_THRES_PLUS_X_DEGREE	13
+#define NT_TEMP_T0_THRES	0
+#define NT_TEMP_T0_THRES_PLUS_X_DEGREE	3
+
+enum nt_sw_jeita_state_enum {
+	NT_TEMP_BELOW_T0 = 0,
+	NT_TEMP_T0_TO_T1,
+	NT_TEMP_T1_TO_T2,
+	NT_TEMP_T2_TO_T3,
+	NT_TEMP_T3_TO_T4,
+	NT_TEMP_T4_TO_T5,
+	NT_TEMP_ABOVE_T5
+};
+
+struct nt_sw_jeita_data {
+	int nt_battery_cv;
+	int nt_battery_ieoc;
+	int nt_ieoc;
+	int nt_old_ieoc;
+	int nt_jeita_temp_above_t5_cv;
+	int nt_jeita_temp_t4_to_t5_cv;
+	int nt_jeita_temp_t3_to_t4_cv;
+	int nt_jeita_temp_t2_to_t3_cv;
+	int nt_jeita_temp_t1_to_t2_cv;
+	int nt_jeita_temp_t0_to_t1_cv;
+	int nt_jeita_temp_below_t0_cv;
+	int nt_jeita_temp_above_t5_ieoc;
+	int nt_jeita_temp_t4_to_t5_ieoc;
+	int nt_jeita_temp_t3_to_t4_ieoc;
+	int nt_jeita_temp_t2_to_t3_ieoc;
+	int nt_jeita_temp_t1_to_t2_ieoc;
+	int nt_jeita_temp_t0_to_t1_ieoc;
+	int nt_jeita_temp_below_t0_ieoc;
+	int nt_temp_t5_thres;
+	int nt_temp_t5_thres_minus_x_degree;
+	int nt_temp_t4_thres;
+	int nt_temp_t4_thres_minus_x_degree;
+	int nt_temp_t3_thres;
+	int nt_temp_t3_thres_minus_x_degree;
+	int nt_temp_t2_thres;
+	int nt_temp_t2_thres_plus_x_degree;
+	int nt_temp_t1_thres;
+	int nt_temp_t1_thres_plus_x_degree;
+	int nt_temp_t0_thres;
+	int nt_temp_t0_thres_plus_x_degree;
 };
 
 struct charger_data {
@@ -322,6 +400,17 @@ struct mtk_charger {
 	struct info_notifier_block ta_nb[MAX_TA_IDX];
 	struct adapter_device *ufcs_adapter;
 	struct mutex pd_lock;
+	struct power_supply_desc usb_desc;
+	struct power_supply_config usb_cfg;
+	struct power_supply *usb_psy;
+	bool aging_mode;
+	bool fastchg_rerun;
+	bool pd_disable_pp;
+	bool usb_disable_pp;
+	int sink_ua;
+	bool cmd_en_pp;
+	int pd_type;
+	bool pd_reset;
 	struct mutex ufcs_lock;
 	struct mutex ta_lock;
 
@@ -402,6 +491,8 @@ struct mtk_charger {
 	/* sw jeita */
 	bool enable_sw_jeita;
 	struct sw_jeita_data sw_jeita;
+	bool enable_nt_sw_jeita;
+	struct nt_sw_jeita_data nt_sw_jeita;
 
 	/* battery thermal protection */
 	struct battery_thermal_protection_data thermal;
@@ -502,6 +593,8 @@ extern void mtk_check_ta_status(struct mtk_charger *info);
 
 /* functions for other */
 extern int mtk_chg_enable_vbus_ovp(bool enable);
+extern int mtk_chg_set_vbus_ovp(bool enable,int ovp);
+extern int mtk_chg_get_area_id(void);
 
 enum attach_type {
 	ATTACH_TYPE_NONE,

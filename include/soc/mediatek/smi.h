@@ -53,6 +53,8 @@ void mtk_smi_dbg_dump_for_mminfra(void);
 void mtk_smi_init_power_off(void);
 void mtk_smi_dump_last_pd(const char *user);
 s32 mtk_smi_status_check(struct device *larbdev, bool log_enable);
+void mtk_smi_common_clamp_and_lock(struct device *commdev, bool on);
+void mtk_smi_set_common_clamp_and_lock(const u32 comm_id, bool on);
 void mtk_smi_larb_clamp_and_lock(struct device *larbdev, bool on);
 s32 smi_sysram_enable(struct device *larbdev, const u32 master_id,
 			const bool enable, const char *user);
@@ -110,6 +112,9 @@ static inline s32 mtk_smi_status_check(struct device *larbdev, bool log_enable)
 {
 	return 0;
 }
+
+static inline void mtk_smi_common_clamp_and_lock(struct device *commdev, bool on) { }
+static inline void mtk_smi_set_common_clamp_and_lock(const u32 comm_id, bool on) { }
 
 static inline void mtk_smi_larb_clamp_and_lock(struct device *larbdev, bool on) { }
 

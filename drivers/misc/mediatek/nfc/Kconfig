@@ -1,3 +1,6 @@
+menu "Near Field Communication (NFC) devices"
+	depends on NFC
+
 config NFC_CHIP_SUPPORT
 	tristate "STMicroelectronics NFC driver solution"
 	help
@@ -36,3 +39,7 @@ config NFC_DEBUG
 	  This option is for debug only, if configures to be y, it the nfc
 	  controller driver and nfc spi controller driver will dump more
 	  log for debug.
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/nfc/tmsdrv/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/nfc/nxp/nfc/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/nfc/nxp/ese/Kconfig"
+endmenu

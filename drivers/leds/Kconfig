@@ -79,6 +79,12 @@ config LEDS_REGULATOR_VIBRATOR
 	  To compile this driver as a module, choose 'M' here: the module
 	  will be called regulator-vibrator.
 
+config OEM_LED
+    tristate "oem_led"
+    help
+	Say Y here if you want to enable oem_led.
+	If unsure, say N.
+
 comment "Flash and Torch LED drivers"
 source "$(KCONFIG_EXT_PREFIX)drivers/leds/flash/Kconfig"
 

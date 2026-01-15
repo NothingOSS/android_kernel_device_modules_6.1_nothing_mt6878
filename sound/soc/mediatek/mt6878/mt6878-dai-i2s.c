@@ -107,6 +107,8 @@ enum {
 	ETDM_SLAVE_SEL_ETDMOUT7_SLAVE = 15,
 };
 
+static unsigned int etdm_align_mode = 1;
+
 static unsigned int get_etdm_wlen(snd_pcm_format_t format)
 {
 	unsigned int wlen = 0;
@@ -1909,9 +1911,15 @@ static int mtk_dai_etdm_hw_params(struct snd_pcm_substream *substream,
 				   REG_INITIAL_COUNT_MASK_SFT,
 				   0x5 << REG_INITIAL_COUNT_SFT);
 		/* 3: pad top 5: no pad top */
-		regmap_update_bits(afe->regmap, ETDM_IN4_CON1,
-				   REG_INITIAL_POINT_MASK_SFT,
-				   0x3 << REG_INITIAL_POINT_SFT);
+		if (etdm_align_mode == 1)
+			regmap_update_bits(afe->regmap, ETDM_IN4_CON1,
+					   REG_INITIAL_POINT_MASK_SFT,
+					   0x4 << REG_INITIAL_POINT_SFT);
+		else
+			regmap_update_bits(afe->regmap, ETDM_IN4_CON1,
+						REG_INITIAL_POINT_MASK_SFT,
+						0x3 << REG_INITIAL_POINT_SFT);
+
 		regmap_update_bits(afe->regmap, ETDM_IN4_CON1,
 				   REG_LRCK_RESET_MASK_SFT,
 				   0x1 << REG_LRCK_RESET_SFT);
@@ -2353,9 +2361,14 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 				   REG_INITIAL_COUNT_MASK_SFT,
 				   0x5 << REG_INITIAL_COUNT_SFT);
 		/* 3: pad top 5: no pad top */
-		regmap_update_bits(afe->regmap, ETDM_IN4_CON1,
-				   REG_INITIAL_POINT_MASK_SFT,
-				   0x3 << REG_INITIAL_POINT_SFT);
+		if (etdm_align_mode == 1)
+			regmap_update_bits(afe->regmap, ETDM_IN4_CON1,
+					   REG_INITIAL_POINT_MASK_SFT,
+					   0x4 << REG_INITIAL_POINT_SFT);
+		else
+			regmap_update_bits(afe->regmap, ETDM_IN4_CON1,
+					   REG_INITIAL_POINT_MASK_SFT,
+					   0x3 << REG_INITIAL_POINT_SFT);
 		regmap_update_bits(afe->regmap, ETDM_IN4_CON1,
 				   REG_LRCK_RESET_MASK_SFT,
 				   0x1 << REG_LRCK_RESET_SFT);
@@ -2826,7 +2839,11 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 	i2sin4_priv->ip_mode = ip_mode;
 	dev_info(afe->dev, "%s() etdm-ip-mode: %d\n", __func__, ip_mode);
 
-
+	ret = of_property_read_u32(afe->dev->of_node, "etdm-align-mode", &etdm_align_mode);
+	if (ret) {
+		dev_info(afe->dev, "%s() failed to read etdm-align-mode\n", __func__);
+		return -EINVAL;
+	}
 	return 0;
 }
 

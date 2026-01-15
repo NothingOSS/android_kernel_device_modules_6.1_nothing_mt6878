@@ -17,11 +17,11 @@
 #endif
 
 #define RT_MAX_NUM 10
-#define ESD_CHECK_NUM 3
+#define ESD_CHECK_NUM_MAX 4
 #define MAX_TX_CMD_NUM 20
 #define MAX_RX_CMD_NUM 20
-#define READ_DDIC_SLOT_NUM 8
-#define MAX_DYN_CMD_NUM 20
+#define READ_DDIC_SLOT_NUM 16
+#define MAX_DYN_CMD_NUM 60
 #define MAX_TX_CMD_NUM_PACK 64
 #define MAX_MODE_SWITCH_CMD_NUM 20
 
@@ -395,6 +395,13 @@ struct dynamic_fps_params {
 	unsigned int data_rate;
 	unsigned int data_rate_khz;
 	struct dfps_switch_cmd dfps_cmd_table[MAX_DYN_CMD_NUM];
+	struct dfps_switch_cmd doze_en_cmd_table[MAX_DYN_CMD_NUM];
+	struct dfps_switch_cmd aod_high_cmd_table[MAX_DYN_CMD_NUM];
+	struct dfps_switch_cmd aod_middle_cmd_table[MAX_DYN_CMD_NUM];
+	struct dfps_switch_cmd aod_low_cmd_table[MAX_DYN_CMD_NUM];
+	bool exit_doze_black;
+	struct dfps_switch_cmd doze_dis_cmd_table[MAX_DYN_CMD_NUM];
+	struct dfps_switch_cmd bl_update_cmd_table[MAX_DYN_CMD_NUM];
 };
 
 struct mtk_bl_ext_config {
@@ -497,11 +504,11 @@ enum DISPLAY_MODE {
 };
 
 struct mtk_panel_params {
+	unsigned int change_fps_by_vfp_send_cmd;
 	unsigned int pll_clk;
 	unsigned int data_rate;
 	unsigned int data_rate_khz;
 	unsigned int vdo_per_frame_lp_enable; /* Enable video mode per frame lp */
-	unsigned int change_fps_by_vfp_send_cmd;
 	struct mtk_dsi_phy_timcon phy_timcon;
 	unsigned int vfp_low_power;
 	struct dynamic_mipi_params dyn;
@@ -509,7 +516,9 @@ struct mtk_panel_params {
 	struct mtk_ddic_dsi_cmd send_cmd_to_ddic;
 	unsigned int cust_esd_check;
 	unsigned int esd_check_enable;
-	struct esd_check_item lcm_esd_check_table[ESD_CHECK_NUM];
+	unsigned int platform_esdbl_rec;
+	struct esd_check_item lcm_esd_check_table[ESD_CHECK_NUM_MAX];
+	bool readreg_per_cycle;
 	unsigned int ssc_enable;
 	unsigned int ssc_range;
 	int lcm_color_mode;
@@ -576,6 +585,9 @@ struct mtk_panel_params {
 
 	bool dual_swap;
 	unsigned int mode_switch_delay;
+
+	bool delay_first_bl_en;
+	bool vdo_mix_mode_en;
 };
 
 struct mtk_panel_ext {
@@ -608,6 +620,8 @@ struct mtk_panel_funcs {
 	int (*read_elvss_base_voltage)(void *dsi_drv, ddic_dsi_send_cmd send_cb,
 		dic_dsi_read_cmd read_cb, struct DISP_PANEL_BASE_VOLTAGE *base_volageg);
 	int (*set_backlight_cmdq)(void *dsi_drv, dcs_write_gce cb,
+		void *handle, unsigned int level);
+	int (*set_backlight_pack)(void *dsi_drv, dcs_write_gce_pack cb,
 		void *handle, unsigned int level);
 	int (*set_spr_cmdq)(void *dsi_drv, struct drm_panel *panel, dcs_grp_write_gce cb,
 		void *handle, unsigned int en);
@@ -696,9 +710,17 @@ struct mtk_panel_funcs {
 
 	int (*hbm_set_cmdq)(struct drm_panel *panel, void *dsi_drv,
 			    dcs_write_gce cb, void *handle, bool en);
+	int (*hbm_set_pack)(struct drm_panel *panel, void *dsi, dcs_write_gce_pack cb,
+		void *handle, bool en);
 	void (*hbm_get_state)(struct drm_panel *panel, bool *state);
 	void (*hbm_get_wait_state)(struct drm_panel *panel, bool *wait);
 	bool (*hbm_set_wait_state)(struct drm_panel *panel, bool wait);
+
+	int (*lhbm_set_cmdq)(struct drm_panel *panel, void *dsi_drv,
+			    dcs_write_gce cb, void *handle, bool en);
+	void (*lhbm_get_state)(struct drm_panel *panel, bool *state);
+	int (*exit_aod_insert_black)(struct drm_panel *panel,
+		void *dsi_drv, dcs_write_gce cb, void *handle);
 
 	void (*lcm_dump)(struct drm_panel *panel, enum MTK_LCM_DUMP_FLAG flag);
 	enum mtk_lcm_version (*get_lcm_version)(void);
@@ -718,6 +740,7 @@ struct mtk_panel_funcs {
 		dcs_write_gce cb, void *handle,
 		unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 	int (*get_lcm_power_state)(struct drm_panel *panel);
+	int (*panel_poweron)(struct drm_panel *panel);
 };
 
 void mtk_panel_init(struct mtk_panel_ctx *ctx);
@@ -740,4 +763,9 @@ int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev,
 				mtk_dsi_ddic_handler_cb handler_cb,
 				struct mtk_lcm_dsi_cmd_packet *packet);
 
+void mtk_panel_proc_local_hbm(int hbm_status);
+void mtk_panel_update_lcm_state_to_fingerprint(void);
+void mtk_panel_proc_hbm(int hbm_status);
+void mtk_panel_proc_ui_status(int ui_ready);
+int mtk_panel_get_ui_status(void);
 #endif

@@ -1,0 +1,380 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 MediaTek Inc.
+ */
+#include "k6878v1_64.dts"
+
+/ {
+    hw_rev = <2>;
+};
+
+/* Trustonic Mobilecore real driver */
+&mobicore{
+	trustonic,real-drv=<1>;
+};
+
+&mtk_leds {
+	compatible = "mediatek,disp-leds";
+
+	backlight {
+		led-mode = <4>;
+	};
+};
+
+/*
+NFC Ese equipment configuration
+*/
+&spi5 {
+	status = "okay";
+	p61@0 {
+		compatible = "nxp,p61";
+		reg = <0>;
+		spi-max-frequency = <20000000>;
+		nxp,nfcc = "0-0028";
+	};
+};
+
+/* 
+ * project-check == 1
+ */
+&wifi {
+    project-check = <1>;
+};
+
+&i2c0 {
+	clock-frequency = <1000000>;
+	status = "ok";
+
+	ics_haptic_drv: ics_haptic@5f {
+		compatible = "ics,haptic_sfdc_rt";
+		reg = <0x5f>;
+		device-name = "vibrator_nt";
+		richtap-name = "aac_richtap";
+		pinctrl-names = "default";
+		gpio-en = <&pio 38 0>;
+		gpio-irq = <&pio 9 0>;
+		// rt6010 chip configuration
+		rt6010_chip_id = <0x6B>;
+		rt6010_reg_size = <0x6C>;
+		rt6010_ram_size = <0x600>;
+		rt6010_sys_f0 = <2100>;
+		rt6010_list_base_addr = <0x400>;
+		rt6010_wave_base_addr = <0x420>;
+		rt6010_fifo_ae = <0x200>;
+		rt6010_fifo_af = <0x300>;
+		rt6010_boost_mode = <0x00>;
+		rt6010_boost_vol = <0x0A>;
+		rt6010_gain = <0x80>;
+		rt6010_brake_en = <0>;
+		rt6010_brake_wave_no = <0>;
+		rt6010_brake_const = <0>;
+		rt6010_brake_acq_point = <0>;
+		status = "ok";
+	};
+};
+
+&i2c0 {
+	clock-frequency = <1000000>;
+	nfc@0x28 {
+		status = "okay";
+		compatible = "tms,nfc";
+		reg = <0x28>;
+		tms,device-name   = "tms_nfc";
+		tms,device-count  = <1>;
+		tms,irq-gpio      = <&pio 2 0>;
+		tms,ven-gpio      = <&pio 40 1>;
+		nxp,sn-irq        = <&pio 2 0>; 
+		nxp,sn-ven-rstn   = <&pio 40 1>;
+	}; 
+
+};
+
+&i2c3 {
+	clock-frequency = <400000>;
+	hl5280-audioswitch@42 {
+		compatible = "mediatek,hl5280-audioswitch";
+		reg = <0x42>;
+	};
+};
+
+&gpio_board_id {
+	compatible = "gpio,board-id,galaga";
+	board_id_gpio0 = <&pio 34 0x0>;
+	board_id_gpio1 = <&pio 36 0x0>;
+	board_id_gpio2 = <&pio 3 0x0>;
+	board_id_gpio3 = <&pio 37 0x0>;
+	board_id_gpio4 = <&pio 189 0x0>;
+};
+
+&breathing_lights {
+	compatible = "breathing,lights";
+	status = "okay";
+	reg = <0x0>;
+
+	vdd-supply = <&mt6369_vibr>;
+};
+
+&mt6369_vibr {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+};
+
+&i2c6 {
+	clock-frequency = <400000>;
+	tfa98xx_smartpa_0: tfa98xx@34 {
+		compatible = "tfa,tfa98xx";
+		#sound-dai-cells = <0>;
+		reg = <0x34>;
+		reset-gpio= <&pio 195 0>;
+		reset-polarity=<1>;
+		irq-gpio=<&pio 41 0>;
+	};
+};
+
+&sound {
+	mediatek,speaker-codec {
+		sound-dai = <&tfa98xx_smartpa_0>;
+	};
+};
+
+&snd_audio_dsp {
+	mtk-dsp-call-final = <0x5 0xc 0x11 0x10 0x18000>;
+	swdsp-smartpa-process-enable = <0x5>;
+};
+
+&afe {
+	etdm-align-mode = <0>;
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	switch-fps = <120>;
+
+	panel1@0 {
+		compatible = "rm69220,boe";
+		reg = <1>;
+		vddi-en-gpios = <&pio 32 0>;
+		dvdd-en-gpios = <&pio 193 0>;
+		vci-en-gpios = <&pio 194 0>;
+		reset-gpios = <&pio 90 0>;
+		is-support-write-key = <0>;
+		esd-readreg-per-cycle = <1>;		// Every esd check period (2s), only read one register
+		esd-check-num = <2>;
+		mipi-drive-capability = <0x06>;
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+	panel2@1 {
+		compatible = "rm69220,vxn";
+		reg = <2>;
+		vddi-en-gpios = <&pio 32 0>;
+		dvdd-en-gpios = <&pio 193 0>;
+		vci-en-gpios = <&pio 194 0>;
+		reset-gpios = <&pio 90 0>;
+		is-support-write-key = <0>;
+		esd-readreg-per-cycle = <1>;
+		esd-check-num = <1>;
+		pinctrl-names = "default";
+		port {
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out2>;
+			};
+		};
+	};
+	panel3@2 {
+		compatible = "epd8820,boe";
+		reg = <3>;
+		vddi-en-gpios = <&pio 32 0>;
+		dvdd-en-gpios = <&pio 193 0>;
+		vci-en-gpios = <&pio 194 0>;
+		reset-gpios = <&pio 90 0>;
+		is-support-write-key = <0>;
+		esd-readreg-per-cycle = <1>;
+		esd-check-num = <1>;
+		mipi-drive-capability = <0x08>;
+		pinctrl-names = "default";
+		port {
+			panel_in3: endpoint {
+				remote-endpoint = <&dsi_out3>;
+			};
+		};
+	};
+
+	ports {
+		port {
+			dsi_out: endpoint@0 {
+				remote-endpoint = <&panel_in1>;
+			};
+			dsi_out2: endpoint@1 {
+				remote-endpoint = <&panel_in2>;
+			};
+			dsi_out3: endpoint@2 {
+				remote-endpoint = <&panel_in3>;
+			};
+		};
+	};
+};
+
+&mtk_leds {
+	backlight {
+		default-state = "third";	// lk panel on set 1/3 max brightness
+	};
+};
+
+	&mtee_svp {
+		mtee: MTEE {
+			compatible = "mediatek,mtk_svp_on_mtee_support";
+		};
+
+		svp: SecureVideoPath {
+			compatible = "mediatek,mtk_sec_video_path_support";
+		};
+	};
+
+&nt_chg {
+	project-id = <4>;
+};
+
+&mtk_gauge {
+	project-id = <4>;
+};
+
+&pe5 {
+	tdvchg-level-def = <0 0 0 5 25 60 65 70 75>;
+	tdvchg-curlmt = <(-1) (-1) (-1) 300 0 100 200 900 (-1)>;
+	tbat-level-def = <10 10 10 20 25 35 40 45 50>;
+	/*hot 45~50*/
+	tbat-t4-to-t5-cv = <4250 4380 4450 4480 4505>;
+	tbat-t4-to-t5-curlmt = <2139 2139 2139 2139 2139>;
+	/*very warm 40~45*/
+	tbat-t3-to-t4-cv = <4250 4380 4450 4480 4505>;
+	tbat-t3-to-t4-curlmt = <0 0 0 540 1278>;
+	/*warm 35~40*/
+	tbat-t2-to-t3-cv = <4250 4380 4450 4480 4505>;
+	tbat-t2-to-t3-curlmt = <0 0 0 540 1278>;
+	/*normal 20~35*/
+	tbat-t1-to-t2-cv = <4250 4380 4450 4480 4505>;
+	tbat-t1-to-t2-curlmt = <0 0 0 540 1278>;
+	/*cool 10~20*/
+	tbat-t0-to-t1-cv = <4150 4250 4300 4480 4505>;
+	tbat-t0-to-t1-curlmt = <0 0 540 1032 1278>;
+};
+
+&u2port0 {
+	mediatek,rev6 = <3>;
+};
+
+&charger {
+	enable-nt-sw-jeita;
+	nt-battery-cv = <4490000>;
+	nt-battery-ieoc = <800000>;
+	nt-jeita-temp-above-t5-cv = <4100000>;
+	nt-jeita-temp-t4-to-t5-cv = <4100000>;
+	nt-jeita-temp-t3-to-t4-cv = <4490000>;
+	nt-jeita-temp-t2-to-t3-cv = <4490000>;
+	nt-jeita-temp-t1-to-t2-cv = <4490000>;
+	nt-jeita-temp-t0-to-t1-cv = <4480000>;
+	nt-jeita-temp-below-t0-cv = <4100000>;
+	nt-jeita-temp-above-t5-ieoc = <500000>;
+	nt-jeita-temp-t4-to-t5-ieoc = <500000>;
+	nt-jeita-temp-t3-to-t4-ieoc = <800000>;
+	nt-jeita-temp-t2-to-t3-ieoc = <800000>;
+	nt-jeita-temp-t1-to-t2-ieoc = <650000>;
+	nt-jeita-temp-t0-to-t1-ieoc = <500000>;
+	nt-jeita-temp-below-t0-ieoc = <500000>;
+	nt-temp-t5-thres = <60>;
+	nt-temp-t5-thres-minus-x-degree = <57>;
+	nt-temp-t4-thres = <45>;
+	nt-temp-t4-thres-minus-x-degree = <42>;
+	nt-temp-t3-thres = <35>;
+	nt-temp-t3-thres-minus-x-degree = <32>;
+	nt-temp-t2-thres = <20>;
+	nt-temp-t2-thres-plus-x-degree = <23>;
+	nt-temp-t1-thres = <10>;
+	nt-temp-t1-thres-plus-x-degree = <13>;
+	nt-temp-t0-thres = <0>;
+	nt-temp-t0-thres-plus-x-degree = <3>;
+};
+
+&ssusb {
+	dis-cust-pp;
+};
+
+&mt6375_chg {
+	dis-second-bc12;
+};
+
+&mt6375_typec {
+	tcpc,en-fod;
+};
+
+&mt6375_typec_pd_data {
+	pd,sink-cap-ext = /bits/ 8 <0xcf 0x29 0x75 0x63
+				    0x00 0x00 0x00 0x00
+				    0x00 0x00 0x01 0x00
+				    0x00 0x00 0x00 0x00
+				    0x01 0x0b 0x0a 0x0a
+				    0x21 0x00 0x00 0x00>;
+	pd,charging-policy = <0x2>;
+	pd,sink-pdo-size = <3>;
+	/* Fixed, 5000mV,2000mA 9000mV,2000mA , 9VProg,3000mA*/
+	pd,sink-pdo-data = <0x000190c8 0x0002d0c8 0xc0dc323c>;
+};
+
+&pio{
+	ai_key_default:ai_key_default {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO30__FUNC_GPIO30>;
+			drive-strength = <2>;
+			input-enable;
+			bias-pull-up;
+		};
+	};
+};
+&gpio_keys {
+	pinctrl-0 = <&key_gpio_default &ai_key_default>;
+	ai_key {
+		label = "ai_key";
+		linux,code = <250>;
+		linux,input-type = <1>;
+		gpios = <&pio 30 1>;
+		wakeup-source;
+		debounce-interval = <30>;
+	};
+};
+
+&thermal_zones {
+	usb_board: usb_board {
+		polling-delay = <0>; /* milliseconds */
+		polling-delay-passive = <0>; /* milliseconds */
+		thermal-sensors = <&usb_port_thermistor>;
+
+		trips {
+			usb_board_crit: usb-board-crit {
+				temperature = <119000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+};
+
+#include <k6878v1_64/cust.dtsi>
+#include "mediatek/cust_mt6878_touch_galaga_1080x2392.dtsi"
+#include "mediatek/cust_mt6878_galaxian_camera_v4l2.dtsi"
+#include "mediatek/cust_k6878_connfem.dtsi"
+#include "mediatek/sgm41606S.dtsi"
+#include "mediatek/sc8541.dtsi"
+#include "mediatek/nu2115.dtsi"
+#include "goodix_fingerprint_galaga.dtsi"
+/*End of this file, DO NOT ADD ANYTHING HERE*/
+
+#include "mediatek/bat_setting/mt6878_battery_prop_galaga.dtsi"
+&sc8541 {
+	sc,sc8541,en_adc_ctl;
+};

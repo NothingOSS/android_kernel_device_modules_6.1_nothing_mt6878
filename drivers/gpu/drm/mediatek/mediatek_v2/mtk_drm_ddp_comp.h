@@ -716,6 +716,9 @@ enum mtk_ddp_io_cmd {
 	BYPASS_SPR2RGB,
 	DSI_GET_PANEL_VBLANK_PERIOD_US,
 	PMQOS_GET_HRT_BW,
+	DSI_LHBM_SET,
+	DSI_LHBM_GET_STATE,
+	DSI_EXIT_AOD_BLACK,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

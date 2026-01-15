@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ */
+/* TOUCH start */
+&spi3 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	pinctrl-names = "default", "ts_int_active",
+		"ts_reset_active", "ts_int_suspend",
+		"ts_reset_suspend", "ts_spi_mode";
+	pinctrl-0 = <&ctp_pins_default>;
+	pinctrl-1 = <&ctp_ts_int_active>;
+	pinctrl-2 = <&ctp_ts_reset_active>;
+	pinctrl-3 = <&ctp_ts_int_suspend>;
+	pinctrl-4 = <&ctp_ts_reset_suspend>;
+	pinctrl-5 = <&ctp_ts_spi_mode>;
+
+	focaltech@0{
+			compatible = "focaltech,ft3683g", "eswin,eph861x";
+			status = "okay";
+			reg = <0x0>;
+			spi-max-frequency = <9600000>;
+			interrupt-parent = <&pio>;
+			interrupts = <7 0x02>;
+            		//focaltech,avdd-gpio = <&pio 27 0x00>;
+            		focaltech,dvdd-gpio = <&pio 35 0x00>;
+			vdd-supply = <&mt6369_vtp>;
+			focaltech,reset-gpio = <&pio 6 0x00>;
+			focaltech,irq-gpio = <&pio 7 0x02>;
+			focaltech,max-touch-number = <10>;
+			focaltech,display-coords =  <0 0 1080 2392>;
+
+			pinctrl-names = "ts_spi_mode";
+			pinctrl-0 = <&ctp_ts_spi_mode>;
+
+			eswin,irq-gpio = <&pio 7 0x02>; // Pin7 on GPIO header
+			eswin,reset-gpio = <&pio 6 0x00>; // Pin11 on GPIO header
+			eswin,suspend-mode = <0x02>;
+			eswin,panel-invert-x = <0>;
+			eswin,panel-invert-y = <0>;
+			eswin,panel-max-x = <1080>;
+			eswin,panel-max-y = <2392>;
+			eswin,dvdd-gpio = <&pio 35 0x00>;
+			eswin,regulator_avdd = "avdd";
+			eswin,fw_name = "EPH8613_Pixel4xl_fw.bin";
+			eswin,device_settings_name = "EPH8613_Pixel4xl_device_settings.bin";
+			eswin,input_name = "ESWIN EPH861X Touchscreen";
+		};
+
+};
+&mt6369_vtp {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+};
+
+&pio {
+	ctp_pins_default: eintdefault {
+	};
+	ctp_ts_int_active: int-active {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO7__FUNC_GPIO7>;
+			input-enable;
+		};
+	};
+	ctp_ts_reset_active: reset-active {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO6__FUNC_GPIO6>;
+			output-high;
+		};
+	};
+	ctp_ts_int_suspend: int-suspend {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO7__FUNC_GPIO7>;
+			output-low;
+		};
+	};
+	ctp_ts_reset_suspend: reset-suspend {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO6__FUNC_GPIO6>;
+			output-low;
+		};
+	};
+	ctp_ts_spi_mode: spimode-default {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO68__FUNC_SPI3_CLK>,
+				<PINMUX_GPIO69__FUNC_SPI3_CSB>,
+				<PINMUX_GPIO70__FUNC_SPI3_MO>,
+				<PINMUX_GPIO71__FUNC_SPI3_MI>;
+			drive-strength = <2>;
+		};
+	};
+};
+/* TOUCH end */

@@ -353,6 +353,9 @@ void set_task_basic_vip(int pid)
 {
 	struct task_struct *p;
 	struct vip_task_struct *vts;
+	bool is_set = false;
+
+	pr_info("Set task as vip: %d", pid);
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
@@ -361,8 +364,15 @@ void set_task_basic_vip(int pid)
 		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 		vts->basic_vip = true;
 		put_task_struct(p);
+		is_set = true;
 	}
 	rcu_read_unlock();
+
+	if (is_set) {
+		pr_info("Set task as vip successfully: %d ", pid);
+	} else {
+		pr_info("Set task as vip failed: %d", pid);
+	}
 }
 EXPORT_SYMBOL_GPL(set_task_basic_vip);
 
@@ -370,6 +380,9 @@ void unset_task_basic_vip(int pid)
 {
 	struct task_struct *p;
 	struct vip_task_struct *vts;
+	bool is_unset = false;
+
+	pr_info("Unset task vip: %d", pid);
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
@@ -378,8 +391,15 @@ void unset_task_basic_vip(int pid)
 		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 		vts->basic_vip = false;
 		put_task_struct(p);
+		is_unset = true;
 	}
 	rcu_read_unlock();
+
+	if (is_unset) {
+		pr_info("Unset task vip successfully: %d ", pid);
+	} else {
+		pr_info("Unset task vip failed: %d", pid);
+	}
 }
 EXPORT_SYMBOL_GPL(unset_task_basic_vip);
 /* end of basic vip interface */

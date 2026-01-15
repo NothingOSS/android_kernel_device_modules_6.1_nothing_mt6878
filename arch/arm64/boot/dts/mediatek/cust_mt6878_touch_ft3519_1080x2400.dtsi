@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ */
+/* TOUCH start */
+&i2c2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	clock-frequency = <400000>;
+	pinctrl-names = "default", "ts_int_active",
+		"ts_reset_active", "ts_int_suspend",
+		"ts_reset_suspend", "ts_i2c_mode";
+	pinctrl-0 = <&ctp_pins_default>;
+	pinctrl-1 = <&ctp_ts_int_active>;
+	pinctrl-2 = <&ctp_ts_reset_active>;
+	pinctrl-3 = <&ctp_ts_int_suspend>;
+	pinctrl-4 = <&ctp_ts_reset_suspend>;
+	pinctrl-5 = <&ctp_ts_i2c_mode>;
+
+	focaltech@38{
+			compatible = "focaltech,fts";
+			status = "okay";
+			reg = <0x38>;
+			interrupt-parent = <&pio>;
+			interrupts = <7 0x02>;
+            		//focaltech,avdd-gpio = <&pio 27 0x00>;
+            		focaltech,dvdd-gpio = <&pio 69 0x00>;
+			vdd-supply = <&mt6369_vtp>;
+			focaltech,reset-gpio = <&pio 6 0x01>;
+			focaltech,irq-gpio = <&pio 7 0x02>;
+			focaltech,max-touch-number = <10>;
+			focaltech,display-coords =  <0 0 1080 2400>;
+		};
+
+};
+&mt6369_vtp {
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+};
+
+&pio {
+	ctp_pins_default: eintdefault {
+	};
+	ctp_ts_int_active: int-active {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO7__FUNC_GPIO7>;
+			input-enable;
+		};
+	};
+	ctp_ts_reset_active: reset-active {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO6__FUNC_GPIO6>;
+			output-high;
+		};
+	};
+	ctp_ts_int_suspend: int-suspend {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO7__FUNC_GPIO7>;
+			output-low;
+		};
+	};
+	ctp_ts_reset_suspend: reset-suspend {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO6__FUNC_GPIO6>;
+			output-low;
+		};
+	};
+	ctp_ts_i2c_mode: i2cmode-default {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO129__FUNC_SCL2>,
+				<PINMUX_GPIO130__FUNC_SDA2>;
+		};
+	};
+};
+/* TOUCH end */

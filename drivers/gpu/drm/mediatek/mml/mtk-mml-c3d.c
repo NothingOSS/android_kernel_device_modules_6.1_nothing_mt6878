@@ -381,10 +381,11 @@ static s32 c3d_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_pq_comp_config_result *result = NULL;
+	struct c3d_frame_data *c3d_frm = c3d_frm_data(ccfg);
 	s32 ret = 0;
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
-	if (!dest->pq_config.en_c3d)
+	if (!dest->pq_config.en_c3d || !c3d_frm->config_success)
 		goto exit;
 
 	do {

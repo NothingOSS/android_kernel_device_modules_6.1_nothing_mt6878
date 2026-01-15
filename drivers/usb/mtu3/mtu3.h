@@ -347,6 +347,7 @@ struct ssusb_mtk {
 	/* dp switch */
 	struct regmap *dp_switch;
 	u32 dp_switch_oft;
+	bool is_suspended;
 };
 
 /**
@@ -458,6 +459,9 @@ struct mtu3 {
 	struct work_struct draw_work;
 	unsigned int vbus_draw;
 	unsigned int is_power_limit:1;
+	struct delayed_work fake_usb_work;
+	unsigned int is_fake_usb;
+	bool dis_cust_pp;
 
 	const char *typec_name;
 	const char *typec_port_name;

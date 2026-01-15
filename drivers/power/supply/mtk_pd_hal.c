@@ -63,6 +63,7 @@
 
 /* dependent on platform */
 #include "mtk_charger.h"
+#include "nt_chg.h"
 
 struct pd_hal {
 	struct charger_device *chg1_dev;
@@ -312,9 +313,14 @@ bool pd_hal_is_chip_enable(struct chg_alg_device *alg, enum chg_idx chgidx)
 
 int pd_hal_enable_vbus_ovp(struct chg_alg_device *alg, bool enable)
 {
-	//wy fix me
-	mtk_chg_enable_vbus_ovp(enable);
+	/*mtk_chg_enable_vbus_ovp(enable);*/
+	struct mtk_pd *pd;
 
+	if (alg == NULL)
+		return -EINVAL;
+	pd = dev_get_drvdata(&alg->dev);
+	mtk_chg_set_vbus_ovp(enable,pd->max_charger_voltage);
+	pd_dbg("%s swovp: %d\n", __func__,pd->max_charger_voltage);
 	return 0;
 }
 
@@ -681,4 +687,76 @@ int pd_hal_get_log_level(struct chg_alg_device *alg)
 	}
 
 	return ret;
+}
+
+int pd_hal_get_area_id(void)
+{
+	static struct nt_chg_info *nt_chg = NULL;
+	struct power_supply *psy;
+
+	if (nt_chg == NULL) {
+		psy = power_supply_get_by_name("nt-chg");
+		if (psy == NULL) {
+			pr_err("[%s]psy is not rdy\n", __func__);
+			return 0;
+		}
+
+		nt_chg = (struct nt_chg_info *)power_supply_get_drvdata(psy);
+		if (nt_chg == NULL) {
+			pr_err("[%s]nt_chg_info is not rdy\n", __func__);
+			return 0;
+		}
+	}
+
+	return nt_chg->area_id;
+}
+
+int pd_hal_get_usb_type(void)
+{
+	struct mtk_charger *info = NULL;
+	struct power_supply *chg_psy = NULL;
+	int ret = 0;
+
+	chg_psy = power_supply_get_by_name("mtk-master-charger");
+	if (chg_psy == NULL || IS_ERR(chg_psy)) {
+		pd_err("%s Couldn't get chg_psy\n", __func__);
+		ret = -EINVAL;
+	} else {
+		info = (struct mtk_charger *)power_supply_get_drvdata(chg_psy);
+		if (info == NULL)
+			ret = -EINVAL;
+		else
+			ret = info->usb_type;
+	}
+
+	pd_err("%s type:%d\n", __func__, ret);
+	return ret;
+}
+
+void pd_hal_update_ieoc(struct chg_alg_device *alg)
+{
+	struct mtk_charger *info = NULL;
+	struct power_supply *chg_psy = NULL;
+
+	if (alg == NULL)
+		return;
+
+	chg_psy = power_supply_get_by_name("mtk-master-charger");
+	if (IS_ERR_OR_NULL(chg_psy)) {
+		pd_err("%s Couldn't get chg_psy\n", __func__);
+		return;
+	} else {
+		info = (struct mtk_charger *)power_supply_get_drvdata(chg_psy);
+		if (info == NULL)
+			return;
+		if (info->enable_nt_sw_jeita && info->nt_sw_jeita.nt_ieoc > 0) {
+			pd_dbg("%s:old_ieoc=%d,ieoc=%d\n",
+				__func__, info->nt_sw_jeita.nt_old_ieoc, info->nt_sw_jeita.nt_ieoc);
+			if ((info->nt_sw_jeita.nt_old_ieoc == 0)
+					|| (info->nt_sw_jeita.nt_old_ieoc != info->nt_sw_jeita.nt_ieoc)) {
+				charger_dev_set_eoc_current(info->chg1_dev, info->nt_sw_jeita.nt_ieoc);
+				info->nt_sw_jeita.nt_old_ieoc = info->nt_sw_jeita.nt_ieoc;
+			}
+		}
+	}
 }

@@ -1,0 +1,27 @@
+#
+# OEM device bootinfo configuration
+#
+
+config OEM_DEVINFO
+    tristate "device boot info"
+    help
+	Say Y here if you want to enable device boot info.
+	If unsure, say N.
+
+config OEM_BOOTINFO
+    tristate "bootinfo"
+    help
+	Say Y here if you want to enable bootinfo.
+	If unsure, say N.
+
+config OEM_BOARDID
+    tristate "boardid"
+    help
+	Say Y here if you want to enable boardid.
+	If unsure, say N.
+
+config OEM_HWINFO
+    tristate "hwinfo"
+    help
+	Say Y here if you want to enable hwinfo.
+	If unsure, say N.

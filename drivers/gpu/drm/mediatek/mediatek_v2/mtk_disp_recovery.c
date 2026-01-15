@@ -39,6 +39,29 @@
 #define esd_timer_to_mtk_crtc(x) container_of(x, struct mtk_drm_crtc, esd_timer)
 
 static DEFINE_MUTEX(pinctrl_lock);
+extern unsigned int is_support_write_key;
+
+extern void _mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle, const struct mipi_dsi_msg *msg);
+void lcm_key_level_write(struct mtk_ddp_comp *output_comp, struct cmdq_pkt *handle)
+{
+       unsigned char tx_1[10] = {0};
+       struct mtk_dsi *dsi =NULL;
+       struct mipi_dsi_msg msg;
+       if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI) {
+               dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
+       }
+       if (dsi == NULL) {
+               DDPMSG("%s esd lcm get dsi failed!\n", __func__);
+               return ;
+       }
+       tx_1[0] = 0xF0;
+       tx_1[1] = 0x5A;
+       tx_1[2] = 0x5A;
+       msg.type = 0x39;
+       msg.tx_len = 3;
+       msg.tx_buf = tx_1;
+       _mtk_mipi_dsi_write_gce(dsi, handle, &msg);
+}
 
 /* pinctrl implementation */
 long _set_state(struct drm_crtc *crtc, const char *name)
@@ -160,8 +183,6 @@ int _mtk_esd_check_read(struct drm_crtc *crtc, int check_num)
 	int index = drm_crtc_index(crtc);
 	int ret = 0;
 
-	DDPINFO("[ESD%u]%s\n", index, __func__);
-
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (unlikely(!output_comp)) {
 		DDPPR_ERR("%s:invalid output comp\n", __func__);
@@ -197,8 +218,8 @@ int _mtk_esd_check_read(struct drm_crtc *crtc, int check_num)
 				     mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 		/* Record Vblank start timestamp */
-		mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, ESD_CHECK);
 
+		mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, ESD_CHECK);
 		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, ESD_CHECK_READ,
 				    (void *)mtk_crtc);
 
@@ -230,7 +251,8 @@ int _mtk_esd_check_read(struct drm_crtc *crtc, int check_num)
 				    NULL);
 
 		CRTC_MMP_MARK(index, esd_check, 2, 3);
-
+		if (is_support_write_key)
+			lcm_key_level_write(output_comp,cmdq_handle);
 		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, ESD_CHECK_READ,
 				    (void *)mtk_crtc);
 
@@ -548,6 +570,9 @@ done:
 	return 0;
 }
 
+extern int mtkfb_esd_rec_set_backlight_level(void);
+static int need_setbacklight = 0;
+extern int previous_fps;
 int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 {
 		struct mtk_drm_private *private = NULL;
@@ -557,6 +582,7 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 		int i = 0;
 		int recovery_flg = 0;
 		unsigned int crtc_idx;
+		struct mtk_crtc_state *mtk_state = NULL;
 
 		if (!esd_ctx) {
 			DDPPR_ERR("%s invalid ESD context, stop thread\n", __func__);
@@ -577,6 +603,13 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 			DDPPR_ERR("%s invalid mtk_crtc stop thread\n", __func__);
 			return -EINVAL;
 		}
+
+		if (crtc->state) {
+			mtk_state = to_mtk_crtc_state(crtc->state);
+			if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] || (previous_fps == 30))
+				return 0;
+		}
+
 		crtc_idx = drm_crtc_index(crtc);
 
 		private = crtc->dev->dev_private;
@@ -596,6 +629,7 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 				crtc_idx, i);
 			mtk_drm_esd_recover(crtc);
 			recovery_flg = 1;
+			need_setbacklight = 1;
 			mtk_drm_trace_end();
 		} while (++i < ESD_TRY_CNT);
 
@@ -659,6 +693,8 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 {
 	struct sched_param param = {.sched_priority = 87};
 	struct mtk_drm_esd_ctx *esd_ctx = (struct mtk_drm_esd_ctx *)data;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_panel_ext *panel_ext;
 	int ret = 0, index = 0;
 
 	sched_setscheduler(current, SCHED_RR, &param);
@@ -668,8 +704,16 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 
 		return -EINVAL;
 	}
-	if (esd_ctx->crtc)
+	if (esd_ctx->crtc) {
 		index = drm_crtc_index(esd_ctx->crtc);
+		mtk_crtc = to_mtk_crtc(esd_ctx->crtc);
+	}
+
+	panel_ext = mtk_crtc->panel_ext;
+	if (!(panel_ext && panel_ext->params)) {
+		DDPMSG("%s can't find panel_ext handle\n", __func__);
+		return -EINVAL;
+	}
 
 	while (1) {
 		msleep(ESD_CHECK_PERIOD);
@@ -701,6 +745,10 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 		}
 
 		/* 2. other check & recovery */
+		if (panel_ext->params->platform_esdbl_rec && need_setbacklight) {
+			mtkfb_esd_rec_set_backlight_level();
+			need_setbacklight = 0;
+		}
 		if (kthread_should_stop())
 			break;
 	}

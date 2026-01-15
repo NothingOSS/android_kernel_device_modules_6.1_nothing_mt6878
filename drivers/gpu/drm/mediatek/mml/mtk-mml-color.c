@@ -346,7 +346,7 @@ static s32 color_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	s32 i;
 	struct mml_pq_reg *regs = NULL;
 
-	if (!dest->pq_config.en_color)
+	if (!dest->pq_config.en_color || !color_frm->config_success)
 		return ret;
 
 	do {

@@ -37,4 +37,11 @@ extern struct kobj_attribute sched_util_est_ctrl;
 extern struct kobj_attribute sched_am_ctrl;
 extern int set_util_est_ctrl(bool enable);
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+extern void set_task_basic_vip(int pid);
+extern void unset_task_basic_vip(int pid);
+extern struct kobj_attribute nt_sched_set_task_vip;
+extern struct kobj_attribute nt_sched_unset_task_vip;
+#endif /* IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK) */
+
 #endif

@@ -11,6 +11,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/phy/phy.h>
+#include <linux/of_graph.h>
 #include "mtk_log.h"
 #include "mtk_drm_crtc.h"
 #include "mtk_drm_drv.h"
@@ -2117,6 +2118,8 @@ static int mtk_mipi_tx_pll_dphy_config_mt6989(struct mtk_mipi_tx *mipi_tx)
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
 			FLD_RG_DSI_PRD_REF_SEL, 0x4);
 
+	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
+		FLD_RG_DSI_HSTX_LDO_REF_SEL, mipi_tx->mipi_drive_capability << 6);
 #ifdef IF_ZERO
 	/* No need keep as default */
 	if (rate > 2000)
@@ -6051,6 +6054,8 @@ static int mtk_mipi_tx_probe(struct platform_device *pdev)
 	struct phy_provider *phy_provider;
 	int ret;
 	unsigned int i, disp_offset[2] = {0};
+	struct device_node *remote_node = NULL, *endpoint = NULL;
+	struct device_node *dsi0_node = of_find_node_by_path("/soc/dsi0@1401a000");
 
 	DDPINFO("%s+\n", __func__);
 
@@ -6096,6 +6101,28 @@ static int mtk_mipi_tx_probe(struct platform_device *pdev)
 			mipi_tx->disp_offset[i] = disp_offset[i];
 			DDPDBG("%s mipi_tx->disp_offset[%d]=0x%x\n",
 				__func__, i, mipi_tx->disp_offset[i]);
+		}
+	}
+
+	if (!dsi0_node) {
+		DDPPR_ERR("%s, Failed to find dsi0_node\n", __func__);
+		mipi_tx->mipi_drive_capability = 0x07;
+	} else {
+		endpoint = of_graph_get_next_endpoint(dsi0_node, NULL);
+		if (endpoint) {
+			remote_node = of_graph_get_remote_port_parent(endpoint);
+			if (!remote_node) {
+				DDPPR_ERR("%s, No panel connected, skip set mipi drive capability\n", __func__);
+			} else {
+				DDPINFO("%s, device node name:%s\n", __func__, remote_node->name);
+			}
+		}
+		ret = of_property_read_u32(remote_node, "mipi-drive-capability", &mipi_tx->mipi_drive_capability);
+		if (ret) {
+			DDPINFO("[LCM] MIPI drive capability not set, configuring default value\n");
+			mipi_tx->mipi_drive_capability = 0x07;
+		} else {
+			DDPINFO("[LCM] Set MIPI drive capability value = 0x%x\n", mipi_tx->mipi_drive_capability);
 		}
 	}
 

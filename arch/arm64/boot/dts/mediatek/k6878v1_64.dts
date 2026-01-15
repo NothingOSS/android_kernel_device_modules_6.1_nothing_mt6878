@@ -8,31 +8,24 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/mt6878-pinfunc.h>
-
 #if 0
 #include <dt-bindings/pinctrl/mt6897-pinfunc.h>
 #endif
-
 &chosen {
 bootargs_ext = "";
 };
-
 &mtk_leds {
 	compatible = "mediatek,i2c-leds";
-
 	backlight {
 		led-mode = <6>;
-		gate-enable = <1>;
-		pwm-config = <0 1 0 0 0>;
+//		gate-enable = <1>;
+//		pwm-config = <0 1 0 0 0>;
 	};
 };
-
 &pdc {
 	pd-vbus-upper-bound = <9000000>;
 };
-
 #if 0
-
 &connfem {
 /* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
 #if 0
@@ -52,7 +45,6 @@ bootargs_ext = "";
 	};
 #endif
 };
-
 /* GPS GPIO standardization start */
 &pio {
 	gps_pins_default: gps-default {
@@ -110,9 +102,7 @@ bootargs_ext = "";
 	status = "okay";
 };
 /* GPS GPIO standardization end */
-
 #endif
-
 &i2c6 {
 	spk: speaker-amp@5c {
 		compatible = "richtek,rt5512";
@@ -124,16 +114,12 @@ bootargs_ext = "";
 		sound-name-prefix = "Left";
 	};
 };
-
 &sound {
 	mediatek,spk-i2s = <25 24>;
 	mediatek,speaker-codec {
 		sound-dai = <&spk>;
 	};
 };
-
-
-
 &mtkfb {
 	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
 		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
@@ -148,43 +134,37 @@ bootargs_ext = "";
 	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
 	pinctrl-7 = <&mtkfb_pins_lcm_led_en1>;
 	pinctrl-8 = <&mtkfb_pins_lcm_led_en0>;
-
 	status = "okay";
 };
-
 &pio {
 	mtkfb_pins_lcd_bias_enp1: lcd-bias-enp1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
 			slew-rate = <1>;
 			output-high;
 		};
 	};
-
 	mtkfb_pins_lcd_bias_enp0: lcd-bias-enp0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
 			slew-rate = <1>;
 			output-low;
 		};
 	};
-
 	mtkfb_pins_lcd_bias_enn1: lcd-bias-enn1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
 			slew-rate = <1>;
 			output-high;
 		};
 	};
-
 	mtkfb_pins_lcd_bias_enn0: lcd-bias-enn0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
 			slew-rate = <1>;
 			output-low;
 		};
 	};
-
 	mtkfb_pins_lcm_rst_out1_gpio: lcm-rst-out1-gpio {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO90__FUNC_GPIO90>;
@@ -192,7 +172,6 @@ bootargs_ext = "";
 			output-high;
 		};
 	};
-
 	mtkfb_pins_lcm_rst_out0_gpio: lcm-rst-out0-gpio {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO90__FUNC_GPIO90>;
@@ -205,24 +184,21 @@ bootargs_ext = "";
 			pinmux = <PINMUX_GPIO89__FUNC_DSI_TE>;
 		};
 	};
-
 	mtkfb_pins_lcm_led_en1: lcm-led-en1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
 			slew-rate = <1>;
 			output-high;
 		};
 	};
-
 	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+//			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
 			slew-rate = <1>;
 			output-low;
 		};
 	};
 };
-
 &dispsys_config {
 	pinctrl-names = "mode_te_te";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
@@ -237,88 +213,84 @@ bootargs_ext = "";
 	panel1@0 {
 		compatible = "jdi,nt36672e,vdo,120hz,threshold";
 		reg = <0>;
-		pm-enable-gpios = <&pio 149 0>;
+//		pm-enable-gpios = <&pio 149 0>;
 		reset-gpios = <&pio 90 0>;
-		res-switch = <2>;
-		gate-ic = <4831>;
-		rc-enable = <1>;
+//		res-switch = <2>;
+//		gate-ic = <4831>;
+//		rc-enable = <1>;
 		pinctrl-names = "default";
-		port {
-			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out>;
-			};
-		};
-	};
-	panel2@1 {
-		compatible = "jdi,nt36672e,vdo,60hz";
-		reg = <1>;
-		pm-enable-gpios = <&pio 149 0>;
-		reset-gpios = <&pio 90 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in2: endpoint {
-				remote-endpoint = <&dsi_out2>;
-			};
-		};
-	};
-	panel3@2 {
-		compatible = "truly,td4330,cmd";
-		reg = <2>;
-		pm-enable-gpios = <&pio 149 0>;
-		reset-gpios = <&pio 90 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in3: endpoint {
-				remote-endpoint = <&dsi_out3>;
-			};
-		};
-	};
-	ports {
-		port {
-			dsi_out: endpoint {
-				remote-endpoint = <&panel_in1>;
-			};
-			dsi_out2: endpoint2 {
-				remote-endpoint = <&panel_in2>;
-			};
-			dsi_out3: endpoint3 {
-				remote-endpoint = <&panel_in3>;
-			};
-		};
-	};
-};
 
+//		port {
+//			panel_in1: endpoint {
+//				remote-endpoint = <&dsi_out>;
+//			};
+//		};
+	};
+
+//	panel2@1 {
+//		compatible = "jdi,nt36672e,vdo,60hz";
+//		reg = <1>;
+//		pm-enable-gpios = <&pio 149 0>;
+//		reset-gpios = <&pio 90 0>;
+//		gate-ic = <4831>;
+//		pinctrl-names = "default";
+//		port {
+//			panel_in2: endpoint {
+//				remote-endpoint = <&dsi_out2>;
+//			};
+//		};
+//	};
+//	panel3@2 {
+//		compatible = "truly,td4330,cmd";
+//		reg = <2>;
+//		pm-enable-gpios = <&pio 149 0>;
+//		reset-gpios = <&pio 90 0>;
+//		gate-ic = <4831>;
+//		pinctrl-names = "default";
+//		port {
+//			panel_in3: endpoint {
+//				remote-endpoint = <&dsi_out3>;
+//			};
+//		};
+//	};
+//
+//	ports {
+//		port {
+//			dsi_out: endpoint {
+//				remote-endpoint = <&panel_in1>;
+//			};
+//			dsi_out2: endpoint2 {
+//				remote-endpoint = <&panel_in2>;
+//			};
+//			dsi_out3: endpoint3 {
+//				remote-endpoint = <&panel_in3>;
+//			};
+//		};
+//	};
+};
 &audio_sram {
 	reg = <0 0x11059000 0 0xc000>;
 	mode-size = <0xc000 0x11300>;
 };
-
 &audio_xhci_sram {
 	reg = <0 0x11065000 0 0x3900>;
 	mode-size = <0x3900>;
 	afe-reserved;
 };
-
 &mt6363_vbuck1 {
 	regulator-always-on;
 };
-
 &mt6363_vbuck2 {
 	regulator-always-on;
 };
-
 &mt6363_vsram_digrf {
 	regulator-always-on;
 };
-
 &mt6363_vcn15 {
 	regulator-always-on;
 };
-
 #include <k6878v1_64/cust.dtsi>
-#include "mediatek/cust_mt6878_touch_1080x2400.dtsi"
-#include "mediatek/cust_mt6878_camera_v4l2.dtsi"
-#include "mediatek/cust_k6878_connfem.dtsi"
+//#include "mediatek/cust_mt6878_touch_1080x2400.dtsi"
+//#include "mediatek/cust_mt6878_camera_v4l2.dtsi"
+//#include "mediatek/cust_k6878_connfem.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/

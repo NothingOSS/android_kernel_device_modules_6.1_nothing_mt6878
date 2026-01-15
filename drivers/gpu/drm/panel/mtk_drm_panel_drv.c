@@ -4,6 +4,10 @@
  */
 
 #include "mtk_drm_panel_drv.h"
+unsigned int lcm_now_state;
+EXPORT_SYMBOL(lcm_now_state);
+char panel_name_find[128] = "lcd unknow";
+EXPORT_SYMBOL(panel_name_find);
 
 int mtk_panel_register_drv_customization_funcs(char func,
 		const struct mtk_panel_cust *cust)

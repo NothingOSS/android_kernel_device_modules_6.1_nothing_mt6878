@@ -1577,7 +1577,7 @@ static s32 aal_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s engine_id[%d] en_dre[%d] config_success[%d]", __func__, comp->id,
 			dest->pq_config.en_dre, aal_frm->config_success);
 
-	if (aal_frm->relay_mode)
+	if (aal_frm->relay_mode || !aal_frm->config_success)
 		goto exit;
 
 	do {

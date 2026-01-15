@@ -1,0 +1,159 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 MediaTek Inc.
+ */
+ 
+#include "k6878v1_64.dts"
+
+/ {
+    hw_rev = <0>;
+};
+
+/* Trustonic Mobilecore real driver */
+&mobicore{
+	trustonic,real-drv=<1>;
+};
+
+&mtk_leds {
+	compatible = "mediatek,disp-leds";
+
+	backlight {
+		led-mode = <4>;
+		/delete-property/ gate-enable;
+		/delete-property/ pwm-config;
+	};
+};
+
+
+&i2c0 {
+	clock-frequency = <400000>;
+	status = "ok";
+
+	ics_haptic_drv: ics_haptic@5f {
+		compatible = "ics,haptic_rt";
+		reg = <0x5f>;
+		device-name = "vibrator_nt";
+		richtap-name = "aac_richtap";
+		pinctrl-names = "default";
+		gpio-en = <&pio 74 0>;
+		gpio-irq = <&pio 9 0>;
+		x-axis-motor = <0>;
+		status = "ok";
+	};
+};
+
+&i2c3 {
+	clock-frequency = <400000>;
+	hl5280-audioswitch@42 {
+		compatible = "mediatek,hl5280-audioswitch";
+		reg = <0x42>;
+	};
+};
+
+&gpio_board_id {
+	compatible = "gpio,board-id,tetris";
+	board_id_gpio0 = <&pio 2 0x0>;
+	board_id_gpio1 = <&pio 3 0x0>;
+	board_id_gpio2 = <&pio 70 0x0>;
+	board_id_gpio3 = <&pio 68 0x0>;
+};
+
+&i2c6 {
+	clock-frequency = <400000>;
+	aw882xx_smartpa_0: aw882xx_smartpa@34 {
+		compatible = "awinic,aw882xx_smartpa";
+		#sound-dai-cells = <0>;
+		reg = <0x34>;
+		//reset-gpio = <&pio 151 0>; /*aw88230,aw88257,aw88261,aw88265 不能配置*/
+		irq-gpio = <&pio 41 0x0>;
+		sync-load = <1>;
+		aw-re-min = <5000>;
+		aw-re-max = <7000>;
+		/*aw-cali-mode = "none";*/
+		status = "okay";
+	};
+};
+
+&sound {
+	mediatek,speaker-codec {
+		sound-dai = <&aw882xx_smartpa_0>;
+	};
+};
+
+&dsi0 {
+    err-flag-gpios = <&pio 10 0>;
+
+	panel1@0 {
+		compatible = "samsung,s6e8fc3x02";
+		vddi-en-gpios = <&pio 153 0>;
+		vci-en-gpios = <&pio 154 0>;
+		is-support-write-key = <1>;
+		esd-readreg-per-cycle = <1>;
+		esd-check-num = <4>;
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+
+	ports {
+		port {
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in1>;
+			};
+		};
+	};
+};
+
+	&mtee_svp {
+		mtee: MTEE {
+			compatible = "mediatek,mtk_svp_on_mtee_support";
+		};
+
+		svp: SecureVideoPath {
+			compatible = "mediatek,mtk_sec_video_path_support";
+		};
+	};
+
+&thermal_zones {
+	usb_port_ntc: usb_port_ntc {
+		polling-delay = <0>; /* milliseconds */
+		polling-delay-passive = <0>; /* milliseconds */
+		thermal-sensors = <&usb_port_thermistor>;
+
+		trips {
+			usb_port_crit: usb-port-crit {
+				temperature = <119000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+};
+
+&mt6375_typec {
+	tcpc,en-fod;
+};
+
+&mt6375_typec_pd_data {
+	pd,sink-cap-ext = /bits/ 8 <0xcf 0x29 0x75 0x63
+				    0x00 0x00 0x00 0x00
+				    0x00 0x00 0x01 0x00
+				    0x00 0x00 0x00 0x00
+				    0x01 0x0b 0x0a 0x0a
+				    0x21 0x00 0x00 0x00>;
+	pd,charging-policy = <0x2>;
+	pd,sink-pdo-size = <3>;
+	/* Fixed, 5000mV,2000mA 9000mV,2000mA , 9VProg,3000mA*/
+	pd,sink-pdo-data = <0x000190c8 0x0002d0c8 0xc0dc323c>;
+};
+
+#include <k6878v1_64/cust.dtsi>
+#include "mediatek/cust_mt6878_touch_ft3519_1080x2400.dtsi"
+#include "mediatek/cust_mt6878_camera_v4l2.dtsi"
+#include "mediatek/cust_k6878_connfem.dtsi"
+#include "mediatek/sc8541.dtsi"
+#include "mediatek/upm6720.dtsi"
+#include "goodix_fingerprint.dtsi"
+/*End of this file, DO NOT ADD ANYTHING HERE*/

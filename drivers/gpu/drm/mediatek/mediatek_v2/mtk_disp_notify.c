@@ -7,6 +7,9 @@
 #include "mtk_disp_notify.h"
 #include "mtk_log.h"
 
+int last_bl_level = 3515;
+EXPORT_SYMBOL(last_bl_level);
+
 static BLOCKING_NOTIFIER_HEAD(disp_notifier_list);
 static BLOCKING_NOTIFIER_HEAD(disp_sub_notifier_list);
 

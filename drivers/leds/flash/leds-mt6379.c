@@ -107,7 +107,9 @@ static int mt6379_torch_set_brightness(struct led_classdev *led_cdev,
 	struct mt6379_data *data = mtflash->driver_data;
 	struct regmap *regmap = data->regmap;
 	unsigned int mask, enable = 0;
+ #ifdef CONFIG_MTK_FLASHLIGHT_PT
 	unsigned int cur;
+ #endif
 	int ret;
 
 	mutex_lock(&data->lock);

@@ -2562,6 +2562,14 @@ static int check_usb_offload_quirk(int vid, int pid)
 		return -1;
 	}
 
+	if (vid == 0x0BDA && pid == 0x4BD1) {
+		USB_OFFLOAD_INFO("JOWOYE MH339 NOT SUPPORT!!\n");
+		return -1;
+	}
+	if (vid == 0x0ECB && pid == 0x20F6) {
+		USB_OFFLOAD_INFO("JBL TUNE310C NOT SUPPORT!!\n");
+		return -1;
+	}
 	return 0;
 }
 

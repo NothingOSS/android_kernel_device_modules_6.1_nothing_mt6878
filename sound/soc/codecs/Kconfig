@@ -159,4 +159,17 @@ config SND_SOC_MT6681_ACCDET
 	  detection mechanism. Select N if you don't
 	  have jack on board.
 
+config SND_SMARTPA_AW882XX
+	tristate "SoC Audio for awinic aw882xxseries"
+	depends on I2C
+	help
+		This option enables support for aw882xxseries Smart PA.
+
+config SND_SOC_TFA9873
+	tristate  "Support Goodix smartpa driver"
+	depends on I2C = y && REGMAP = y
+	default y
+	help
+	  Select this option to enable support for Goodix smartpa driver tfa9873
+
 endmenu

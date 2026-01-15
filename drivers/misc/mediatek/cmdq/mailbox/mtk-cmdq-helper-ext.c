@@ -13,6 +13,7 @@
 #include <linux/sched/clock.h>
 #include <linux/timer.h>
 #include <linux/delay.h>
+#include <linux/nt_error_report.h>
 
 #include <iommu_debug.h>
 #ifdef CMDQ_DCACHE_INVAL
@@ -3604,6 +3605,8 @@ void cmdq_buf_print_wfe(char *text, u32 txt_sz,
 	}
 	if (len >= txt_sz)
 		cmdq_log("len:%d over txt_sz:%d", len, txt_sz);
+	if (wait_to == 998 || wait_to == 162)
+		nt_er_in_schedule(NT_DISP_ERR);
 }
 
 static const char *cmdq_parse_logic_sop(enum CMDQ_LOGIC_ENUM s_op)

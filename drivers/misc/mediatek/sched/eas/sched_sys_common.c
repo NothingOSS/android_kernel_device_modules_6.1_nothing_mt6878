@@ -35,6 +35,10 @@ static struct attribute *sched_ctl_attrs[] = {
 	&sched_util_est_ctrl.attr,
 	&sched_am_ctrl.attr,
 #endif
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	&nt_sched_set_task_vip.attr,
+	&nt_sched_unset_task_vip.attr,
+#endif /* IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK) */
 	NULL,
 };
 
@@ -194,6 +198,62 @@ const char __user *buf, size_t cnt)
 	set_am_ctrl(am_ctrl);
 	return cnt;
 }
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+static int last_set_task_vip_pid = -1;
+static ssize_t show_nt_sched_last_set_task_vip(struct kobject *kobj,
+					struct kobj_attribute *attr,
+					char *buf)
+{
+	unsigned int len = 0;
+	unsigned int max_len = 4096;
+
+	len = snprintf(buf, max_len, "%d\n",  last_set_task_vip_pid);
+	return len;
+}
+
+ssize_t store_nt_sched_set_task_vip(struct kobject *kobj, struct kobj_attribute *attr,
+const char __user *buf, size_t cnt)
+{
+	int pid;
+
+	if (kstrtouint(buf, 10, &pid))
+		return -EINVAL;
+	if (pid < 0 || pid > PID_MAX_LIMIT)
+		return -1;
+	set_task_basic_vip(pid);
+	return strlen(buf);
+}
+
+static int last_unset_task_vip_pid = -1;
+static ssize_t show_nt_sched_last_unset_task_vip(struct kobject *kobj,
+					struct kobj_attribute *attr,
+					char *buf)
+{
+	unsigned int len = 0;
+	unsigned int max_len = 4096;
+
+	len = snprintf(buf, max_len, "%d\n",  last_unset_task_vip_pid);
+	return len;
+}
+
+ssize_t store_nt_sched_unset_task_vip(struct kobject *kobj, struct kobj_attribute *attr,
+const char __user *buf, size_t cnt)
+{
+	int pid;
+
+	if (kstrtouint(buf, 10, &pid))
+		return -EINVAL;
+	if (pid < 0 || pid > PID_MAX_LIMIT)
+		return -1;
+	unset_task_basic_vip(pid);
+	return strlen(buf);
+}
+struct kobj_attribute nt_sched_set_task_vip =
+__ATTR(nt_sched_set_task_vip, 0660, show_nt_sched_last_set_task_vip, store_nt_sched_set_task_vip);
+struct kobj_attribute nt_sched_unset_task_vip =
+__ATTR(nt_sched_unset_task_vip, 0660, show_nt_sched_last_unset_task_vip, store_nt_sched_unset_task_vip);
+#endif /* IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK) */
 
 struct kobj_attribute sched_turn_point_freq_attr =
 __ATTR(sched_turn_point_freq, 0640, show_sched_turn_point_freq, store_sched_turn_point_freq);

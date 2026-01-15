@@ -37,6 +37,10 @@
 #define CREATE_TRACE_POINTS
 #include <trace_task_turbo.h>
 
+#if IS_ENABLED(CONFIG_NOTHING_PERFORMANCE_FEATURE)
+#include "../../../nothing_performance/nt_performance_common.h"
+#endif /* CONFIG_NOTHING_PERFORMANCE_FEATURE */
+
 LIST_HEAD(hmp_domains);
 
 #define SCHED_FEAT(name, enabled)	\
@@ -57,8 +61,15 @@ struct static_key sched_feat_keys[__SCHED_FEAT_NR] = {
 #define TURBO_DISABLE		0
 #define INHERIT_THRESHOLD	4
 #define type_offset(type)		 (type * 4)
-#define task_turbo_nice(nice) (nice == 0xbeef || nice == 0xbeee)
-#define task_restore_nice(nice) (nice == 0xbeee)
+#define TASK_TURBO_NICE_FAIR        (0xbeef)
+#define TASK_TURBO_NICE_RT          (0xbeed)
+#define TASK_TURBO_NICE_RESTORE     (0xbeee)
+#define task_turbo_fair_nice(nice)  (nice == TASK_TURBO_NICE_FAIR)
+#define task_turbo_rt_nice(nice)    (nice == TASK_TURBO_NICE_RT)
+#define task_restore_nice(nice)     (nice == TASK_TURBO_NICE_RESTORE)
+#define task_turbo_nice(nice)       (task_turbo_fair_nice(nice) \
+                                     || task_turbo_rt_nice(nice) \
+                                     || task_restore_nice(nice))
 #define type_number(type)		 (1U << type_offset(type))
 #define get_value_with_type(value, type)				\
 	(value & ((unsigned int)(0x0000000f) << (type_offset(type))))
@@ -110,7 +121,20 @@ static uint32_t latency_turbo = SUB_FEAT_LOCK | SUB_FEAT_BINDER |
 static uint32_t launch_turbo =  SUB_FEAT_LOCK | SUB_FEAT_BINDER |
 				SUB_FEAT_SCHED | SUB_FEAT_FLAVOR_BIGCORE;
 static DEFINE_SPINLOCK(TURBO_SPIN_LOCK);
-static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
+
+enum {
+	TASK_TURBO_TRIGGER_UNKNOWN = 0,
+	TASK_TURBO_TRIGGER_NORMAL  = 1,
+	TASK_TURBO_TRIGGER_NT      = 2,
+	TASK_TURBO_TRIGGER_MAX,
+};
+
+struct turbo_task_struct {
+	pid_t pid;
+	int trigger;
+};
+static struct turbo_task_struct turbo_tasks[TURBO_PID_COUNT] = {0};
+//static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
 static unsigned int task_turbo_feats;
 
 static bool is_turbo_task(struct task_struct *p);
@@ -118,7 +142,7 @@ static void set_load_weight(struct task_struct *p, bool update_load);
 static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem);
 static void rwsem_list_add(struct task_struct *task, struct list_head *entry,
 				struct list_head *head);
-static bool binder_start_turbo_inherit(struct task_struct *from,
+static bool binder_start_turbo_inherit(struct binder_transaction *t,
 					struct task_struct *to);
 static void binder_stop_turbo_inherit(struct task_struct *p);
 static inline struct task_struct *rwsem_owner(struct rw_semaphore *sem);
@@ -126,12 +150,12 @@ static inline bool rwsem_test_oflags(struct rw_semaphore *sem, long flags);
 static inline bool is_rwsem_reader_owned(struct rw_semaphore *sem);
 static void rwsem_start_turbo_inherit(struct rw_semaphore *sem);
 static bool sub_feat_enable(int type);
-static bool start_turbo_inherit(struct task_struct *task, int type, int cnt);
+static bool start_turbo_inherit(struct task_struct *task, int type, int cnt, bool inherit_rt);
 static bool stop_turbo_inherit(struct task_struct *task, int type);
 static inline bool should_set_inherit_turbo(struct task_struct *task);
 static inline void add_inherit_types(struct task_struct *task, int type);
 static inline void sub_inherit_types(struct task_struct *task, int type);
-static inline void set_scheduler_tuning(struct task_struct *task);
+static inline void set_scheduler_tuning(struct task_struct *task, bool inherit_rt);
 static inline void unset_scheduler_tuning(struct task_struct *task);
 static bool is_inherit_turbo(struct task_struct *task, int type);
 static bool test_turbo_cnt(struct task_struct *task);
@@ -229,6 +253,8 @@ static void probe_android_rvh_set_user_nice(void *ignore, struct task_struct *p,
 						long *nice, bool *allowed)
 {
 	struct task_turbo_t *turbo_data;
+	struct sched_param fair_param = { .sched_priority = 0 };
+	struct sched_param rt_param = { .sched_priority = 1 };
 	bool p_turbo;
 
 	if ((*nice < MIN_NICE || *nice > MAX_NICE) && !task_turbo_nice(*nice)) {
@@ -245,16 +271,32 @@ static void probe_android_rvh_set_user_nice(void *ignore, struct task_struct *p,
 
 	p_turbo = is_turbo_task(p);
 	if (p_turbo && !task_restore_nice(*nice)) {
-		*nice = rlimit_to_nice(task_rlimit(p, RLIMIT_NICE));
-		if (unlikely(*nice > MAX_NICE)) {
-			pr_warn("%s: pid=%d RLIMIT_NICE=%ld is not set\n",
-				TAG, p->pid, *nice);
+		if (task_turbo_fair_nice(*nice)) {
+			*nice = rlimit_to_nice(task_rlimit(p, RLIMIT_NICE));
+			if (unlikely(*nice > MAX_NICE)) {
+				pr_warn("%s: pid=%d RLIMIT_NICE=%ld is not set\n",
+					TAG, p->pid, *nice);
+				*nice = turbo_data->nice_backup;
+			}
+		} else if (task_turbo_rt_nice(*nice)) {
 			*nice = turbo_data->nice_backup;
+			turbo_data->policy_backup = p->policy;
+			if (fair_policy(p->policy)) {
+				sched_setscheduler_nocheck(p, SCHED_RR, &rt_param);
+			}
 		}
-	} else
+	} else {
 		*nice = turbo_data->nice_backup;
+		if (task_restore_nice(*nice) && turbo_data->policy_backup != p->policy) {
+			if (fair_policy(turbo_data->policy_backup)) {
+				sched_setscheduler_nocheck(p, turbo_data->policy_backup, &fair_param);
+			} else if (rt_policy(turbo_data->policy_backup)) {
+				sched_setscheduler_nocheck(p, turbo_data->policy_backup, &rt_param);
+			}
+		}
+	}
 
-	trace_sched_set_user_nice(p, *nice, p_turbo);
+	trace_sched_set_user_nice(p, (task_turbo_rt_nice(*nice) ? 1 : *nice), p_turbo);
 }
 
 static void probe_android_rvh_setscheduler(void *ignore, struct task_struct *p)
@@ -298,8 +340,7 @@ static void probe_android_vh_binder_transaction_init(void *ignore, struct binder
 static void probe_android_vh_binder_set_priority(void *ignore, struct binder_transaction *t,
 							struct task_struct *task)
 {
-	if (binder_start_turbo_inherit(t->from ?
-			t->from->task : NULL, task)) {
+	if (binder_start_turbo_inherit(t, task)) {
 		t->android_vendor_data1 = (u64)task;
 	}
 }
@@ -653,7 +694,8 @@ static void rwsem_start_turbo_inherit(struct rw_semaphore *sem)
 		    !inherited_owner) {
 			start_turbo_inherit(owner,
 					    RWSEM_INHERIT,
-					    turbo_data->inherit_cnt);
+					    turbo_data->inherit_cnt,
+					    false);
 			sem->android_vendor_data1 = (u64)owner;
 			trace_turbo_inherit_start(current, owner);
 		}
@@ -662,7 +704,8 @@ static void rwsem_start_turbo_inherit(struct rw_semaphore *sem)
 
 static bool start_turbo_inherit(struct task_struct *task,
 				int type,
-				int cnt)
+				int cnt,
+				bool inherit_rt)
 {
 	struct task_turbo_t *turbo_data;
 
@@ -675,7 +718,7 @@ static bool start_turbo_inherit(struct task_struct *task,
 		turbo_data->inherit_cnt = cnt + 1;
 
 	/* scheduler tuning start */
-	set_scheduler_tuning(task);
+	set_scheduler_tuning(task, inherit_rt);
 	return true;
 }
 
@@ -708,18 +751,22 @@ done:
 	return ret;
 }
 
-static inline void set_scheduler_tuning(struct task_struct *task)
+static inline void set_scheduler_tuning(struct task_struct *task, bool inherit_rt)
 {
 	int cur_nice = task_nice(task);
 
-	if (!fair_policy(task->policy))
+	if (!fair_policy(task->policy) && !rt_policy(task->policy))
 		return;
 
 	if (!sub_feat_enable(SUB_FEAT_SCHED))
 		return;
 
 	/* trigger renice for turbo task */
-	set_user_nice(task, 0xbeef);
+	if (inherit_rt) {
+		set_user_nice(task, TASK_TURBO_NICE_RT);
+	} else {
+		set_user_nice(task, TASK_TURBO_NICE_FAIR);
+	}
 
 	trace_sched_turbo_nice_set(task, NICE_TO_PRIO(cur_nice), task->prio);
 }
@@ -728,10 +775,11 @@ static inline void unset_scheduler_tuning(struct task_struct *task)
 {
 	int cur_prio = task->prio;
 
-	if (!fair_policy(task->policy))
+	if (!fair_policy(task->policy) && !rt_policy(task->policy)) {
 		return;
+	}
 
-	set_user_nice(task, 0xbeee);
+	set_user_nice(task, TASK_TURBO_NICE_RESTORE);
 
 	trace_sched_turbo_nice_set(task, cur_prio, task->prio);
 }
@@ -752,33 +800,101 @@ static inline void sub_inherit_types(struct task_struct *task, int type)
 	atomic_sub(type_number(type), &turbo_data->inherit_types);
 }
 
-static bool binder_start_turbo_inherit(struct task_struct *from,
-					struct task_struct *to)
+static bool binder_start_turbo_inherit(struct binder_transaction *t,
+					struct task_struct *binder_task)
 {
 	bool ret = false;
-	struct task_turbo_t *from_turbo_data;
+	bool from_inherit_failed = false;
+	bool to_inherit_failed = false;
+	bool inherit_by_from = false;
+	bool inherit_by_to = false;
+	bool inherit_rt = false;
+	struct task_struct *from_proc = (t->from ? t->from->task : NULL);
+	struct task_struct *to_proc = (t->to_proc ? t->to_proc->tsk : NULL);
+	struct task_turbo_t *from_turbo_data = NULL;
+	struct task_turbo_t *to_turbo_data = NULL;
 
 	if (!sub_feat_enable(SUB_FEAT_BINDER))
 		goto done;
 
-	if (!from || !to)
+	/* Already turbo */
+	if (is_turbo_task(binder_task)) {
 		goto done;
+	}
 
-	if (!is_turbo_task(from) ||
-		!test_turbo_cnt(from)) {
-		from_turbo_data = get_task_turbo_t(from);
+	/* Handle from-proc is turbo */
+	if (from_proc) {
+		if (!is_turbo_task(from_proc)) {
+			goto check_to_proc;
+		}
+
+		from_turbo_data = get_task_turbo_t(to_proc);
+		if (!test_turbo_cnt(from_proc)) {
+			from_inherit_failed = true;
+			goto check_to_proc;
+		}
+
+		inherit_rt |= rt_policy(from_proc->policy);
+		inherit_by_from = true;
+	}
+
+check_to_proc:
+	if (to_proc) {
+		if (!is_turbo_task(to_proc)) {
+			goto try_inherit_from;
+		}
+
+		to_turbo_data = get_task_turbo_t(to_proc);
+		if (!test_turbo_cnt(to_proc)) {
+			to_inherit_failed = true;
+			goto try_inherit_from;
+		}
+
+		inherit_rt |= rt_policy(to_proc->policy);
+		inherit_by_to = true;
+	}
+
+try_inherit_from:
+	if (inherit_by_from) {
+		ret = start_turbo_inherit(binder_task, BINDER_INHERIT,
+					from_turbo_data->inherit_cnt,
+					inherit_rt);
+		if (ret) {
+			goto done;
+		}
+
+		from_inherit_failed = true;
+		goto try_inherit_to;
+	}
+
+try_inherit_to:
+	if (inherit_by_to) {
+		ret = start_turbo_inherit(binder_task, BINDER_INHERIT,
+					to_turbo_data->inherit_cnt,
+					inherit_rt);
+		if (ret) {
+			goto done;
+		}
+
+		to_inherit_failed = true;
+		goto print_trace;
+	}
+
+print_trace:
+	if (from_inherit_failed) {
 		trace_turbo_inherit_failed(from_turbo_data->turbo,
 					atomic_read(&from_turbo_data->inherit_types),
 					from_turbo_data->inherit_cnt, __LINE__);
 		goto done;
 	}
 
-	if (!is_turbo_task(to)) {
-		from_turbo_data = get_task_turbo_t(from);
-		ret = start_turbo_inherit(to, BINDER_INHERIT,
-					from_turbo_data->inherit_cnt);
-		trace_turbo_inherit_start(from, to);
+	if (to_inherit_failed) {
+		trace_turbo_inherit_failed(to_turbo_data->turbo,
+					atomic_read(&to_turbo_data->inherit_types),
+					to_turbo_data->inherit_cnt, __LINE__);
+		goto done;
 	}
+
 done:
 	return ret;
 }
@@ -886,7 +1002,7 @@ static int set_turbo_task(int pid, int val)
 		turbo_data->turbo = val;
 		/*TODO: scheduler tuning */
 		if (turbo_data->turbo == TURBO_ENABLE)
-			set_scheduler_tuning(p);
+			set_scheduler_tuning(p, false);
 		else
 			unset_scheduler_tuning(p);
 		trace_turbo_set(p);
@@ -908,27 +1024,43 @@ static int set_task_turbo_feats(const char *buf,
 {
 	int ret, i;
 	unsigned int val;
+	bool nt_trigger_exist = false;
 
 	ret = kstrtouint(buf, 0, &val);
 	if (ret)
 		return ret;
 
 	spin_lock(&TURBO_SPIN_LOCK);
-	if (val == latency_turbo ||
-	    val == launch_turbo  || val == 0)
-		ret = param_set_uint(buf, kp);
-	else
+	if (val != latency_turbo &&
+	    val != launch_turbo  &&
+	    val != 0) {
 		ret = -EINVAL;
+	}
 
 	/* if disable turbo, remove all turbo tasks */
 	/* spin_lock(&TURBO_SPIN_LOCK); */
 	if (val == 0) {
 		for (i = 0; i < TURBO_PID_COUNT; i++) {
-			if (turbo_pid[i]) {
-				unset_turbo_task(turbo_pid[i]);
-				turbo_pid[i] = 0;
+			if (!turbo_tasks[i].pid) {
+				continue;
 			}
+
+			if (turbo_tasks[i].trigger == TASK_TURBO_TRIGGER_NT) {
+				nt_trigger_exist = true;
+				continue;
+			}
+
+			// Remove other trigger
+			unset_turbo_task(turbo_tasks[i].pid);
+			turbo_tasks[i].pid = 0;
+			turbo_tasks[i].trigger = TASK_TURBO_TRIGGER_UNKNOWN;
 		}
+	}
+
+	// ret: hint value is valid
+	// nt_trigger_exist == true: only if val == 0 and TASK_TURBO_TRIGGER_NT exist
+	if (!ret && !nt_trigger_exist) {
+		ret = param_set_uint(buf, kp);
 	}
 	spin_unlock(&TURBO_SPIN_LOCK);
 
@@ -947,13 +1079,13 @@ param_check_uint(feats, &task_turbo_feats);
 module_param_cb(feats, &task_turbo_feats_param_ops, &task_turbo_feats, 0644);
 MODULE_PARM_DESC(feats, "enable task turbo features if needed");
 
-static bool add_turbo_list_locked(pid_t pid);
-static void remove_turbo_list_locked(pid_t pid);
+static bool add_turbo_list_locked(pid_t pid, int trigger);
+static int remove_turbo_list_locked(pid_t pid, int trigger);
 
 /*
  * use pid set turbo task
  */
-static int add_turbo_list_by_pid(pid_t pid)
+static int add_turbo_list_by_pid(pid_t pid, int trigger)
 {
 	int retval = -EINVAL;
 
@@ -964,7 +1096,7 @@ static int add_turbo_list_by_pid(pid_t pid)
 		return retval;
 
 	spin_lock(&TURBO_SPIN_LOCK);
-	if (!add_turbo_list_locked(pid))
+	if (!add_turbo_list_locked(pid, trigger))
 		goto unlock;
 
 	retval = set_turbo_task(pid, TURBO_ENABLE);
@@ -983,7 +1115,7 @@ static int set_turbo_task_param(const char *buf,
 	retval = kstrtouint(buf, 0, &pid);
 
 	if (!retval)
-		retval = add_turbo_list_by_pid(pid);
+		retval = add_turbo_list_by_pid(pid, TASK_TURBO_TRIGGER_NORMAL);
 
 	if (!retval)
 		turbo_pid_param = pid;
@@ -991,16 +1123,146 @@ static int set_turbo_task_param(const char *buf,
 	return retval;
 }
 
+#define PRINT_BUF_SIZE (PAGE_SIZE)
+#define TEMP_BUF_SIZE  (PRINT_BUF_SIZE * 2)
+char temp_buf[TEMP_BUF_SIZE] = {0};
+static int get_turbo_task_pid_list(char *buf,
+				const struct kernel_param *kp)
+{
+	int length = 0, new_pid_str_size = 0;
+	int i;
+
+	char *non_end_hint_str = " ...\0";
+	int non_end_hint_size = strlen(non_end_hint_str) + 1;
+
+
+	spin_lock(&TURBO_SPIN_LOCK);
+	for (i = 0; i < TURBO_PID_COUNT; i++) {
+		if (turbo_tasks[i].pid <= 0) {
+			continue;
+		}
+
+		memset(temp_buf, 0, TEMP_BUF_SIZE);
+
+		/* Check is first */
+		if (!length) {
+			new_pid_str_size = snprintf(temp_buf, TEMP_BUF_SIZE,
+					"%d", turbo_tasks[i].pid);
+		} else {
+			new_pid_str_size = snprintf(temp_buf, TEMP_BUF_SIZE,
+					", %d", turbo_tasks[i].pid);
+		}
+
+
+		/* Check buf is enough */
+		if (length + new_pid_str_size + non_end_hint_size <= PRINT_BUF_SIZE) {
+			/* make sure can put non_end_hint_str than goto next round */
+			length += snprintf(buf + length, PRINT_BUF_SIZE - length,
+					"%s", temp_buf);
+			continue;
+		}
+
+		/* Not enough: put non_end_hint_str and break */
+		length += snprintf(buf + length, PRINT_BUF_SIZE - length,
+				"%s", non_end_hint_str);
+		break;
+	}
+	spin_unlock(&TURBO_SPIN_LOCK);
+
+	buf[length] = '\0';
+
+	return length;
+}
+
 static struct kernel_param_ops turbo_pid_param_ops = {
 	.set = set_turbo_task_param,
-	.get = param_get_int,
+	.get = get_turbo_task_pid_list,
 };
 
 param_check_uint(turbo_pid, &turbo_pid_param);
 module_param_cb(turbo_pid, &turbo_pid_param_ops, &turbo_pid_param, 0644);
 MODULE_PARM_DESC(turbo_pid, "set turbo task by pid");
 
-static int unset_turbo_list_by_pid(pid_t pid)
+static pid_t nt_turbo_pid_param;
+static int nt_set_turbo_task_param(const char *buf,
+				const struct kernel_param *kp)
+{
+	int retval = 0;
+	pid_t pid;
+
+	retval = kstrtouint(buf, 0, &pid);
+
+	if (!retval)
+		retval = add_turbo_list_by_pid(pid, TASK_TURBO_TRIGGER_NT);
+
+	if (!retval)
+		nt_turbo_pid_param = pid;
+
+	return retval;
+}
+
+static int nt_get_turbo_task_pid_list(char *buf,
+				const struct kernel_param *kp)
+{
+	int length = 0, new_pid_str_size = 0;
+	int i;
+
+	char *non_end_hint_str = " ...\0";
+	int non_end_hint_size = strlen(non_end_hint_str) + 1;
+
+
+	spin_lock(&TURBO_SPIN_LOCK);
+	for (i = 0; i < TURBO_PID_COUNT; i++) {
+		if (turbo_tasks[i].pid <= 0) {
+			continue;
+		}
+
+		if (turbo_tasks[i].trigger != TASK_TURBO_TRIGGER_NT) {
+			continue;
+		}
+
+		memset(temp_buf, 0, TEMP_BUF_SIZE);
+
+		/* Check is first */
+		if (!length) {
+			new_pid_str_size = snprintf(temp_buf, TEMP_BUF_SIZE,
+					"%d", turbo_tasks[i].pid);
+		} else {
+			new_pid_str_size = snprintf(temp_buf, TEMP_BUF_SIZE,
+					", %d", turbo_tasks[i].pid);
+		}
+
+
+		/* Check buf is enough */
+		if (length + new_pid_str_size + non_end_hint_size <= PRINT_BUF_SIZE) {
+			/* make sure can put non_end_hint_str than goto next round */
+			length += snprintf(buf + length, PRINT_BUF_SIZE - length,
+					"%s", temp_buf);
+			continue;
+		}
+
+		/* Not enough: put non_end_hint_str and break */
+		length += snprintf(buf + length, PRINT_BUF_SIZE - length,
+				"%s", non_end_hint_str);
+		break;
+	}
+	spin_unlock(&TURBO_SPIN_LOCK);
+
+	buf[length] = '\0';
+
+	return length;
+}
+
+static struct kernel_param_ops nt_turbo_pid_param_ops = {
+	.set = nt_set_turbo_task_param,
+	.get = nt_get_turbo_task_pid_list,
+};
+
+param_check_uint(nt_set_turbo_pid, &nt_turbo_pid_param);
+module_param_cb(nt_set_turbo_pid, &nt_turbo_pid_param_ops, &nt_turbo_pid_param, 0644);
+MODULE_PARM_DESC(nt_set_turbo_pid, "set nt turbo task by pid");
+
+static int unset_turbo_list_by_pid(pid_t pid, int trigger)
 {
 	int retval = -EINVAL;
 
@@ -1008,8 +1270,10 @@ static int unset_turbo_list_by_pid(pid_t pid)
 		return retval;
 
 	spin_lock(&TURBO_SPIN_LOCK);
-	remove_turbo_list_locked(pid);
-	retval = unset_turbo_task(pid);
+	retval = remove_turbo_list_locked(pid, trigger);
+	if (!retval) {
+		retval = unset_turbo_task(pid);
+	}
 	spin_unlock(&TURBO_SPIN_LOCK);
 	return retval;
 }
@@ -1024,7 +1288,7 @@ static int unset_turbo_task_param(const char *buf,
 	retval = kstrtouint(buf, 0, &pid);
 
 	if (!retval)
-		retval = unset_turbo_list_by_pid(pid);
+		retval = unset_turbo_list_by_pid(pid, TASK_TURBO_TRIGGER_NORMAL);
 
 	if (!retval)
 		unset_turbo_pid_param = pid;
@@ -1041,6 +1305,34 @@ param_check_uint(unset_turbo_pid, &unset_turbo_pid_param);
 module_param_cb(unset_turbo_pid, &unset_turbo_pid_param_ops,
 		&unset_turbo_pid_param, 0644);
 MODULE_PARM_DESC(unset_turbo_pid, "unset turbo task by pid");
+
+static pid_t nt_unset_turbo_pid_param;
+static int nt_unset_turbo_task_param(const char *buf,
+				  const struct kernel_param *kp)
+{
+	int retval = 0;
+	pid_t pid;
+
+	retval = kstrtouint(buf, 0, &pid);
+
+	if (!retval)
+		retval = unset_turbo_list_by_pid(pid, TASK_TURBO_TRIGGER_NT);
+
+	if (!retval)
+		nt_unset_turbo_pid_param = pid;
+
+	return retval;
+}
+
+static struct kernel_param_ops nt_unset_turbo_pid_param_ops = {
+	.set = nt_unset_turbo_task_param,
+	.get = param_get_int,
+};
+
+param_check_uint(nt_unset_turbo_pid, &nt_unset_turbo_pid_param);
+module_param_cb(nt_unset_turbo_pid, &nt_unset_turbo_pid_param_ops,
+		&nt_unset_turbo_pid_param, 0644);
+MODULE_PARM_DESC(nt_unset_turbo_pid, "unset turbo task by pid");
 
 static inline int get_st_group_id(struct task_struct *task)
 {
@@ -1078,7 +1370,7 @@ static inline bool cgroup_check_set_turbo(struct task_struct *p)
 /*
  * record task to turbo list
  */
-static bool add_turbo_list_locked(pid_t pid)
+static bool add_turbo_list_locked(pid_t pid, int trigger)
 {
 	int i, free_idx = -1;
 	bool ret = false;
@@ -1087,33 +1379,36 @@ static bool add_turbo_list_locked(pid_t pid)
 		goto done;
 
 	for (i = 0; i < TURBO_PID_COUNT; i++) {
-		if (free_idx < 0 && !turbo_pid[i])
+		if (free_idx < 0 && !turbo_tasks[i].pid)
 			free_idx = i;
 
-		if (unlikely(turbo_pid[i] == pid)) {
+		if (unlikely(turbo_tasks[i].pid == pid)) {
 			free_idx = i;
 			break;
 		}
 	}
 
 	if (free_idx >= 0) {
-		turbo_pid[free_idx] = pid;
+		turbo_tasks[free_idx].pid = pid;
+		if (turbo_tasks[free_idx].trigger != TASK_TURBO_TRIGGER_NT) {
+			turbo_tasks[free_idx].trigger = trigger;
+		}
 		ret = true;
 	}
 done:
 	return ret;
 }
 
-static void add_turbo_list(struct task_struct *p)
+static void add_turbo_list(struct task_struct *p, int trigger)
 {
 	struct task_turbo_t *turbo_data;
 
 	spin_lock(&TURBO_SPIN_LOCK);
-	if (add_turbo_list_locked(p->pid)) {
+	if (add_turbo_list_locked(p->pid, trigger)) {
 		turbo_data = get_task_turbo_t(p);
 		turbo_data->turbo = TURBO_ENABLE;
 		/* TODO: scheduler tuninng */
-		set_scheduler_tuning(p);
+		set_scheduler_tuning(p, false);
 		trace_turbo_set(p);
 	}
 	spin_unlock(&TURBO_SPIN_LOCK);
@@ -1122,28 +1417,41 @@ static void add_turbo_list(struct task_struct *p)
 /*
  * remove task from turbo list
  */
-static void remove_turbo_list_locked(pid_t pid)
+static int remove_turbo_list_locked(pid_t pid, int trigger)
 {
+	int retval = 0;
 	int i;
 
 	for (i = 0; i < TURBO_PID_COUNT; i++) {
-		if (turbo_pid[i] == pid) {
-			turbo_pid[i] = 0;
-			break;
+		if (turbo_tasks[i].pid == pid) {
+			if (turbo_tasks[i].trigger == TASK_TURBO_TRIGGER_NT &&
+			    trigger != TASK_TURBO_TRIGGER_NT) {
+				retval = -EPERM;
+				goto out;
+			}
+			turbo_tasks[i].pid = 0;
+			turbo_tasks[i].trigger = TASK_TURBO_TRIGGER_UNKNOWN;
+			goto out;
 		}
 	}
+
+	retval = -ESRCH;
+
+out:
+	return retval;
 }
 
-static void remove_turbo_list(struct task_struct *p)
+static void remove_turbo_list(struct task_struct *p, int trigger)
 {
 	struct task_turbo_t *turbo_data;
 
 	spin_lock(&TURBO_SPIN_LOCK);
 	turbo_data = get_task_turbo_t(p);
-	remove_turbo_list_locked(p->pid);
-	turbo_data->turbo = TURBO_DISABLE;
-	unset_scheduler_tuning(p);
-	trace_turbo_set(p);
+	if (!remove_turbo_list_locked(p->pid, trigger)) {
+		turbo_data->turbo = TURBO_DISABLE;
+		unset_scheduler_tuning(p);
+		trace_turbo_set(p);
+	}
 	spin_unlock(&TURBO_SPIN_LOCK);
 }
 
@@ -1157,11 +1465,11 @@ static void probe_android_vh_cgroup_set_task(void *ignore, int ret, struct task_
 	if (get_st_group_id(p) == TOP_APP_GROUP_ID) {
 		if (!cgroup_check_set_turbo(p))
 			return;
-		add_turbo_list(p);
+		add_turbo_list(p, TASK_TURBO_TRIGGER_NORMAL);
 	} else {
 		turbo_data = get_task_turbo_t(p);
 		if (turbo_data->turbo)
-			remove_turbo_list(p);
+			remove_turbo_list(p, TASK_TURBO_TRIGGER_NORMAL);
 	}
 }
 
@@ -1169,6 +1477,10 @@ static void probe_android_vh_syscall_prctl_finished(void *ignore, int option, st
 {
 	if (option == PR_SET_NAME)
 		sys_set_turbo_task(p);
+
+#if IS_ENABLED(CONFIG_NOTHING_PERFORMANCE_FEATURE)
+	nt_probe_android_vh_syscall_prctl_finished(ignore, option, p);
+#endif /* CONFIG_NOTHING_PERFORMANCE_FEATURE */
 }
 
 static inline void fillin_cluster(struct cluster_info *cinfo,
@@ -1311,7 +1623,7 @@ static void sys_set_turbo_task(struct task_struct *p)
 
 	turbo_data = get_task_turbo_t(p);
 	turbo_data->render = 1;
-	add_turbo_list(p);
+	add_turbo_list(p, TASK_TURBO_TRIGGER_NORMAL);
 }
 
 static int __init init_task_turbo(void)
@@ -1429,6 +1741,9 @@ static int __init init_task_turbo(void)
 		ret_erri_line = __LINE__;
 		goto failed;
 	}
+#if IS_ENABLED(CONFIG_NOTHING_PERFORMANCE_FEATURE)
+	set_hook_trace_android_vh_syscall_prctl_finished(true);
+#endif /* CONFIG_NOTHING_PERFORMANCE_FEATURE */
 
 	init_hmp_domains();
 

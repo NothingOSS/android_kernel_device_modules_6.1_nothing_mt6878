@@ -13,6 +13,7 @@
 #include <drm/drm_panel.h>
 
 #include "mtk_panel_ext.h"
+#include "mtk_disp_notify.h"
 
 struct _panel_rst_ctx {
 	struct drm_panel *panel;
@@ -23,6 +24,77 @@ static DEFINE_MUTEX(panel_ext_lock);
 static LIST_HEAD(panel_ext_list);
 static struct _panel_rst_ctx panel_rst_ctx;
 static enum mtk_lcm_version g_lcm_version;
+
+/*24121 project hbm setting begin*/
+void mtk_lcm_update_state_to_fingerprint(int hbm_status)
+{
+	struct fp_notify_event event;
+
+	event.hbm_status = hbm_status;
+	event.ui_status = 1;
+	mtk_disp_notifier_call_chain(FP_NOTIFIER_EVENT_UI, &event);
+}
+
+void mtk_panel_proc_local_hbm(int hbm_status)
+{
+	mtk_lcm_update_state_to_fingerprint(hbm_status);
+}
+EXPORT_SYMBOL(mtk_panel_proc_local_hbm);
+/*24121 project hbm setting end*/
+
+/*23114 project hbm setting begin*/
+static int g_lcm_hbm_status = 0;
+static int g_lcm_ui_status = 0;
+void mtk_panel_update_lcm_state_to_fingerprint(void)
+{
+	static int g_lcm_last_hbm_status = 0;
+	static int g_lcm_last_ui_status = 0;
+	int lcm_hbm_ui_status_chg = 0;
+	struct fp_notify_event event;
+	if (g_lcm_last_hbm_status != g_lcm_hbm_status) {
+		printk("[%s] g_lcm_last_hbm_status:%d change to  g_lcm_hbm_status:%d\n", __func__,
+			g_lcm_last_hbm_status,
+			g_lcm_hbm_status);
+		g_lcm_last_hbm_status = g_lcm_hbm_status;
+		lcm_hbm_ui_status_chg = 1;
+	}
+	if (g_lcm_last_ui_status != g_lcm_ui_status) {
+		printk("[%s] g_lcm_last_ui_status:%d change to  g_lcm_ui_status:%d\n", __func__,
+			g_lcm_last_ui_status,
+			g_lcm_ui_status);
+		g_lcm_last_ui_status = g_lcm_ui_status;
+		lcm_hbm_ui_status_chg = 1;
+	}
+	if (lcm_hbm_ui_status_chg) {
+		event.hbm_status = g_lcm_hbm_status;
+		event.ui_status = g_lcm_ui_status;
+		mtk_disp_notifier_call_chain(FP_NOTIFIER_EVENT_UI, &event);
+	}
+}
+EXPORT_SYMBOL(mtk_panel_update_lcm_state_to_fingerprint);
+void mtk_panel_proc_hbm(int hbm_status)
+{
+	printk("[%s] hbm_status: %d\n",__func__, hbm_status);
+	g_lcm_hbm_status = hbm_status;
+	mtk_panel_update_lcm_state_to_fingerprint();
+}
+EXPORT_SYMBOL(mtk_panel_proc_hbm);
+
+int mtk_panel_get_ui_status(void)
+{
+	printk("[%s] ui_status: %d\n",__func__, g_lcm_ui_status);
+	return g_lcm_ui_status;
+}
+EXPORT_SYMBOL(mtk_panel_get_ui_status);
+
+void mtk_panel_proc_ui_status(int ui_status)
+{
+	printk("[%s] ui_status: %d\n",__func__, ui_status);
+	g_lcm_ui_status = ui_status;
+	mtk_panel_update_lcm_state_to_fingerprint();
+}
+EXPORT_SYMBOL(mtk_panel_proc_ui_status);
+/*23114 project hbm setting end*/
 
 void mtk_panel_init(struct mtk_panel_ctx *ctx)
 {

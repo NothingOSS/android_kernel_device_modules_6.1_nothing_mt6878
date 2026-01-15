@@ -14,12 +14,20 @@
 /* A hardware display blank change occurred */
 #define MTK_DISP_EARLY_EVENT_BLANK	0x00
 #define MTK_DISP_EVENT_BLANK		0x01
+/*Add for fp*/
+#define FP_NOTIFIER_EVENT_UI		0x02
+struct fp_notify_event {
+	int hbm_status;
+	int ui_status;
+};
 
 enum {
 	/* disp power on */
 	MTK_DISP_BLANK_UNBLANK,
 	/* disp power off */
 	MTK_DISP_BLANK_POWERDOWN,
+	/* disp aod mode*/
+	MTK_DISP_BLANK_AOD,
 };
 
 int mtk_disp_notifier_register(const char *source, struct notifier_block *nb);

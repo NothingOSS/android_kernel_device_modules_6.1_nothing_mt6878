@@ -412,6 +412,13 @@ static int mtu3_gadget_queue(struct usb_ep *ep,
 		goto error;
 	}
 
+	/** here add check to avoid list_add double add exception*/
+	if(&mreq->list == (&mep->req_list)->prev) {
+		dev_warn(mtu->dev, "request already exist\n");
+		ret = -EEXIST;
+		goto error;
+	}
+
 	trace_mtu3_gadget_queue(mreq);
 	list_add_tail(&mreq->list, &mep->req_list);
 	mtu3_insert_gpd(mep, mreq);

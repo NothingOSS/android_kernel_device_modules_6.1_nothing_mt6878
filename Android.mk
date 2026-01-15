@@ -15,21 +15,29 @@ endif
 
 include $(LOCAL_PATH)/kenv.mk
 
+## Avoid scanning VCS dirs to prevent ABFS hashing .git/.repo (dirs & files)
+define FIND_NO_VCS
+find $(1) \( -path '*/.git' -o -path '*/.git/*' -o -path '*/.repo' -o -path '*/.repo/*' \) -prune -o -type f $(2) -print
+endef
+define FINDL_NO_VCS
+find -L $(1) \( -path '*/.git' -o -path '*/.git/*' -o -path '*/.repo' -o -path '*/.repo/*' \) -prune -o -type f $(2) -print
+endef
+
 ifeq ($(wildcard $(TARGET_PREBUILT_KERNEL)),)
-KERNEL_MAKE_DEPENDENCIES := $(shell find $(KERNEL_DIR) -name .git -prune -o -type f | sort)
-KERNEL_MAKE_DEPENDENCIES += $(shell find -L vendor/mediatek/kernel_modules -name .git -prune -o -type f | sort)
+KERNEL_MAKE_DEPENDENCIES := $(shell $(call FIND_NO_VCS,$(KERNEL_DIR),) | sort)
+KERNEL_MAKE_DEPENDENCIES += $(shell $(call FINDL_NO_VCS,vendor/mediatek/kernel_modules,) | sort)
 ifdef MTK_GKI_PREBUILTS_DIR
 KERNEL_MAKE_DEPENDENCIES += $(wildcard $(MTK_GKI_PREBUILTS_DIR)/*)
 endif
 ifdef MTK_GKI_BUILD_CONFIG
-KERNEL_MAKE_DEPENDENCIES += $(shell find kernel/$(REL_ACK_DIR)/ -name .git -prune -o -type f | sort)
+KERNEL_MAKE_DEPENDENCIES += $(shell $(call FIND_NO_VCS,kernel/$(REL_ACK_DIR),) | sort)
 endif
 ifneq ($(wildcard kernel/build),)
-KERNEL_MAKE_DEPENDENCIES += $(shell find kernel/build -name .git -prune -o -type f | sort)
+KERNEL_MAKE_DEPENDENCIES += $(shell $(call FIND_NO_VCS,kernel/build,) | sort)
 endif
 ifneq ($(wildcard vendor/mediatek/tests),)
-KERNEL_MAKE_DEPENDENCIES += $(shell find vendor/mediatek/tests/kernel/ktf_testcase -name .git -prune -o -type f | sort)
-KERNEL_MAKE_DEPENDENCIES += $(shell find vendor/mediatek/tests/ktf/kernel -name .git -prune -o -type f | sort)
+KERNEL_MAKE_DEPENDENCIES += $(shell $(call FIND_NO_VCS,vendor/mediatek/tests/kernel/ktf_testcase,) | sort)
+KERNEL_MAKE_DEPENDENCIES += $(shell $(call FIND_NO_VCS,vendor/mediatek/tests/ktf/kernel,) | sort)
 endif
 
 ifeq (user,$(strip $(KERNEL_BUILD_VARIANT)))
@@ -146,7 +154,10 @@ kernel-outputmakefile:
 MTK_DTBIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(PLATFORM_DTB_NAME)))
 include device/mediatek/build/core/build_dtbimage.mk
 
-MTK_DTBOIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(PROJECT_DTB_NAMES)))
+#MTK_DTBOIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(PROJECT_DTB_NAMES)))
+MTK_DTBOIMAGE_DTS += $(wildcard $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/$(PROJECT_DTB_NAMES)_tetris.dts)
+MTK_DTBOIMAGE_DTS += $(wildcard $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/$(PROJECT_DTB_NAMES)_galaga.dts)
+MTK_DTBOIMAGE_DTS += $(wildcard $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/$(PROJECT_DTB_NAMES)_galaxian.dts)
 include device/mediatek/build/core/build_dtboimage.mk
 
 endif #LINUX_KERNEL_VERSION

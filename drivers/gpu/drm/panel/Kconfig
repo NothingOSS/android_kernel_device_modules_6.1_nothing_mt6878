@@ -563,6 +563,16 @@ config DRM_PANEL_MOT_CSOT_NT37705_DPHY_CMD
 	  XX-bits RGB per pixel. It provides a MIPI DSI interface
 	  to host.
 
+config DRM_PANEL_SAMSUNG_S6E8FC3X02
+	tristate "DRM_PANEL_SAMSUNG_S6E8FC3X02"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for the DRM_PANEL_SAMSUNG_S6E8FC3X02
+	  controller for 1080x2400 LCD panels with MIPI/RGB/SPI
+	  system interfaces.
+
 config DRM_PANEL_MOT_CSOT_NT37707_FHDP_DPHY_CMD
 	tristate "NT37707 fhd plus dphy cmd mode panel"
 	depends on OF
@@ -606,3 +616,30 @@ config DRM_PANEL_NT37706A_BOE_FHDPLUS_VDO
 	  nt37706a boe fhdplus vdo panel. The panel has a 1280x2800
 	  resolution and uses 30-bits RGB per pixel. It provides a
 	  MIPI DSI interface to host.
+
+config DRM_PANEL_RM69220_BOE
+	tristate "DRM_PANEL_RM69220_BOE"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for the DRM_PANEL_RM69220_BOE
+	  controller for 1080x2392 OLED panels with MIPI/RGB system interfaces.
+
+config DRM_PANEL_RM69220_VXN
+	tristate "DRM_PANEL_RM69220_VXN"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for the DRM_PANEL_RM69220_VXN
+	  controller for 1080x2392 OLED panels with MIPI/RGB system interfaces.
+
+config DRM_PANEL_EPD8820_BOE
+	tristate "DRM_PANEL_EPD8820_BOE"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for the DRM_PANEL_EPD8820_BOE
+	  controller for 1080x2392 OLED panels with MIPI/RGB system interfaces.

@@ -63,6 +63,8 @@ enum mml_hdr_reg_index {
 	HDR_CURSOR_BUF0,
 	HDR_CURSOR_BUF1,
 	HDR_CURSOR_BUF2,
+	HDR_R2Y_09,
+	HDR_Y2R_09,
 	HDR_TONE_MAP_TOP,
 	HDR_3x3_COEF_00,
 	HDR_B_CHANNEL_NR,
@@ -97,6 +99,8 @@ static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_CURSOR_BUF0] = 0x11c,
 	[HDR_CURSOR_BUF1] = 0x120,
 	[HDR_CURSOR_BUF2] = 0x124,
+	[HDR_R2Y_09] = 0x14c,
+	[HDR_Y2R_09] = 0x178,
 	[HDR_TONE_MAP_TOP] = 0x1b0,
 };
 
@@ -308,11 +312,11 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 }
 
 static void hdr_disable_curve(struct mml_comp *comp, struct cmdq_pkt *pkt,
-	const phys_addr_t base_pa)
+	struct mml_frame_data *src, const phys_addr_t base_pa)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 
-	if (!hdr->data->tile_loss)
+	if (!hdr->data->tile_loss && !MML_FMT_IS_RGB(src->format))
 		hdr_relay(comp, pkt, base_pa, 0x1);
 	else {
 		cmdq_pkt_write(pkt, NULL,
@@ -325,7 +329,16 @@ static void hdr_disable_curve(struct mml_comp *comp, struct cmdq_pkt *pkt,
 			base_pa + hdr->data->reg_table[HDR_B_CHANNEL_NR], 0x0, 0x1);
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + hdr->data->reg_table[HDR_A_LUMINANCE], 0x0, 0x1);
+		// RGB In, enable R2Y, disable Y2R
+		//TODO: Add R2Y matrix detail setting
+		if(MML_FMT_IS_RGB(src->format)) {
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + hdr->data->reg_table[HDR_R2Y_09], 0x1, 0x1);
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + hdr->data->reg_table[HDR_Y2R_09], 0x0, 0x1);
+		}
 	}
+
 }
 
 static s32 hdr_config_init(struct mml_comp *comp, struct mml_task *task,
@@ -437,6 +450,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	const phys_addr_t base_pa = comp->base_pa;
+	struct mml_frame_data *src = &cfg->info.src;
 	struct mml_pq_comp_config_result *result;
 	struct mml_pq_reg *regs;
 	u32 *curve;
@@ -469,7 +483,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (ret) {
 			mml_pq_comp_config_clear(task);
 			hdr_frm->config_success = false;
-			hdr_disable_curve(comp, pkt, base_pa);
+			hdr_disable_curve(comp, pkt, src, base_pa);
 			mml_pq_err("%s: get hdr param timeout: %d in %dms",
 				 __func__, ret, HDR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
@@ -478,7 +492,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		result = get_hdr_comp_config_result(task);
 		if (!result) {
 			hdr_frm->config_success = false;
-			hdr_disable_curve(comp, pkt, base_pa);
+			hdr_disable_curve(comp, pkt, src, base_pa);
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;
@@ -906,7 +920,7 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s pipe_id[%d] engine_id[%d] en_hdr[%d] config_success[%d]", __func__,
 		ccfg->pipe, comp->id, dest->pq_config.en_hdr,
 		hdr_frm->config_success);
-	if (!dest->pq_config.en_hdr)
+	if (!dest->pq_config.en_hdr || !hdr_frm->config_success)
 		return 0;
 
 	do {

@@ -801,7 +801,7 @@ static s32 tdshp_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_pq_reg *regs = NULL;
 	s8 mode = task->config->info.mode;
 
-	if (!dest->pq_config.en_sharp && !dest->pq_config.en_dc)
+	if ((!dest->pq_config.en_sharp && !dest->pq_config.en_dc) || !tdshp_frm->config_success)
 		return ret;
 
 	do {

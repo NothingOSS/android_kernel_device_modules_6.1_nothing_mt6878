@@ -1,0 +1,4 @@
+obj-$(CONFIG_NXP_ESE_P73) := p73.o
+p73-y := ese_spi.o \
+ese_reset.o
+ccflags-y += -DDYNAMIC_DEBUG_MODULE

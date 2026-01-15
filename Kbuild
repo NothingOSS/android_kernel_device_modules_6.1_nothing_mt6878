@@ -40,7 +40,8 @@ obj-y += drivers/leds/
 
 obj-y += drivers/pinctrl/mediatek/
 
-obj-y += drivers/power/supply/
+# obj-y += drivers/power/supply/
+obj-y += drivers/power/nt_supply/
 
 obj-y += drivers/rtc/
 
@@ -50,9 +51,13 @@ obj-y += drivers/rpmsg/
 
 obj-y += drivers/input/keyboard/
 
+obj-y += drivers/input/fingerprint/goodix/
+
 obj-y += drivers/phy/mediatek/
 
 obj-y += drivers/thermal/mediatek/
+
+obj-y += drivers/thermal/nothing/
 
 obj-y += drivers/spmi/
 
@@ -92,10 +97,20 @@ obj-y += drivers/devfreq/
 
 obj-y += drivers/misc/mediatek/
 
+obj-y += drivers/misc/haptic/
+
+obj-y += drivers/misc/haptic_sfdc/
+
 obj-y += sound/soc/codecs/
 
 obj-y += sound/soc/mediatek/
 
 obj-y += drivers/pci/controller/
+
+obj-y += drivers/chino-e/
+
+obj-y += drivers/nothing_stability/
+
+obj-y += drivers/nothing_performance/
 
 endif
