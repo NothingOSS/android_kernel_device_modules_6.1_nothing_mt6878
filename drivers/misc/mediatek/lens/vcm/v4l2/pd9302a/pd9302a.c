@@ -104,11 +104,19 @@ static int pd9302a_init(struct pd9302a_device *pd9302a)
 	{0x02, 0x01}, {0x02, 0x00}, {0xFE, 0xFE},
 	{0x02, 0x02}, {0x06, 0x80}, {0x07, 0x39}, {0xFE, 0xFE},
 	};
+	char puSendCmdArray_cn3938v[7][2] = {
+	{0x02, 0x01}, {0x02, 0x00}, {0xFE, 0xFE},
+	{0x02, 0x02},{0x06, 0x10}, {0x07, 0x6f}, {0xFE, 0xFE},
+	};
 	unsigned char cmd_number;
 	LOG_INF("+\n");
 	client->addr = PD9302A_I2C_SLAVE_ADDR >> 1;
-	//ret = i2c_smbus_read_byte_data(client, 0x02);
+	ret = i2c_smbus_read_byte_data(client, 0x00);
 	LOG_INF("Check HW version: %x\n", ret);
+	if(ret == 0xf0)
+	{
+		memcpy(puSendCmdArray ,puSendCmdArray_cn3938v ,sizeof(char)*14);
+	}
 	for (cmd_number = 0; cmd_number < 7; cmd_number++) {
 		if (puSendCmdArray[cmd_number][0] != 0xFE) {
 			ret = i2c_smbus_write_byte_data(client,
