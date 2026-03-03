@@ -1134,6 +1134,8 @@ static void reboot_set_flag(bool op)
 {
 	unsigned int reg = ioread32(toprgu_base + WDT_NONRST_REG2);
 
+        dump_stack();
+
 	pr_info("reboot set flag, old value 0x%x, %d.\n", reg, op);
 	reg = ((reg & ~(REBOOT_FLAG_MASK << REBOOT_FLAG_OFS))
 		| (op ? 1 : 0) << REBOOT_FLAG_OFS);
