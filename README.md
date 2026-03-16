@@ -5,3 +5,6 @@
   - Kernel modules path
      - vendor/mediatek/kernel_modules/
 
+2. OS 4.0 (Galaga-B4.0-260226-1122)
+  - Optimize Charger driver
+
