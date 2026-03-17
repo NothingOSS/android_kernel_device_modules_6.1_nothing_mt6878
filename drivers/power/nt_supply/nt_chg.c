@@ -2213,6 +2213,11 @@ MODULE_DEVICE_TABLE(of, nt_chg_of_id);
 
 static int nt_chg_suspend(struct device *dev)
 {
+	struct nt_chg_info *nci = dev_get_drvdata(dev);
+
+	if (nci)
+		cancel_delayed_work_sync(&nci->nt_update_status_work);
+	pr_err("%s!!\n", __func__);
 	return 0;
 }
 
