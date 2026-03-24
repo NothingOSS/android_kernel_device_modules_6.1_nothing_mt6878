@@ -64,9 +64,6 @@ static const struct proc_ops perfmgr_ ## name ## _proc_fops = { \
 			pr_debug(fmt, ##x); \
 	} while (0)
 
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
 #define CLUSTER_MAX 10
 
 typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
