@@ -19,7 +19,6 @@
 #define MAX_AUDIO_UDM_HEAD_SIZE 32
 #define AudioUDMLogLogToken     "__"
 #define AudioUDMLogFormatToken  "M&"
-#define MIN(a, b) (((a) < (b))?(a):(b))
 
 struct mbraink_udm_buffer {
 	char buffer[MAX_AUDIO_UDM_QUEUE][MAX_AUDIO_UDM_LOG_SIZE];
