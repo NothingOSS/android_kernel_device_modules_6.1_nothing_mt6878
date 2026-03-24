@@ -112,9 +112,6 @@
 #define FPSGO_BAFFINITY_TOTAL 7
 
 
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
 #define SEQ_printf(m, x...)\
 do {\
 	if (m)\
