@@ -5,3 +5,6 @@
   - Kernel modules path
      - vendor/mediatek/kernel_modules/
 
+2. OS 4.0 (Galaxian-B4.0-260303-1710)
+  - Optimize Charger
+
