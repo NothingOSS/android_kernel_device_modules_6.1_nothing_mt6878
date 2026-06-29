@@ -8,3 +8,8 @@
 2. OS 4.0 (Galaxian-B4.0-260303-1710)
   - Optimize Charger
 
+3. OS 4.1 (Galaxian-B4.1-260508-1508)
+  - Optimize Charger driver
+  - Improve stability
+  - Improve camera
+
