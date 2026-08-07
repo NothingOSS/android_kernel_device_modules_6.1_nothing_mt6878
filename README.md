@@ -13,3 +13,6 @@
   - Improve stability
   - Improve camera
 
+4. OS 4.1 (Tetris-B4.1-260615-1652)
+  - Fix build error for updating GKI to android14-6.1-2026-03_r9
+
